@@ -1,4 +1,4 @@
-import L11Test4Section2 from "../../components/bailam/L11_test4_section2";
+import L11Test4Section2 from "../../components/bailam/L11-test4-section2";
 
 export default function Page() {
   return <L11Test4Section2 />;
