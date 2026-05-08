@@ -561,7 +561,7 @@ async def chat(request: Request):
                 {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
                 {"type": "text",      "text": user_message},
             ]
-            model         = "llama-3.2-11b-vision-preview"
+            model         = "meta-llama/llama-4-scout-17b-16e-instruct"
             system_prompt = cached_system_prompt("image")
 
         history.append({"role": "user", "content": f"[Image] {user_message}"})
@@ -571,12 +571,17 @@ async def chat(request: Request):
         system_prompt = cached_system_prompt("text")
         history.append({"role": "user", "content": user_message})
 
-    messages = [{"role": "system", "content": system_prompt}] + history[-4:]
-    messages[-1]["content"] = user_content
+    # Build messages without mutating history dicts (slicing shares dict refs in Python)
+    context_history = history[-5:-1]  # previous turns, excluding the just-appended user turn
+    messages = (
+        [{"role": "system", "content": system_prompt}]
+        + context_history
+        + [{"role": "user", "content": user_content}]
+    )
 
     payload = {
         "model": model, "messages": messages,
-        "max_tokens": 220, "temperature": 0.3,
+        "max_tokens": 1024, "temperature": 0.3,
         "stream": use_stream,
     }
 
@@ -706,7 +711,7 @@ async def health():
         "db_latency_ms": db_ms,
         "keep_alive":    bool(SELF_URL),
         "text_model":    "llama-3.1-8b-instant",
-        "vision_model":  "llama-3.2-11b-vision-preview",
+        "vision_model":  "meta-llama/llama-4-scout-17b-16e-instruct",
         "ocr_available": _ocr_available,
     })
 
