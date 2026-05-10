@@ -1,33 +1,3 @@
-# backend/server.py  —  DuoMath Unified Backend  (v3 — auth hardened)
-# ─────────────────────────────────────────────────────────────────────────────
-# CHANGES vs v2:
-#
-#  AUTH FIXES
-#  ──────────
-#  FIX A: signup()   — use lastrowid instead of a second SELECT after INSERT
-#                      → avoids rare WAL race; one fewer DB round-trip
-#
-#  FIX B: signup() / login()   — both now return test_results + game_results
-#                      → frontend gets everything in one response, no need for
-#                        a second /api/me call; profile dropdown populates
-#                        immediately after sign-in
-#
-#  FIX C: login()    — email match is now explicitly case-insensitive via
-#                      COLLATE NOCASE; protects against "User@Email.com" vs
-#                      "user@email.com" mismatches after the .lower() strip
-#
-#  FIX D: update_me() PATCH — validate required fields (username) cannot be
-#                      blanked out; strip + length check before saving
-#
-#  FIX E: user_dict() — now includes a 'name' alias for username so the
-#                      frontend can use either key without breaking
-#
-#  REQUIREMENTS FIX
-#  ─────────────────
-#  NOTE: remove "groq>=0.9.0" from requirements.txt — server.py uses raw
-#        HTTP via the 'requests' library; the Groq SDK is never imported.
-#        Keeping it only wastes ~30 s on every Render deploy.
-# ─────────────────────────────────────────────────────────────────────────────
 
 import os, sqlite3, json, uuid, time, threading, base64, io
 from datetime import timedelta
@@ -93,7 +63,6 @@ def cached_system_prompt(variant: str = "text") -> str:
 
 
 def extract_text_from_image(image_bytes: bytes) -> str:
-    """Run OCR on raw image bytes and return extracted text."""
     if not _ocr_available or ocr_reader is None:
         return ""
     try:
@@ -196,16 +165,11 @@ init_db()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def user_dict(row):
-    """
-    Serialise a users row to a plain dict.
-    Includes 'name' as an alias for 'username' so the frontend can use either.
-    Never includes the hashed password.
-    """
     return {
         "id":         row["id"],
         "email":      row["email"],
         "username":   row["username"],
-        "name":       row["username"],   # alias — frontend may use either key
+        "name":       row["username"],
         "phone":      row["phone"],
         "school":     row["school"],
         "grade":      row["grade"],
@@ -237,14 +201,11 @@ def game_dict(row):
     }
 
 def _fetch_scores(db, uid: int) -> tuple:
-    """Return (test_results_list, game_results_list) for a given user id."""
     tests = db.execute(
-        "SELECT * FROM test_results WHERE user_id=? ORDER BY taken_at DESC LIMIT 20",
-        (uid,),
+        "SELECT * FROM test_results WHERE user_id=? ORDER BY taken_at DESC LIMIT 20", (uid,)
     ).fetchall()
     games = db.execute(
-        "SELECT * FROM minigame_results WHERE user_id=? ORDER BY played_at DESC LIMIT 20",
-        (uid,),
+        "SELECT * FROM minigame_results WHERE user_id=? ORDER BY played_at DESC LIMIT 20", (uid,)
     ).fetchall()
     return [test_dict(t) for t in tests], [game_dict(g) for g in games]
 
@@ -285,7 +246,6 @@ def signup():
     school   = (d.get("school")   or "").strip()
     grade    = (d.get("grade")    or "").strip()
 
-    # ── Validate ──────────────────────────────────────────────────────────────
     if not email or not username or not password:
         return jsonify({"error": "Email, username and password are required."}), 400
     if len(password) < 6:
@@ -294,32 +254,23 @@ def signup():
         return jsonify({"error": "Username must be at least 2 characters."}), 400
 
     db = get_db()
-
-    # ── Duplicate check ───────────────────────────────────────────────────────
     if db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
         return jsonify({"error": "An account with this email already exists."}), 409
 
-    # ── Insert — use lastrowid, no second SELECT needed (FIX A) ──────────────
     cur = db.execute(
         "INSERT INTO users (email, username, password, phone, school, grade)"
         " VALUES (?, ?, ?, ?, ?, ?)",
         (email, username, generate_password_hash(password), phone, school, grade),
     )
     db.commit()
-    new_id = cur.lastrowid   # ← FIX A: get id directly from cursor
-
+    new_id = cur.lastrowid
     row = db.execute("SELECT * FROM users WHERE id=?", (new_id,)).fetchone()
 
-    access = create_access_token(identity=str(new_id))
-    rf     = create_refresh_token(identity=str(new_id))
-
-    # New user has no scores yet, but we include the empty arrays anyway
-    # so the frontend response shape is identical to login() (FIX B)
     return jsonify({
-        "access_token":  access,
-        "refresh_token": rf,
+        "access_token":  create_access_token(identity=str(new_id)),
+        "refresh_token": create_refresh_token(identity=str(new_id)),
         "user":          user_dict(row),
-        "test_results":  [],    # FIX B: consistent shape with login
+        "test_results":  [],
         "game_results":  [],
     }), 201
 
@@ -334,24 +285,18 @@ def login():
         return jsonify({"error": "Email and password are required."}), 400
 
     db  = get_db()
-    # FIX C: COLLATE NOCASE on the column means this matches regardless of case
     row = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
     if not row or not check_password_hash(row["password"], password):
         return jsonify({"error": "Invalid email or password."}), 401
 
     uid = row["id"]
-    access = create_access_token(identity=str(uid))
-    rf     = create_refresh_token(identity=str(uid))
-
-    # FIX B: return scores immediately so frontend doesn't need a second /api/me call
     test_results, game_results = _fetch_scores(db, uid)
-
     return jsonify({
-        "access_token":  access,
-        "refresh_token": rf,
+        "access_token":  create_access_token(identity=str(uid)),
+        "refresh_token": create_refresh_token(identity=str(uid)),
         "user":          user_dict(row),
-        "test_results":  test_results,   # FIX B
-        "game_results":  game_results,   # FIX B
+        "test_results":  test_results,
+        "game_results":  game_results,
     })
 
 
@@ -369,14 +314,8 @@ def me():
     row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
     if not row:
         return jsonify({"error": "User not found."}), 404
-
     test_results, game_results = _fetch_scores(db, uid)
-
-    return jsonify({
-        "user":         user_dict(row),
-        "test_results": test_results,
-        "game_results": game_results,
-    })
+    return jsonify({"user": user_dict(row), "test_results": test_results, "game_results": game_results})
 
 
 @app.route("/api/me", methods=["PATCH"])
@@ -385,20 +324,14 @@ def update_me():
     uid = int(get_jwt_identity())
     d   = request.get_json(force=True) or {}
     db  = get_db()
-
-    # Fields that MUST stay non-empty
     REQUIRED_NON_EMPTY = {"username"}
-    # All fields that are patchable
     ALLOWED = ["username", "phone", "school", "grade", "avatar_url"]
-
-    sets, vals = [], []
-    errors = []
+    sets, vals, errors = [], [], []
 
     for f in ALLOWED:
         if f not in d:
             continue
         val = str(d[f]).strip()
-        # FIX D: block blanking out required fields
         if f in REQUIRED_NON_EMPTY and not val:
             errors.append(f"'{f}' cannot be empty.")
             continue
@@ -416,7 +349,6 @@ def update_me():
     vals.append(uid)
     db.execute(f"UPDATE users SET {', '.join(sets)} WHERE id=?", vals)
     db.commit()
-
     row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
     return jsonify({"user": user_dict(row)})
 
@@ -537,14 +469,12 @@ def chat():
     history = ensure_session(session_id)
 
     if image_data:
-        # Extract base64 bytes
         if "," in image_data:
             header, b64 = image_data.split(",", 1)
             media_type  = header.split(":")[1].split(";")[0]
         else:
             b64, media_type = image_data, "image/jpeg"
 
-        # ── OCR-first pipeline: extract text → use fast text model ────────
         extracted_text = ""
         if _ocr_available:
             try:
@@ -554,17 +484,16 @@ def chat():
                 extracted_text = ""
 
         if extracted_text.strip():
-            # OCR succeeded → use fast text model instead of vision
-            user_content = f"OCR TEXT:\n{extracted_text}\n\nQUESTION:\n{user_message}"
+            user_content  = f"OCR TEXT:\n{extracted_text}\n\nQUESTION:\n{user_message}"
             model         = "llama-3.1-8b-instant"
             system_prompt = cached_system_prompt("image")
         else:
-            # OCR failed / empty → fallback to lightweight vision model
+            # FIX: updated from decommissioned llama-3.2-11b-vision-preview
             user_content = [
                 {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
                 {"type": "text",      "text": user_message},
             ]
-            model         = "llama-3.2-11b-vision-preview"
+            model         = "meta-llama/llama-4-scout-17b-16e-instruct"
             system_prompt = cached_system_prompt("image")
 
         history.append({"role": "user", "content": f"[Image] {user_message}"})
@@ -574,13 +503,20 @@ def chat():
         system_prompt = cached_system_prompt("text")
         history.append({"role": "user", "content": user_message})
 
-    messages = [{"role": "system", "content": system_prompt}] + history[-4:]
-    messages[-1]["content"] = user_content
+    # FIX: build messages without mutating history dicts.
+    # history[-5:-1] = all previous turns, excluding the one we just appended.
+    context_history = history[-5:-1]
+    messages = (
+        [{"role": "system", "content": system_prompt}]
+        + context_history
+        + [{"role": "user", "content": user_content}]
+    )
 
+    # FIX: raised from 220 to allow full step-by-step solutions
     payload = {
         "model":       model,
         "messages":    messages,
-        "max_tokens":  220,
+        "max_tokens":  1024,
         "temperature": 0.3,
         "stream":      use_stream,
     }
@@ -694,11 +630,11 @@ def health():
         db_ms, db_ok = -1, False
     return jsonify({
         "status":        "ok" if db_ok else "degraded",
-        "service":       "DuoMath API v3",
+        "service":       "DuoMath API v3 (Flask)",
         "db_latency_ms": db_ms,
         "keep_alive":    bool(SELF_URL),
         "text_model":    "llama-3.1-8b-instant",
-        "vision_model":  "llama-3.2-11b-vision-preview",
+        "vision_model":  "meta-llama/llama-4-scout-17b-16e-instruct",
         "ocr_available": _ocr_available,
     })
 
@@ -706,7 +642,7 @@ def health():
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"DuoMath API v3 → http://localhost:{port}")
+    print(f"DuoMath API v3 (Flask) → http://localhost:{port}")
     app.run(host="0.0.0.0", port=port,
             debug=os.environ.get("FLASK_ENV") != "production",
             threaded=True)

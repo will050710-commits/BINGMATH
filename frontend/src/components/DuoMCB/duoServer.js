@@ -1,94 +1,93 @@
-/* eslint-disable import/no-anonymous-default-export */
-// frontend/src/components/DuoMCB/duoServer.js
-//
-// FIX: was hardcoded to "http://localhost:5000"
-// NOW: reads NEXT_PUBLIC_BACKEND_URL from environment variable first,
-//      falls back to localhost only for local development.
-//
-// ── Setup ────────────────────────────────────────────────────────────────────
-// Vercel dashboard → Settings → Environment Variables → add:
-//   NEXT_PUBLIC_BACKEND_URL = https://your-app.onrender.com
-//
-// Local .env.local → add:
-//   NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
-// ─────────────────────────────────────────────────────────────────────────────
+// duoServer.js — DuoMCB API client
+// Place this file next to DuoMCBPage.js
 
-const BASE_URL =
-  (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_BACKEND_URL) ||
-  (typeof window  !== "undefined" && window.__DUO_API_BASE) ||
-  "http://localhost:5000";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://duomath-api.onrender.com";
 
-// ── Session ───────────────────────────────────────────────────────────────────
+/**
+ * Create a new chat session.
+ * @returns {Promise<string|null>} session_id or null on failure
+ */
 export async function createSession() {
   try {
-    const res = await fetch(`${BASE_URL}/api/session/new`, { method: "POST" });
+    const res = await fetch(`${API}/api/session/new`, { method: "POST" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
-    return data.session_id;
-  } catch (e) {
-    console.warn("[DuoMCB] createSession failed:", e.message);
+    return data.session_id || null;
+  } catch (err) {
+    console.error("[duoServer] createSession failed:", err);
     return null;
   }
 }
 
-// ── Chat (normal, non-streaming) ──────────────────────────────────────────────
-export async function chat(session_id, message) {
+/**
+ * Send a chat message (with optional image) to the backend.
+ *
+ * @param {string} sessionId        - UUID from createSession()
+ * @param {string} message          - User's text message (required)
+ * @param {object} [options]        - Optional extras
+ * @param {string} [options.image]  - Full data URL: "data:image/png;base64,..."
+ * @param {boolean} [options.stream]- Enable SSE streaming (default false)
+ * @returns {Promise<{reply?: string, session_id?: string, error?: boolean}>}
+ */
+export async function chat(sessionId, message, options = {}) {
+  const { image = null, stream = false } = options;
+
+  const body = {
+    session_id: sessionId,
+    message,
+    stream,
+    // Only include image key when there is actually an image —
+    // avoids sending null and triggering the image pipeline on text-only turns
+    ...(image ? { image } : {}),
+  };
+
   try {
-    const res = await fetch(`${BASE_URL}/api/chat`, {
-      method: "POST",
+    const res = await fetch(`${API}/api/chat`, {
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id, message, stream: false }),
+      body:    JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(`[duoServer] chat HTTP ${res.status}:`, errText);
+      return { error: true, reply: `Server error ${res.status}` };
+    }
+
     return await res.json();
-  } catch (e) {
-    console.warn("[DuoMCB] chat failed:", e.message);
-    return { error: true, message: "server-offline" };
+  } catch (err) {
+    console.error("[duoServer] chat failed:", err);
+    return { error: true, reply: "Network error — check your connection." };
   }
 }
 
-// ── Chat with image (Vision AI) ───────────────────────────────────────────────
-export async function chatWithImage(session_id, message, imageBase64) {
+/**
+ * Reset the history of an existing session.
+ * @param {string} sessionId
+ */
+export async function resetSession(sessionId) {
   try {
-    const res = await fetch(`${BASE_URL}/api/chat`, {
-      method: "POST",
+    await fetch(`${API}/api/session/${sessionId}/reset`, { method: "POST" });
+  } catch (err) {
+    console.error("[duoServer] resetSession failed:", err);
+  }
+}
+
+/**
+ * Translate English math text to Vietnamese.
+ * @param {string} text - Max 500 characters
+ * @returns {Promise<{translation: string, summary: string, words: Array}>}
+ */
+export async function translate(text) {
+  try {
+    const res = await fetch(`${API}/api/translate`, {
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id, message, image: imageBase64, stream: false }),
+      body:    JSON.stringify({ text }),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
-  } catch (e) {
-    console.warn("[DuoMCB] chatWithImage failed:", e.message);
-    return { error: true, message: "server-offline" };
+  } catch (err) {
+    console.error("[duoServer] translate failed:", err);
+    return { error: true };
   }
 }
-
-// ── Translate (DuoTranslator) ─────────────────────────────────────────────────
-export async function translateText(session_id, text) {
-  try {
-    const res = await fetch(`${BASE_URL}/api/translate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id, text }),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (data.error) return { error: true, raw: data.raw || "Translation failed" };
-    return data;
-  } catch (e) {
-    console.warn("[DuoMCB] translateText failed:", e.message);
-    return { error: true, raw: "Connection failed. Check NEXT_PUBLIC_BACKEND_URL." };
-  }
-}
-
-// ── Health check ──────────────────────────────────────────────────────────────
-export async function checkHealth() {
-  try {
-    const res = await fetch(`${BASE_URL}/api/health`, { method: "GET" });
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-export default { createSession, chat, chatWithImage, translateText, checkHealth };
