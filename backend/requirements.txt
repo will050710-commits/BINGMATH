@@ -1,4 +1,4 @@
-# ── Flask (server.py — stable) ──
+# ── Flask (server.py) ──
 flask>=3.0.0
 flask-cors>=4.0.0
 flask-jwt-extended>=4.6.0
@@ -7,7 +7,7 @@ werkzeug>=3.0.0
 requests>=2.31.0
 gunicorn>=21.2.0
 
-# ── FastAPI (main.py — async upgrade) ──
+# ── FastAPI (main.py — production) ──
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
 httpx>=0.27.0
@@ -15,5 +15,7 @@ PyJWT>=2.8.0
 
 # ── Shared ──
 orjson>=3.9.0
-easyocr>=1.7.0
-Pillow>=10.0.0
+
+# easyocr and Pillow removed — easyocr loads a ~1.5 GB model on startup
+# which crashes Render's free tier (512 MB RAM limit).
+# Images are handled directly by the Llama 4 Scout vision model instead.

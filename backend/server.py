@@ -1,5 +1,4 @@
-
-import os, sqlite3, json, uuid, time, threading, base64, io
+import os, sqlite3, json, uuid, time, threading, base64
 from datetime import timedelta
 from functools import lru_cache
 
@@ -18,14 +17,6 @@ try:
     _compress = True
 except ImportError:
     _compress = False
-
-try:
-    import easyocr
-    ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False)
-    _ocr_available = True
-except ImportError:
-    ocr_reader = None
-    _ocr_available = False
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
@@ -60,18 +51,6 @@ def cached_system_prompt(variant: str = "text") -> str:
         "You are a concise Vietnamese math tutor for grades 10-12. "
         "Explain briefly step-by-step."
     )
-
-
-def extract_text_from_image(image_bytes: bytes) -> str:
-    if not _ocr_available or ocr_reader is None:
-        return ""
-    try:
-        from PIL import Image
-        img = Image.open(io.BytesIO(image_bytes))
-        result = ocr_reader.readtext(img, detail=0)
-        return "\n".join(result)
-    except Exception:
-        return ""
 
 
 # ── Keep-alive ────────────────────────────────────────────────────────────────
@@ -235,7 +214,6 @@ def save_history(sid: str, history: list):
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
-
 @app.route("/api/signup", methods=["POST"])
 def signup():
     d = request.get_json(force=True) or {}
@@ -475,27 +453,13 @@ def chat():
         else:
             b64, media_type = image_data, "image/jpeg"
 
-        extracted_text = ""
-        if _ocr_available:
-            try:
-                img_bytes = base64.b64decode(b64)
-                extracted_text = extract_text_from_image(img_bytes)
-            except Exception:
-                extracted_text = ""
-
-        if extracted_text.strip():
-            user_content  = f"OCR TEXT:\n{extracted_text}\n\nQUESTION:\n{user_message}"
-            model         = "llama-3.1-8b-instant"
-            system_prompt = cached_system_prompt("image")
-        else:
-            # FIX: updated from decommissioned llama-3.2-11b-vision-preview
-            user_content = [
-                {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
-                {"type": "text",      "text": user_message},
-            ]
-            model         = "meta-llama/llama-4-scout-17b-16e-instruct"
-            system_prompt = cached_system_prompt("image")
-
+        # Send directly to vision model (OCR removed — exceeds 512 MB free tier RAM)
+        user_content = [
+            {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
+            {"type": "text",      "text": user_message},
+        ]
+        model         = "meta-llama/llama-4-scout-17b-16e-instruct"
+        system_prompt = cached_system_prompt("image")
         history.append({"role": "user", "content": f"[Image] {user_message}"})
     else:
         user_content  = user_message
@@ -503,8 +467,6 @@ def chat():
         system_prompt = cached_system_prompt("text")
         history.append({"role": "user", "content": user_message})
 
-    # FIX: build messages without mutating history dicts.
-    # history[-5:-1] = all previous turns, excluding the one we just appended.
     context_history = history[-5:-1]
     messages = (
         [{"role": "system", "content": system_prompt}]
@@ -512,7 +474,6 @@ def chat():
         + [{"role": "user", "content": user_content}]
     )
 
-    # FIX: raised from 220 to allow full step-by-step solutions
     payload = {
         "model":       model,
         "messages":    messages,
@@ -635,7 +596,6 @@ def health():
         "keep_alive":    bool(SELF_URL),
         "text_model":    "llama-3.1-8b-instant",
         "vision_model":  "meta-llama/llama-4-scout-17b-16e-instruct",
-        "ocr_available": _ocr_available,
     })
 
 
