@@ -1,7 +1,7 @@
 // duoServer.js — DuoMCB API client
 // Place this file next to DuoMCBPage.js
 
-const API = process.env.NEXT_PUBLIC_API_URL || "https://duomath-api.onrender.com";
+const API = process.env.NEXT_PUBLIC_API_URL || "https://duomath.onrender.com";
 
 export async function createSession() {
   try {
