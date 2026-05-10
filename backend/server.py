@@ -24,7 +24,7 @@ if _compress:
     Compress(app)
 
 CORS(app, resources={r"/api/*": {
-    "origins": ["http://localhost:3000", "https://*.vercel.app", "*"],
+    "origins": "*",
     "max_age": 3600,
 }})
 
