@@ -46,7 +46,7 @@ export default function Page(){
       </div>
     </div>
     <footer style={{background:"#fff",borderTop:"1px solid #e0e0e0",display:"flex",justifyContent:"center",alignItems:"center",gap:16,padding:"12px 32px",height:72,flexShrink:0,boxShadow:"0 -2px 8px rgba(0,0,0,0.05)"}}>
-      <NavCard href="/section1-L11-6" label="SECTION 1"/><NavCard href="/section2-L11-6" label="SECTION 2" active/><NavCard href="/section3-L11-6" label="SECTION 3"/>
+      <NavCard href="/L11-test6-section1" label="SECTION 1"/><NavCard href="/L11-test6-section2" label="SECTION 2" active/><NavCard href="/L11-test6-section3" label="SECTION 3"/>
     </footer>
   </div>);
 }

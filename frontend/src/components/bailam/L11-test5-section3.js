@@ -43,7 +43,7 @@ export default function Page(){
       </div>
     </div>
     <footer style={{background:"#fff",borderTop:"1px solid #e0e0e0",display:"flex",justifyContent:"center",alignItems:"center",gap:16,padding:"12px 32px",height:72,flexShrink:0,boxShadow:"0 -2px 8px rgba(0,0,0,0.05)"}}>
-      <NavCard href="/section1-L11-5" label="SECTION 1"/><NavCard href="/section2-L11-5" label="SECTION 2"/><NavCard href="/section3-L11-5" label="SECTION 3" active/>
+      <NavCard href="/L11-test5-section1" label="SECTION 1"/><NavCard href="/L11-test5-section2" label="SECTION 2"/><NavCard href="/L11-test5-section3" label="SECTION 3" active/>
       <button onClick={submitTest} style={{background:"#c00",color:"white",border:"none",borderRadius:8,padding:"10px 28px",fontWeight:600,fontSize:15,cursor:"pointer"}} onMouseEnter={e=>e.currentTarget.style.background="#a00"} onMouseLeave={e=>e.currentTarget.style.background="#c00"}>Nộp bài</button>
     </footer>
   </div>);

@@ -91,7 +91,7 @@ export default function Page() {
         </div>
       </div>
       <footer style={{background:"#ffffff",borderTop:"1px solid #e0e0e0",display:"flex",justifyContent:"center",alignItems:"center",gap:16,padding:"12px 32px",height:72,flexShrink:0,boxShadow:"0 -2px 8px rgba(0,0,0,0.05)"}}>
-        <NavCard href="/section1-L11" label="SECTION 1" active/><NavCard href="/section2-L11" label="SECTION 2"/><NavCard href="/section3-L11" label="SECTION 3"/>
+        <NavCard href="/L11-test1-section1" label="SECTION 1" active/><NavCard href="/L11-test1-section2" label="SECTION 2"/><NavCard href="/L11-test1-section3" label="SECTION 3"/>
       </footer>
     </div>
   );

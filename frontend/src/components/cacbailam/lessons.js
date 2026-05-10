@@ -7,12 +7,12 @@ const gradeData = [
   {
     grade: "Grade 10", img: "/images/math10.png", comingSoon: false,
     tests: [
-      { href: "/section1-L10",   key: "reading-test-1" },
-      { href: "/section1-L10-2", key: "reading-test-2" },
-      { href: "/section1-test3", key: "reading-test-3" },
-      { href: "/section1-test4", key: "reading-test-4" },
-      { href: "/section1-test5", key: "reading-test-5" },
-      { href: "/section1-test6", key: "reading-test-6" },
+      { href: "/L10-test1-section1",   key: "reading-test-1" },
+      { href: "/L10-test2-section1", key: "reading-test-2" },
+      { href: "/L10-test3-section1", key: "reading-test-3" },
+      { href: "/L10-test4-section1", key: "reading-test-4" },
+      { href: "/L10-test5-section1", key: "reading-test-5" },
+      { href: "/L10-test6-section1", key: "reading-test-6" },
     ],
   },
   {
