@@ -36,10 +36,10 @@ export function computeScoreAndMastery(answersBySection = {}) {
   const skillAgg = {};
 
  const examId = localStorage.getItem("currentTest") || "reading-test-1";
-const examKey = ANSWER_KEY[examId];
+const examKey = ANSWER_KEY[examId] || {};
 
  Object.keys(examKey).forEach((section) => {
-    const keySet = examKey[section];
+    const keySet = examKey[section] || {};
     const answersForSection = answersBySection[section] || {};
 
     Object.keys(keySet).forEach((qKey) => {
