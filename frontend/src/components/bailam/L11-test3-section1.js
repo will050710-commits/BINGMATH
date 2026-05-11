@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 const LEGACY_KEY="readingTest_section1";const SECTION="section1";const TEST_KEY="reading-test-L11-3";
+const normalizeOptions=(options)=>{
+  if(options.length<=4)return options.map(option=>({label:option,value:option.slice(0,1)}));
+  const joined=options.join("");
+  const choices=joined.match(/[A-D]\.\s*.*?(?=,[A-D]\.|$)/g)||[];
+  return choices.map(choice=>({label:choice.replace(/,$/,"").trim(),value:choice.slice(0,1)}));
+};
 const passage1Questions=[{id:"p1q1",text:"1. The passage identifies the primary driver of the sixth mass extinction as",options:["A","."," ","a","s","t","e","r","o","i","d"," ","i","m","p","a","c","t","s",",","B","."," ","v","o","l","c","a","n","i","c"," ","a","c","t","i","v","i","t","y",",","C","."," ","h","a","b","i","t","a","t"," ","d","e","s","t","r","u","c","t","i","o","n",",","D","."," ","i","n","v","a","s","i","v","e"," ","s","p","e","c","i","e","s"],answer:"C"},
 {id:"p1q2",text:"2. According to paragraph 2, tropical rainforests are particularly significant because",options:["A","."," ","t","h","e","y"," ","a","r","e"," ","t","h","e"," ","l","a","r","g","e","s","t"," ","b","i","o","m","e"," ","b","y"," ","a","r","e","a",",","B","."," ","t","h","e","y"," ","c","o","n","t","a","i","n"," ","a","p","p","r","o","x","i","m","a","t","e","l","y"," ","h","a","l","f"," ","o","f"," ","a","l","l"," ","t","e","r","r","e","s","t","r","i","a","l"," ","s","p","e","c","i","e","s",",","C","."," ","t","h","e","y"," ","p","r","o","d","u","c","e"," ","m","o","s","t"," ","o","f"," ","t","h","e"," ","w","o","r","l","d","'","s"," ","o","x","y","g","e","n",",","D","."," ","t","h","e","y"," ","a","r","e"," ","t","h","e"," ","m","o","s","t"," ","r","e","s","i","s","t","a","n","t"," ","t","o"," ","d","e","f","o","r","e","s","t","a","t","i","o","n"],answer:"B"},
 {id:"p1q3",text:"3. The word 'viable' in paragraph 2 most nearly means",options:["A","."," ","l","a","r","g","e",",","B","."," ","i","s","o","l","a","t","e","d",",","C","."," ","c","a","p","a","b","l","e"," ","o","f"," ","s","u","r","v","i","v","i","n","g"," ","a","n","d"," ","r","e","p","r","o","d","u","c","i","n","g",",","D","."," ","g","e","n","e","t","i","c","a","l","l","y"," ","d","i","v","e","r","s","e"],answer:"C"},
@@ -49,8 +55,8 @@ export default function Page(){
             {allQuestions.map(q=>(<div key={q.id} style={{background:"#f9f9f9",borderRadius:10,padding:"16px 20px",boxShadow:"0 2px 6px rgba(0,0,0,0.05)"}}>
               <p style={{fontWeight:600,color:"#333",marginBottom:12,lineHeight:1.5}}>{q.text}</p>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {q.options.map(opt=>(<label key={opt} style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer",color:"#333",fontWeight:answers[q.id]===opt?700:400,lineHeight:1.5}}>
-                  <input type="radio" name={q.id} value={opt} checked={answers[q.id]===opt} onChange={()=>saveAnswer(q.id,opt)} style={{marginTop:3,flexShrink:0}}/>{opt}
+                {normalizeOptions(q.options).map(opt=>(<label key={opt.value} style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer",color:"#333",fontWeight:answers[q.id]===opt.value?700:400,lineHeight:1.5}}>
+                  <input type="radio" name={q.id} value={opt.value} checked={answers[q.id]===opt.value} onChange={()=>saveAnswer(q.id,opt.value)} style={{marginTop:3,flexShrink:0}}/>{opt.label}
                 </label>))}
               </div>
             </div>))}

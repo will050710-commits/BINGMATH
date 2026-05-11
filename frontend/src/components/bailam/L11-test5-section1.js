@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 const LEGACY_KEY="readingTest_section1";const SECTION="section1";const TEST_KEY="reading-test-L11-5";
+const normalizeOptions=(options)=>{
+  if(options.length<=4)return options.map(option=>({label:option,value:option.slice(0,1)}));
+  const joined=options.join("");
+  const choices=joined.match(/[A-D]\.\s*.*?(?=,[A-D]\.|$)/g)||[];
+  return choices.map(choice=>({label:choice.replace(/,$/,"").trim(),value:choice.slice(0,1)}));
+};
 const passage1Questions=[{id:"p1q1",text:"1. The passage states that accessible fresh water makes up",options:["A","."," ","3"," ","p","e","r","c","e","n","t"," ","o","f"," ","t","o","t","a","l"," ","w","a","t","e","r"," ","o","n"," ","E","a","r","t","h",",","B","."," ","2","9"," ","p","e","r","c","e","n","t"," ","o","f"," ","E","a","r","t","h","'","s"," ","s","u","r","f","a","c","e"," ","w","a","t","e","r",",","C","."," ","a"," ","s","m","a","l","l"," ","f","r","a","c","t","i","o","n"," ","o","f"," ","t","o","t","a","l"," ","w","a","t","e","r",","," ","s","i","n","c","e"," ","m","o","s","t"," ","f","r","e","s","h"," ","w","a","t","e","r"," ","i","s"," ","l","o","c","k","e","d"," ","i","n"," ","i","c","e",",","D","."," ","7","0"," ","p","e","r","c","e","n","t"," ","o","f"," ","w","a","t","e","r"," ","i","n"," ","r","i","v","e","r","s"," ","a","n","d"," ","l","a","k","e","s"],answer:"C"},
 {id:"p1q2",text:"2. According to the passage, groundwater depletion is particularly concerning because",options:["A","."," ","a","q","u","i","f","e","r","s"," ","c","o","n","t","a","i","n"," ","s","a","l","t","w","a","t","e","r"," ","t","h","a","t"," ","c","a","n","n","o","t"," ","b","e"," ","t","r","e","a","t","e","d",",","B","."," ","d","e","p","l","e","t","e","d"," ","a","q","u","i","f","e","r","s"," ","m","a","y"," ","t","a","k","e"," ","c","e","n","t","u","r","i","e","s"," ","t","o"," ","r","e","c","o","v","e","r",",","C","."," ","a","q","u","i","f","e","r"," ","w","a","t","e","r"," ","i","s"," ","t","o","o"," ","e","x","p","e","n","s","i","v","e"," ","t","o"," ","e","x","t","r","a","c","t"," ","f","o","r"," ","a","g","r","i","c","u","l","t","u","r","a","l"," ","u","s","e",",","D","."," ","g","r","o","u","n","d","w","a","t","e","r"," ","e","x","t","r","a","c","t","i","o","n"," ","c","a","u","s","e","s"," ","f","l","o","o","d","i","n","g"," ","i","n"," ","c","o","a","s","t","a","l"," ","a","r","e","a","s"],answer:"B"},
 {id:"p1q3",text:"3. Drip irrigation is described in the passage as superior to flood irrigation because",options:["A","."," ","i","t"," ","i","s"," ","c","h","e","a","p","e","r"," ","t","o"," ","i","n","s","t","a","l","l"," ","a","n","d"," ","m","a","i","n","t","a","i","n",",","B","."," ","i","t"," ","r","e","q","u","i","r","e","s"," ","l","e","s","s"," ","s","k","i","l","l","e","d"," ","l","a","b","o","u","r"," ","t","o"," ","o","p","e","r","a","t","e",",","C","."," ","i","t"," ","d","e","l","i","v","e","r","s"," ","w","a","t","e","r"," ","d","i","r","e","c","t","l","y"," ","t","o"," ","r","o","o","t","s"," ","w","i","t","h"," ","e","f","f","i","c","i","e","n","c","i","e","s"," ","u","p"," ","t","o"," ","9","0"," ","p","e","r","c","e","n","t",",","D","."," ","i","t"," ","i","s"," ","c","o","m","p","a","t","i","b","l","e"," ","w","i","t","h"," ","a","l","l"," ","c","r","o","p"," ","t","y","p","e","s"],answer:"C"},
@@ -49,8 +55,8 @@ export default function Page(){
             {allQuestions.map(q=>(<div key={q.id} style={{background:"#f9f9f9",borderRadius:10,padding:"16px 20px",boxShadow:"0 2px 6px rgba(0,0,0,0.05)"}}>
               <p style={{fontWeight:600,color:"#333",marginBottom:12,lineHeight:1.5}}>{q.text}</p>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {q.options.map(opt=>(<label key={opt} style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer",color:"#333",fontWeight:answers[q.id]===opt?700:400,lineHeight:1.5}}>
-                  <input type="radio" name={q.id} value={opt} checked={answers[q.id]===opt} onChange={()=>saveAnswer(q.id,opt)} style={{marginTop:3,flexShrink:0}}/>{opt}
+                {normalizeOptions(q.options).map(opt=>(<label key={opt.value} style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer",color:"#333",fontWeight:answers[q.id]===opt.value?700:400,lineHeight:1.5}}>
+                  <input type="radio" name={q.id} value={opt.value} checked={answers[q.id]===opt.value} onChange={()=>saveAnswer(q.id,opt.value)} style={{marginTop:3,flexShrink:0}}/>{opt.label}
                 </label>))}
               </div>
             </div>))}

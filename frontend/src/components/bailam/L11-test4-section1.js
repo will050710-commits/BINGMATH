@@ -4,6 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 const LEGACY_KEY="readingTest_section1";const SECTION="section1";const TEST_KEY="reading-test-L11-4";
+const normalizeOptions=(options)=>{
+  if(options.length<=4)return options.map(option=>({label:option,value:option.slice(0,1)}));
+  const joined=options.join("");
+  const choices=joined.match(/[A-D]\.\s*.*?(?=,[A-D]\.|$)/g)||[];
+  return choices.map(choice=>({label:choice.replace(/,$/,"").trim(),value:choice.slice(0,1)}));
+};
 const passage1Questions=[{id:"p1q1",text:"1. The primary concern raised about algorithmic hiring tools is that",options:["A","."," ","t","h","e","y"," ","a","r","e"," ","t","o","o"," ","s","l","o","w"," ","f","o","r"," ","h","i","g","h","-","v","o","l","u","m","e"," ","r","e","c","r","u","i","t","m","e","n","t",",","B","."," ","t","h","e","y"," ","r","e","l","y"," ","o","n"," ","c","r","i","t","e","r","i","a"," ","t","h","a","t"," ","c","a","n","d","i","d","a","t","e","s"," ","c","a","n","n","o","t"," ","u","n","d","e","r","s","t","a","n","d",",","C","."," ","t","h","e","y"," ","e","n","c","o","d","e"," ","a","n","d"," ","a","m","p","l","i","f","y"," ","b","i","a","s","e","s"," ","p","r","e","s","e","n","t"," ","i","n"," ","h","i","s","t","o","r","i","c","a","l"," ","t","r","a","i","n","i","n","g"," ","d","a","t","a",",","D","."," ","t","h","e","y"," ","a","r","e"," ","m","o","r","e"," ","e","x","p","e","n","s","i","v","e"," ","t","h","a","n"," ","t","r","a","d","i","t","i","o","n","a","l"," ","h","u","m","a","n"," ","s","c","r","e","e","n","i","n","g"],answer:"C"},
 {id:"p1q2",text:"2. The Amazon recruitment algorithm example is cited to",options:["A","."," ","p","r","a","i","s","e"," ","A","m","a","z","o","n"," ","f","o","r"," ","i","d","e","n","t","i","f","y","i","n","g"," ","a","n","d"," ","c","o","r","r","e","c","t","i","n","g"," ","a"," ","p","r","o","b","l","e","m",",","B","."," ","i","l","l","u","s","t","r","a","t","e"," ","h","o","w"," ","a","l","g","o","r","i","t","h","m","i","c"," ","b","i","a","s"," ","c","a","n"," ","d","i","s","a","d","v","a","n","t","a","g","e"," ","s","p","e","c","i","f","i","c"," ","g","r","o","u","p","s",",","C","."," ","a","r","g","u","e"," ","t","h","a","t"," ","a","l","l"," ","a","l","g","o","r","i","t","h","m","i","c"," ","h","i","r","i","n","g"," ","s","h","o","u","l","d"," ","b","e"," ","b","a","n","n","e","d",",","D","."," ","s","h","o","w"," ","t","h","a","t"," ","b","i","a","s"," ","a","u","d","i","t","s"," ","a","r","e"," ","e","f","f","e","c","t","i","v","e"," ","r","e","g","u","l","a","t","o","r","y"," ","t","o","o","l","s"],answer:"B"},
 {id:"p1q3",text:"3. The word 'opacity' in paragraph 3 most nearly means",options:["A","."," ","u","n","f","a","i","r","n","e","s","s",",","B","."," ","i","l","l","e","g","a","l","i","t","y",",","C","."," ","l","a","c","k"," ","o","f"," ","t","r","a","n","s","p","a","r","e","n","c","y",",","D","."," ","c","o","m","p","l","e","x","i","t","y"],answer:"C"},
@@ -49,8 +55,8 @@ export default function Page(){
             {allQuestions.map(q=>(<div key={q.id} style={{background:"#f9f9f9",borderRadius:10,padding:"16px 20px",boxShadow:"0 2px 6px rgba(0,0,0,0.05)"}}>
               <p style={{fontWeight:600,color:"#333",marginBottom:12,lineHeight:1.5}}>{q.text}</p>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {q.options.map(opt=>(<label key={opt} style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer",color:"#333",fontWeight:answers[q.id]===opt?700:400,lineHeight:1.5}}>
-                  <input type="radio" name={q.id} value={opt} checked={answers[q.id]===opt} onChange={()=>saveAnswer(q.id,opt)} style={{marginTop:3,flexShrink:0}}/>{opt}
+                {normalizeOptions(q.options).map(opt=>(<label key={opt.value} style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer",color:"#333",fontWeight:answers[q.id]===opt.value?700:400,lineHeight:1.5}}>
+                  <input type="radio" name={q.id} value={opt.value} checked={answers[q.id]===opt.value} onChange={()=>saveAnswer(q.id,opt.value)} style={{marginTop:3,flexShrink:0}}/>{opt.label}
                 </label>))}
               </div>
             </div>))}

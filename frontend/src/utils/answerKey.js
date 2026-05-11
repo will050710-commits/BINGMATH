@@ -100,4 +100,64 @@ export const ANSWER_KEY = {
       "5-1": "82",
     },
   },
+
+  "reading-test-L11-3": {
+    section1: {
+      p1q1: "C",
+      p1q2: "B",
+      p1q3: "C",
+      p1q4: "B",
+      p1q5: "B",
+      p2q1: "C",
+      p2q2: "B",
+      p2q3: "B",
+      p2q4: "C",
+      p2q5: "B",
+    },
+  },
+
+  "reading-test-L11-4": {
+    section1: {
+      p1q1: "C",
+      p1q2: "B",
+      p1q3: "C",
+      p1q4: "B",
+      p1q5: "C",
+      p2q1: "C",
+      p2q2: "B",
+      p2q3: "C",
+      p2q4: "C",
+      p2q5: "B",
+    },
+  },
+
+  "reading-test-L11-5": {
+    section1: {
+      p1q1: "C",
+      p1q2: "B",
+      p1q3: "C",
+      p1q4: "C",
+      p1q5: "B",
+      p2q1: "B",
+      p2q2: "B",
+      p2q3: "B",
+      p2q4: "B",
+      p2q5: "C",
+    },
+  },
+
+  "reading-test-L11-6": {
+    section1: {
+      p1q1: "C",
+      p1q2: "B",
+      p1q3: "B",
+      p1q4: "C",
+      p1q5: "C",
+      p2q1: "C",
+      p2q2: "B",
+      p2q3: "B",
+      p2q4: "C",
+      p2q5: "B",
+    },
+  },
 };
