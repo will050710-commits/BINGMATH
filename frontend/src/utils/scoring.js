@@ -54,7 +54,13 @@ const examKey = ANSWER_KEY[examId] || {};
       const normalizedCorrect = correctAnswer.trim().toLowerCase();
 
       const isSkipped = !normalizedUser;
-      const isCorrect = !isSkipped && normalizedUser === normalizedCorrect;
+      // MCQ components save full option text (e.g. "B. describe…") while answer
+      // keys store just the letter (e.g. "B"). Accept either exact match or
+      // letter-prefix match (user answer starts with correct letter + ".").
+      const isCorrect =
+        !isSkipped &&
+        (normalizedUser === normalizedCorrect ||
+          normalizedUser.startsWith(normalizedCorrect + "."));
 
       if (isSkipped) skipped++;
       else if (isCorrect) correct++;
