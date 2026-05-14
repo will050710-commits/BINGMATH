@@ -58,6 +58,7 @@ def get_identity(request: Request) -> str:
 
 # ── OCR (optional) ───────────────────────────────────────────────────────────
 try:
+    # pyrefly: ignore [missing-import]
     import easyocr
     ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False)
     _ocr_available = True
@@ -686,6 +687,7 @@ async def translate(request: Request):
         clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         return JSONResponse(json.loads(clean))
     except json.JSONDecodeError:
+        # pyrefly: ignore [unbound-name]
         return JSONResponse({"error": True, "raw": raw})
     except Exception as e:
         return JSONResponse({"error": True, "raw": str(e)}, status_code=502)

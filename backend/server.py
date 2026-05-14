@@ -2,9 +2,11 @@ import os, sqlite3, json, uuid, time, threading, base64
 from datetime import timedelta
 from functools import lru_cache
 
+# pyrefly: ignore [untyped-import]
 import requests as req_lib
 import orjson
 from flask import Flask, request, jsonify, g, Response, stream_with_context
+# pyrefly: ignore [untyped-import]
 from flask_cors import CORS
 from flask_jwt_extended import (
     JWTManager, create_access_token, create_refresh_token,
@@ -21,6 +23,7 @@ except ImportError:
 # ── App ───────────────────────────────────────────────────────────────────────
 app = Flask(__name__)
 if _compress:
+    # pyrefly: ignore [unbound-name]
     Compress(app)
 
 CORS(app, resources={r"/api/*": {
@@ -518,6 +521,7 @@ def chat():
             yield f"data: {orjson.dumps({'done': True, 'session_id': session_id}).decode()}\n\n"
 
         return Response(
+            # pyrefly: ignore [no-matching-overload]
             stream_with_context(generate()),
             mimetype="text/event-stream",
             headers={
@@ -575,6 +579,7 @@ def translate():
         clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         return jsonify(json.loads(clean))
     except json.JSONDecodeError:
+        # pyrefly: ignore [unbound-name]
         return jsonify({"error": True, "raw": raw})
     except Exception as e:
         return jsonify({"error": True, "raw": str(e)}), 502

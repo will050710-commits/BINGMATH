@@ -1,13 +1,13 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import Link from "next/link";
-import { clearTestSession } from "@/utils/testTimer";
+import { resetTimer } from "@/utils/testTimer"; // ✅ FIX: clearTestSession không tồn tại → dùng resetTimer
 
 const gradeData = [
   {
     grade: "Grade 10", img: "/images/math10.png", comingSoon: false,
     tests: [
-      { href: "/L10-test1-section1",   key: "reading-test-1" },
+      { href: "/L10-test1-section1", key: "reading-test-1" },
       { href: "/L10-test2-section1", key: "reading-test-2" },
       { href: "/L10-test3-section1", key: "reading-test-3" },
       { href: "/L10-test4-section1", key: "reading-test-4" },
@@ -18,7 +18,7 @@ const gradeData = [
   {
     grade: "Grade 11", img: "/images/math11.png", comingSoon: false,
     tests: [
-      { href: "/L11-test1-section1",   key: "reading-test-L11-1" },
+      { href: "/L11-test1-section1", key: "reading-test-L11-1" },
       { href: "/L11-test2-section1", key: "reading-test-L11-2" },
       { href: "/L11-test3-section1", key: "reading-test-L11-3" },
       { href: "/L11-test4-section1", key: "reading-test-L11-4" },
@@ -59,8 +59,8 @@ export default function CacBaiLamPage() {
               {g.tests.map((test, idx) => {
                 const card = (
                   <div style={{ background: "#ffffff", borderRadius: 10, boxShadow: "0 2px 8px rgba(0,0,0,0.07)", overflow: "hidden", opacity: g.comingSoon ? 0.45 : 1, cursor: g.comingSoon ? "not-allowed" : "pointer", transition: "box-shadow 0.2s, transform 0.2s" }}
-                    onMouseEnter={e => { if (!g.comingSoon) { e.currentTarget.style.boxShadow = "0 8px 24px rgba(11,79,92,0.15)"; e.currentTarget.style.transform = "translateY(-3px)"; }}}
-                    onMouseLeave={e => { if (!g.comingSoon) { e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.07)"; e.currentTarget.style.transform = "translateY(0)"; }}}
+                    onMouseEnter={e => { if (!g.comingSoon) { e.currentTarget.style.boxShadow = "0 8px 24px rgba(11,79,92,0.15)"; e.currentTarget.style.transform = "translateY(-3px)"; } }}
+                    onMouseLeave={e => { if (!g.comingSoon) { e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.07)"; e.currentTarget.style.transform = "translateY(0)"; } }}
                   >
                     <img src={g.img} alt={g.grade} style={{ width: "100%", height: 170, objectFit: "cover" }} />
                     <div style={{ padding: "16px 20px" }}>
@@ -82,7 +82,7 @@ export default function CacBaiLamPage() {
                 if (!g.comingSoon && test.href) {
                   return (
                     <Link key={idx} href={test.href} style={{ textDecoration: "none" }}
-                      onClick={() => test.key && clearTestSession(test.key)}>
+                      onClick={() => test.key && resetTimer(test.key)}> {/* ✅ FIX */}
                       {card}
                     </Link>
                   );
