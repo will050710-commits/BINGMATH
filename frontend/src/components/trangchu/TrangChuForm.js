@@ -205,12 +205,45 @@ export default function TrangChuForm() {
   }
 
   return (
-    <div style={{ width: "100%", background: "#fff", display: "flex", justifyContent: "center" }}>
-      <div style={{ width: "1200px", maxWidth: "95%", color: "black" }}>
+    <div style={{ width: "100%", minHeight: "100vh", background: "#0a0a1a", position: "relative", overflow: "hidden" }}>
 
-        {/* ═══════ HEADER ═══════ */}
-        <header className="reveal" data-reveal
-          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 20px", position: "relative", zIndex: 300, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", background: "linear-gradient(135deg, #00d8fe, #13b0ff)", color: "white" }}>
+      {/* ═══════ ANIMATED SHAPES BACKGROUND ═══════ */}
+      <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
+        {[
+          { size: 120, left: "8%",  top: "15%", delay: "0s",   dur: "18s",  shape: "pyramid",  color: "#00c8ff" },
+          { size: 90,  left: "75%", top: "10%", delay: "3s",   dur: "22s",  shape: "cube",     color: "#a78bfa" },
+          { size: 70,  left: "55%", top: "60%", delay: "6s",   dur: "15s",  shape: "diamond",  color: "#38bdf8" },
+          { size: 100, left: "20%", top: "70%", delay: "1.5s", dur: "20s",  shape: "triangle", color: "#818cf8" },
+          { size: 60,  left: "88%", top: "55%", delay: "4s",   dur: "17s",  shape: "pyramid",  color: "#67e8f9" },
+          { size: 80,  left: "40%", top: "30%", delay: "8s",   dur: "24s",  shape: "cube",     color: "#c4b5fd" },
+          { size: 50,  left: "65%", top: "80%", delay: "2s",   dur: "13s",  shape: "diamond",  color: "#7dd3fc" },
+          { size: 110, left: "5%",  top: "45%", delay: "5s",   dur: "19s",  shape: "triangle", color: "#a5b4fc" },
+        ].map((s, i) => {
+          const svgs = {
+            pyramid:  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="50,5 95,90 5,90" stroke={s.color} strokeWidth="2" fill={s.color+"18"} /></svg>,
+            cube:     <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="15" y="15" width="55" height="55" stroke={s.color} strokeWidth="2" fill={s.color+"18"} /><rect x="30" y="30" width="55" height="55" stroke={s.color} strokeWidth="1.5" fill="none" /><line x1="15" y1="15" x2="30" y2="30" stroke={s.color} strokeWidth="1.5"/><line x1="70" y1="15" x2="85" y2="30" stroke={s.color} strokeWidth="1.5"/><line x1="15" y1="70" x2="30" y2="85" stroke={s.color} strokeWidth="1.5"/><line x1="70" y1="70" x2="85" y2="85" stroke={s.color} strokeWidth="1.5"/></svg>,
+            diamond:  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="50,5 95,50 50,95 5,50" stroke={s.color} strokeWidth="2" fill={s.color+"18"} /></svg>,
+            triangle: <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><polygon points="50,5 95,90 5,90" stroke={s.color} strokeWidth="2" fill="none"/><line x1="50" y1="5" x2="50" y2="90" stroke={s.color} strokeWidth="1" opacity="0.5"/><line x1="5" y1="90" x2="95" y2="90" stroke={s.color} strokeWidth="1" opacity="0.5"/></svg>,
+          };
+          return (
+            <div key={i} style={{
+              position: "absolute",
+              left: s.left, top: s.top,
+              width: s.size, height: s.size,
+              opacity: 0.55,
+              filter: `drop-shadow(0 0 12px ${s.color}88)`,
+              animation: `floatShape ${s.dur} ${s.delay} ease-in-out infinite alternate`,
+            }}>
+              {svgs[s.shape]}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ═══════ HEADER (full width) ═══════ */}
+      <header className="reveal" data-reveal
+        style={{ display: "flex", justifyContent: "center", width: "100%", position: "relative", zIndex: 300, boxShadow: "0 4px 32px rgba(0,180,255,0.18)", background: "linear-gradient(135deg, #0369a1cc, #0ea5e9cc)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.15)" }}>
+        <div style={{ width: "1200px", maxWidth: "95%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0", color: "white" }}>
 
           <div style={{ fontWeight: "bold", fontSize: 22, color: "#0B4F5C", letterSpacing: 1 }}>DUOMATH</div>
 
@@ -297,32 +330,37 @@ export default function TrangChuForm() {
             </div>
 
           </nav>
-        </header>
+        </div>
+      </header>
+
+      {/* ═══════ CONTENT WRAPPER ═══════ */}
+      <div style={{ width: "100%", display: "flex", justifyContent: "center", position: "relative", zIndex: 1 }}>
+      <div style={{ width: "1200px", maxWidth: "95%", color: "white" }}>
 
         {/* ═══════ HERO ═══════ */}
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="120"
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 40, paddingTop: 20, flexWrap: "wrap" }}>
+          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 40, paddingTop: 30, flexWrap: "wrap" }}>
           <img src="/images/duosteamicon.png" style={{ width: "520px", maxWidth: "100%", cursor: "pointer" }} />
           <div className="reveal" data-reveal data-reveal-stagger data-stagger="60"
-            style={{ maxWidth: "520px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", padding: 20, borderRadius: 10, background: "#f9f9f9" }}>
-            <h1 style={{ fontSize: 40, marginBottom: 10, color: "black" }}>
+            style={{ maxWidth: "520px", boxShadow: "0 4px 32px rgba(0,180,255,0.15)", padding: 28, borderRadius: 16, background: "rgba(255,255,255,0.07)", backdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.18)" }}>
+            <h1 style={{ fontSize: 40, marginBottom: 10, color: "white" }}>
               {user ? `Chào, ${user.username}! 👋` : "Welcome to DUOMATH!"}
             </h1>
-            <p style={{ color: "#777", fontSize: 22, marginBottom: 20 }}>
+            <p style={{ color: "#bae6fd", fontSize: 22, marginBottom: 20 }}>
               Broaden your mathematical horizons with <strong>DUOMATH</strong> — the ultimate <strong>bilingual math resource</strong> for high school students!
             </p>
-            <p style={{ color: "#777", fontSize: 18, lineHeight: 1.6, marginBottom: 25 }}>
+            <p style={{ color: "#93c5fd", fontSize: 18, lineHeight: 1.6, marginBottom: 25 }}>
               At <strong>DUOMATH</strong>, we believe the future of <strong>STEM</strong> is <strong>bilingual</strong>. Dive into an immersive learning experience with resources that help you solve complex problems in two languages.
             </p>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
               <Link href="/Cacbaitoan10" style={{ textDecoration: "none" }}>
-                <button href="/Cacbaitoan" style={{ padding: "14px 24px", background: "black", color: "white", borderRadius: 10, border: "none", fontSize: 17, fontWeight: 600, cursor: "pointer" }}>
+                <button style={{ padding: "14px 24px", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", borderRadius: 10, border: "none", fontSize: 17, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 16px rgba(99,102,241,0.4)" }}>
                   Start
                 </button>
               </Link>
               {ready && !user && (
                 <Link href="/signup" style={{ textDecoration: "none" }}>
-                  <button style={{ padding: "14px 24px", background: "#e8f4f6", color: "#0B4F5C", borderRadius: 10, border: "1.5px solid #0B4F5C", fontSize: 17, fontWeight: 600, cursor: "pointer" }}>
+                  <button style={{ padding: "14px 24px", background: "rgba(255,255,255,0.1)", color: "white", borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.4)", fontSize: 17, fontWeight: 600, cursor: "pointer" }}>
                     Sign Up
                   </button>
                 </Link>
@@ -334,12 +372,12 @@ export default function TrangChuForm() {
         {/* ═══════ TESTS ═══════ */}
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="60"
           style={{ marginTop: 70, marginBottom: 30, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ fontSize: 28 }}>Latest tests</h2>
-          <Link href="/cacbailam" style={{ color: "#999" }}>Xem tất cả</Link>
+          <h2 style={{ fontSize: 28, color: "white" }}>Latest tests</h2>
+          <Link href="/cacbailam" style={{ color: "#7dd3fc" }}>Xem tất cả</Link>
         </div>
 
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="100"
-          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 40, marginBottom: 60, boxShadow: "0 4px 12px rgba(0,0,0,0.1)", padding: 20, borderRadius: 10, background: "#f9f9f9" }}>
+          style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 40, marginBottom: 60, boxShadow: "0 4px 32px rgba(0,180,255,0.1)", padding: 20, borderRadius: 16, background: "rgba(255,255,255,0.07)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.12)" }}>
           {[
             { href: "/L10-test1-section1", key: "reading-test-1", label: "Test 1", grade: "Grade 10", img: "/images/math10.png" },
             { href: "/L10-test2-section1", key: "reading-test-2", label: "Test 2", grade: "Grade 10", img: "/images/math10.png" },
@@ -353,9 +391,9 @@ export default function TrangChuForm() {
             const card = (
               <article key={i}>
                 <img src={t.img} style={{ width: "100%", height: 220, objectFit: "cover", borderRadius: 10, marginBottom: 14 }} />
-                <div style={{ fontSize: 22, fontWeight: 600 }}>{t.label}</div>
-                <div style={{ color: "#777", fontSize: 18 }}>{t.grade}</div>
-                <div style={{ fontSize: 16 }}>15 questions • Short answer + T/F/NG</div>
+                <div style={{ fontSize: 22, fontWeight: 600, color: "white" }}>{t.label}</div>
+                <div style={{ color: "#93c5fd", fontSize: 18 }}>{t.grade}</div>
+                <div style={{ fontSize: 16, color: "#bae6fd" }}>15 questions • Short answer + T/F/NG</div>
                 {scoreBadge && (
                   <div style={{ marginTop: 6, fontSize: 12, color: "#0B4F5C", fontWeight: 600, background: "#e8f4f6", padding: "3px 9px", borderRadius: 6, display: "inline-block" }}>
                     {scoreBadge}
@@ -373,19 +411,20 @@ export default function TrangChuForm() {
           <div style={{
             display: "flex", alignItems: "flex-start", gap: 48,
             padding: "36px 40px", borderRadius: 14,
-            border: "1px solid #e8edf0", background: "#fafcfd",
+            border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.07)",
+            backdropFilter: "blur(10px)",
             flexWrap: "wrap",
           }}>
             {/* Left: Branding */}
             <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 160 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <img src="/images/duosteamicon.png" style={{ width: 48, height: 48, objectFit: "contain", borderRadius: 8 }} />
-                <span style={{ fontWeight: 800, fontSize: 18, color: "#0B4F5C", letterSpacing: "-0.5px" }}>DUOMATH</span>
+                <span style={{ fontWeight: 800, fontSize: 18, color: "#7dd3fc", letterSpacing: "-0.5px" }}>DUOMATH</span>
               </div>
-              <span style={{ fontSize: 12, color: "#999", fontStyle: "italic" }}>Bilingual Math for STEM learners</span>
+              <span style={{ fontSize: 12, color: "#93c5fd", fontStyle: "italic" }}>Bilingual Math for STEM learners</span>
             </div>
 
-            <div style={{ width: 1, background: "#dde6ea", alignSelf: "stretch", minHeight: 80 }} />
+            <div style={{ width: 1, background: "rgba(255,255,255,0.2)", alignSelf: "stretch", minHeight: 80 }} />
 
             {/* Right: Contact rows */}
             <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1, minWidth: 220 }}>
@@ -396,10 +435,10 @@ export default function TrangChuForm() {
               ].map(({ icon, label, value, href }, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                   <span style={{ fontSize: 18, width: 24, textAlign: "center", flexShrink: 0 }}>{icon}</span>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: "#0B4F5C", width: 64, flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: "#7dd3fc", width: 64, flexShrink: 0 }}>{label}</span>
                   {href
-                    ? <a href={href} style={{ fontSize: 13, color: "#333", textDecoration: "none" }}>{value}</a>
-                    : <span style={{ fontSize: 13, color: "#333" }}>{value}</span>
+                    ? <a href={href} style={{ fontSize: 13, color: "#bae6fd", textDecoration: "none" }}>{value}</a>
+                    : <span style={{ fontSize: 13, color: "#bae6fd" }}>{value}</span>
                   }
                 </div>
               ))}
@@ -415,9 +454,15 @@ export default function TrangChuForm() {
           header.reveal{transform:translateY(-18px);opacity:0}
           header.reveal.visible{opacity:1;transform:translateY(0)}
           article{transition:transform .25s cubic-bezier(.2,.8,.2,1),box-shadow .25s ease;border-radius:10px;padding:8px}
-          article:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 12px 28px rgba(0,0,0,0.12)}
+          article:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 12px 28px rgba(0,180,255,0.25)}
+          @keyframes floatShape {
+            0%   { transform: translateY(0px) rotate(0deg); }
+            50%  { transform: translateY(-28px) rotate(8deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+          }
         `}</style>
         <DuoMCBSidebar />
+      </div>
       </div>
     </div>
   );
