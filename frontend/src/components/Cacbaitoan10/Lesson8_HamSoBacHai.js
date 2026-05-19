@@ -256,7 +256,7 @@ export default function Lesson8_HamSoBacHai() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="8Rz77E7rYHI"
+              videoId="w42teXyMiXI"
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
