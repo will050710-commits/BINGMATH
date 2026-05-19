@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 export default function Lesson8_HamSoBacHai() {
   const [lang, setLang] = useState("vi");
   const [revealedAnswers, setRevealedAnswers] = useState({});
