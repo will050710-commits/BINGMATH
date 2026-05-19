@@ -405,6 +405,58 @@ def get_games():
     return jsonify([game_dict(r) for r in rows])
 
 
+# ── Leaderboard ───────────────────────────────────────────────────────────────
+@app.route("/api/leaderboard", methods=["GET"])
+def leaderboard():
+    """
+    Public endpoint — no JWT required.
+    For every user, take their BEST score on each (test_key, section) pair,
+    then SUM those bests → total_points.  Return top 20.
+    """
+    db   = get_db()
+    rows = db.execute("""
+        SELECT
+            u.id           AS user_id,
+            u.username,
+            u.school,
+            u.grade,
+            SUM(best.best_score) AS total_points,
+            SUM(best.best_total) AS total_possible,
+            COUNT(*)             AS sections_done
+        FROM users u
+        JOIN (
+            SELECT
+                user_id,
+                test_key,
+                section,
+                MAX(score) AS best_score,
+                total      AS best_total
+            FROM test_results
+            GROUP BY user_id, test_key, section
+        ) AS best ON best.user_id = u.id
+        GROUP BY u.id
+        ORDER BY total_points DESC, sections_done DESC
+        LIMIT 20
+    """).fetchall()
+
+    result = []
+    for i, r in enumerate(rows):
+        tp  = r["total_points"]  or 0
+        tpo = r["total_possible"] or 1
+        result.append({
+            "rank":           i + 1,
+            "user_id":        r["user_id"],
+            "username":       r["username"],
+            "school":         r["school"] or "",
+            "grade":          r["grade"]  or "",
+            "total_points":   tp,
+            "total_possible": tpo,
+            "sections_done":  r["sections_done"],
+            "accuracy":       round(tp / tpo * 100, 1),
+        })
+    return jsonify(result)
+
+
 # ── Sessions ──────────────────────────────────────────────────────────────────
 @app.route("/api/session/new", methods=["POST"])
 def new_session():

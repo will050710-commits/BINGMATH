@@ -2,7 +2,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @next/next/no-img-element */
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Accordion, AccordionItem } from "@heroui/react";
@@ -22,6 +22,22 @@ export default function TrangChuForm() {
 
   const [showFlyer, setShowFlyer] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [lbLoading, setLbLoading] = useState(true);
+
+  const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
+
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      setLbLoading(true);
+      const res = await fetch(`${BASE}/api/leaderboard`);
+      if (res.ok) setLeaderboard(await res.json());
+    } catch { /* silent */ } finally {
+      setLbLoading(false);
+    }
+  }, [BASE]);
+
+  useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
   const flyerSteps = [
     {
       icon: "📖", title: "Bilingual Lessons", color: "#0B4F5C", bg: "#e8f4f6",
@@ -405,6 +421,133 @@ export default function TrangChuForm() {
               ? <Link key={i} href={t.href} style={{ textDecoration: "none", color: "inherit" }} onClick={() => t.key && clearTestSession(t.key)}>{card}</Link>
               : card;
           })}
+        </div>
+
+        {/* ═══════ LEADERBOARD ═══════ */}
+        <div className="reveal" data-reveal style={{ marginTop: 70, marginBottom: 70 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <h2 style={{ fontSize: 28, color: "white", margin: 0 }}>🏆 Bảng xếp hạng</h2>
+              <p style={{ color: "#93c5fd", fontSize: 14, marginTop: 4, margin: 0 }}>
+                Tổng điểm cao nhất từ tất cả các bài test · Cập nhật theo thời gian thực
+              </p>
+            </div>
+            <button
+              onClick={fetchLeaderboard}
+              style={{ background: "rgba(14,165,233,0.15)", border: "1px solid rgba(14,165,233,0.4)", color: "#7dd3fc", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600, transition: "all 0.2s" }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(14,165,233,0.3)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(14,165,233,0.15)"; }}
+            >
+              🔄 Làm mới
+            </button>
+          </div>
+
+          <div style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,180,255,0.1)" }}>
+
+            {/* Table header */}
+            <div style={{ display: "grid", gridTemplateColumns: "52px 1fr 120px 100px 90px", gap: 0, padding: "14px 24px", background: "rgba(14,165,233,0.12)", borderBottom: "1px solid rgba(255,255,255,0.08)", fontSize: 11, fontWeight: 700, color: "#7dd3fc", textTransform: "uppercase", letterSpacing: 1 }}>
+              <span>#</span>
+              <span>Học sinh</span>
+              <span style={{ textAlign: "center" }}>Tổng điểm</span>
+              <span style={{ textAlign: "center" }}>Độ chính xác</span>
+              <span style={{ textAlign: "center" }}>Sections</span>
+            </div>
+
+            {/* Rows */}
+            {lbLoading ? (
+              <div style={{ padding: "48px 24px", textAlign: "center", color: "#4e7896" }}>
+                <div style={{ fontSize: 28, marginBottom: 8 }}>⏳</div>
+                <div style={{ fontSize: 14 }}>Đang tải dữ liệu…</div>
+              </div>
+            ) : leaderboard.length === 0 ? (
+              <div style={{ padding: "48px 24px", textAlign: "center", color: "#4e7896" }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>🏅</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: "#7dd3fc", marginBottom: 6 }}>Chưa có dữ liệu</div>
+                <div style={{ fontSize: 13 }}>Hãy là người đầu tiên hoàn thành một bài test!</div>
+              </div>
+            ) : leaderboard.map((entry, idx) => {
+              const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+              const isTop3 = idx < 3;
+              const rowBg = idx === 0
+                ? "rgba(255,215,0,0.07)"
+                : idx === 1 ? "rgba(192,192,192,0.06)"
+                : idx === 2 ? "rgba(205,127,50,0.06)"
+                : idx % 2 === 0 ? "rgba(255,255,255,0.025)" : "transparent";
+              const rankColor = idx === 0 ? "#fbbf24" : idx === 1 ? "#94a3b8" : idx === 2 ? "#cd7f32" : "#4e7896";
+              const isMe = user && entry.username === user.username;
+
+              return (
+                <div key={entry.user_id}
+                  style={{ display: "grid", gridTemplateColumns: "52px 1fr 120px 100px 90px", gap: 0, padding: "14px 24px", background: isMe ? "rgba(99,102,241,0.12)" : rowBg, borderBottom: "1px solid rgba(255,255,255,0.05)", alignItems: "center", transition: "background 0.2s" }}
+                  onMouseEnter={e => { if (!isMe) e.currentTarget.style.background = "rgba(255,255,255,0.045)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = isMe ? "rgba(99,102,241,0.12)" : rowBg; }}
+                >
+                  {/* Rank */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {medal
+                      ? <span style={{ fontSize: 20 }}>{medal}</span>
+                      : <span style={{ fontSize: 14, fontWeight: 700, color: rankColor, minWidth: 24, textAlign: "center" }}>{entry.rank}</span>
+                    }
+                  </div>
+
+                  {/* Name + badges */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: isTop3 ? 700 : 600, fontSize: isTop3 ? 15 : 14, color: isTop3 ? "white" : "#cbd5e1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {entry.username}
+                      </span>
+                      {isMe && (
+                        <span style={{ fontSize: 10, fontWeight: 700, background: "rgba(99,102,241,0.3)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.5)", borderRadius: 10, padding: "1px 7px" }}>Bạn</span>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {entry.grade && (
+                        <span style={{ fontSize: 10, color: "#38bdf8", background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.25)", borderRadius: 8, padding: "1px 6px" }}>
+                          {entry.grade}
+                        </span>
+                      )}
+                      {entry.school && (
+                        <span style={{ fontSize: 10, color: "#94a3b8", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          🏫 {entry.school}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Total points */}
+                  <div style={{ textAlign: "center" }}>
+                    <span style={{ fontSize: isTop3 ? 18 : 16, fontWeight: 800, color: isTop3 ? "#fbbf24" : "#7dd3fc" }}>
+                      {entry.total_points}
+                    </span>
+                    <span style={{ fontSize: 11, color: "#4e7896", marginLeft: 3 }}>/{entry.total_possible}</span>
+                  </div>
+
+                  {/* Accuracy bar */}
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: entry.accuracy >= 80 ? "#4ade80" : entry.accuracy >= 60 ? "#fbbf24" : "#f87171", marginBottom: 4 }}>
+                      {entry.accuracy}%
+                    </div>
+                    <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${entry.accuracy}%`, background: entry.accuracy >= 80 ? "linear-gradient(90deg,#4ade80,#22d3ee)" : entry.accuracy >= 60 ? "linear-gradient(90deg,#fbbf24,#f59e0b)" : "linear-gradient(90deg,#f87171,#ef4444)", borderRadius: 2, transition: "width 0.8s ease" }} />
+                    </div>
+                  </div>
+
+                  {/* Sections done */}
+                  <div style={{ textAlign: "center", fontSize: 14, fontWeight: 600, color: "#94a3b8" }}>
+                    {entry.sections_done}
+                    <div style={{ fontSize: 10, color: "#4e7896", fontWeight: 400 }}>sections</div>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Footer note */}
+            {!lbLoading && leaderboard.length > 0 && (
+              <div style={{ padding: "12px 24px", background: "rgba(0,0,0,0.2)", fontSize: 11, color: "#4e7896", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                Điểm được tính từ điểm cao nhất của mỗi section trong tất cả các bài test đã hoàn thành
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="reveal" data-reveal style={{ marginBottom: 60, marginTop: 60 }}>
