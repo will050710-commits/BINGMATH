@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 export default function Lesson7_HamSoVaDoThi() {
   const [lang, setLang] = useState("vi");
   const [revealedAnswers, setRevealedAnswers] = useState({});
@@ -60,6 +61,19 @@ export default function Lesson7_HamSoVaDoThi() {
   }, []);
 
   const t = (vi, en) => (lang === "vi" ? vi : en);
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 5,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
 
@@ -154,6 +168,7 @@ export default function Lesson7_HamSoVaDoThi() {
 
   const tabs = [
     ["khoiDong", "🚀", t("Khởi động", "Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],
     ["khai1", "📖", t("1. Hàm Số", "1. Functions")],
     ["khai2", "📖", t("2. Tập Xác Định", "2. Domain")],
     ["khai3", "📖", t("3. Đơn Điệu", "3. Monotonicity")],
@@ -250,6 +265,21 @@ export default function Lesson7_HamSoVaDoThi() {
             <div style={{ fontSize: 16 }}>❓ <em>{t("Cho ví dụ một quy tắc không phải hàm số (một giá trị đầu vào cho nhiều đầu ra).", "Give an example of a rule that is NOT a function (one input giving multiple outputs).")}</em></div>
           </div>
         </section>
+        {/* ════════════════════════════════════════
+            VIDEO BÀI GIẢNG
+        ════════════════════════════════════════ */}
+        <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+          <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+          <div className="reveal" data-reveal>
+            <LessonVideoPlayer
+              videoId="8Rz77E7rYHI"
+              subtitles={videoSubtitles}
+              lang={lang}
+              credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            />
+          </div>
+        </section>
+
 
         {/* 1. HÀM SỐ */}
         <section id="khai1" style={{ scrollMarginTop: 80, marginBottom: 64 }}>

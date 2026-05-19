@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 
 export default function Lesson2_TapHop() {
   const [lang, setLang] = useState("vi");
@@ -57,6 +58,45 @@ export default function Lesson2_TapHop() {
   }, []);
 
   const t = (vi, en) => (lang === "vi" ? vi : en);
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 5,
+      words: [
+        { text: "Let's", vi: "Hãy" },
+        { text: "talk", vi: "nói" },
+        { text: "about", vi: "về" },
+        { text: "sets.", vi: "tập hợp.", detail: "<b>Sets (Tập hợp)</b>:<br/>Một nhóm các đối tượng, mỗi đối tượng gọi là phần tử.", detailTitle: "Sets (Tập hợp)" }
+      ]
+    },
+    {
+      start: 5, end: 12,
+      words: [
+        { text: "A", vi: "Một" },
+        { text: "set", vi: "tập hợp", detail: "<b>Set</b>: Tập hợp.", detailTitle: "Set" },
+        { text: "is", vi: "là" },
+        { text: "a", vi: "một" },
+        { text: "collection", vi: "nhóm/tập hợp", detail: "<b>Collection</b>: Tập hợp, bộ sưu tập.", detailTitle: "Collection" },
+        { text: "of", vi: "của" },
+        { text: "distinct", vi: "riêng biệt", detail: "<b>Distinct</b>: Khác biệt, phân biệt, không trùng lặp.", detailTitle: "Distinct (Riêng biệt)" },
+        { text: "objects.", vi: "đối tượng." }
+      ]
+    },
+    {
+      start: 12, end: 18,
+      words: [
+        { text: "The", vi: "Các" },
+        { text: "objects", vi: "đối tượng" },
+        { text: "are", vi: "được" },
+        { text: "called", vi: "gọi là" },
+        { text: "elements", vi: "phần tử", detail: "<b>Elements</b>: Phần tử của một tập hợp.", detailTitle: "Elements (Phần tử)" },
+        { text: "of", vi: "của" },
+        { text: "the", vi: "cái" },
+        { text: "set.", vi: "tập hợp." }
+      ]
+    }
+  ];
+
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
 
@@ -92,6 +132,7 @@ export default function Lesson2_TapHop() {
 
   const tabs = [
     ["khoiDong", "🚀", t("Khởi động", "Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],
     ["khai1",    "📖", t("1. Tập Hợp", "1. Sets")],
     ["khai2",    "📖", t("2. Tập Con", "2. Subsets")],
     ["khai3",    "📖", t("3. Tập Bằng Nhau", "3. Equal Sets")],
@@ -160,6 +201,19 @@ export default function Lesson2_TapHop() {
                 'When talking about a collection of objects — e.g. "natural numbers less than 10" or "students in a class" — we need a mathematical concept to represent them. Mathematics calls this a set.')}
             </div>
             <div style={{ fontSize: 16 }}>❓ <em>{t("Hãy kể tên 3 ví dụ về tập hợp trong cuộc sống hằng ngày.", "Name 3 examples of sets in everyday life.")}</em></div>
+          </div>
+        </section>
+
+        {/* ════ VIDEO BÀI GIẢNG ════ */}
+        <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+          <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+          <div className="reveal" data-reveal>
+            <LessonVideoPlayer
+              videoId="tydkR_VvOug" 
+              subtitles={videoSubtitles}
+              lang={lang}
+              credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            />
           </div>
         </section>
 

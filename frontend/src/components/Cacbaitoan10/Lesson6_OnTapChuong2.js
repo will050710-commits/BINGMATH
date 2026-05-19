@@ -5,6 +5,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 
 const SectionHeader = ({ icon, title }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 22, fontWeight: 700, color: "#0B4F5C", marginBottom: 20, paddingBottom: 12, borderBottom: "2px solid #f0f0f0" }}>
@@ -69,6 +70,19 @@ export default function Lesson6_OnTapChuong2() {
   }, []);
 
   const t = (vi, en) => (lang === "vi" ? vi : en);
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 5,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
 

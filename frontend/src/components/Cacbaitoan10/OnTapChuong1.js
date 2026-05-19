@@ -87,6 +87,19 @@ export default function OnTapChuong1() {
   }, []);
 
   const t = (vi, en) => (lang==="vi" ? vi : en);
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 5,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const toggleAnswer = (id) => setRevealedAnswers(p=>({...p,[id]:!p[id]}));
   const scrollTo = (id) => { const el=document.getElementById(id); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); };
 

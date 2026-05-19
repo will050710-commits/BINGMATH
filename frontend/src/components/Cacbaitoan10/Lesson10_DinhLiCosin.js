@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 
 const SH = ({ icon, title }) => (
   <div style={{ display:"flex",alignItems:"center",gap:12,fontSize:22,fontWeight:700,color:"#0B4F5C",marginBottom:20,paddingBottom:12,borderBottom:"2px solid #f0f0f0" }}>

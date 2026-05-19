@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 
 const SectionHeader = ({ icon, title }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 22, fontWeight: 700, color: "#0B4F5C", marginBottom: 20, paddingBottom: 12, borderBottom: "2px solid #f0f0f0" }}>
@@ -68,6 +69,19 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
   }, []);
 
   const t = (vi, en) => (lang === "vi" ? vi : en);
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 5,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
 
@@ -153,6 +167,7 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
 
   const tabs = [
     ["khoiDong", "🚀", t("Khởi động", "Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],
     ["khai1", "📖", t("1. Định Nghĩa", "1. Definition")],
     ["khai2", "📖", t("2. Miền Nghiệm", "2. Solution Region")],
     ["khai3", "📖", t("3. Cách Giải", "3. Method")],
@@ -261,6 +276,21 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
             <div style={{ fontSize: 16 }}>❓ <em>{t("Đây là hệ BPT. Bài toán tìm miền nghiệm xuất hiện trong nhiều bài toán tối ưu thực tế.", "This is a system of inequalities, appearing in many real-world optimization problems.")}</em></div>
           </div>
         </section>
+        {/* ════════════════════════════════════════
+            VIDEO BÀI GIẢNG
+        ════════════════════════════════════════ */}
+        <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+          <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+          <div className="reveal" data-reveal>
+            <LessonVideoPlayer
+              videoId="8Rz77E7rYHI"
+              subtitles={videoSubtitles}
+              lang={lang}
+              credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            />
+          </div>
+        </section>
+
 
         {/* 1. ĐỊNH NGHĨA */}
         <section id="khai1" style={{ scrollMarginTop: 80, marginBottom: 64 }}>

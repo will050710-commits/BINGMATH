@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 
 const SectionHeader = ({ icon, title }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 22, fontWeight: 700, color: "#0B4F5C", marginBottom: 20, paddingBottom: 12, borderBottom: "2px solid #f0f0f0" }}>
@@ -94,6 +95,54 @@ export default function Lesson1_MenhDe() {
   }, []);
 
   const t = (vi, en) => (lang === "vi" ? vi : en);
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 5,
+      words: [
+        { text: "Welcome", vi: "Chào mừng", detail: "<b>Welcome</b>: Lời chào mừng trong tiếng Anh." },
+        { text: "to", vi: "đến với" },
+        { text: "the", vi: "cái" },
+        { text: "lesson", vi: "bài học", detail: "<b>Lesson</b>: Bài học hoặc bài giảng về một chủ đề cụ thể.", detailTitle: "Lesson (Bài học)" },
+        { text: "on", vi: "về" },
+        { text: "mathematical", vi: "toán học", detail: "<b>Mathematical</b>: Thuộc về toán học, liên quan đến toán học.", detailTitle: "Mathematical (Toán học)" },
+        { text: "propositions.", vi: "mệnh đề.", detail: "<b>Propositions (Mệnh đề)</b>:<br/>Một câu khẳng định có thể xác định rõ ràng là ĐÚNG hoặc SAI, không thể vừa đúng vừa sai.", detailTitle: "Propositions (Mệnh đề)" }
+      ]
+    },
+    {
+      start: 5, end: 10,
+      words: [
+        { text: "A", vi: "Một" },
+        { text: "proposition", vi: "mệnh đề", detail: "<b>Proposition</b>: Mệnh đề, một câu khẳng định có tính đúng sai.", detailTitle: "Proposition" },
+        { text: "is", vi: "là" },
+        { text: "a", vi: "một" },
+        { text: "statement", vi: "câu khẳng định", detail: "<b>Statement</b>: Lời phát biểu, câu khẳng định.", detailTitle: "Statement (Câu khẳng định)" },
+        { text: "that", vi: "mà" },
+        { text: "is", vi: "thì" },
+        { text: "either", vi: "hoặc" },
+        { text: "true", vi: "đúng", detail: "<b>True</b>: Đúng, có giá trị chân lý là đúng.", detailTitle: "True (Đúng)" },
+        { text: "or", vi: "hoặc" },
+        { text: "false.", vi: "sai.", detail: "<b>False</b>: Sai, có giá trị chân lý là sai.", detailTitle: "False (Sai)" }
+      ]
+    },
+    {
+      start: 10, end: 16,
+      words: [
+        { text: "For", vi: "Ví" },
+        { text: "example,", vi: "dụ," },
+        { text: "two", vi: "hai" },
+        { text: "plus", vi: "cộng", detail: "<b>Plus</b>: Phép cộng." },
+        { text: "two", vi: "hai" },
+        { text: "equals", vi: "bằng", detail: "<b>Equals</b>: Bằng, kết quả bằng." },
+        { text: "four", vi: "bốn" },
+        { text: "is", vi: "là" },
+        { text: "a", vi: "một" },
+        { text: "true", vi: "đúng" },
+        { text: "proposition.", vi: "mệnh đề." }
+      ]
+    }
+  ];
+
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
 
@@ -145,6 +194,7 @@ export default function Lesson1_MenhDe() {
 
   const tabs = [
     ["khoiDong", "🚀", t("Khởi động", "Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],
     ["khai1",    "📖", t("1. Mệnh Đề", "1. Propositions")],
     ["khai2",    "📖", t("2. Phủ Định", "2. Negation")],
     ["khai3",    "📖", t("3. Kéo Theo", "3. Implication")],
@@ -217,6 +267,21 @@ export default function Lesson1_MenhDe() {
                 'In everyday life we often make statements — e.g. "Today is sunny" or "2 + 2 = 4". Can every sentence be judged as true or false?')}
             </div>
             <div style={{ fontSize: 16 }}>❓ <em>{t("Hãy cho ví dụ một câu có thể xác định đúng/sai và một câu không thể.", "Give an example of a sentence that can be judged true/false, and one that cannot.")}</em></div>
+          </div>
+        </section>
+
+        {/* ════════════════════════════════════════
+            VIDEO BÀI GIẢNG
+        ════════════════════════════════════════ */}
+        <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+          <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+          <div className="reveal" data-reveal>
+            <LessonVideoPlayer
+              videoId="8Rz77E7rYHI"
+              subtitles={videoSubtitles}
+              lang={lang}
+              credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            />
           </div>
         </section>
 

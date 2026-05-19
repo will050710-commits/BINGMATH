@@ -60,6 +60,19 @@ export default function Lesson8_HamSoBacHai() {
   }, []);
 
   const t = (vi, en) => (lang === "vi" ? vi : en);
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 5,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
 
@@ -139,6 +152,7 @@ export default function Lesson8_HamSoBacHai() {
 
   const tabs = [
     ["khoiDong", "🚀", t("Khởi động", "Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],
     ["khai1", "📖", t("1. Định Nghĩa", "1. Definition")],
     ["khai2", "📖", t("2. Đỉnh & Trục", "2. Vertex & Axis")],
     ["khai3", "📖", t("3. Đơn Điệu", "3. Monotonicity")],
@@ -234,6 +248,21 @@ export default function Lesson8_HamSoBacHai() {
             <div style={{ fontSize: 16 }}>❓ <em>{t("Đỉnh của parabol h(t) cho biết điều gì về quả bóng?","What does the vertex of h(t) tell us about the ball?")}</em></div>
           </div>
         </section>
+        {/* ════════════════════════════════════════
+            VIDEO BÀI GIẢNG
+        ════════════════════════════════════════ */}
+        <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+          <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+          <div className="reveal" data-reveal>
+            <LessonVideoPlayer
+              videoId="8Rz77E7rYHI"
+              subtitles={videoSubtitles}
+              lang={lang}
+              credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            />
+          </div>
+        </section>
+
 
         {/* 1. ĐỊNH NGHĨA */}
         <section id="khai1" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
