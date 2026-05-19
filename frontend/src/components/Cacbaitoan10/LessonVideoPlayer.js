@@ -25,12 +25,8 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
   const [playerReady, setPlayerReady] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
 
-  // Tooltip state
-  const [tooltip, setTooltip] = useState({ visible: false, text: "", vi: "", x: 0, y: 0 });
-  const tooltipHideRef = useRef(null);
-
   // Sidebar state
-  const [sidebar, setSidebar] = useState({ open: false, title: "", detail: "" });
+  const [sidebar, setSidebar] = useState({ open: false, title: "", detail: "", vi: "" });
 
   // ── YouTube IFrame API ──────────────────────────────────────────────
   useEffect(() => {
@@ -92,28 +88,8 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
     (s) => currentTime >= s.start && currentTime < s.end
   ) || null;
 
-  // ── Tooltip handlers ────────────────────────────────────────────────
-  const showTooltip = useCallback((e, word) => {
-    clearTimeout(tooltipHideRef.current);
-    const rect = e.currentTarget.getBoundingClientRect();
-    setTooltip({
-      visible: true,
-      text: word.text,
-      vi: word.vi,
-      x: rect.left + rect.width / 2,
-      y: rect.top - 12,
-    });
-  }, []);
-
-  const hideTooltip = useCallback(() => {
-    tooltipHideRef.current = setTimeout(() => {
-      setTooltip((p) => ({ ...p, visible: false }));
-    }, 180);
-  }, []);
-
   const handleWordClick = useCallback((word) => {
-    if (!word.detail) return;
-    setSidebar({ open: true, title: word.detailTitle || word.text, detail: word.detail });
+    setSidebar({ open: true, title: word.detailTitle || word.text, detail: word.detail, vi: word.vi });
   }, []);
 
   // ── Inline styles ────────────────────────────────────────────────────
@@ -148,15 +124,15 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
       flexWrap: "wrap",
       gap: "4px 6px",
     },
-    subtitleWord: (hasDetail) => ({
+    subtitleWord: () => ({
       display: "inline-block",
       padding: "3px 7px",
       borderRadius: 6,
       fontSize: 15,
       fontWeight: 500,
       color: "white",
-      cursor: hasDetail ? "pointer" : "default",
-      background: hasDetail ? "rgba(255,255,255,0.15)" : "transparent",
+      cursor: "pointer",
+      background: "rgba(255,255,255,0.15)",
       transition: "background 0.15s, transform 0.12s",
       userSelect: "none",
       lineHeight: 1.5,
@@ -177,32 +153,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
       alignItems: "center",
       gap: 6,
     },
-    /* Tooltip (fixed, above cursor) */
-    tooltip: {
-      position: "fixed",
-      zIndex: 9999,
-      pointerEvents: "none",
-      transform: "translate(-50%, -100%)",
-      background: "rgba(11,79,92,0.97)",
-      color: "white",
-      borderRadius: 10,
-      padding: "8px 14px",
-      fontSize: 13,
-      fontWeight: 500,
-      boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-      whiteSpace: "nowrap",
-      maxWidth: 220,
-    },
-    tooltipArrow: {
-      position: "absolute",
-      bottom: -6,
-      left: "50%",
-      transform: "translateX(-50%)",
-      width: 0, height: 0,
-      borderLeft: "6px solid transparent",
-      borderRight: "6px solid transparent",
-      borderTop: "6px solid rgba(11,79,92,0.97)",
-    },
+    /* Removed Tooltip Styles */
     /* Right Sidebar */
     overlay: {
       position: "fixed",
@@ -260,21 +211,6 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
 
   return (
     <>
-      {/* ── Tooltip (portal-like, fixed) ── */}
-      {tooltip.visible && (
-        <div
-          style={{
-            ...S.tooltip,
-            left: tooltip.x,
-            top: tooltip.y,
-          }}
-        >
-          <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 2 }}>{tooltip.text}</div>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>{tooltip.vi}</div>
-          <div style={S.tooltipArrow} />
-        </div>
-      )}
-
       {/* ── Sidebar overlay ── */}
       {sidebar.open && (
         <div style={S.overlay} onClick={() => setSidebar((p) => ({ ...p, open: false }))} />
@@ -290,9 +226,15 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
           <button style={S.sidebarCloseBtn} onClick={() => setSidebar((p) => ({ ...p, open: false }))}>✕</button>
         </div>
         <div style={S.sidebarBody}>
+          {sidebar.vi && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#888", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>{t("Dịch nghĩa", "Translation")}</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#0B4F5C" }}>{sidebar.vi}</div>
+            </div>
+          )}
           {sidebar.detail && (
             <div
-              style={{ fontSize: 15, lineHeight: 1.85, color: "#333" }}
+              style={{ fontSize: 15, lineHeight: 1.85, color: "#333", borderTop: sidebar.vi ? "1px solid #f0f0f0" : "none", paddingTop: sidebar.vi ? 16 : 0 }}
               dangerouslySetInnerHTML={{ __html: sidebar.detail }}
             />
           )}
@@ -318,11 +260,9 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
             activeSub.words.map((w, i) => (
               <span
                 key={i}
-                style={S.subtitleWord(!!w.detail)}
-                onMouseEnter={(e) => showTooltip(e, w)}
-                onMouseLeave={hideTooltip}
+                style={S.subtitleWord()}
                 onClick={() => handleWordClick(w)}
-                title={w.detail ? t("Nhấn để xem chi tiết", "Click for details") : undefined}
+                title={t("Nhấn để xem chi tiết", "Click for details")}
               >
                 {w.text}
               </span>
