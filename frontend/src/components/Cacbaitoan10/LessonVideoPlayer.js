@@ -110,8 +110,10 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
     },
     iframe: {
       position: "absolute",
-      top: 0, left: 0,
-      width: "100%", height: "100%",
+      top: "-1px",
+      left: "-1px",
+      width: "calc(100% + 2px)",
+      height: "calc(100% + 2px)",
       border: "none",
     },
     subtitleBar: {
