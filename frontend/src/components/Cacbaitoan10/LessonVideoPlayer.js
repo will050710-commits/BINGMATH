@@ -278,7 +278,14 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
         {credit && (
           <div style={S.creditBar}>
             <span>🎬</span>
-            <span dangerouslySetInnerHTML={{ __html: credit }} />
+            <span
+              dangerouslySetInnerHTML={{
+                __html: credit.replace(
+                  /Khan Academy/g,
+                  `<a href="https://www.youtube.com/@khanacademy" target="_blank" rel="noopener noreferrer" style="color: #0B4F5C; text-decoration: underline; font-weight: 600; transition: opacity 0.2s;" onMouseOver="this.style.opacity=0.8" onMouseOut="this.style.opacity=1">Khan Academy</a>`
+                ),
+              }}
+            />
           </div>
         )}
       </div>
