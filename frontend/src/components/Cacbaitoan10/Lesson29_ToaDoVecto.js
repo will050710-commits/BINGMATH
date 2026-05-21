@@ -79,6 +79,19 @@ export default function Lesson29_ToaDoVecto() {
   }, []);
 
   const t = (vi, en) => lang === "vi" ? vi : en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
   const tr = (id) => setRev(p => (({ ...p, [id]: !p[id] })));
 
@@ -104,7 +117,8 @@ export default function Lesson29_ToaDoVecto() {
   const tri = th.map(h => ({ correct: h.c, qText: tfC[h.q].s, correctText: tfC[h.q].a ? t("ĐÚNG", "TRUE") : t("SAI", "FALSE"), yourText: h.g ? t("ĐÚNG", "TRUE") : t("SAI", "FALSE") }));
   const fri = fc ? fQ.map(q => ({ correct: cf(q.id), qText: q.tp, correctText: q.ans, yourText: fa[q.id] || t("(bỏ trống)", "(blank)") })) : [];
   
-  const tabs = [["w", "🚀", t("Khởi động", "Warm-Up")], ["k1", "📖", t("1. Tọa Độ Vectơ", "1. Coordinates")], ["k2", "📖", t("2. Trung Điểm & TT", "2. Midpoint & Centroid")], ["th", "✏️", t("Thực Hành", "Practice")], ["mg", "🎮", t("Mini Game", "Mini Game")]];
+  const tabs = [["w", "🚀", t("Khởi động", "Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")], ["k1", "📖", t("1. Tọa Độ Vectơ", "1. Coordinates")], ["k2", "📖", t("2. Trung Điểm & TT", "2. Midpoint & Centroid")], ["th", "✏️", t("Thực Hành", "Practice")], ["mg", "🎮", t("Mini Game", "Mini Game")]];
   
   return (
     <div style={{ width: "100%", background: "#fff", display: "flex", justifyContent: "center" }}>
@@ -131,6 +145,21 @@ export default function Lesson29_ToaDoVecto() {
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("Trong GPS và bản đồ số, mỗi địa điểm được xác định bởi một cặp số (kinh độ, vĩ độ). Đây chính là hệ tọa độ — và một vectơ cũng có thể biểu diễn qua tọa độ!", "In GPS and digital maps, each location is defined by a pair (longitude, latitude). This is the coordinate system — and a vector can also be expressed through coordinates!")}</div>
           </div>
         </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="hJkKADcQWj0"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
+        </div>
+      </section>
         <section id="k1" style={{ scrollMarginTop: 80, marginBottom: 64 }}><SH icon="📖" title={t("1. Tọa Độ Vectơ", "1. Vector Coordinates")} />
           <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
             <div style={{ fontSize: 15, lineHeight: 1.8, marginBottom: 12 }}>{t("Với hệ trục Oxy, vectơ →a được biểu diễn qua các vectơ đơn vị →i=(1,0) và →j=(0,1):", "In coordinate system Oxy, vector →a is expressed via unit vectors →i=(1,0) and →j=(0,1):")}</div>

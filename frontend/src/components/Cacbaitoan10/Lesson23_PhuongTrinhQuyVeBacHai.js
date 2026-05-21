@@ -21,6 +21,19 @@ export default function Lesson23_PhuongTrinhQuyVeBacHai() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'x⁴−5x²+4=0. Đặt t=x²: phương trình theo t là?', 'o': ['t²−5t+4=0', 't²+5t+4=0', 't²−5t−4=0', '2t−5=0'], 'a': 0, 'ex': 't=x²: (x²)²−5(x²)+4=t²−5t+4=0.'}, {'q': 'Phương trình trùng phương ax⁴+bx²+c=0 dùng ẩn phụ t=?', 'o': ['t=x', 't=x²', 't=x³', 't=√x'], 'a': 1, 'ex': 'Đặt t=x²≥0 để đưa về bậc hai.'}, {'q': 'Từ t=x²=4, giá trị x là?', 'o': ['x=4', 'x=2', 'x=±2', 'x=±4'], 'a': 2, 'ex': 'x²=4 → x=±2.'}, {'q': '√(x+1)=x−1. Điều kiện là?', 'o': ['x≥−1', 'x≥1', 'x≥0', 'x≥−1 và x≥1'], 'a': 3, 'ex': '√(x+1): x+1≥0→x≥−1; vế phải x−1≥0→x≥1. Kết hợp: x≥1.'}, {'q': 'x⁴−x²=0. Nghiệm?', 'o': ['x=0 hoặc x=1', 'x=0 hoặc x=±1', 'x=1', 'x=±1'], 'a': 1, 'ex': 'x²(x²−1)=0 → x²=0 (x=0) hoặc x²=1 (x=±1).'}];
@@ -37,7 +50,8 @@ export default function Lesson23_PhuongTrinhQuyVeBacHai() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. PT Trùng Phương","1. Biquadratic")],["k2","📖",t("2. PT Chứa Căn","2. With Roots")],["k3","📖",t("3. PT Tích","3. Product Form")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. PT Trùng Phương","1. Biquadratic")],["k2","📖",t("2. PT Chứa Căn","2. With Roots")],["k3","📖",t("3. PT Tích","3. Product Form")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/Cacbaitoan10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -64,6 +78,21 @@ export default function Lesson23_PhuongTrinhQuyVeBacHai() {
         <div style={{fontSize:16}}>❓ <em>{t("x⁴−5x²+4=0 có phải phương trình bậc hai không? Gợi ý: đặt t=x².","Is x⁴−5x²+4=0 a quadratic? Hint: let t=x².")}</em></div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="6b_m7wZPhhU"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Phương Trình Trùng Phương","1. Biquadratic Equations")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:10}}>{t("Dạng: ax⁴+bx²+c=0 (a≠0)","Form: ax⁴+bx²+c=0 (a≠0)")}</div>

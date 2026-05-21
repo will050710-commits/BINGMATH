@@ -163,6 +163,7 @@ export default function Lesson6_OnTapChuong2() {
 
   const tabs = [
     ["tomTat", "📚", t("Tóm Tắt", "Summary")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],
     ["congThuc", "📐", t("Công Thức", "Key Formulas")],
     ["baiTapTongHop", "✏️", t("Bài Tập TH", "Mixed Exercises")],
     ["miniGame", "🎮", t("Mini Game", "Mini Game")],
@@ -299,6 +300,21 @@ export default function Lesson6_OnTapChuong2() {
             ))}
           </div>
         </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="8V-M6n6L_M0"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
+        </div>
+      </section>
 
         {/* CÔNG THỨC */}
         <section id="congThuc" style={{ scrollMarginTop: 80, marginBottom: 64 }}>

@@ -54,6 +54,19 @@ export default function Lesson11_DinhLiSin() {
   },[]);
 
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
 
@@ -89,7 +102,8 @@ export default function Lesson11_DinhLiSin() {
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
 
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Định Lí Sin","1. The Law")],["k2","📖",t("2. Bán Kính R","2. Circumradius R")],["k3","📖",t("3. Khi Nào Dùng?","3. When to Use?")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Định Lí Sin","1. The Law")],["k2","📖",t("2. Bán Kính R","2. Circumradius R")],["k3","📖",t("3. Khi Nào Dùng?","3. When to Use?")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>
@@ -132,6 +146,21 @@ export default function Lesson11_DinhLiSin() {
         <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Để đo khoảng cách giữa hai điểm không thể tiếp cận trực tiếp (ví dụ: hai bờ sông), người ta đặt một điểm đo thứ ba rồi dùng các góc đo được. Định lí Sin kết nối cạnh và góc đối diện — rất mạnh khi đã biết 2 góc!","To measure the distance between two inaccessible points (e.g. two riverbanks), a third measurement point is set up and angles are measured. The Law of Sines connects each side with its opposite angle — very powerful when 2 angles are known!")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Nếu biết 2 góc của tam giác, ta có thể tìm góc thứ 3 không?","If you know 2 angles of a triangle, can you always find the third?")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="8m9g7DWhF_Y"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
         </div>
       </section>
 

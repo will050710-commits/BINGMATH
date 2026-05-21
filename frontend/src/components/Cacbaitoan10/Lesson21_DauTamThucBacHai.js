@@ -53,6 +53,19 @@ export default function Lesson21_DauTamThucBacHai() {
   },[]);
 
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
 
@@ -87,7 +100,8 @@ export default function Lesson21_DauTamThucBacHai() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Định Nghĩa","1. Definition")],["k2","📖",t("2. Bảng Xét Dấu","2. Sign Table")],["k3","📖",t("3. Các Trường Hợp","3. All Cases")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Định Nghĩa","1. Definition")],["k2","📖",t("2. Bảng Xét Dấu","2. Sign Table")],["k3","📖",t("3. Các Trường Hợp","3. All Cases")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>
@@ -128,6 +142,21 @@ export default function Lesson21_DauTamThucBacHai() {
         <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Trong lợi nhuận kinh doanh, hàm lợi nhuận có dạng f(x) = −x² + 10x − 16 (nghìn đồng), với x là số sản phẩm. Hỏi với x nào thì f(x) > 0 (có lãi)? Đây là bài toán xét dấu tam thức bậc hai.","In a business profit model, profit is f(x) = −x²+10x−16 (thousands). For which x is f(x)>0 (profitable)? This is a sign-analysis problem for a quadratic trinomial.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Hãy tính Δ và tìm 2 nghiệm của f(x) trước khi học lý thuyết.","Try computing Δ and the two roots of f(x) before studying the theory.")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="F0O_Cunb79Q"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
         </div>
       </section>
 

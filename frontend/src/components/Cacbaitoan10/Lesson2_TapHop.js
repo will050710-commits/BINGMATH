@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/static-components */
+﻿/* eslint-disable react-hooks/static-components */
  
 "use client";
 import { useEffect, useState } from "react";
@@ -209,10 +209,10 @@ export default function Lesson2_TapHop() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="tydkR_VvOug" 
+              videoId="tyDKR4FG3Yw" 
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+              credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
             />
           </div>
         </section>

@@ -21,6 +21,19 @@ export default function Lesson30_DuongThang() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'Đường thẳng 3x−4y+5=0. Vectơ pháp tuyến →n=?', 'o': ['(3,4)', '(3,−4)', '(4,3)', '(−4,3)'], 'a': 1, 'ex': 'Dạng ax+by+c=0: →n=(a,b)=(3,−4).'}, {'q': 'Khoảng cách từ O(0,0) đến 3x+4y−10=0?', 'o': ['2', '10', '10/5=2', '10/√25=2'], 'a': 0, 'ex': 'd=|0+0−10|/√(9+16)=10/5=2.'}, {'q': 'Đường thẳng qua A(1,2) song song Ox (y=const).', 'o': ['x=1', 'y=2', 'x+y=3', 'x−y=−1'], 'a': 1, 'ex': 'Song song Ox → y=const=2 → y=2.'}, {'q': '2x+3y−6=0 cắt Oy tại điểm?', 'o': ['(0,2)', '(0,3)', '(0,−2)', '(3,0)'], 'a': 0, 'ex': 'x=0: 3y=6 → y=2. Cắt Oy tại (0,2).'}, {'q': 'd₁: 2x+y=1 và d₂: 4x+2y=5. Quan hệ?', 'o': ['Cắt nhau', 'Song song', 'Trùng nhau', 'Vuông góc'], 'a': 1, 'ex': 'a₁/a₂=1/2; b₁/b₂=1/2; c₁/c₂=1/5. Tỉ lệ a=b≠c → song song.'}];
@@ -37,7 +50,8 @@ export default function Lesson30_DuongThang() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. PT Tổng Quát","1. General Eq.")],["k2","📖",t("2. Các Dạng PT","2. Line Forms")],["k3","📖",t("3. VT Tương Đối","3. Position & Distance")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. PT Tổng Quát","1. General Eq.")],["k2","📖",t("2. Các Dạng PT","2. Line Forms")],["k3","📖",t("3. VT Tương Đối","3. Position & Distance")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/Cacbaitoan10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -59,6 +73,21 @@ export default function Lesson30_DuongThang() {
         <div style={{fontSize:16,lineHeight:1.8}}>{t("Thiết kế đường ray tàu, lập trình robot di chuyển theo đường thẳng, thiết kế kiến trúc — tất cả cần phương trình đường thẳng. Tọa độ giúp ta mô tả mọi đường thẳng bằng một công thức.","Designing railroad tracks, programming robot paths, architectural design — all require line equations. Coordinates let us describe any line with a formula.")}</div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="bVstXvN6GqI"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Phương Trình Tổng Quát","1. General Equation")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:17,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.4}}>

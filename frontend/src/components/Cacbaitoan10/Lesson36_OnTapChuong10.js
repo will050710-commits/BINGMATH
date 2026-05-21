@@ -21,6 +21,19 @@ export default function Lesson36_OnTapChuong10() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'Tung 2 xúc xắc. n(Ω)=?', 'o': ['12', '36', '6', '72'], 'a': 1, 'ex': '6×6=36.'}, {'q': 'P(A)=0.4. P(Ā)=?', 'o': ['0.4', '0.6', '1.4', '0.04'], 'a': 1, 'ex': 'P(Ā)=1−0.4=0.6.'}, {'q': "Hộp 4 đỏ, 6 xanh. Rút 1: P('đỏ')=?", 'o': ['4/6', '4/10', '6/10', '1/4'], 'a': 1, 'ex': 'P=4/10=2/5.'}, {'q': 'A,B độc lập: P(A)=0.5, P(B)=0.4. P(A∩B)=?', 'o': ['0.9', '0.1', '0.2', '0.45'], 'a': 2, 'ex': 'P(A∩B)=0.5×0.4=0.2.'}, {'q': "Tung 3 đồng xu. P('ít nhất 1 ngửa')=?", 'o': ['3/8', '5/8', '7/8', '1/8'], 'a': 2, 'ex': '1−P(tất cả sấp)=1−1/8=7/8.'}];
@@ -37,7 +50,8 @@ export default function Lesson36_OnTapChuong10() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/cacbailam10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -64,6 +78,21 @@ export default function Lesson36_OnTapChuong10() {
         ].map((card,i)=>(<article key={i} style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:12}}>{card.title}</div>{card.pts.map((pt,j)=><div key={j} style={{fontSize:13,color:"#555",marginBottom:8,display:"flex",gap:8}}><span style={{color:"#0B4F5C",fontWeight:700,flexShrink:0}}>•</span><span style={{fontFamily:"monospace"}}>{pt}</span></div>)}</article>))}
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="KFgvOQtH0Z0"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
+        </div>
+      </section>
     <section id="baiTap" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="✏️" title={t("Bài Tập Tổng Hợp","Mixed Practice")} />
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:36,transition:"all 0.3s"}}>
         {[{id:"e1",badge:"L36+37",q:t("Rút 1 lá từ 52. A='át đỏ'. Tính P(A) và P(Ā).","Draw 1 card from 52. A='red ace'. Find P(A) and P(Ā)."),a:[t("4 át trong 52 lá, trong đó 2 át đỏ (♥,♦)","4 aces total, 2 red (♥,♦)"),"P(A)=2/52=1/26≈0.038","P(Ā)=1−1/26=25/26≈0.962"]},

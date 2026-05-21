@@ -21,6 +21,19 @@ export default function Lesson35_XacSuatBienCo() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': "Tung xúc xắc. P('ra số 3')=?", 'o': ['1/3', '1/2', '1/6', '1/4'], 'a': 2, 'ex': 'n({3})=1, n(Ω)=6: P=1/6.'}, {'q': 'P(Ā)=0.3. P(A)=?', 'o': ['0.3', '0.7', '0.6', '0.4'], 'a': 1, 'ex': 'P(A)=1−P(Ā)=1−0.3=0.7.'}, {'q': 'A và B xung khắc, P(A)=0.3, P(B)=0.4. P(A∪B)=?', 'o': ['0.7', '0.12', '0.1', '1'], 'a': 0, 'ex': 'Xung khắc: P(A∪B)=0.3+0.4=0.7.'}, {'q': "Tung 2 xúc xắc. P('cả 2 ra số 6')=?", 'o': ['1/6', '1/12', '1/36', '2/6'], 'a': 2, 'ex': 'Độc lập: P=1/6×1/6=1/36.'}, {'q': 'P(A)=0.6, P(B)=0.5, P(A∩B)=0.2. P(A∪B)=?', 'o': ['1.1', '0.9', '0.7', '0.8'], 'a': 1, 'ex': 'P(A∪B)=0.6+0.5−0.2=0.9.'}];
@@ -37,7 +50,8 @@ export default function Lesson35_XacSuatBienCo() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Định Nghĩa XS","1. Definition")],["k2","📖",t("2. Quy Tắc Tính","2. Rules")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Định Nghĩa XS","1. Definition")],["k2","📖",t("2. Quy Tắc Tính","2. Rules")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/cacbailam10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -59,6 +73,21 @@ export default function Lesson35_XacSuatBienCo() {
         <div style={{fontSize:16,lineHeight:1.8}}>{t("Dự báo thời tiết '70% khả năng mưa', thống kê bệnh '1/1000 người mắc', trò chơi casino '47% thắng' — tất cả dùng xác suất. Xác suất là cách đo 'khả năng xảy ra' của một sự kiện!","Weather forecast '70% chance of rain', disease statistics '1 in 1000', casino '47% win rate' — all use probability. Probability measures the 'likelihood' of an event!")}</div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="q0P9xTHbSus"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Định Nghĩa Xác Suất","1. Definition of Probability")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Trong không gian mẫu đồng khả năng (mọi kết quả như nhau), xác suất của biến cố A là:","In a uniform sample space (equally likely outcomes), probability of event A is:")}</div>

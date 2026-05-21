@@ -53,6 +53,19 @@ export default function Lesson18_HinhHocDoLuong1() {
   },[]);
 
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
 
@@ -88,7 +101,8 @@ export default function Lesson18_HinhHocDoLuong1() {
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
 
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Đường Tròn NT/NTip","1. Circum/Inradius")],["k2","📖",t("2. Đường Trung Tuyến","2. Medians")],["k3","📖",t("3. Đường Cao","3. Altitudes")],["k4","📖",t("4. Hệ Thức Đặc Biệt","4. Special Cases")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Đường Tròn NT/NTip","1. Circum/Inradius")],["k2","📖",t("2. Đường Trung Tuyến","2. Medians")],["k3","📖",t("3. Đường Cao","3. Altitudes")],["k4","📖",t("4. Hệ Thức Đặc Biệt","4. Special Cases")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>
@@ -129,6 +143,21 @@ export default function Lesson18_HinhHocDoLuong1() {
         <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Các nhà thiết kế mạch điện, kiến trúc sư xây vòm, và kỹ sư cơ khí thường xuyên cần tính đường tròn bao quanh hoặc nằm trong một hình tam giác. Những công thức hệ thức lượng trong tam giác giúp giải quyết chính xác các bài toán đó.","Circuit designers, arch architects, and mechanical engineers regularly need circles surrounding or inscribed in triangles. The metric relations of triangles solve these problems precisely.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Nếu đường tròn ngoại tiếp tam giác có bán kính R, thì R liên hệ gì với cạnh và góc của tam giác?","If the circumscribed circle has radius R, how does R relate to the triangle's sides and angles?")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="M7w7X362T0E"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+          />
         </div>
       </section>
 

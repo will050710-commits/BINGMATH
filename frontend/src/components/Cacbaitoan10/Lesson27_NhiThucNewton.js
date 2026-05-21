@@ -21,6 +21,19 @@ export default function Lesson27_NhiThucNewton() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'Số hạng tổng quát trong (a+b)ⁿ là?', 'o': ['Cₙᵏ·aᵏ·bⁿ⁻ᵏ', 'Cₙᵏ·aⁿ⁻ᵏ·bᵏ', 'Cₙᵏ·(ab)ⁿ', 'n!·aᵏbⁿ'], 'a': 1, 'ex': 'T_{k+1}=Cₙᵏ·aⁿ⁻ᵏ·bᵏ (k từ 0 đến n).'}, {'q': '(a+b)⁴ có bao nhiêu số hạng?', 'o': ['4', '5', '6', '16'], 'a': 1, 'ex': '(a+b)ⁿ có n+1 số hạng → (a+b)⁴ có 5 số hạng.'}, {'q': 'Σₖ₌₀ⁿ Cₙᵏ = ?', 'o': ['n', 'n²', '2ⁿ', 'n!'], 'a': 2, 'ex': 'Thay a=b=1: (1+1)ⁿ=2ⁿ.'}, {'q': 'Hệ số x² trong khai triển (x+1)⁴?', 'o': ['4', '6', '4', '1'], 'a': 1, 'ex': 'T₃=C₄²·x²·1²=6x².'}, {'q': 'Số hạng không chứa x trong (x+1/x)⁶?', 'o': ['C₆³', 'C₆²', 'C₆⁴', '20'], 'a': 0, 'ex': 'T_{k+1}=C₆ᵏ·x⁶⁻ᵏ·x⁻ᵏ=C₆ᵏ·x⁶⁻²ᵏ. Cần 6−2k=0→k=3. T₄=C₆³=20.'}];
@@ -37,7 +50,8 @@ export default function Lesson27_NhiThucNewton() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Nhị Thức Newton","1. Binomial Theorem")],["k2","📖",t("2. Tam Giác Pascal","2. Pascal's Triangle")],["k3","📖",t("3. Tính Chất","3. Properties")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Nhị Thức Newton","1. Binomial Theorem")],["k2","📖",t("2. Tam Giác Pascal","2. Pascal's Triangle")],["k3","📖",t("3. Tính Chất","3. Properties")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/Cacbailam10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -61,6 +75,21 @@ export default function Lesson27_NhiThucNewton() {
         <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("(a+b)² = a²+2ab+b². (a+b)³ = a³+3a²b+3ab²+b³. Các hệ số 1,2,1 và 1,3,3,1 có quy luật gì? Đó là Tam Giác Pascal và Nhị Thức Newton — cho phép khai triển (a+b)ⁿ với mọi n!","(a+b)²=a²+2ab+b². (a+b)³=a³+3a²b+3ab²+b³. The coefficients 1,2,1 and 1,3,3,1 follow a pattern: Pascal's Triangle and the Binomial Theorem — allowing expansion of (a+b)ⁿ for any n!")}</div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="f2nNf6D8KIE"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Dr. Trefor Bazett (CC BY-SA)", "Video by Dr. Trefor Bazett (CC BY-SA)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Nhị Thức Newton","1. Binomial Theorem")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12}}>📌 {t("Công thức tổng quát:","General formula:")}</div>\n        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:15,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.4}}>

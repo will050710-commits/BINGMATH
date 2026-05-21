@@ -54,6 +54,19 @@ export default function Lesson10_DinhLiCosin() {
   },[]);
 
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
 
@@ -89,7 +102,8 @@ export default function Lesson10_DinhLiCosin() {
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
 
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Định Lí","1. The Law")],["k2","📖",t("2. Tính Góc","2. Finding Angles")],["k3","📖",t("3. Ứng Dụng","3. Applications")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Định Lí","1. The Law")],["k2","📖",t("2. Tính Góc","2. Finding Angles")],["k3","📖",t("3. Ứng Dụng","3. Applications")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>
@@ -136,6 +150,21 @@ export default function Lesson10_DinhLiCosin() {
         <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Nếu biết hai cạnh và góc xen giữa của tam giác, bạn có thể tính cạnh còn lại không? Hoặc biết 3 cạnh, bạn có thể tính các góc? Định lí Côsin trả lời chính xác điều đó.","If you know two sides and the included angle of a triangle, can you find the third side? Or knowing 3 sides, can you find all angles? The Law of Cosines answers exactly that.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Định lí Pythagore có liên hệ gì với Định lí Côsin không?","How is the Pythagorean theorem related to the Law of Cosines?")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="Z_D3_B2WlTM"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
         </div>
       </section>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 const SH=({icon,title})=>(<div style={{display:"flex",alignItems:"center",gap:12,fontSize:22,fontWeight:700,color:"#0B4F5C",marginBottom:20,paddingBottom:12,borderBottom:"2px solid #f0f0f0"}}><span>{icon}</span><span>{title}</span></div>);
 const RS=({items,onReset,scoreLabel,t})=>(<div><div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:48,marginBottom:8}}>{items.filter(i=>i.correct).length===items.length?"🏆":items.filter(i=>i.correct).length>=items.length*0.6?"👍":"💪"}</div><div style={{fontSize:26,fontWeight:700,color:"#0B4F5C"}}>{items.filter(i=>i.correct).length} / {items.length}</div><div style={{color:"#777",fontSize:16,marginTop:4}}>{scoreLabel}</div></div><div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24}}>{items.map((item,idx)=>(<div key={idx} style={{padding:"14px 18px",borderRadius:10,background:item.correct?"#eafaf1":"#fdf2f2",border:`1px solid ${item.correct?"#a9dfbf":"#f1948a"}`}}><div style={{display:"flex",alignItems:"flex-start",gap:10}}><span style={{fontSize:18,flexShrink:0}}>{item.correct?"✅":"❌"}</span><div style={{flex:1}}><div style={{fontSize:15,fontWeight:600,color:"#333",marginBottom:4}}>{t("Câu","Q")} {idx+1}: {item.qText}</div>{!item.correct&&<div style={{fontSize:14,color:"#922b21"}}>{t("Đáp án đúng:","Correct:")} <strong>{item.correctText}</strong></div>}{item.yourText&&!item.correct&&<div style={{fontSize:14,color:"#777"}}>{t("Bạn chọn:","You chose:")} {item.yourText}</div>}</div></div></div>))}</div><div style={{textAlign:"center"}}><button onClick={onReset} style={{padding:"12px 32px",background:"black",color:"white",border:"none",borderRadius:8,fontWeight:600,fontSize:15,cursor:"pointer"}}>🔄 {t("Chơi lại","Play Again")}</button></div></div>);
 
@@ -21,6 +22,19 @@ export default function Lesson15_TichSoVecto() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
   const cf=(id)=>{const q=fQ.find(q=>q.id===id);const r=(fa[id]||"").toLowerCase().trim().replace(/\s/g,"");return[q.ans,...(q.alt||[])].map(a=>a.toLowerCase().replace(/\s/g,"")).includes(r);};
@@ -37,7 +51,8 @@ export default function Lesson15_TichSoVecto() {
   const mcQ=[{'q': 'k→a với k < 0 và →a ≠ →0. Kết quả k→a có hướng thế nào?', 'o': ['Cùng hướng →a', 'Ngược hướng →a', 'Hướng tùy ý', 'Không có hướng'], 'a': 1, 'ex': 'k<0 → k→a ngược hướng →a, độ dài |k|·|→a|.'}, {'q': '|−3→a| = ? khi |→a| = 5', 'o': ['−15', '15', '3', '8'], 'a': 1, 'ex': '|−3→a|=|−3|·|→a|=3·5=15.'}, {'q': '→b = k·→a nghĩa là?', 'o': ['→a và →b bằng nhau', '→a và →b cùng phương', '→a và →b vuông góc', '→a và →b cùng hướng'], 'a': 1, 'ex': '→b=k·→a ⟺ →a và →b cùng phương (song song hoặc trùng).'}, {'q': 'A,B,C thẳng hàng khi nào?', 'o': ['→AB ⊥ →AC', '→AB = k·→AC', '|→AB|=|→AC|', '→AB + →AC = →0'], 'a': 1, 'ex': 'A,B,C thẳng hàng ⟺ →AB = k·→AC (tồn tại k).'}, {'q': 'k(→a + →b) = ?', 'o': ['k→a + →b', '→a + k→b', 'k→a + k→b', 'k²(→a+→b)'], 'a': 2, 'ex': 'Tính chất phân phối: k(→a+→b)=k→a+k→b.'}];
   const tfC=[{'s': 'k→a với k=0 cho kết quả là vectơ không →0.', 'a': true, 'ex': 'ĐÚNG — 0·→a = →0 với mọi →a.'}, {'s': '2→a có cùng hướng với →a.', 'a': true, 'ex': 'ĐÚNG — k=2>0 → cùng hướng.'}, {'s': '−→a có cùng hướng với →a.', 'a': false, 'ex': 'SAI — −→a=(−1)→a, k=−1<0 → NGƯỢC hướng →a.'}, {'s': '→b = k·→a ⟺ →a và →b cùng phương.', 'a': true, 'ex': 'ĐÚNG — điều kiện cùng phương cho →a ≠ →0.'}, {'s': '|k→a| = k·|→a| với mọi k.', 'a': false, 'ex': 'SAI — |k→a| = |k|·|→a| (giá trị tuyệt đối của k).'}];
   const fQ=[{'id': 'f1', 'tp': '→b = k·→a ⟺ →a và →b ___.', 'ans': 'cùng phương', 'alt': ['cung phuong', 'parallel', 'song song'], 'h': ''}, {'id': 'f2', 'tp': '|k→a| = ___ · |→a|', 'ans': '|k|', 'alt': ['|k|', 'abs(k)'], 'h': ''}, {'id': 'f3', 'tp': '(−1)·→a = ___', 'ans': '−→a', 'alt': ['-a', '−a', '−→a', '-vec(a)'], 'h': ''}];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Định Nghĩa","1. Definition")],["k2","📖",t("2. Tính Chất","2. Properties")],["k3","📖",t("3. Điều Kiện Cùng Phương","3. Collinearity")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Định Nghĩa","1. Definition")],["k2","📖",t("2. Tính Chất","2. Properties")],["k3","📖",t("3. Điều Kiện Cùng Phương","3. Collinearity")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
 
   return (
     <div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}>
@@ -66,6 +81,21 @@ export default function Lesson15_TichSoVecto() {
         <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
           <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Nếu một người đi với vectơ vận tốc →v, thì sau 2 giờ họ đã di chuyển theo vectơ 2→v — cùng hướng nhưng gấp đôi độ dài. Đây là tích của số với vectơ!","If someone moves with velocity vector →v, after 2 hours they've displaced 2→v — same direction but double length. This is scalar multiplication of a vector!")}</div>
           <div style={{fontSize:16}}>❓ <em>{t("k→v với k < 0 nghĩa là gì về hướng?","What does k→v mean for direction when k < 0?")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="fNk_zzaMoSs"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
+          />
         </div>
       </section>
       <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}>

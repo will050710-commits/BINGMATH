@@ -21,6 +21,19 @@ export default function Lesson28_OnTapChuong8() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'A₅² = ?', 'o': ['10', '20', '15', '25'], 'a': 1, 'ex': '5×4=20.'}, {'q': 'C₈³ = ?', 'o': ['56', '28', '168', '336'], 'a': 0, 'ex': '8×7×6/6=56.'}, {'q': 'Σ C₄ᵏ = ?', 'o': ['4', '8', '16', '24'], 'a': 2, 'ex': '2⁴=16.'}, {'q': 'Hệ số x² trong (1+x)⁵?', 'o': ['5', '10', '20', '15'], 'a': 1, 'ex': 'C₅²=10.'}, {'q': 'P₆ = ?', 'o': ['720', '120', '24', '360'], 'a': 0, 'ex': '6!=720.'}];
@@ -37,7 +50,8 @@ export default function Lesson28_OnTapChuong8() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/Cacbaitoan10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -65,6 +79,21 @@ export default function Lesson28_OnTapChuong8() {
         ].map((card,i)=>(<article key={i} style={{padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:10}}>{card.title}</div>{card.pts.map((pt,j)=><div key={j} style={{fontSize:13,color:"#555",marginBottom:7,display:"flex",gap:8}}><span style={{color:"#0B4F5C",fontWeight:700,flexShrink:0}}>•</span><span style={{fontFamily:"monospace"}}>{pt}</span></div>)}</article>))}
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="Z78aBAMc89Y"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
+          />
+        </div>
+      </section>
     <section id="baiTap" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="✏️" title={t("Bài Tập Tổng Hợp","Mixed Practice")} />
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:36,transition:"all 0.3s"}}>
         {[{id:"e1",badge:"L27+28",q:t("Từ {0,1,2,3,4,5} lập số tự nhiên có 4 chữ số khác nhau và chữ số đầu ≠ 0. Bao nhiêu số?","From {0,1,2,3,4,5} form 4-digit numbers with distinct digits, first digit ≠ 0. How many?"),a:[t("Hàng nghìn: 5 cách (1-5, không dùng 0)","Thousands: 5 ways (1-5, not 0)"),t("Hàng trăm: 5 cách (0 và 4 số còn lại)","Hundreds: 5 ways"),t("Hàng chục: 4 cách, hàng đơn vị: 3 cách","Tens: 4, Units: 3"),"5×5×4×3 = 300"]},

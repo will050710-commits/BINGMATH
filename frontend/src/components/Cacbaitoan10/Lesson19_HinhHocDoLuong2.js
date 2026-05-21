@@ -53,6 +53,19 @@ export default function Lesson19_HinhHocDoLuong2() {
   },[]);
 
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
 
@@ -88,7 +101,8 @@ export default function Lesson19_HinhHocDoLuong2() {
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
 
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Diện Tích Đa Giác","1. Polygon Areas")],["k2","📖",t("2. Hình Tròn","2. Circles")],["k3","📖",t("3. Đa Giác Đều","3. Regular Polygons")],["k4","📖",t("4. Ứng Dụng","4. Applications")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Diện Tích Đa Giác","1. Polygon Areas")],["k2","📖",t("2. Hình Tròn","2. Circles")],["k3","📖",t("3. Đa Giác Đều","3. Regular Polygons")],["k4","📖",t("4. Ứng Dụng","4. Applications")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
 
   const shapes = [
     {name:t("Tam giác","Triangle"),icon:"△",area:t("S = ½ · đáy · cao\nS = ½ · a · b · sinC\nS = √(s(s−a)(s−b)(s−c))","S=½·base·height\nS=½·a·b·sinC\nHeron formula"),perimeter:t("P = a + b + c","P=a+b+c"),c:"#1a5276",bg:"#eaf4fb"},
@@ -138,6 +152,21 @@ export default function Lesson19_HinhHocDoLuong2() {
         <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Một người cần lát gạch sàn nhà. Phòng hình chữ nhật 5m×4m, có một bàn hình tròn bán kính 0.8m đặt ở giữa (không cần lát dưới bàn). Tính diện tích cần lát gạch — đây là bài toán kết hợp diện tích hình phẳng rất thực tế!","Someone needs to tile a floor. Room is 5m×4m rectangle, with a circular table radius 0.8m in the middle (no tile needed under table). Find the area to tile — this is a very practical combined-area problem!")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("S = 5×4 − π×0.8² ≈ 20 − 2.01 ≈ 17.99 m². Đây là cách kết hợp diện tích.","S = 5×4 − π×0.8² ≈ 17.99 m². This is how to combine areas.")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="M7w7X362T0E"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+          />
         </div>
       </section>
 

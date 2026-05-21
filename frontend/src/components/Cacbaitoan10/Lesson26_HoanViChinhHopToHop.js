@@ -21,6 +21,19 @@ export default function Lesson26_HoanViChinhHopToHop() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'Pₙ = ?', 'o': ['n+1', 'n²', 'n!', '2n'], 'a': 2, 'ex': 'Pₙ = n! (giai thừa).'}, {'q': 'A₅³ = ?', 'o': ['10', '20', '60', '120'], 'a': 2, 'ex': 'A₅³=5×4×3=60.'}, {'q': 'C₆² = ?', 'o': ['12', '15', '30', '36'], 'a': 1, 'ex': 'C₆²=6!/(2!4!)=30/2=15.'}, {'q': 'Chọn 3 người từ 8 không quan tâm thứ tự: dùng công thức nào?', 'o': ['P₈', 'A₈³', 'C₈³', '8³'], 'a': 2, 'ex': 'Không thứ tự → Tổ hợp C₈³=56.'}, {'q': 'C₁₀³ = ?', 'o': ['60', '90', '120', '720'], 'a': 2, 'ex': 'C₁₀³=10×9×8/(3×2×1)=720/6=120.'}];
@@ -37,7 +50,8 @@ export default function Lesson26_HoanViChinhHopToHop() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Hoán Vị","1. Permutations")],["k2","📖",t("2. Chỉnh Hợp","2. Arrangements")],["k3","📖",t("3. Tổ Hợp","3. Combinations")],["k4","📖",t("4. So Sánh","4. Comparison")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Hoán Vị","1. Permutations")],["k2","📖",t("2. Chỉnh Hợp","2. Arrangements")],["k3","📖",t("3. Tổ Hợp","3. Combinations")],["k4","📖",t("4. So Sánh","4. Comparison")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/Cacbaitoan10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -59,6 +73,21 @@ export default function Lesson26_HoanViChinhHopToHop() {
         <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Xếp 4 người vào 4 ghế: 4!=24 cách. Chọn đội trưởng và phó từ 10 người: P(10,2)=90 cách. Chọn 3 người từ 10 người (không phân biệt thứ tự): C(10,3)=120 cách. Ba khái niệm này là nền tảng của tổ hợp!","Arrange 4 people in 4 chairs: 4!=24. Choose captain and vice from 10: P(10,2)=90. Choose 3 from 10 (unordered): C(10,3)=120. These 3 concepts are the foundation of combinatorics!")}</div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="Z78aBAMc89Y"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Hoán Vị","1. Permutations of n Elements")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Hoán vị của n phần tử là một cách sắp xếp n phần tử đó theo một thứ tự xác định.","A permutation of n elements is an arrangement of all n elements in a specific order.")}</div>

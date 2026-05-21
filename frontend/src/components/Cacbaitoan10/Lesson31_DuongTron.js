@@ -21,6 +21,19 @@ export default function Lesson31_DuongTron() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'PT đường tròn tâm I(0,0) bán kính 5?', 'o': ['x+y=5', 'x²+y²=25', 'x²+y²=5', '(x+y)²=25'], 'a': 1, 'ex': '(x−0)²+(y−0)²=25 → x²+y²=25.'}, {'q': '(x−2)²+(y+3)²=16. Tâm và R?', 'o': ['I(2,3),R=4', 'I(2,−3),R=4', 'I(−2,3),R=16', 'I(2,−3),R=16'], 'a': 1, 'ex': 'Tâm I(2,−3), R=√16=4.'}, {'q': 'Điểm M(0,3) có nằm trên đường tròn x²+y²=9?', 'o': ['Trong', 'Trên', 'Ngoài', 'Không xác định'], 'a': 1, 'ex': '0²+3²=9=R² → M nằm trên đường tròn.'}, {'q': 'd(I,ℓ)<R thì đường thẳng ℓ và đường tròn tâm I?', 'o': ['Không giao', 'Tiếp xúc', 'Cắt tại 2 điểm', 'Cắt tại 1 điểm'], 'a': 2, 'ex': 'd<R → đường thẳng cắt đường tròn tại 2 điểm.'}, {'q': 'x²+y²−4x−6y+9=0. Dạng chính tắc?', 'o': ['(x−2)²+(y−3)²=4', '(x+2)²+(y+3)²=4', '(x−2)²+(y−3)²=9', '(x−4)²+(y−6)²=9'], 'a': 0, 'ex': '(x²−4x+4)+(y²−6y+9)=9+4=4 → (x−2)²+(y−3)²=4.'}];
@@ -37,7 +50,8 @@ export default function Lesson31_DuongTron() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. PT Đường Tròn","1. Circle Eq.")],["k2","📖",t("2. Vị Trí Tương Đối","2. Relative Position")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. PT Đường Tròn","1. Circle Eq.")],["k2","📖",t("2. Vị Trí Tương Đối","2. Relative Position")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/cacbailam10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -59,6 +73,21 @@ export default function Lesson31_DuongTron() {
         <div style={{fontSize:16,lineHeight:1.8}}>{t("Sóng radio lan truyền theo hình tròn. Radar quét theo hình tròn. Bánh xe, đồng hồ, cung tròn — đường tròn xuất hiện khắp nơi. Trong tọa độ, một đường tròn được mô tả bằng một phương trình bậc hai đơn giản!","Radio waves spread in circles. Radar sweeps in circles. Wheels, clocks, arcs — circles appear everywhere. In coordinates, a circle is described by a simple second-degree equation!")}</div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="uKAs0G8df0M"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Phương Trình Đường Tròn","1. Circle Equation")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:17,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.6}}>

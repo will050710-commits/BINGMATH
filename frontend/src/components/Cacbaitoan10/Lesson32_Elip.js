@@ -1,4 +1,4 @@
-﻿
+
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -84,6 +84,19 @@ export default function Lesson32_Elip() {
   }, []);
 
   const t = (vi, en) => lang === "vi" ? vi : en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
   const tr = (id) => setRev(p => (({ ...p, [id]: !p[id] })));
 
@@ -147,6 +160,21 @@ export default function Lesson32_Elip() {
             <button onClick={() => setLang("en")} style={{ padding: "8px 16px", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600, background: lang === "en" ? "white" : "transparent", boxShadow: lang === "en" ? "0 2px 8px rgba(0,0,0,0.1)" : "none" }}>EN</button>
           </div>
         </header>
+
+        {/* ════════════════════════════════════════
+            VIDEO BÀI GIẢNG
+        ════════════════════════════════════════ */}
+        <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+          <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+          <div className="reveal" data-reveal>
+            <LessonVideoPlayer
+              videoId="mYvHeuSgZTo"
+              subtitles={videoSubtitles}
+              lang={lang}
+              credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+            />
+          </div>
+        </section>
 
         <section id="definition" className="reveal" data-reveal style={{ marginBottom: 60 }}>
           <SH icon="📍" title={t("1. Định nghĩa đường Elip", "1. Definition of Ellipse")} />

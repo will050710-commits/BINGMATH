@@ -21,6 +21,19 @@ export default function Lesson34_KhongGianMau() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'Tung 1 xúc xắc. n(Ω)=?', 'o': ['2', '4', '6', '12'], 'a': 2, 'ex': 'Ω={1,2,3,4,5,6} → n(Ω)=6.'}, {'q': "A='ra số chẵn' khi tung xúc xắc. n(A)=?", 'o': ['2', '3', '4', '6'], 'a': 1, 'ex': 'A={2,4,6} → n(A)=3.'}, {'q': 'Ā là biến cố gì?', 'o': ['A xảy ra hai lần', 'A KHÔNG xảy ra', 'A luôn xảy ra', 'A xảy ra một nửa'], 'a': 1, 'ex': 'Ā là biến cố đối — khi A không xảy ra.'}, {'q': 'Hai biến cố xung khắc khi?', 'o': ['A⊂B', 'A∩B=∅', 'A=B', 'A∪B=Ω'], 'a': 1, 'ex': 'Xung khắc: không thể cùng xảy ra → A∩B=∅.'}, {'q': 'Tung 2 xúc xắc. n(Ω)=?', 'o': ['12', '6', '36', '72'], 'a': 2, 'ex': '6×6=36 (quy tắc nhân).'}];
@@ -37,7 +50,8 @@ export default function Lesson34_KhongGianMau() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Không Gian Mẫu","1. Sample Space")],["k2","📖",t("2. Quan Hệ Biến Cố","2. Event Relations")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Không Gian Mẫu","1. Sample Space")],["k2","📖",t("2. Quan Hệ Biến Cố","2. Event Relations")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/cacbailam10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -59,6 +73,21 @@ export default function Lesson34_KhongGianMau() {
         <div style={{fontSize:16,lineHeight:1.8}}>{t("Khi tung đồng xu, có 2 kết quả: sấp (S) hoặc ngửa (N). Tập {S,N} là không gian mẫu. Biến cố 'ra mặt ngửa' = {N}. Xác suất = số kết quả thuận lợi / tổng số kết quả. Đây là nền tảng của lý thuyết xác suất!","When flipping a coin: 2 outcomes: Tails (T) or Heads (H). Set {T,H} is the sample space. Event 'heads' = {H}. Probability = favorable outcomes / total outcomes. This is the foundation of probability theory!")}</div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="KFgvOQtH0Z0"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Không Gian Mẫu","1. Sample Space")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:10}}>📌 {t("Định nghĩa","Definitions")}</div>

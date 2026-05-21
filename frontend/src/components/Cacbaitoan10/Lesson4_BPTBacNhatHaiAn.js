@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/static-components */
+﻿/* eslint-disable react-hooks/static-components */
 
 "use client";
 import { useEffect, useState } from "react";
@@ -324,7 +324,7 @@ export default function Lesson4_BPTBacNhatHaiAn() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="8Rz77E7rYHI"
+              videoId="680X_6GvYCI"
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}

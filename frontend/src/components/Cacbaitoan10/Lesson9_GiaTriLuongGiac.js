@@ -25,6 +25,19 @@ export default function Lesson9_GiaTriLuongGiac() {
   },[]);
 
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
 
@@ -60,7 +73,8 @@ export default function Lesson9_GiaTriLuongGiac() {
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
 
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Đường Tròn","1. Unit Circle")],["k2","📖",t("2. Định Nghĩa","2. Definitions")],["k3","📖",t("3. Bảng GT","3. Value Table")],["k4","📖",t("4. Công Thức","4. Formulas")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Đường Tròn","1. Unit Circle")],["k2","📖",t("2. Định Nghĩa","2. Definitions")],["k3","📖",t("3. Bảng GT","3. Value Table")],["k4","📖",t("4. Công Thức","4. Formulas")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
 
   const btn=(bg,co)=>({background:bg,color:co,border:"none",borderRadius:8,padding:"10px 18px",fontWeight:600,cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"});
 
@@ -89,6 +103,21 @@ export default function Lesson9_GiaTriLuongGiac() {
         <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Trong kiến trúc và kỹ thuật, người ta tính góc nghiêng mái nhà, góc cần cẩu, hướng bay máy bay — tất cả dùng sin, cos, tan. Với góc tam giác (0°–180°), chúng ta cần biết chính xác các giá trị này.","In architecture and engineering — roof pitch, crane angles, flight headings — all use sin, cos, tan. For triangle angles (0°–180°) we need these values precisely.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Bạn đã nhớ sin 30°, cos 60°, tan 45° chưa?","Do you remember sin 30°, cos 60°, tan 45°?")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="1m9p_98EtI8"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+          />
         </div>
       </section>
 

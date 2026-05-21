@@ -21,6 +21,19 @@ export default function Lesson24_OnTapChuong7() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'f(x)=x²+x+1. Dấu f(x)?', 'o': ['Luôn âm', 'Luôn dương', 'Đổi dấu tại 2 điểm', 'Bằng 0'], 'a': 1, 'ex': 'a=1>0, Δ=1−4=−3<0 → f(x)>0 mọi x.'}, {'q': 'Nghiệm của 2x²−3x−2<0?', 'o': ['(−1/2,2)', '(−∞,−1/2)∪(2,+∞)', '[−1/2,2]', 'ℝ'], 'a': 0, 'ex': 'Δ=9+16=25; x₁=−1/2,x₂=2. a>0,<0→(−1/2,2).'}, {'q': 'x⁴−4=0. Nghiệm thực?', 'o': ['x=±2', 'x=±√2', 'x=±2 và x=±√2', 'x=2'], 'a': 1, 'ex': 't=x²: t²=4→t=2 (t=−2 loại). x²=2→x=±√2.'}, {'q': 'Nghiệm của x²≥0?', 'o': ['∅', 'ℝ', '(0,+∞)', '[0,+∞)'], 'a': 1, 'ex': 'x² ≥ 0 với mọi x thực → nghiệm là ℝ.'}, {'q': 'a>0, Δ>0. Nghiệm BPT ax²+bx+c≤0?', 'o': ['(x₁,x₂)', '[x₁,x₂]', '(−∞,x₁)∪(x₂,+∞)', '∅'], 'a': 1, 'ex': 'a>0,Δ>0: f≤0 trong [x₁,x₂].'}];
@@ -37,7 +50,8 @@ export default function Lesson24_OnTapChuong7() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],["congThuc","📐",t("Bảng Nghiệm","Solution Table")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["congThuc","📐",t("Bảng Nghiệm","Solution Table")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/Cacbaitoan10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -69,6 +83,21 @@ export default function Lesson24_OnTapChuong7() {
         ].map((card,i)=>(<article key={i} style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:12}}>{card.title}</div>{card.pts.map((pt,j)=><div key={j} style={{fontSize:13,color:"#555",marginBottom:8,display:"flex",gap:8}}><span style={{color:"#0B4F5C",fontWeight:700,flexShrink:0}}>•</span><span style={{fontFamily:"monospace"}}>{pt}</span></div>)}</article>))}
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="Un686B_pD-k"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+          />
+        </div>
+      </section>
     <section id="congThuc" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📐" title={t("Bảng Công Thức & Nghiệm","Formula & Solution Table")} />
       <div className="reveal" data-reveal style={{overflowX:"auto",borderRadius:10,boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <table style={{borderCollapse:"collapse",width:"100%",fontSize:13,minWidth:600}}>

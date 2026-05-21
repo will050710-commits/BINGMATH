@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
+import LessonVideoPlayer from "./LessonVideoPlayer";
 const SectionHeader = ({ icon, title }) => (
   <div style={{ display:"flex", alignItems:"center", gap:12, fontSize:22, fontWeight:700, color:"#0B4F5C", marginBottom:20, paddingBottom:12, borderBottom:"2px solid #f0f0f0" }}>
     <span>{icon}</span><span>{title}</span>
@@ -156,7 +157,8 @@ export default function OnTapChuong1() {
   const tfResultItems = tfHistory.map(h=>({correct:h.correct,qText:tfCards[h.q].stmt,correctText:tfCards[h.q].answer?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.given?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fillResultItems = fillChecked ? fillQuestions.map(q=>({correct:checkFill(q.id),qText:q.template,correctText:q.answer,yourText:fillAnswers[q.id]||t("(bỏ trống)","(blank)")})) : [];
 
-  const tabs = [["tomTat","📚",t("Tóm Tắt","Summary")],["congThuc","📐",t("Công Thức","Formulas")],["baiTapTH","✏️",t("Bài Tập TH","Mixed Exercises")],["miniGame","🎮",t("Mini Game","Mini Game")]];
+  const tabs = [["tomTat","📚",t("Tóm Tắt","Summary")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["congThuc","📐",t("Công Thức","Formulas")],["baiTapTH","✏️",t("Bài Tập TH","Mixed Exercises")],["miniGame","🎮",t("Mini Game","Mini Game")]];
 
   return (
     <div style={{ width: "100%", background: "#ffffff", display: "flex", justifyContent: "center" }}>
@@ -223,6 +225,21 @@ export default function OnTapChuong1() {
             ))}
           </div>
         </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="tyDKR4FG3Yw"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+          />
+        </div>
+      </section>
 
         {/* CÔNG THỨC */}
         <section id="congThuc" style={{ scrollMarginTop: 80, marginBottom: 64 }}>

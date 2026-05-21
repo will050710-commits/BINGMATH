@@ -22,6 +22,19 @@ export default function Lesson16_TichVoHuong() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
   const cf=(id)=>{const q=fQ.find(q=>q.id===id);const r=(fa[id]||"").toLowerCase().trim().replace(/\s/g,"");return[q.ans,...(q.alt||[])].map(a=>a.toLowerCase().replace(/\s/g,"")).includes(r);};
@@ -38,7 +51,8 @@ export default function Lesson16_TichVoHuong() {
   const mcQ=[{'q': '→a·→b = ?', 'o': ['→a×→b', '→a+→b', '|→a|·|→b|·cosφ', '|→a|·|→b|·sinφ'], 'a': 2, 'ex': '→a·→b=|→a|·|→b|·cosφ, với φ là góc giữa hai vectơ.'}, {'q': '→a ⊥ →b ⟺ ?', 'o': ['→a·→b=1', '→a·→b=0', '→a·→b=|→a|', '→a=→b'], 'a': 1, 'ex': 'Vuông góc ⟺ cosφ=cos90°=0 ⟺ →a·→b=0.'}, {'q': '→a=(3,4). |→a| = ?', 'o': ['7', '1', '5', '√7'], 'a': 2, 'ex': '|→a|=√(3²+4²)=√(9+16)=√25=5.'}, {'q': '→a=(1,0), →b=(0,1). →a·→b = ?', 'o': ['1', '0', '-1', '2'], 'a': 1, 'ex': '→a·→b=1·0+0·1=0 → vuông góc.'}, {'q': 'cosφ=(→a·→b)/(|→a|·|→b|). Nếu →a·→b<0 thì φ ∈ ?', 'o': ['(0°,90°)', 'φ=90°', '(90°,180°)', 'φ=180°'], 'a': 2, 'ex': '→a·→b<0 → cosφ<0 → φ ∈ (90°,180°) → góc tù.'}];
   const tfC=[{'s': 'Tích vô hướng →a·→b là một số thực.', 'a': true, 'ex': 'ĐÚNG — kết quả là SCALAR (số thực), không phải vectơ.'}, {'s': '→a·→b = →b·→a (giao hoán).', 'a': true, 'ex': 'ĐÚNG — tích vô hướng giao hoán.'}, {'s': '→a·→a = |→a|.', 'a': false, 'ex': 'SAI — →a·→a = |→a|² (bình phương độ dài, không phải độ dài).'}, {'s': '→a ⊥ →b ⟺ →a·→b = 0.', 'a': true, 'ex': 'ĐÚNG — vuông góc ⟺ cosφ=0 ⟺ →a·→b=0.'}, {'s': 'Nếu →a·→b > 0 thì góc φ là góc nhọn.', 'a': true, 'ex': 'ĐÚNG — →a·→b>0 ⟺ cosφ>0 ⟺ 0°<φ<90° (góc nhọn).'}];
   const fQ=[{'id': 'f1', 'tp': '→a=(3,4). →a·→a = ___.', 'ans': '25', 'alt': ['25'], 'h': '|→a|²=9+16=25'}, {'id': 'f2', 'tp': '→a ⊥ →b ⟺ →a · →b = ___', 'ans': '0', 'alt': ['0'], 'h': ''}, {'id': 'f3', 'tp': '→a=(1,2), →b=(4,−2). →a·→b = ___.', 'ans': '0', 'alt': ['0'], 'h': '1×4+2×(−2)=4−4=0'}];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Định Nghĩa","1. Definition")],["k2","📖",t("2. Tính Chất","2. Properties")],["k3","📖",t("3. Theo Toạ Độ","3. Coordinates")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Định Nghĩa","1. Definition")],["k2","📖",t("2. Tính Chất","2. Properties")],["k3","📖",t("3. Theo Toạ Độ","3. Coordinates")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
 
   return (
     <div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}>
@@ -67,6 +81,21 @@ export default function Lesson16_TichVoHuong() {
         <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
           <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Trong vật lý, công của một lực F dọc theo đường dịch chuyển d là: W = F·d·cosθ. Đây chính là tích vô hướng của hai vectơ! Nếu lực vuông góc với chuyển vị thì cosθ=0 → W=0 (không sinh công).","In physics, work done by force F over displacement d is W=F·d·cosθ. This IS the dot product! If force is perpendicular to displacement, cosθ=0 → W=0 (no work done).")}</div>
           <div style={{fontSize:16}}>❓ <em>{t("Tại sao tích vô hướng lại trả về một số, không phải một vectơ?","Why does the dot product return a scalar, not a vector?")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="LyGKycYT2v0"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
+          />
         </div>
       </section>
       <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}>

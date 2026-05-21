@@ -21,6 +21,19 @@ export default function Lesson22_GiaiBPTBacHai() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'x²−3x−4<0. Tập nghiệm?', 'o': ['(−1,4)', '(−∞,−1)∪(4,+∞)', '[−1,4]', '∅'], 'a': 0, 'ex': 'Δ=9+16=25>0; x₁=−1,x₂=4. a>0,BPT<0 → (−1,4).'}, {'q': '2x²−8>0. Tập nghiệm?', 'o': ['(−2,2)', '(−∞,−2)∪(2,+∞)', '[−2,2]', 'ℝ'], 'a': 1, 'ex': 'x²>4 → x<−2 hoặc x>2.'}, {'q': '−x²+6x−9≤0. Tập nghiệm?', 'o': ['∅', 'ℝ', '{3}', 'ℝ\\{3}'], 'a': 1, 'ex': '−(x−3)²≤0 luôn đúng vì −(x−3)²≤0 với mọi x → ℝ.'}, {'q': 'x²+4x+5>0. Tập nghiệm?', 'o': ['(−5,−1)', '∅', 'ℝ', '(−∞,−5)∪(−1,+∞)'], 'a': 2, 'ex': 'Δ=16−20=−4<0, a=1>0 → f(x)>0 mọi x → ℝ.'}, {'q': 'Giải x²≤9.', 'o': ['(−3,3)', '[−3,3]', '(−∞,−3]∪[3,+∞)', '∅'], 'a': 1, 'ex': 'x²−9≤0, x₁=−3,x₂=3, a>0,BPT≤0 → [−3,3].'}];
@@ -37,7 +50,8 @@ export default function Lesson22_GiaiBPTBacHai() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Quy Trình","1. Steps")],["k2","📖",t("2. Bảng Nghiệm","2. Solution Table")],["k3","📖",t("3. Ví Dụ","3. Examples")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Quy Trình","1. Steps")],["k2","📖",t("2. Bảng Nghiệm","2. Solution Table")],["k3","📖",t("3. Ví Dụ","3. Examples")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/Cacbaitoan10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -64,6 +78,21 @@ export default function Lesson22_GiaiBPTBacHai() {
         <div style={{fontSize:16}}>❓ <em>{t("Giải −x²+8x−15>0. Gợi ý: tìm nghiệm rồi dùng bảng xét dấu.","Solve −x²+8x−15>0. Hint: find roots then use sign table.")}</em></div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="Un686B_pD-k"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Quy Trình Giải BPT Bậc Hai","1. Steps to Solve Quadratic Inequality")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:14}}>{t("3 bước giải bất phương trình bậc hai ax²+bx+c ≥ 0 (hoặc >0, ≤0, <0):","3 steps to solve ax²+bx+c≥0 (or >0,≤0,<0):")}</div>

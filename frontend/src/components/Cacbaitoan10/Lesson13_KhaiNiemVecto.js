@@ -22,6 +22,19 @@ export default function Lesson13_KhaiNiemVecto() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
   const cf=(id)=>{const q=fQ.find(q=>q.id===id);const r=(fa[id]||"").toLowerCase().trim().replace(/\s/g,"");return[q.ans,...(q.alt||[])].map(a=>a.toLowerCase().replace(/\s/g,"")).includes(r);};
@@ -38,7 +51,8 @@ export default function Lesson13_KhaiNiemVecto() {
   const mcQ=[{'q': 'Vectơ là gì?', 'o': ['Đoạn thẳng có độ dài', 'Đoạn thẳng có hướng', 'Điểm trên mặt phẳng', 'Số thực'], 'a': 1, 'ex': 'Vectơ = đoạn thẳng có hướng (định hướng từ điểm đầu đến điểm cuối).'}, {'q': 'Hai vectơ bằng nhau khi nào?', 'o': ['Cùng điểm đầu', 'Cùng độ dài và cùng hướng', 'Cùng điểm cuối', 'Cùng độ dài'], 'a': 1, 'ex': '→a=→b ⟺ cùng độ dài VÀ cùng hướng. Vị trí không quan trọng.'}, {'q': 'Vectơ đối của →AB là?', 'o': ['→AB', '→BA', '→0', '→AA'], 'a': 1, 'ex': 'Vectơ đối của →AB là →BA (cùng độ dài, ngược hướng).'}, {'q': 'Vectơ không →0 có đặc điểm gì?', 'o': ['Độ dài = 1', 'Độ dài = 0', 'Hướng về phía đông', 'Không tồn tại'], 'a': 1, 'ex': '|→0| = 0. Điểm đầu = điểm cuối, hướng tùy ý (không xác định).'}, {'q': 'Hình bình hành ABCD. →AB = ?', 'o': ['→BC', '→DC', '→CD', '→CA'], 'a': 1, 'ex': 'Trong hình bình hành ABCD: AB // DC, cùng chiều → →AB = →DC.'}];
   const tfC=[{'s': 'Hai vectơ cùng độ dài thì bằng nhau.', 'a': false, 'ex': 'SAI — cần cùng độ dài VÀ cùng hướng.'}, {'s': 'Vectơ →0 có độ dài bằng 0.', 'a': true, 'ex': 'ĐÚNG — |→0|=0, điểm đầu trùng điểm cuối.'}, {'s': '→AB = →CD ⟺ ABDC là hình bình hành.', 'a': true, 'ex': 'ĐÚNG — cùng độ dài, cùng hướng ⟺ AB // CD, AB=CD, cùng chiều ⟺ ABDC là hình bình hành.'}, {'s': 'Vectơ đối của →a là →a.', 'a': false, 'ex': 'SAI — vectơ đối của →a là −→a (cùng độ dài nhưng NGƯỢC hướng).'}, {'s': 'Mọi vectơ đều có điểm đầu tại gốc tọa độ O.', 'a': false, 'ex': 'SAI — vectơ tự do, có thể đặt điểm đầu bất kỳ.'}];
   const fQ=[{'id': 'f1', 'tp': 'Vectơ đối của →AB là ___.', 'ans': '→BA', 'alt': ['BA', 'vec(BA)', '→BA'], 'h': ''}, {'id': 'f2', 'tp': '→a = →b khi chúng có cùng ___ và cùng ___.', 'ans': 'độ dài, hướng', 'alt': ['do dai, huong', 'length, direction', 'do dai huong'], 'h': ''}, {'id': 'f3', 'tp': '|→0| = ___.', 'ans': '0', 'alt': ['0'], 'h': ''}];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Khái Niệm","1. Concept")],["k2","📖",t("2. Hai Vectơ Bằng Nhau","2. Equal Vectors")],["k3","📖",t("3. Cùng Phương / Hướng","3. Parallel & Direction")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Khái Niệm","1. Concept")],["k2","📖",t("2. Hai Vectơ Bằng Nhau","2. Equal Vectors")],["k3","📖",t("3. Cùng Phương / Hướng","3. Parallel & Direction")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
 
   return (
     <div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}>
@@ -67,6 +81,21 @@ export default function Lesson13_KhaiNiemVecto() {
         <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
           <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Khi mô tả chuyển động, lực, hoặc tốc độ gió, chúng ta cần biết không chỉ độ lớn mà còn cả hướng. Đó chính là lý do vectơ ra đời — đại lượng có cả độ lớn lẫn hướng.","When describing motion, force, or wind speed, we need not just magnitude but also direction. That is why vectors exist — quantities with both magnitude and direction.")}</div>
           <div style={{fontSize:16}}>❓ <em>{t("Lực kéo 10N theo hướng đông và lực kéo 10N theo hướng bắc có giống nhau không?","Is a 10N force east the same as a 10N force north?")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="fNk_zzaMoSs"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
+          />
         </div>
       </section>
       <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}>

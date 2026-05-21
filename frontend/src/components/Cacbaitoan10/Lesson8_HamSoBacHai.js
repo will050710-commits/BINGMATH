@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/static-components */
+﻿/* eslint-disable react-hooks/static-components */
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -256,10 +256,10 @@ export default function Lesson8_HamSoBacHai() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="w42teXyMiXI"
+              videoId="6b_m7wZPhhU"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+              credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
             />
           </div>
         </section>

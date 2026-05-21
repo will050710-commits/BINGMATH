@@ -54,6 +54,19 @@ export default function Lesson12_GiaiTamGiac() {
   },[]);
 
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
 
@@ -89,7 +102,8 @@ export default function Lesson12_GiaiTamGiac() {
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
 
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Khái Niệm","1. Concept")],["k2","📖",t("2. Diện Tích","2. Area")],["k3","📖",t("3. Các TH Giải","3. Cases")],["k4","📖",t("4. Ứng Dụng","4. Applications")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Khái Niệm","1. Concept")],["k2","📖",t("2. Diện Tích","2. Area")],["k3","📖",t("3. Các TH Giải","3. Cases")],["k4","📖",t("4. Ứng Dụng","4. Applications")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>
@@ -136,6 +150,21 @@ export default function Lesson12_GiaiTamGiac() {
         <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Các nhà khảo sát địa hình, kiến trúc sư và hoa tiêu tàu biển đều cần giải tam giác mỗi ngày. Biết góc và khoảng cách từ các điểm quan sát, họ tính ra chiều cao núi, chiều dài cầu hay vị trí tàu. Tất cả đều quy về bài toán giải tam giác.","Surveyors, architects, and navigators solve triangles daily. From observed angles and known distances, they compute mountain heights, bridge lengths, or ship positions. All reduce to solving triangles.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Cần tối thiểu bao nhiêu dữ kiện (bao gồm ít nhất 1 cạnh) để xác định duy nhất một tam giác?","What is the minimum number of pieces of data (including at least 1 side) to uniquely determine a triangle?")}</em></div>
+        </div>
+      </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="8m9g7DWhF_Y"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+          />
         </div>
       </section>
 

@@ -104,7 +104,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
     videoBox: {
       position: "relative",
       paddingTop: "56.25%",
-      borderRadius: 16,
+      borderRadius: "16px 16px 0 0",
       overflow: "hidden",
       background: "#000",
     },
@@ -260,6 +260,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
             activeSub.words.map((w, i) => (
               <span
                 key={i}
+                className="lvp-word"
                 style={S.subtitleWord()}
                 onClick={() => handleWordClick(w)}
                 title={t("Nhấn để xem chi tiết", "Click for details")}

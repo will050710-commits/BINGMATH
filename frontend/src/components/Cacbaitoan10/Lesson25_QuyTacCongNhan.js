@@ -21,6 +21,19 @@ export default function Lesson25_QuyTacCongNhan() {
     els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
   },[]);
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
   const mcQ=[{'q': 'Quy tắc nhân dùng khi?', 'o': ['Các việc xung khắc nhau', 'Các bước diễn ra liên tiếp (và...và...)', 'Chỉ có 2 lựa chọn', 'Tổng số phần tử'], 'a': 1, 'ex': 'Quy tắc nhân: các bước PHẢI xảy ra đồng thời → nhân.'}, {'q': 'Từ A→B có 3 đường, B→C có 4 đường. Số đường A→B→C?', 'o': ['7', '12', '3', '4'], 'a': 1, 'ex': '3×4=12 (quy tắc nhân vì phải đi qua cả hai chặng).'}, {'q': 'Chọn 1 sách trong 4 sách toán hoặc 3 sách lý. Bao nhiêu cách?', 'o': ['12', '7', '1', '24'], 'a': 1, 'ex': '4+3=7 (quy tắc cộng vì chỉ chọn 1 trong các loại).'}, {'q': 'Mật khẩu 3 chữ số (0-9, lặp được). Bao nhiêu mật khẩu?', 'o': ['30', '27', '1000', '300'], 'a': 2, 'ex': '10×10×10=1000.'}, {'q': 'Mã PIN 4 ký tự: 2 chữ cái (A-Z) và 2 chữ số (0-9). Bao nhiêu mã?', 'o': ['28×28', '26²×10²', '26×10', '52×100'], 'a': 1, 'ex': '26²×10²=676×100=67600.'}];
@@ -37,7 +50,8 @@ export default function Lesson25_QuyTacCongNhan() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],["k1","📖",t("1. Quy Tắc Nhân","1. Multiplication")],["k2","📖",t("2. Quy Tắc Cộng","2. Addition")],["k3","📖",t("3. So Sánh","3. Compare")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Quy Tắc Nhân","1. Multiplication")],["k2","📖",t("2. Quy Tắc Cộng","2. Addition")],["k3","📖",t("3. So Sánh","3. Compare")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
   return(<div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}><div style={{width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80}}>
     <div className="reveal" data-reveal style={{marginBottom:24}}><Link href="/Cacbaitoan10" style={{textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15}}>← {t("Quay lại","Back")}</Link></div>
     <header className="reveal" data-reveal style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300}}>
@@ -60,6 +74,21 @@ export default function Lesson25_QuyTacCongNhan() {
         <div style={{fontSize:16}}>❓ <em>{t("Từ Hà Nội đi Đà Nẵng có 3 cách. Từ Đà Nẵng đi TP.HCM có 4 cách. Có bao nhiêu cách đi từ HN → ĐN → HCM?","From Hanoi to Da Nang: 3 ways. Da Nang to HCM: 4 ways. How many routes HN→ĐN→HCM?")}</em></div>
       </div>
     </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="Kz6Tz-A795o"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Leios Labs (Manim Engine)", "Video by Leios Labs (Manim Engine)")}
+          />
+        </div>
+      </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Quy Tắc Nhân","1. Multiplication Rule")} />
       <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10}}>📌 {t("Nội dung","Rule")}</div>

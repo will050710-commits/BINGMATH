@@ -54,6 +54,19 @@ export default function OnTapChuong4() {
   },[]);
 
   const t=(vi,en)=>lang==="vi"?vi:en;
+
+  const videoSubtitles = [
+    {
+      start: 0, end: 10,
+      words: [
+        { text: "Welcome", vi: "Chào mừng" },
+        { text: "to", vi: "đến với" },
+        { text: "this", vi: "bài" },
+        { text: "lesson.", vi: "học." }
+      ]
+    }
+  ];
+
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
 
@@ -88,7 +101,8 @@ export default function OnTapChuong4() {
   const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
   const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-  const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],["congThuc","📐",t("Công Thức","Formulas")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["miniGame","🎮","Mini Game"]];
+  const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],
+    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["congThuc","📐",t("Công Thức","Formulas")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["miniGame","🎮","Mini Game"]];
 
   return (
     <><div style={{ width: "100%", background: "#fff", display: "flex", justifyContent: "center" }}>
@@ -138,6 +152,21 @@ export default function OnTapChuong4() {
             ))}
           </div>
         </section>
+
+      {/* ════════════════════════════════════════
+          VIDEO BÀI GIẢNG
+      ════════════════════════════════════════ */}
+      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
+        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
+        <div className="reveal" data-reveal>
+          <LessonVideoPlayer
+            videoId="1m9p_98EtI8"
+            subtitles={videoSubtitles}
+            lang={lang}
+            credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+          />
+        </div>
+      </section>
 
         <section id="congThuc" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SH icon="📐" title={t("Bảng Công Thức Chương IV", "Chapter IV Formula Sheet")} />
