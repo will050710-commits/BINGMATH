@@ -86,7 +86,7 @@ export default function Lesson23_PhuongTrinhQuyVeBacHai() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="6b_m7wZPhhU"
+            videoId="MQtsRYPx3v0"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}

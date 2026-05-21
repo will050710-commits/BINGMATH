@@ -83,7 +83,7 @@ export default function Lesson27_NhiThucNewton() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="f2nNf6D8KIE"
+            videoId="iPwrDWQ7hPc"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Dr. Trefor Bazett (CC BY-SA)", "Video by Dr. Trefor Bazett (CC BY-SA)")}

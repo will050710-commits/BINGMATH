@@ -160,7 +160,7 @@ export default function Lesson10_DinhLiCosin() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="Z_D3_B2WlTM"
+            videoId="ZElOxG7_m3c"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}

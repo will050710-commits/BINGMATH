@@ -88,7 +88,7 @@ export default function Lesson33_OnTapChuong9() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="uKAs0G8df0M"
+            videoId="iX5UgArMyiI"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}

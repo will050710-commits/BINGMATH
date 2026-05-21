@@ -168,7 +168,7 @@ export default function Lesson32_Elip() {
           <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="mYvHeuSgZTo"
+              videoId="lvAYFUIEpFI"
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}

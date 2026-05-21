@@ -283,7 +283,7 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="8V-M6n6L_M0"
+              videoId="145zOBT0LD4"
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}

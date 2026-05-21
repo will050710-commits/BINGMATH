@@ -153,10 +153,10 @@ export default function Lesson18_HinhHocDoLuong1() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="M7w7X362T0E"
+            videoId="sZMezOCZr40"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+            credit={t("Video từ Khan Academy (CC BY-SA)", "Video by Khan Academy (CC BY-SA)")}
           />
         </div>
       </section>

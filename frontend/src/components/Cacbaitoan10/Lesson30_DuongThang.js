@@ -81,7 +81,7 @@ export default function Lesson30_DuongThang() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="bVstXvN6GqI"
+            videoId="bAerID24QJ0"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}

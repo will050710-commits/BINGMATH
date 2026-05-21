@@ -160,7 +160,7 @@ export default function OnTapChuong4() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="1m9p_98EtI8"
+            videoId="Em2HiOJUS5E"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}

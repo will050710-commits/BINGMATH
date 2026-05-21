@@ -156,7 +156,7 @@ export default function Lesson11_DinhLiSin() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="8m9g7DWhF_Y"
+            videoId="VjmFKle7xIw"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}

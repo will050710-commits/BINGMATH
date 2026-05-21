@@ -277,10 +277,10 @@ export default function Lesson1_MenhDe() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="X0S0fOnf9pY"
+              videoId="sOeldimAvnM"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+              credit={t("Video từ Khan Academy (CC BY-SA)", "Video by Khan Academy (CC BY-SA)")}
             />
           </div>
         </section>

@@ -324,7 +324,7 @@ export default function Lesson4_BPTBacNhatHaiAn() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="680X_6GvYCI"
+              videoId="unSBFwK881s"
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}

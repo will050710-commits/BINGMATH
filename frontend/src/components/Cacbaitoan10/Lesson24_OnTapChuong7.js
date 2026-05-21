@@ -91,7 +91,7 @@ export default function Lesson24_OnTapChuong7() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="Un686B_pD-k"
+            videoId="xdiBjypYFRQ"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
