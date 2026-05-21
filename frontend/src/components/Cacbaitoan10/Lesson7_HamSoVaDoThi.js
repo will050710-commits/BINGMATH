@@ -64,15 +64,51 @@ export default function Lesson7_HamSoVaDoThi() {
 
   const videoSubtitles = [
     {
-      start: 0, end: 5,
+      start: 0, end: 6,
       words: [
-        { text: "Welcome", vi: "Chào mừng" },
-        { text: "to", vi: "đến với" },
-        { text: "this", vi: "bài" },
-        { text: "lesson.", vi: "học." }
+        { text: "A", vi: "Một" },
+        { text: "function", vi: "hàm số,", detail: "<b>Function (Hàm số)</b>:<br/>Một quy tắc gán mỗi phần tử của tập nguồn X với duy nhất một phần tử của tập đích Y.", detailTitle: "Function (Hàm số)" },
+        { text: "maps", vi: "ánh xạ" },
+        { text: "elements", vi: "các phần tử" },
+        { text: "from", vi: "từ" },
+        { text: "a", vi: "một" },
+        { text: "domain", vi: "tập xác định,", detail: "<b>Domain (Tập xác định)</b>:<br/>Tập hợp các giá trị đầu vào hợp lệ của biến độc lập x để hàm số có nghĩa.", detailTitle: "Domain (Tập xác định)" },
+        { text: "to", vi: "đến" },
+        { text: "a", vi: "một" },
+        { text: "range.", vi: "tập giá trị.", detail: "<b>Range (Tập giá trị)</b>:<br/>Tập hợp tất cả các giá trị đầu ra y = f(x) có thể nhận được.", detailTitle: "Range (Tập giá trị)" }
+      ]
+    },
+    {
+      start: 6, end: 12,
+      words: [
+        { text: "The", vi: "Đồ" },
+        { text: "graph", vi: "thị,", detail: "<b>Graph (Đồ thị)</b>: Tập hợp các điểm (x, y) trên mặt phẳng tọa độ thỏa mãn phương trình y = f(x).", detailTitle: "Graph (Đồ thị)" },
+        { text: "of", vi: "của" },
+        { text: "a", vi: "một" },
+        { text: "quadratic", vi: "bậc hai" },
+        { text: "function", vi: "hàm số" },
+        { text: "is", vi: "là" },
+        { text: "a", vi: "một" },
+        { text: "parabola.", vi: "đường parabol.", detail: "<b>Parabola (Đường parabol)</b>:<br/>Đường cong có dạng hình chữ U hoặc hình chữ U ngược, là đồ thị của hàm số bậc hai.", detailTitle: "Parabola" }
+      ]
+    },
+    {
+      start: 12, end: 18,
+      words: [
+        { text: "We", vi: "Chúng ta" },
+        { text: "find", vi: "tìm" },
+        { text: "the", vi: "tọa độ" },
+        { text: "vertex,", vi: "đỉnh,", detail: "<b>Vertex (Đỉnh parabol)</b>:<br/>Điểm cực tiểu hoặc cực đại của parabol, có hoành độ x = -b/(2a).", detailTitle: "Vertex (Đỉnh)" },
+        { text: "discriminant,", vi: "biệt thức,", detail: "<b>Discriminant (Biệt thức)</b>:<br/>Đại lượng Delta (Δ = b² - 4ac) dùng để xác định số nghiệm của phương trình bậc hai.", detailTitle: "Discriminant" },
+        { text: "and", vi: "và" },
+        { text: "roots", vi: "nghiệm số,", detail: "<b>Roots (Nghiệm số)</b>:<br/>Các giá trị của biến làm cho phương trình bằng 0 (giao điểm của đồ thị với trục hoành).", detailTitle: "Roots (Nghiệm)" },
+        { text: "of", vi: "của" },
+        { text: "the", vi: "phương" },
+        { text: "equation.", vi: "trình." }
       ]
     }
   ];
+
 
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };

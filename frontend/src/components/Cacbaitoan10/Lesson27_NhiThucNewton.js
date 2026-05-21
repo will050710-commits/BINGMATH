@@ -24,15 +24,43 @@ export default function Lesson27_NhiThucNewton() {
 
   const videoSubtitles = [
     {
-      start: 0, end: 10,
+      start: 0, end: 6,
       words: [
-        { text: "Welcome", vi: "Chào mừng" },
-        { text: "to", vi: "đến với" },
-        { text: "this", vi: "bài" },
-        { text: "lesson.", vi: "học." }
+        { text: "We", vi: "Chúng ta" },
+        { text: "apply", vi: "áp dụng" },
+        { text: "addition", vi: "phép cộng" },
+        { text: "and", vi: "và" },
+        { text: "multiplication", vi: "phép nhân" },
+        { text: "principles", vi: "các quy tắc,", detail: "<b>Multiplication principle (Quy tắc nhân)</b>: Quy tắc tính số cách thực hiện một công việc gồm nhiều công đoạn liên tiếp.<br/><b>Addition principle (Quy tắc cộng)</b>: Quy tắc tính số cách thực hiện một công việc gồm nhiều phương án độc lập.", detailTitle: "Counting principles" },
+        { text: "to", vi: "để" },
+        { text: "find", vi: "tìm" },
+        { text: "outcomes.", vi: "kết quả.", detail: "<b>Outcomes (Kết quả)</b>: Các trường hợp có thể xảy ra của một phép toán đếm.", detailTitle: "Outcomes (Kết quả)" }
+      ]
+    },
+    {
+      start: 6, end: 12,
+      words: [
+        { text: "Understand", vi: "Hiểu" },
+        { text: "permutation,", vi: "hoán vị,", detail: "<b>Permutation (Hoán vị - P_n)</b>:<br/>Sắp xếp thứ tự của n phần tử khác nhau, số cách là n!.", detailTitle: "Permutation (Hoán vị)" },
+        { text: "combination,", vi: "tổ hợp,", detail: "<b>Combination (Tổ hợp - C_n^k)</b>:<br/>Chọn k phần tử từ n phần tử không quan tâm đến thứ tự.", detailTitle: "Combination (Tổ hợp)" },
+        { text: "and", vi: "và" },
+        { text: "factorial.", vi: "giai thừa.", detail: "<b>Factorial (Giai thừa - n!)</b>:<br/>Tích các số tự nhiên từ 1 đến n: n! = 1.2.3...n.", detailTitle: "Factorial (Giai thừa)" }
+      ]
+    },
+    {
+      start: 12, end: 18,
+      words: [
+        { text: "Expand", vi: "Khai triển" },
+        { text: "the", vi: "nhị thức" },
+        { text: "binomial", vi: "nhị thức" },
+        { text: "theorem", vi: "định lí,", detail: "<b>Binomial theorem (Nhị thức Newton)</b>:<br/>Công thức khai triển biểu thức (a + b)^n.", detailTitle: "Binomial theorem" },
+        { text: "with", vi: "dùng" },
+        { text: "Pascal's", vi: "Pascal" },
+        { text: "triangle.", vi: "tam giác.", detail: "<b>Pascal's triangle (Tam giác Pascal)</b>:<br/>Tam giác số dùng để xác định nhanh các hệ số trong khai triển nhị thức Newton.", detailTitle: "Pascal's triangle" }
       ]
     }
   ];
+
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));

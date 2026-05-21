@@ -57,15 +57,46 @@ export default function Lesson11_DinhLiSin() {
 
   const videoSubtitles = [
     {
-      start: 0, end: 10,
+      start: 0, end: 6,
       words: [
-        { text: "Welcome", vi: "Chào mừng" },
-        { text: "to", vi: "đến với" },
-        { text: "this", vi: "bài" },
-        { text: "lesson.", vi: "học." }
+        { text: "The", vi: "Định lí" },
+        { text: "law", vi: "định lí" },
+        { text: "of", vi: "về" },
+        { text: "cosines", vi: "cosin", detail: "<b>Law of cosines (Định lí côsin)</b>:<br/>Trong tam giác: a² = b² + c² - 2bc.cos(A).", detailTitle: "Law of cosines" },
+        { text: "and", vi: "và" },
+        { text: "law", vi: "định lí" },
+        { text: "of", vi: "về" },
+        { text: "sines", vi: "sin", detail: "<b>Law of sines (Định lí sin)</b>:<br/>Trong tam giác: a/sin(A) = b/sin(B) = c/sin(C) = 2R.", detailTitle: "Law of sines" },
+        { text: "relate", vi: "liên hệ" },
+        { text: "sides", vi: "các cạnh" },
+        { text: "and", vi: "và" },
+        { text: "angles.", vi: "các góc." }
+      ]
+    },
+    {
+      start: 6, end: 12,
+      words: [
+        { text: "We", vi: "Chúng ta" },
+        { text: "calculate", vi: "tính toán" },
+        { text: "circumradius,", vi: "bán kính đường tròn ngoại tiếp,", detail: "<b>Circumradius (Bán kính ngoại tiếp - R)</b>:<br/>Bán kính của đường tròn đi qua cả ba đỉnh của tam giác.", detailTitle: "Circumradius" },
+        { text: "inradius,", vi: "bán kính đường tròn nội tiếp,", detail: "<b>Inradius (Bán kính nội tiếp - r)</b>:<br/>Bán kính của đường tròn tiếp xúc với cả ba cạnh của tam giác.", detailTitle: "Inradius" },
+        { text: "and", vi: "và" },
+        { text: "area.", vi: "diện tích.", detail: "<b>Area (Diện tích)</b>: Số đo độ lớn bề mặt của hình tam giác.", detailTitle: "Area (Diện tích)" }
+      ]
+    },
+    {
+      start: 12, end: 18,
+      words: [
+        { text: "Use", vi: "Sử dụng" },
+        { text: "Heron's", vi: "Heron" },
+        { text: "formula", vi: "công thức,", detail: "<b>Heron's formula (Công thức Heron)</b>:<br/>Công thức tính diện tích tam giác: S = √[p(p-a)(p-b)(p-c)].", detailTitle: "Heron's formula" },
+        { text: "with", vi: "với" },
+        { text: "the", vi: "nửa chu vi" },
+        { text: "semi-perimeter.", vi: "nửa chu vi.", detail: "<b>Semi-perimeter (Nửa chu vi - p)</b>:<br/>Bằng một nửa chu vi tam giác: p = (a + b + c)/2.", detailTitle: "Semi-perimeter" }
       ]
     }
   ];
+
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));

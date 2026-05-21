@@ -57,15 +57,35 @@ export default function OnTapChuong4() {
 
   const videoSubtitles = [
     {
-      start: 0, end: 10,
+      start: 0, end: 7,
       words: [
-        { text: "Welcome", vi: "Chào mừng" },
-        { text: "to", vi: "đến với" },
-        { text: "this", vi: "bài" },
-        { text: "lesson.", vi: "học." }
+        { text: "The", vi: "Đường tròn" },
+        { text: "unit", vi: "đơn vị" },
+        { text: "circle", vi: "đường tròn,", detail: "<b>Unit circle (Đường tròn lượng giác)</b>:<br/>Đường tròn có bán kính bằng 1, tâm trùng với gốc tọa độ O.", detailTitle: "Unit circle" },
+        { text: "is", vi: "là" },
+        { text: "fundamental", vi: "cơ bản" },
+        { text: "for", vi: "cho" },
+        { text: "trigonometric", vi: "lượng giác,", detail: "<b>Trigonometric (Lượng giác)</b>: Liên quan đến các tỉ số đo góc trong tam giác.", detailTitle: "Trigonometric" },
+        { text: "values.", vi: "giá trị." }
+      ]
+    },
+    {
+      start: 7, end: 15,
+      words: [
+        { text: "We", vi: "Chúng ta" },
+        { text: "define", vi: "định nghĩa" },
+        { text: "sine,", vi: "sin,", detail: "<b>Sine (Sin)</b>:<br/>Tung độ của điểm M trên đường tròn lượng giác tương ứng với góc lượng giác.", detailTitle: "Sine (Sin)" },
+        { text: "cosine,", vi: "cosin,", detail: "<b>Cosine (Cos)</b>:<br/>Hoành độ của điểm M trên đường tròn lượng giác tương ứng với góc lượng giác.", detailTitle: "Cosine (Cos)" },
+        { text: "and", vi: "và" },
+        { text: "tangent", vi: "tang,", detail: "<b>Tangent (Tan)</b>:<br/>Tỉ số của Sine chia cho Cosine (sin/cos) của góc lượng giác.", detailTitle: "Tangent (Tan)" },
+        { text: "in", vi: "bằng đơn vị" },
+        { text: "degrees", vi: "độ,", detail: "<b>Degree (Độ)</b>: Đơn vị đo góc truyền thống, ký hiệu là ° (vòng tròn đầy là 360°).", detailTitle: "Degree (Độ)" },
+        { text: "or", vi: "hoặc" },
+        { text: "radians.", vi: "radian.", detail: "<b>Radian (Radian)</b>:<br/>Đơn vị đo góc chuẩn trong toán học, 1 vòng tròn đầy bằng 2π radian.", detailTitle: "Radian" }
       ]
     }
   ];
+
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));

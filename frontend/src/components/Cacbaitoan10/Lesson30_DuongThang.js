@@ -24,15 +24,47 @@ export default function Lesson30_DuongThang() {
 
   const videoSubtitles = [
     {
-      start: 0, end: 10,
+      start: 0, end: 6,
       words: [
-        { text: "Welcome", vi: "Chào mừng" },
-        { text: "to", vi: "đến với" },
-        { text: "this", vi: "bài" },
-        { text: "lesson.", vi: "học." }
+        { text: "A", vi: "Một" },
+        { text: "line", vi: "đường thẳng" },
+        { text: "equation", vi: "phương trình,", detail: "<b>Line equation (Phương trình đường thẳng)</b>: Biểu thức toán học mô tả đường thẳng trong mặt phẳng tọa độ.", detailTitle: "Line equation" },
+        { text: "uses", vi: "sử dụng" },
+        { text: "a", vi: "một" },
+        { text: "normal", vi: "pháp tuyến" },
+        { text: "vector", vi: "vecto,", detail: "<b>Normal vector (Vectơ pháp tuyến)</b>:<br/>Vectơ vuông góc với đường thẳng biên.", detailTitle: "Normal vector" },
+        { text: "or", vi: "hoặc" },
+        { text: "direction", vi: "chỉ phương" },
+        { text: "vector.", vi: "vecto chỉ phương.", detail: "<b>Direction vector (Vectơ chỉ phương)</b>:<br/>Vectơ có giá song song hoặc trùng với đường thẳng.", detailTitle: "Direction vector" }
+      ]
+    },
+    {
+      start: 6, end: 12,
+      words: [
+        { text: "Circles", vi: "Đường tròn" },
+        { text: "are", vi: "được" },
+        { text: "defined", vi: "xác định" },
+        { text: "by", vi: "bởi" },
+        { text: "a", vi: "một" },
+        { text: "center", vi: "tâm,", detail: "<b>Center (Tâm đường tròn)</b>: Điểm cố định I(a,b) nằm ở giữa đường tròn.", detailTitle: "Center (Tâm)" },
+        { text: "and", vi: "và" },
+        { text: "radius.", vi: "bán kính.", detail: "<b>Radius (Bán kính - R)</b>:<br/>Khoảng cách từ tâm đường tròn đến bất kỳ điểm nào trên đường tròn đó.", detailTitle: "Radius (Bán kính)" }
+      ]
+    },
+    {
+      start: 12, end: 20,
+      words: [
+        { text: "Ellipse", vi: "Elip" },
+        { text: "properties", vi: "tính chất,", detail: "<b>Ellipse (Đường elip)</b>:<br/>Tập hợp các điểm có tổng khoảng cách tới hai tiêu điểm cố định là một hằng số.", detailTitle: "Ellipse" },
+        { text: "include", vi: "bao gồm" },
+        { text: "foci,", vi: "các tiêu điểm,", detail: "<b>Foci (Các tiêu điểm - F1, F2)</b>:<br/>Hai điểm cố định dùng để định nghĩa đường elip.", detailTitle: "Foci (Tiêu điểm)" },
+        { text: "axes,", vi: "các trục,", detail: "<b>Axes (Các trục)</b>: Trục lớn (major axis) và trục nhỏ (minor axis) của elip.", detailTitle: "Axes (Các trục)" },
+        { text: "and", vi: "và" },
+        { text: "eccentricity.", vi: "độ lệch tâm.", detail: "<b>Eccentricity (Tâm sai - e = c/a)</b>:<br/>Tỉ số đo độ dẹt của đường elip (luôn nhỏ hơn 1).", detailTitle: "Eccentricity (Tâm sai)" }
       ]
     }
   ];
+
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));

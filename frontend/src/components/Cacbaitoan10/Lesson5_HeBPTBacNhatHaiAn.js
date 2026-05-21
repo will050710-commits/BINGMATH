@@ -72,15 +72,51 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
 
   const videoSubtitles = [
     {
-      start: 0, end: 5,
+      start: 0, end: 6,
       words: [
-        { text: "Welcome", vi: "Chào mừng" },
-        { text: "to", vi: "đến với" },
-        { text: "this", vi: "bài" },
-        { text: "lesson.", vi: "học." }
+        { text: "Let's", vi: "Hãy" },
+        { text: "solve", vi: "giải" },
+        { text: "a", vi: "một" },
+        { text: "linear", vi: "tuyến tính/bậc nhất" },
+        { text: "inequality", vi: "bất phương trình,", detail: "<b>Linear inequality (Bất phương trình bậc nhất)</b>:<br/>Bất phương trình dạng ax + by < c (hoặc >, ≤, ≥) với a, b không đồng thời bằng 0.", detailTitle: "Linear inequality" },
+        { text: "with", vi: "với" },
+        { text: "two", vi: "hai" },
+        { text: "variables.", vi: "ẩn số.", detail: "<b>Variables (Biến số / Ẩn số)</b>: Các chữ đại diện cho số chưa biết, thường là x và y.", detailTitle: "Variables (Biến số)" }
+      ]
+    },
+    {
+      start: 6, end: 12,
+      words: [
+        { text: "The", vi: "Đường" },
+        { text: "boundary", vi: "ranh giới" },
+        { text: "line", vi: "biên,", detail: "<b>Boundary line (Đường thẳng biên)</b>:<br/>Đường thẳng ax + by = c dùng để phân chia mặt phẳng tọa độ.", detailTitle: "Boundary line" },
+        { text: "divides", vi: "chia" },
+        { text: "the", vi: "mặt phẳng" },
+        { text: "coordinate", vi: "tọa độ" },
+        { text: "plane", vi: "mặt phẳng,", detail: "<b>Coordinate plane (Mặt phẳng tọa độ)</b>: Mặt phẳng Oxy được xác định bởi hai trục tọa độ Ox và Oy.", detailTitle: "Coordinate plane" },
+        { text: "into", vi: "thành" },
+        { text: "two", vi: "hai" },
+        { text: "half-planes.", vi: "nửa mặt phẳng.", detail: "<b>Half-plane (Nửa mặt phẳng)</b>:<br/>Một trong hai phần của mặt phẳng bị chia cắt bởi một đường thẳng biên.", detailTitle: "Half-plane" }
+      ]
+    },
+    {
+      start: 12, end: 18,
+      words: [
+        { text: "A", vi: "Một" },
+        { text: "system", vi: "hệ" },
+        { text: "of", vi: "các" },
+        { text: "inequalities", vi: "bất phương trình,", detail: "<b>System of inequalities (Hệ bất phương trình)</b>:<br/>Tập hợp gồm hai hay nhiều bất phương trình bậc nhất hai ẩn.", detailTitle: "System of inequalities" },
+        { text: "has", vi: "có" },
+        { text: "a", vi: "một" },
+        { text: "feasible", vi: "khả thi" },
+        { text: "region", vi: "miền nghiệm,", detail: "<b>Feasible region (Miền nghiệm)</b>:<br/>Phần mặt phẳng chứa các điểm có tọa độ thỏa mãn tất cả các bất phương trình trong hệ.", detailTitle: "Feasible region" },
+        { text: "defined", vi: "được xác định" },
+        { text: "by", vi: "bởi" },
+        { text: "constraints.", vi: "các ràng buộc.", detail: "<b>Constraints (Các ràng buộc / Điều kiện)</b>: Các bất phương trình giới hạn miền nghiệm trong bài toán quy hoạch tuyến tính.", detailTitle: "Constraints (Ràng buộc)" }
       ]
     }
   ];
+
 
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };

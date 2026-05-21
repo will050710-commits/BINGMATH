@@ -98,15 +98,34 @@ export default function Lesson3_PhepToanTapHop() {
 
   const videoSubtitles = [
     {
-      start: 0, end: 5,
+      start: 0, end: 7,
       words: [
-        { text: "Welcome", vi: "Chào mừng" },
-        { text: "to", vi: "đến với" },
-        { text: "this", vi: "bài" },
-        { text: "lesson.", vi: "học." }
+        { text: "Set", vi: "Tập hợp", detail: "<b>Set (Tập hợp)</b>: Một nhóm các đối tượng xác định.", detailTitle: "Set (Tập hợp)" },
+        { text: "operations", vi: "phép toán", detail: "<b>Operations (Các phép toán)</b>: Các cách biến đổi hoặc kết hợp các tập hợp.", detailTitle: "Operations (Phép toán)" },
+        { text: "include", vi: "bao gồm" },
+        { text: "union,", vi: "phép hợp,", detail: "<b>Union (Phép hợp - ∪)</b>:<br/>Tập hợp gồm tất cả các phần tử thuộc ít nhất một trong hai tập hợp.", detailTitle: "Union (Hợp)" },
+        { text: "intersection,", vi: "phép giao,", detail: "<b>Intersection (Phép giao - ∩)</b>:<br/>Tập hợp gồm các phần tử chung của cả hai tập hợp.", detailTitle: "Intersection (Giao)" },
+        { text: "difference,", vi: "phép hiệu,", detail: "<b>Difference (Phép hiệu - \\)</b>:<br/>Tập hợp các phần tử thuộc tập này nhưng không thuộc tập kia.", detailTitle: "Difference (Hiệu)" },
+        { text: "and", vi: "và" },
+        { text: "complement.", vi: "phần bù.", detail: "<b>Complement (Phần bù - C_B A)</b>:<br/>Hiệu B \\ A khi A là tập con của B.", detailTitle: "Complement (Phần bù)" }
+      ]
+    },
+    {
+      start: 7, end: 15,
+      words: [
+        { text: "We", vi: "Chúng ta" },
+        { text: "can", vi: "có thể" },
+        { text: "visualize", vi: "trực quan hóa" },
+        { text: "these", vi: "các" },
+        { text: "relations", vi: "quan hệ" },
+        { text: "using", vi: "bằng cách dùng" },
+        { text: "a", vi: "một" },
+        { text: "Venn", vi: "Venn" },
+        { text: "diagram.", vi: "biểu đồ.", detail: "<b>Venn diagram (Biểu đồ Venn)</b>:<br/>Hình vẽ hình học (thường là hình tròn) dùng để biểu diễn các tập hợp và quan hệ giữa chúng.", detailTitle: "Venn diagram" }
       ]
     }
   ];
+
 
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };

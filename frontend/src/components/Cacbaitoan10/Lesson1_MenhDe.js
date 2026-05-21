@@ -100,48 +100,46 @@ export default function Lesson1_MenhDe() {
     {
       start: 0, end: 5,
       words: [
-        { text: "Welcome", vi: "Chào mừng", detail: "<b>Welcome</b>: Lời chào mừng trong tiếng Anh." },
-        { text: "to", vi: "đến với" },
-        { text: "the", vi: "cái" },
-        { text: "lesson", vi: "bài học", detail: "<b>Lesson</b>: Bài học hoặc bài giảng về một chủ đề cụ thể.", detailTitle: "Lesson (Bài học)" },
-        { text: "on", vi: "về" },
+        { text: "Let's", vi: "Hãy" },
+        { text: "study", vi: "nghiên cứu/học" },
         { text: "mathematical", vi: "toán học", detail: "<b>Mathematical</b>: Thuộc về toán học, liên quan đến toán học.", detailTitle: "Mathematical (Toán học)" },
-        { text: "propositions.", vi: "mệnh đề.", detail: "<b>Propositions (Mệnh đề)</b>:<br/>Một câu khẳng định có thể xác định rõ ràng là ĐÚNG hoặc SAI, không thể vừa đúng vừa sai.", detailTitle: "Propositions (Mệnh đề)" }
+        { text: "propositions.", vi: "mệnh đề.", detail: "<b>Proposition (Mệnh đề)</b>:<br/>Một câu khẳng định có tính đúng hoặc sai rõ ràng.", detailTitle: "Proposition (Mệnh đề)" }
       ]
     },
     {
-      start: 5, end: 10,
+      start: 5, end: 12,
       words: [
-        { text: "A", vi: "Một" },
-        { text: "proposition", vi: "mệnh đề", detail: "<b>Proposition</b>: Mệnh đề, một câu khẳng định có tính đúng sai.", detailTitle: "Proposition" },
-        { text: "is", vi: "là" },
+        { text: "Every", vi: "Mỗi" },
+        { text: "proposition", vi: "mệnh đề" },
+        { text: "has", vi: "có" },
         { text: "a", vi: "một" },
-        { text: "statement", vi: "câu khẳng định", detail: "<b>Statement</b>: Lời phát biểu, câu khẳng định.", detailTitle: "Statement (Câu khẳng định)" },
-        { text: "that", vi: "mà" },
-        { text: "is", vi: "thì" },
+        { text: "truth", vi: "chân lý" },
+        { text: "value,", vi: "giá trị,", detail: "<b>Truth value (Giá trị chân lý)</b>:<br/>Tính Đúng (True) hoặc Sai (False) của một mệnh đề.", detailTitle: "Truth value" },
+        { text: "which", vi: "cái mà" },
+        { text: "is", vi: "là" },
         { text: "either", vi: "hoặc" },
-        { text: "true", vi: "đúng", detail: "<b>True</b>: Đúng, có giá trị chân lý là đúng.", detailTitle: "True (Đúng)" },
+        { text: "true", vi: "đúng", detail: "<b>True (Đúng)</b>: Mệnh đề có giá trị chân lý đúng, thường ký hiệu là T hoặc 1.", detailTitle: "True (Đúng)" },
         { text: "or", vi: "hoặc" },
-        { text: "false.", vi: "sai.", detail: "<b>False</b>: Sai, có giá trị chân lý là sai.", detailTitle: "False (Sai)" }
+        { text: "false.", vi: "sai.", detail: "<b>False (Sai)</b>: Mệnh đề có giá trị chân lý sai, thường ký hiệu là F hoặc 0.", detailTitle: "False (Sai)" }
       ]
     },
     {
-      start: 10, end: 16,
+      start: 12, end: 20,
       words: [
-        { text: "For", vi: "Ví" },
-        { text: "example,", vi: "dụ," },
-        { text: "two", vi: "hai" },
-        { text: "plus", vi: "cộng", detail: "<b>Plus</b>: Phép cộng." },
-        { text: "two", vi: "hai" },
-        { text: "equals", vi: "bằng", detail: "<b>Equals</b>: Bằng, kết quả bằng." },
-        { text: "four", vi: "bốn" },
-        { text: "is", vi: "là" },
+        { text: "We", vi: "Chúng ta" },
+        { text: "can", vi: "có thể" },
+        { text: "form", vi: "tạo ra" },
+        { text: "negation,", vi: "phép phủ định,", detail: "<b>Negation (Phủ định)</b>:<br/>Mệnh đề phủ định của P là ¬P, đúng khi P sai và sai khi P đúng.", detailTitle: "Negation (Phủ định)" },
+        { text: "implication,", vi: "phép kéo theo,", detail: "<b>Implication (Mệnh đề kéo theo)</b>:<br/>Mệnh đề 'Nếu P thì Q' (P ⇒ Q), chỉ sai khi P đúng và Q sai.", detailTitle: "Implication (Kéo theo)" },
+        { text: "equivalence,", vi: "mệnh đề tương đương,", detail: "<b>Equivalence (Mệnh đề tương đương)</b>:<br/>Mệnh đề 'P nếu và chỉ nếu Q' (P ⇔ Q), đúng khi P và Q có cùng giá trị chân lý.", detailTitle: "Equivalence (Tương đương)" },
+        { text: "or", vi: "hoặc" },
+        { text: "use", vi: "sử dụng" },
         { text: "a", vi: "một" },
-        { text: "true", vi: "đúng" },
-        { text: "proposition.", vi: "mệnh đề." }
+        { text: "quantifier.", vi: "lượng từ.", detail: "<b>Quantifier (Lượng từ)</b>:<br/>Ký hiệu diễn tả số lượng như Với mọi (∀) hoặc Tồn tại (∃).", detailTitle: "Quantifier (Lượng từ)" }
       ]
     }
   ];
+
 
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };

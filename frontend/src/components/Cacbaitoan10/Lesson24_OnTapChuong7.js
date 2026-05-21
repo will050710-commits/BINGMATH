@@ -24,15 +24,47 @@ export default function Lesson24_OnTapChuong7() {
 
   const videoSubtitles = [
     {
-      start: 0, end: 10,
+      start: 0, end: 6,
       words: [
-        { text: "Welcome", vi: "Chào mừng" },
-        { text: "to", vi: "đến với" },
-        { text: "this", vi: "bài" },
-        { text: "lesson.", vi: "học." }
+        { text: "A", vi: "Một" },
+        { text: "quadratic", vi: "bậc hai" },
+        { text: "trinomial", vi: "tam thức,", detail: "<b>Quadratic trinomial (Tam thức bậc hai)</b>:<br/>Biểu thức dạng f(x) = ax² + bx + c với a ≠ 0.", detailTitle: "Quadratic trinomial" },
+        { text: "sign", vi: "dấu,", detail: "<b>Sign (Dấu của tam thức)</b>: Giá trị âm (-), dương (+) hoặc bằng 0 của tam thức bậc hai.", detailTitle: "Sign (Dấu)" },
+        { text: "depends", vi: "phụ thuộc" },
+        { text: "on", vi: "vào" },
+        { text: "the", vi: "hệ số" },
+        { text: "leading", vi: "dẫn đầu" },
+        { text: "coefficient.", vi: "hệ số.", detail: "<b>Leading coefficient (Hệ số chính)</b>:<br/>Hệ số a đi với x² trong tam thức bậc hai.", detailTitle: "Leading coefficient" }
+      ]
+    },
+    {
+      start: 6, end: 12,
+      words: [
+        { text: "Make", vi: "Lập" },
+        { text: "a", vi: "một" },
+        { text: "sign", vi: "dấu" },
+        { text: "chart", vi: "bảng xét dấu,", detail: "<b>Sign chart (Bảng xét dấu)</b>:<br/>Bảng tóm tắt dấu của tam thức bậc hai trên các khoảng xét định bởi nghiệm.", detailTitle: "Sign chart" },
+        { text: "using", vi: "sử dụng" },
+        { text: "the", vi: "các" },
+        { text: "roots.", vi: "nghiệm số.", detail: "<b>Roots (Các nghiệm)</b>: Giá trị x làm cho tam thức bằng 0, được tìm qua việc giải phương trình f(x) = 0.", detailTitle: "Roots (Nghiệm)" }
+      ]
+    },
+    {
+      start: 12, end: 18,
+      words: [
+        { text: "Solve", vi: "Giải" },
+        { text: "the", vi: "bất phương trình" },
+        { text: "quadratic", vi: "bậc hai" },
+        { text: "inequality", vi: "bất phương trình,", detail: "<b>Quadratic inequality (Bất phương trình bậc hai)</b>:<br/>Bất phương trình có dạng f(x) > 0, f(x) < 0, f(x) ≥ 0, f(x) ≤ 0 với f(x) là tam thức bậc hai.", detailTitle: "Quadratic inequality" },
+        { text: "to", vi: "để" },
+        { text: "find", vi: "tìm" },
+        { text: "the", vi: "khoảng" },
+        { text: "solution", vi: "nghiệm" },
+        { text: "interval.", vi: "khoảng nghiệm.", detail: "<b>Solution interval (Khoảng nghiệm)</b>:<br/>Tập hợp các khoảng số thực thỏa mãn bất phương trình.", detailTitle: "Solution interval" }
       ]
     }
   ];
+
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
   const tr=(id)=>setRev(p=>(({...p,[id]:!p[id]})));
