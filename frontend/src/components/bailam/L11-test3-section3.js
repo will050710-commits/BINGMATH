@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { gradeTest } from "@/utils/grader";
 import { useRouter } from "next/navigation";
-const LEGACY_KEY="readingTest_section3";const SECTION="section3";const TEST_KEY="reading-test-L11-3";
+const LEGACY_KEY = "reading-test-L11-3_section3";const SECTION="section3";const TEST_KEY="reading-test-L11-3";
 const mathProblems=[{id:1,source:"Grade 11 — Semester I Exam, Luong The Vinh High School, 2023–2024",label:"Problem 1",parts:["a) Solve: 2^(x+2) − 2^x = 48.","b) Solve: log₂(x) + log₂(x−2) = 3."],fields:["Answer (a):","Answer (b):"]},{id:2,source:"Grade 11 — Semester I Exam, Nguyen Binh Khiem High School, 2023–2024",label:"Problem 2",parts:["a) Compute: log₄(8) + log₈(32) − log₂(√8).","b) If log₂(a) = 3 and log₂(b) = 5, find log₂(a²b)."],fields:["Answer (a):","Answer (b):"]},{id:3,source:"Grade 11 — Mid-term Exam, Tran Hung Dao High School, 2023–2024",label:"Problem 3",parts:["An arithmetic sequence has u₅ = 21 and u₁₀ = 46.","a) Find u₁ and the common difference d.","b) Find the sum S₂₀."],fields:["Answer (a):","Answer (b) — S₂₀:"]},{id:4,source:"Grade 11 — Semester I Exam, Bui Thi Xuan High School, 2023–2024",label:"Problem 4",parts:["A geometric sequence has u₃ = 12 and u₆ = 96.","a) Find the common ratio q and u₁.","b) Find S₆."],fields:["Answer (a):","Answer (b) — S₆:"]},{id:5,source:"Grade 11 — End-of-Year Exam, Phan Boi Chau High School, 2023–2024",label:"Problem 5",parts:["a) Given P⟹Q is true and Q is false. What can be concluded about P?","b) Solve: |3x − 2| = log₃(81)."],fields:["Answer (a):","Answer (b):"]}];
 export default function Page(){
   const router=useRouter();const [time,setTime]=useState("");const [answers,setAnswers]=useState({});

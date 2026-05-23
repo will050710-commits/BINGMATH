@@ -3,7 +3,7 @@ import { startTimer, getRemainingTime, formatTime, clearTestSession } from "@/ut
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-const LEGACY_KEY="readingTest_section2";const SECTION="section2";const TEST_KEY="reading-test-L11-4";
+const LEGACY_KEY = "reading-test-L11-4_section2";const SECTION="section2";const TEST_KEY="reading-test-L11-4";
 const questions=["1. In Asch's conformity experiments, all participants gave incorrect answers when confederates did so.","2. The presence of a single dissenter from the incorrect group significantly reduced conformity rates.","3. Conformity rates were higher in individualistic cultures than in collectivist cultures in Asch's research.","4. Normative social influence occurs when people conform because they believe the group has superior knowledge.","5. Groupthink has been linked to poor collective decision-making in organisational and policy contexts."];const options=["TRUE","FALSE","NOT GIVEN"];
 export default function Page(){
   const router=useRouter();const [time,setTime]=useState("");const [answers,setAnswers]=useState({});

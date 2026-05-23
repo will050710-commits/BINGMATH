@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const LEGACY_KEY = "readingTest_section1";
+const LEGACY_KEY = "reading-test-1_section1";
 const SECTION = "section1";
 const TEST_KEY = "reading-test-1";
 

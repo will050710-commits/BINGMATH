@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const LEGACY_KEY = "readingTest_section2";
+const LEGACY_KEY = "reading-test-6_section2";
 const SECTION = "section2";
 const TEST_KEY = "reading-test-6";
 const questions = ["1. CRISPR-Cas9 technology was originally derived from a bacterial immune system.",

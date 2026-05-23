@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { gradeTest } from "@/utils/grader";
 import { useRouter } from "next/navigation";
-const LEGACY_KEY="readingTest_section3";const SECTION="section3";const TEST_KEY="reading-test-L11-4";
+const LEGACY_KEY = "reading-test-L11-4_section3";const SECTION="section3";const TEST_KEY="reading-test-L11-4";
 const mathProblems=[{id:1,source:"Grade 11 — Semester I Exam, Dinh Tien Hoang High School, 2023–2024",label:"Problem 1",parts:["a) Simplify: (27^(1/3) · 9^(3/2)) / (3^(−1)).","b) Solve: 5^(2x+1) = 125."],fields:["Answer (a):","Answer (b):"]},{id:2,source:"Grade 11 — Semester I Exam, Viet Duc High School, 2023–2024",label:"Problem 2",parts:["a) Solve: log₃(x²−2x) = log₃(x+4).","b) Evaluate: log₆(4) + log₆(9)."],fields:["Answer (a):","Answer (b):"]},{id:3,source:"Grade 11 — Mid-term Exam, Nguyen Du High School, 2023–2024",label:"Problem 3",parts:["The sum of the first n terms of an arithmetic sequence is Sₙ = 3n² + n.","a) Find u₁ and d.","b) Find the first term greater than 100."],fields:["Answer (a):","Answer (b):"]},{id:4,source:"Grade 11 — Semester I Exam, Le Quy Don High School, 2023–2024",label:"Problem 4",parts:["A geometric sequence has u₁ = 5 and S∞ = 25 (infinite sum).","a) Find the common ratio q.","b) Find u₄."],fields:["Answer (a) — q:","Answer (b) — u₄:"]},{id:5,source:"Grade 11 — End-of-Year Exam, Le Quy Don High School, 2023–2024",label:"Problem 5",parts:["a) Write the negation of: ∃x∈ℝ: 2^x < 0.","b) Is the statement 'P⟹Q is true and P is false' logically consistent? Explain."],fields:["Answer (a):","Answer (b):"]}];
 export default function Page(){
   const router=useRouter();const [time,setTime]=useState("");const [answers,setAnswers]=useState({});

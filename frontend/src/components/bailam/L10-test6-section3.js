@@ -5,7 +5,7 @@ import Link from "next/link";
 import { gradeTest } from "@/utils/grader";
 import { useRouter } from "next/navigation";
 
-const LEGACY_KEY = "readingTest_section3";
+const LEGACY_KEY = "reading-test-6_section3";
 const SECTION = "section3";
 const TEST_KEY = "reading-test-6";
 

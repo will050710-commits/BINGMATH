@@ -20,6 +20,18 @@ const baseInp = {
   fontSize: 15, outline: "none", boxSizing: "border-box", transition: "border 0.2s",
 };
 
+function getAuthErrorMessage(error, fallback) {
+  const message = error?.message || "";
+  if (
+    message.includes("Failed to fetch") ||
+    message.includes("NetworkError") ||
+    message.includes("fetch")
+  ) {
+    return "Không kết nối được máy chủ xác thực. Vui lòng kiểm tra backend và thử lại.";
+  }
+  return fallback;
+}
+
 function Inp({ style, ...props }) {
   return (
     <input {...props} style={{ ...baseInp, ...style }}
@@ -53,13 +65,18 @@ export default function SignUpForm() {
     const err = validate();
     if (err) { setError(err); return; }
     setLoading(true);
-    const { ok, error: apiErr } = await signup({
-      email: f.email.trim().toLowerCase(), username: f.username.trim(),
-      password: f.password, phone: f.phone.trim(), school: f.school.trim(), grade: f.grade,
-    });
-    setLoading(false);
-    if (ok) router.push("/");
-    else    setError(apiErr || "Đăng ký thất bại. Vui lòng thử lại.");
+    try {
+      const { ok, error: apiErr } = await signup({
+        email: f.email.trim().toLowerCase(), username: f.username.trim(),
+        password: f.password, phone: f.phone.trim(), school: f.school.trim(), grade: f.grade,
+      });
+      if (ok) router.push("/");
+      else    setError(apiErr || "Đăng ký thất bại. Vui lòng thử lại.");
+    } catch (authErr) {
+      setError(getAuthErrorMessage(authErr, "Đăng ký thất bại. Vui lòng thử lại."));
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

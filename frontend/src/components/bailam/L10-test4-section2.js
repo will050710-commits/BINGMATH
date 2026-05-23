@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const LEGACY_KEY = "readingTest_section2";
+const LEGACY_KEY = "reading-test-4_section2";
 const SECTION = "section2";
 const TEST_KEY = "reading-test-4";
 const questions = ["1. Visible matter — stars, galaxies, and gas — makes up roughly 27 percent of the universe's total content.",

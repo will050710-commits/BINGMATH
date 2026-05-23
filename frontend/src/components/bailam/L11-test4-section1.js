@@ -3,7 +3,7 @@ import { startTimer, getRemainingTime, formatTime, clearTestSession } from "@/ut
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-const LEGACY_KEY="readingTest_section1";const SECTION="section1";const TEST_KEY="reading-test-L11-4";
+const LEGACY_KEY = "reading-test-L11-4_section1";const SECTION="section1";const TEST_KEY="reading-test-L11-4";
 const normalizeOptions=(options)=>{
   if(options.length<=4)return options.map(option=>({label:option,value:option.slice(0,1)}));
   const joined=options.join("");

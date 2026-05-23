@@ -1,6 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import MathToolsPanel from "./MathToolsPanel";
 
 /* ─────────────────────────────────────────────────
    LessonVideoPlayer
@@ -88,6 +89,22 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
     (s) => currentTime >= s.start && currentTime < s.end
   ) || null;
 
+  const allSubtitleWords = useMemo(() => {
+    const seen = new Set();
+    return subtitles
+      .flatMap((subtitle) => subtitle.words || [])
+      .filter((word) => {
+        const key = `${word.text}__${word.vi || ""}`;
+        if (!word.text || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }, [subtitles]);
+
+  const activeWordKeys = useMemo(() => {
+    return new Set((activeSub?.words || []).map((word) => `${word.text}__${word.vi || ""}`));
+  }, [activeSub]);
+
   const handleWordClick = useCallback((word) => {
     setSidebar({ open: true, title: word.detailTitle || word.text, detail: word.detail, vi: word.vi });
   }, []);
@@ -154,6 +171,54 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
       display: "flex",
       alignItems: "center",
       gap: 6,
+    },
+    vocabPanel: {
+      background: "#f8fbfc",
+      border: "1px solid #dcebed",
+      borderTop: "none",
+      borderRadius: "0 0 16px 16px",
+      padding: "14px 16px 16px",
+    },
+    vocabHeader: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 12,
+      marginBottom: 10,
+      color: "#244248",
+      fontSize: 13,
+      fontWeight: 800,
+    },
+    vocabGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+      gap: 8,
+      maxHeight: 220,
+      overflowY: "auto",
+      paddingRight: 2,
+    },
+    vocabCard: (active) => ({
+      border: `1px solid ${active ? "#0B4F5C" : "#d3e3e6"}`,
+      borderRadius: 8,
+      background: active ? "#e9f8fb" : "white",
+      padding: "9px 10px",
+      textAlign: "left",
+      cursor: "pointer",
+      boxShadow: active ? "0 3px 10px rgba(11,79,92,0.14)" : "0 1px 4px rgba(0,0,0,0.04)",
+    }),
+    vocabTerm: {
+      color: "#0B4F5C",
+      fontSize: 14,
+      fontWeight: 800,
+      lineHeight: 1.35,
+      overflowWrap: "anywhere",
+    },
+    vocabMeaning: {
+      color: "#5d7075",
+      fontSize: 12,
+      lineHeight: 1.35,
+      marginTop: 4,
+      overflowWrap: "anywhere",
     },
     /* Removed Tooltip Styles */
     /* Right Sidebar */
@@ -254,6 +319,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
+          <MathToolsPanel lang={lang} />
         </div>
 
         {/* ── Subtitle bar ── */}
@@ -278,6 +344,34 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
         </div>
 
         {/* ── Credit bar ── */}
+        {allSubtitleWords.length > 0 && (
+          <div style={S.vocabPanel}>
+            <div style={S.vocabHeader}>
+              <span>{t("Từ vựng trong video", "Video vocabulary")}</span>
+              <span>{allSubtitleWords.length}</span>
+            </div>
+            <div style={S.vocabGrid}>
+              {allSubtitleWords.map((word, index) => {
+                const key = `${word.text}__${word.vi || ""}`;
+                const active = activeWordKeys.has(key);
+                return (
+                  <button
+                    key={`${key}-${index}`}
+                    type="button"
+                    className="lvp-vocab-card"
+                    style={S.vocabCard(active)}
+                    onClick={() => handleWordClick(word)}
+                    title={t("Nhấn để xem chi tiết", "Click for details")}
+                  >
+                    <div style={S.vocabTerm}>{word.text}</div>
+                    {word.vi && <div style={S.vocabMeaning}>{word.vi}</div>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {credit && (
           <div style={S.creditBar}>
             <span>🎬</span>

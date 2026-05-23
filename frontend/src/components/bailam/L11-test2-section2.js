@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const LEGACY_KEY="readingTest_section2";
+const LEGACY_KEY = "reading-test-L11-2_section2";
 const SECTION="section2";
 const TEST_KEY="reading-test-L11-2";
 const questions=["1. Vaccines protect against disease by introducing a weakened form of a pathogen that causes mild illness.",

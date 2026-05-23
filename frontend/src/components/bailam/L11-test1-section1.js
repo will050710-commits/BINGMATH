@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-const LEGACY_KEY = "readingTest_section1";
+const LEGACY_KEY = "reading-test-L11-1_section1";
 const SECTION = "section1";
 const TEST_KEY = "reading-test-L11-1";
 const passage1Questions = [{id:"p1q1",text:"1. The primary purpose of the passage is to",options:["A. argue that the 1951 Refugee Convention should be abolished","B. describe the scale and legal complexity of climate-driven displacement","C. explain why Bangladesh is uniquely vulnerable to flooding","D. predict exactly how many people will be displaced by 2050"],answer:"B"},

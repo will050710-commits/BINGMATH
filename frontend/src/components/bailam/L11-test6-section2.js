@@ -3,7 +3,7 @@ import { startTimer, getRemainingTime, formatTime, clearTestSession } from "@/ut
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-const LEGACY_KEY="readingTest_section2";const SECTION="section2";const TEST_KEY="reading-test-L11-6";
+const LEGACY_KEY = "reading-test-L11-6_section2";const SECTION="section2";const TEST_KEY="reading-test-L11-6";
 const questions=["1. Lithium-ion battery costs increased by approximately 90 percent between 2010 and 2023.","2. Pumped hydropower currently provides the majority of global energy storage capacity.","3. Lithium-ion batteries are cost-effective for both short- and long-duration storage requirements.","4. Green hydrogen is produced by using renewable electricity to split water through electrolysis.","5. Most analysts expect green hydrogen to reach cost competitiveness in some applications by the early 2030s."];const options=["TRUE","FALSE","NOT GIVEN"];
 export default function Page(){
   const router=useRouter();const [time,setTime]=useState("");const [answers,setAnswers]=useState({});

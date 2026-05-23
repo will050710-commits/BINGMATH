@@ -13,6 +13,18 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/authContext";
 
+function getAuthErrorMessage(error, fallback) {
+  const message = error?.message || "";
+  if (
+    message.includes("Failed to fetch") ||
+    message.includes("NetworkError") ||
+    message.includes("fetch")
+  ) {
+    return "Không kết nối được máy chủ xác thực. Vui lòng kiểm tra backend và thử lại.";
+  }
+  return fallback;
+}
+
 export default function LoginForm() {
   const { login }  = useAuth();
   const router     = useRouter();
@@ -27,10 +39,15 @@ export default function LoginForm() {
     setError("");
     if (!email.trim() || !password) { setError("Please fill in all fields."); return; }
     setLoading(true);
-    const { ok, error: err } = await login({ email: email.trim().toLowerCase(), password });
-    setLoading(false);
-    if (ok) router.push("/");
-    else    setError(err || "Sai email hoặc mật khẩu. Vui lòng thử lại.");
+    try {
+      const { ok, error: err } = await login({ email: email.trim().toLowerCase(), password });
+      if (ok) router.push("/");
+      else    setError(err || "Sai email hoặc mật khẩu. Vui lòng thử lại.");
+    } catch (authErr) {
+      setError(getAuthErrorMessage(authErr, "Đăng nhập thất bại. Vui lòng thử lại."));
+    } finally {
+      setLoading(false);
+    }
   }
 
   const inp = {

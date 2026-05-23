@@ -3,7 +3,7 @@ import { startTimer, getRemainingTime, formatTime, clearTestSession } from "@/ut
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-const LEGACY_KEY="readingTest_section2";const SECTION="section2";const TEST_KEY="reading-test-L11-3";
+const LEGACY_KEY = "reading-test-L11-3_section2";const SECTION="section2";const TEST_KEY="reading-test-L11-3";
 const questions=["1. Space programme technologies have contributed to a range of everyday consumer products.","2. NASA's annual budget has remained at approximately 4.4 percent of the US federal budget since the Apollo era.","3. The 1967 Outer Space Treaty explicitly permits private companies to extract and own resources from asteroids.","4. SpaceX's Falcon 9 significantly reduced the cost of delivering cargo to low Earth orbit.","5. Some critics argue that resources spent on human deep-space exploration could more effectively address terrestrial problems."];const options=["TRUE","FALSE","NOT GIVEN"];
 export default function Page(){
   const router=useRouter();const [time,setTime]=useState("");const [answers,setAnswers]=useState({});

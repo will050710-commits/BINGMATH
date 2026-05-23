@@ -3,7 +3,7 @@ import { startTimer, getRemainingTime, formatTime, clearTestSession } from "@/ut
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-const LEGACY_KEY="readingTest_section2";const SECTION="section2";const TEST_KEY="reading-test-L11-5";
+const LEGACY_KEY = "reading-test-L11-5_section2";const SECTION="section2";const TEST_KEY="reading-test-L11-5";
 const questions=["1. The EU AI Act requires all AI systems to be fully transparent and explainable to users.","2. Deep neural networks often produce decisions without explanations humans can understand.","3. The EU's approach to AI governance prioritises innovation speed over rights protection.","4. AI systems inevitably embed value choices about how to balance competing priorities.","5. China, the United States, and the EU have adopted identical frameworks for AI governance."];const options=["TRUE","FALSE","NOT GIVEN"];
 export default function Page(){
   const router=useRouter();const [time,setTime]=useState("");const [answers,setAnswers]=useState({});
