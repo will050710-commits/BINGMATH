@@ -4,16 +4,40 @@ import { useState } from "react";
 
 const TOOLS = [
   {
-    id: "desmos",
-    label: "Desmos",
+    id: "graphing",
+    label: "Đồ thị",
     title: "Graphing Calculator",
-    src: "https://www.desmos.com/calculator?embed",
+    src: "https://www.geogebra.org/graphing?embed",
   },
   {
-    id: "geogebra",
-    label: "GeoGebra",
-    title: "Geometry and Algebra",
+    id: "geometry",
+    label: "Hình học",
+    title: "Geometry",
+    src: "https://www.geogebra.org/geometry?embed",
+  },
+  {
+    id: "classic",
+    label: "Tổng hợp",
+    title: "Classic Geometry and Algebra",
     src: "https://www.geogebra.org/classic?embed",
+  },
+  {
+    id: "threeD",
+    label: "3D / Vectơ",
+    title: "3D Calculator",
+    src: "https://www.geogebra.org/3d?embed",
+  },
+  {
+    id: "cas",
+    label: "CAS",
+    title: "Computer Algebra System",
+    src: "https://www.geogebra.org/cas?embed",
+  },
+  {
+    id: "probability",
+    label: "Xác suất",
+    title: "Probability Calculator",
+    src: "https://www.geogebra.org/probability?embed",
   },
 ];
 
@@ -85,6 +109,7 @@ export default function MathToolsPanel({ lang = "vi" }) {
     },
     tabs: {
       display: "flex",
+      flexWrap: "wrap",
       gap: 8,
       padding: "12px 16px",
       borderBottom: "1px solid #e6eef0",
@@ -99,6 +124,7 @@ export default function MathToolsPanel({ lang = "vi" }) {
       fontSize: 14,
       fontWeight: 700,
       cursor: "pointer",
+      whiteSpace: "nowrap",
     }),
     frameWrap: {
       flex: 1,
