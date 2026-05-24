@@ -347,7 +347,7 @@ export default function Lesson1_MenhDe() {
               videoId="sOeldimAvnM"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Khan Academy (CC BY-SA)", "Video by Khan Academy (CC BY-SA)")}
+              credit={t("Video từ Adobe Math Lab (YouTube)", "Video by Adobe Math Lab (YouTube)")}
             />
           </div>
         </section>

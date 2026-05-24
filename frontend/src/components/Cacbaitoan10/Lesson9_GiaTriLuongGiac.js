@@ -218,7 +218,7 @@ export default function Lesson9_GiaTriLuongGiac() {
             videoId="Em2HiOJUS5E"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+            credit={t("Video từ Khan Academy India (YouTube)", "Video by Khan Academy India (YouTube)")}
           />
         </div>
       </section>

@@ -355,10 +355,10 @@ export default function Lesson3_PhepToanTapHop() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="sBvaPopWOmQ"
+              videoId="4TlCToZZ5gA"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+              credit={t("Video từ TrevTutor (YouTube)", "Video by TrevTutor (YouTube)")}
             />
           </div>
         </section>

@@ -361,7 +361,7 @@ export default function Lesson8_HamSoBacHai() {
               videoId="MQtsRYPx3v0"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+              credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
             />
           </div>
         </section>

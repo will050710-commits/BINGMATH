@@ -377,7 +377,7 @@ export default function Lesson7_HamSoVaDoThi() {
               videoId="52tpYl2tTqk"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+              credit={t("Video từ Math Antics (YouTube)", "Video by Math Antics (YouTube)")}
             />
           </div>
         </section>

@@ -196,7 +196,7 @@ export default function Lesson24_OnTapChuong7() {
             videoId="xdiBjypYFRQ"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Animate Math (Manim Engine)", "Video by Animate Math (Manim Engine)")}
+            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
           />
         </div>
       </section>

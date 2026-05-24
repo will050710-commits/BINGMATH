@@ -188,7 +188,7 @@ export default function Lesson27_NhiThucNewton() {
             videoId="iPwrDWQ7hPc"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Dr. Trefor Bazett (CC BY-SA)", "Video by Dr. Trefor Bazett (CC BY-SA)")}
+            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
           />
         </div>
       </section>

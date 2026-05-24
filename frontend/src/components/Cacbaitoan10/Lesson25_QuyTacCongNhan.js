@@ -184,10 +184,10 @@ export default function Lesson25_QuyTacCongNhan() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="3_otNr9kRuY"
+            videoId="HDLBCv4yyIs"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Leios Labs (Manim Engine)", "Video by Leios Labs (Manim Engine)")}
+            credit={t("Video từ Khan Academy India (YouTube)", "Video by Khan Academy India (YouTube)")}
           />
         </div>
       </section>

@@ -287,7 +287,7 @@ export default function Lesson2_TapHop() {
               videoId="tyDKR4FG3Yw" 
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+              credit={t("Video từ TrevTutor (YouTube)", "Video by TrevTutor (YouTube)")}
             />
           </div>
         </section>

@@ -186,7 +186,7 @@ export default function Lesson35_XacSuatBienCo() {
             videoId="q0P9xTHbSus"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            credit={t("Video từ Khan Academy India (YouTube)", "Video by Khan Academy India (YouTube)")}
           />
         </div>
       </section>

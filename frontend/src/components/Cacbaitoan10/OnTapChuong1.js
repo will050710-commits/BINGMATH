@@ -338,7 +338,7 @@ export default function OnTapChuong1() {
             videoId="tyDKR4FG3Yw"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Socratica (CC BY-SA)", "Video by Socratica (CC BY-SA)")}
+            credit={t("Video từ TrevTutor (YouTube)", "Video by TrevTutor (YouTube)")}
           />
         </div>
       </section>

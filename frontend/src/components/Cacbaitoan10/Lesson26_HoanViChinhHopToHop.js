@@ -186,7 +186,7 @@ export default function Lesson26_HoanViChinhHopToHop() {
             videoId="HDLBCv4yyIs"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
+            credit={t("Video từ Khan Academy India (YouTube)", "Video by Khan Academy India (YouTube)")}
           />
         </div>
       </section>
