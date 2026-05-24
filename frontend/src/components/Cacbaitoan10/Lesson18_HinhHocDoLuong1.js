@@ -55,46 +55,117 @@ export default function Lesson18_HinhHocDoLuong1() {
   const t=(vi,en)=>lang==="vi"?vi:en;
 
   const videoSubtitles = [
-    {
-      start: 0, end: 6,
-      words: [
-        { text: "The", vi: "Định lí" },
-        { text: "law", vi: "định lí" },
-        { text: "of", vi: "về" },
-        { text: "cosines", vi: "cosin", detail: "<b>Law of cosines (Định lí côsin)</b>:<br/>Trong tam giác: a² = b² + c² - 2bc.cos(A).", detailTitle: "Law of cosines" },
-        { text: "and", vi: "và" },
-        { text: "law", vi: "định lí" },
-        { text: "of", vi: "về" },
-        { text: "sines", vi: "sin", detail: "<b>Law of sines (Định lí sin)</b>:<br/>Trong tam giác: a/sin(A) = b/sin(B) = c/sin(C) = 2R.", detailTitle: "Law of sines" },
-        { text: "relate", vi: "liên hệ" },
-        { text: "sides", vi: "các cạnh" },
-        { text: "and", vi: "và" },
-        { text: "angles.", vi: "các góc." }
-      ]
-    },
-    {
-      start: 6, end: 12,
-      words: [
-        { text: "We", vi: "Chúng ta" },
-        { text: "calculate", vi: "tính toán" },
-        { text: "circumradius,", vi: "bán kính đường tròn ngoại tiếp,", detail: "<b>Circumradius (Bán kính ngoại tiếp - R)</b>:<br/>Bán kính của đường tròn đi qua cả ba đỉnh của tam giác.", detailTitle: "Circumradius" },
-        { text: "inradius,", vi: "bán kính đường tròn nội tiếp,", detail: "<b>Inradius (Bán kính nội tiếp - r)</b>:<br/>Bán kính của đường tròn tiếp xúc với cả ba cạnh của tam giác.", detailTitle: "Inradius" },
-        { text: "and", vi: "và" },
-        { text: "area.", vi: "diện tích.", detail: "<b>Area (Diện tích)</b>: Số đo độ lớn bề mặt của hình tam giác.", detailTitle: "Area (Diện tích)" }
-      ]
-    },
-    {
-      start: 12, end: 18,
-      words: [
-        { text: "Use", vi: "Sử dụng" },
-        { text: "Heron's", vi: "Heron" },
-        { text: "formula", vi: "công thức,", detail: "<b>Heron's formula (Công thức Heron)</b>:<br/>Công thức tính diện tích tam giác: S = √[p(p-a)(p-b)(p-c)].", detailTitle: "Heron's formula" },
-        { text: "with", vi: "với" },
-        { text: "the", vi: "nửa chu vi" },
-        { text: "semi-perimeter.", vi: "nửa chu vi.", detail: "<b>Semi-perimeter (Nửa chu vi - p)</b>:<br/>Bằng một nửa chu vi tam giác: p = (a + b + c)/2.", detailTitle: "Semi-perimeter" }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "geometric measurement",
+        "vi": "hình học đo lường",
+        "detail": "<b>geometric measurement</b>: hình học đo lường.",
+        "detailTitle": "geometric measurement (hình học đo lường)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "length",
+        "vi": "độ dài",
+        "detail": "<b>length</b>: độ dài.",
+        "detailTitle": "length (độ dài)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "angle",
+        "vi": "góc",
+        "detail": "<b>angle</b>: góc.",
+        "detailTitle": "angle (góc)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "shape property",
+        "vi": "tính chất hình học",
+        "detail": "<b>shape property</b>: tính chất hình học.",
+        "detailTitle": "shape property (tính chất hình học)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "length",
+        "vi": "độ dài",
+        "detail": "<b>length</b>: độ dài.",
+        "detailTitle": "length (độ dài)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "angle",
+        "vi": "góc",
+        "detail": "<b>angle</b>: góc.",
+        "detailTitle": "angle (góc)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "shape property",
+        "vi": "tính chất hình học",
+        "detail": "<b>shape property</b>: tính chất hình học.",
+        "detailTitle": "shape property (tính chất hình học)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};

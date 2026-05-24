@@ -97,34 +97,117 @@ export default function Lesson3_PhepToanTapHop() {
   const t = (vi, en) => (lang === "vi" ? vi : en);
 
   const videoSubtitles = [
-    {
-      start: 0, end: 7,
-      words: [
-        { text: "Set", vi: "Tập hợp", detail: "<b>Set (Tập hợp)</b>: Một nhóm các đối tượng xác định.", detailTitle: "Set (Tập hợp)" },
-        { text: "operations", vi: "phép toán", detail: "<b>Operations (Các phép toán)</b>: Các cách biến đổi hoặc kết hợp các tập hợp.", detailTitle: "Operations (Phép toán)" },
-        { text: "include", vi: "bao gồm" },
-        { text: "union,", vi: "phép hợp,", detail: "<b>Union (Phép hợp - ∪)</b>:<br/>Tập hợp gồm tất cả các phần tử thuộc ít nhất một trong hai tập hợp.", detailTitle: "Union (Hợp)" },
-        { text: "intersection,", vi: "phép giao,", detail: "<b>Intersection (Phép giao - ∩)</b>:<br/>Tập hợp gồm các phần tử chung của cả hai tập hợp.", detailTitle: "Intersection (Giao)" },
-        { text: "difference,", vi: "phép hiệu,", detail: "<b>Difference (Phép hiệu - \\)</b>:<br/>Tập hợp các phần tử thuộc tập này nhưng không thuộc tập kia.", detailTitle: "Difference (Hiệu)" },
-        { text: "and", vi: "và" },
-        { text: "complement.", vi: "phần bù.", detail: "<b>Complement (Phần bù - C_B A)</b>:<br/>Hiệu B \\ A khi A là tập con của B.", detailTitle: "Complement (Phần bù)" }
-      ]
-    },
-    {
-      start: 7, end: 15,
-      words: [
-        { text: "We", vi: "Chúng ta" },
-        { text: "can", vi: "có thể" },
-        { text: "visualize", vi: "trực quan hóa" },
-        { text: "these", vi: "các" },
-        { text: "relations", vi: "quan hệ" },
-        { text: "using", vi: "bằng cách dùng" },
-        { text: "a", vi: "một" },
-        { text: "Venn", vi: "Venn" },
-        { text: "diagram.", vi: "biểu đồ.", detail: "<b>Venn diagram (Biểu đồ Venn)</b>:<br/>Hình vẽ hình học (thường là hình tròn) dùng để biểu diễn các tập hợp và quan hệ giữa chúng.", detailTitle: "Venn diagram" }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "set operations",
+        "vi": "phép toán tập hợp",
+        "detail": "<b>set operations</b>: phép toán tập hợp.",
+        "detailTitle": "set operations (phép toán tập hợp)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "union",
+        "vi": "phép hợp",
+        "detail": "<b>union</b>: phép hợp.",
+        "detailTitle": "union (phép hợp)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "intersection",
+        "vi": "phép giao",
+        "detail": "<b>intersection</b>: phép giao.",
+        "detailTitle": "intersection (phép giao)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "complement",
+        "vi": "phần bù",
+        "detail": "<b>complement</b>: phần bù.",
+        "detailTitle": "complement (phần bù)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "union",
+        "vi": "phép hợp",
+        "detail": "<b>union</b>: phép hợp.",
+        "detailTitle": "union (phép hợp)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "intersection",
+        "vi": "phép giao",
+        "detail": "<b>intersection</b>: phép giao.",
+        "detailTitle": "intersection (phép giao)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "complement",
+        "vi": "phần bù",
+        "detail": "<b>complement</b>: phần bù.",
+        "detailTitle": "complement (phần bù)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));

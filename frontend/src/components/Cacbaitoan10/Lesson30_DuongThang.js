@@ -23,47 +23,117 @@ export default function Lesson30_DuongThang() {
   const t=(vi,en)=>lang==="vi"?vi:en;
 
   const videoSubtitles = [
-    {
-      start: 0, end: 6,
-      words: [
-        { text: "A", vi: "Một" },
-        { text: "line", vi: "đường thẳng" },
-        { text: "equation", vi: "phương trình,", detail: "<b>Line equation (Phương trình đường thẳng)</b>: Biểu thức toán học mô tả đường thẳng trong mặt phẳng tọa độ.", detailTitle: "Line equation" },
-        { text: "uses", vi: "sử dụng" },
-        { text: "a", vi: "một" },
-        { text: "normal", vi: "pháp tuyến" },
-        { text: "vector", vi: "vecto,", detail: "<b>Normal vector (Vectơ pháp tuyến)</b>:<br/>Vectơ vuông góc với đường thẳng biên.", detailTitle: "Normal vector" },
-        { text: "or", vi: "hoặc" },
-        { text: "direction", vi: "chỉ phương" },
-        { text: "vector.", vi: "vecto chỉ phương.", detail: "<b>Direction vector (Vectơ chỉ phương)</b>:<br/>Vectơ có giá song song hoặc trùng với đường thẳng.", detailTitle: "Direction vector" }
-      ]
-    },
-    {
-      start: 6, end: 12,
-      words: [
-        { text: "Circles", vi: "Đường tròn" },
-        { text: "are", vi: "được" },
-        { text: "defined", vi: "xác định" },
-        { text: "by", vi: "bởi" },
-        { text: "a", vi: "một" },
-        { text: "center", vi: "tâm,", detail: "<b>Center (Tâm đường tròn)</b>: Điểm cố định I(a,b) nằm ở giữa đường tròn.", detailTitle: "Center (Tâm)" },
-        { text: "and", vi: "và" },
-        { text: "radius.", vi: "bán kính.", detail: "<b>Radius (Bán kính - R)</b>:<br/>Khoảng cách từ tâm đường tròn đến bất kỳ điểm nào trên đường tròn đó.", detailTitle: "Radius (Bán kính)" }
-      ]
-    },
-    {
-      start: 12, end: 20,
-      words: [
-        { text: "Ellipse", vi: "Elip" },
-        { text: "properties", vi: "tính chất,", detail: "<b>Ellipse (Đường elip)</b>:<br/>Tập hợp các điểm có tổng khoảng cách tới hai tiêu điểm cố định là một hằng số.", detailTitle: "Ellipse" },
-        { text: "include", vi: "bao gồm" },
-        { text: "foci,", vi: "các tiêu điểm,", detail: "<b>Foci (Các tiêu điểm - F1, F2)</b>:<br/>Hai điểm cố định dùng để định nghĩa đường elip.", detailTitle: "Foci (Tiêu điểm)" },
-        { text: "axes,", vi: "các trục,", detail: "<b>Axes (Các trục)</b>: Trục lớn (major axis) và trục nhỏ (minor axis) của elip.", detailTitle: "Axes (Các trục)" },
-        { text: "and", vi: "và" },
-        { text: "eccentricity.", vi: "độ lệch tâm.", detail: "<b>Eccentricity (Tâm sai - e = c/a)</b>:<br/>Tỉ số đo độ dẹt của đường elip (luôn nhỏ hơn 1).", detailTitle: "Eccentricity (Tâm sai)" }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "line equations",
+        "vi": "phương trình đường thẳng",
+        "detail": "<b>line equations</b>: phương trình đường thẳng.",
+        "detailTitle": "line equations (phương trình đường thẳng)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "normal vector",
+        "vi": "véc-tơ pháp tuyến",
+        "detail": "<b>normal vector</b>: véc-tơ pháp tuyến.",
+        "detailTitle": "normal vector (véc-tơ pháp tuyến)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "direction vector",
+        "vi": "véc-tơ chỉ phương",
+        "detail": "<b>direction vector</b>: véc-tơ chỉ phương.",
+        "detailTitle": "direction vector (véc-tơ chỉ phương)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "distance",
+        "vi": "khoảng cách",
+        "detail": "<b>distance</b>: khoảng cách.",
+        "detailTitle": "distance (khoảng cách)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "normal vector",
+        "vi": "véc-tơ pháp tuyến",
+        "detail": "<b>normal vector</b>: véc-tơ pháp tuyến.",
+        "detailTitle": "normal vector (véc-tơ pháp tuyến)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "direction vector",
+        "vi": "véc-tơ chỉ phương",
+        "detail": "<b>direction vector</b>: véc-tơ chỉ phương.",
+        "detailTitle": "direction vector (véc-tơ chỉ phương)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "distance",
+        "vi": "khoảng cách",
+        "detail": "<b>distance</b>: khoảng cách.",
+        "detailTitle": "distance (khoảng cách)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};

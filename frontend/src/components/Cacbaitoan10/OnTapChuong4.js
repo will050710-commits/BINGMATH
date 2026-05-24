@@ -56,35 +56,117 @@ export default function OnTapChuong4() {
   const t=(vi,en)=>lang==="vi"?vi:en;
 
   const videoSubtitles = [
-    {
-      start: 0, end: 7,
-      words: [
-        { text: "The", vi: "Đường tròn" },
-        { text: "unit", vi: "đơn vị" },
-        { text: "circle", vi: "đường tròn,", detail: "<b>Unit circle (Đường tròn lượng giác)</b>:<br/>Đường tròn có bán kính bằng 1, tâm trùng với gốc tọa độ O.", detailTitle: "Unit circle" },
-        { text: "is", vi: "là" },
-        { text: "fundamental", vi: "cơ bản" },
-        { text: "for", vi: "cho" },
-        { text: "trigonometric", vi: "lượng giác,", detail: "<b>Trigonometric (Lượng giác)</b>: Liên quan đến các tỉ số đo góc trong tam giác.", detailTitle: "Trigonometric" },
-        { text: "values.", vi: "giá trị." }
-      ]
-    },
-    {
-      start: 7, end: 15,
-      words: [
-        { text: "We", vi: "Chúng ta" },
-        { text: "define", vi: "định nghĩa" },
-        { text: "sine,", vi: "sin,", detail: "<b>Sine (Sin)</b>:<br/>Tung độ của điểm M trên đường tròn lượng giác tương ứng với góc lượng giác.", detailTitle: "Sine (Sin)" },
-        { text: "cosine,", vi: "cosin,", detail: "<b>Cosine (Cos)</b>:<br/>Hoành độ của điểm M trên đường tròn lượng giác tương ứng với góc lượng giác.", detailTitle: "Cosine (Cos)" },
-        { text: "and", vi: "và" },
-        { text: "tangent", vi: "tang,", detail: "<b>Tangent (Tan)</b>:<br/>Tỉ số của Sine chia cho Cosine (sin/cos) của góc lượng giác.", detailTitle: "Tangent (Tan)" },
-        { text: "in", vi: "bằng đơn vị" },
-        { text: "degrees", vi: "độ,", detail: "<b>Degree (Độ)</b>: Đơn vị đo góc truyền thống, ký hiệu là ° (vòng tròn đầy là 360°).", detailTitle: "Degree (Độ)" },
-        { text: "or", vi: "hoặc" },
-        { text: "radians.", vi: "radian.", detail: "<b>Radian (Radian)</b>:<br/>Đơn vị đo góc chuẩn trong toán học, 1 vòng tròn đầy bằng 2π radian.", detailTitle: "Radian" }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "triangle trigonometry review",
+        "vi": "ôn tập hệ thức lượng trong tam giác",
+        "detail": "<b>triangle trigonometry review</b>: ôn tập hệ thức lượng trong tam giác.",
+        "detailTitle": "triangle trigonometry review (ôn tập hệ thức lượng trong tam giác)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "law of cosines",
+        "vi": "định lý cosin",
+        "detail": "<b>law of cosines</b>: định lý cosin.",
+        "detailTitle": "law of cosines (định lý cosin)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "law of sines",
+        "vi": "định lý sin",
+        "detail": "<b>law of sines</b>: định lý sin.",
+        "detailTitle": "law of sines (định lý sin)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "application",
+        "vi": "bài toán ứng dụng",
+        "detail": "<b>application</b>: bài toán ứng dụng.",
+        "detailTitle": "application (bài toán ứng dụng)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "law of cosines",
+        "vi": "định lý cosin",
+        "detail": "<b>law of cosines</b>: định lý cosin.",
+        "detailTitle": "law of cosines (định lý cosin)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "law of sines",
+        "vi": "định lý sin",
+        "detail": "<b>law of sines</b>: định lý sin.",
+        "detailTitle": "law of sines (định lý sin)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "application",
+        "vi": "bài toán ứng dụng",
+        "detail": "<b>application</b>: bài toán ứng dụng.",
+        "detailTitle": "application (bài toán ứng dụng)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};

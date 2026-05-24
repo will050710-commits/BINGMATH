@@ -23,49 +23,117 @@ export default function Lesson35_XacSuatBienCo() {
   const t=(vi,en)=>lang==="vi"?vi:en;
 
   const videoSubtitles = [
-    {
-      start: 0, end: 6,
-      words: [
-        { text: "The", vi: "Không gian" },
-        { text: "sample", vi: "mẫu" },
-        { text: "space", vi: "không gian,", detail: "<b>Sample space (Không gian mẫu - Ω)</b>:<br/>Tập hợp tất cả các kết quả có thể xảy ra của một phép thử ngẫu nhiên.", detailTitle: "Sample space" },
-        { text: "contains", vi: "chứa" },
-        { text: "all", vi: "tất cả" },
-        { text: "outcomes", vi: "kết quả" },
-        { text: "of", vi: "của" },
-        { text: "a", vi: "một" },
-        { text: "random", vi: "ngẫu nhiên" },
-        { text: "experiment.", vi: "phép thử.", detail: "<b>Random experiment (Phép thử ngẫu nhiên)</b>:<br/>Hành động hay thí nghiệm có kết quả không thể đoán trước chính xác.", detailTitle: "Random experiment" }
-      ]
-    },
-    {
-      start: 6, end: 12,
-      words: [
-        { text: "An", vi: "Một" },
-        { text: "event", vi: "biến cố,", detail: "<b>Event (Biến cố)</b>:<br/>Một tập con của không gian mẫu Ω, đại diện cho một kết quả ta quan tâm.", detailTitle: "Event (Biến cố)" },
-        { text: "is", vi: "là" },
-        { text: "a", vi: "một" },
-        { text: "subset", vi: "tập con,", detail: "<b>Subset (Tập con)</b>: Tập hợp con của không gian mẫu.", detailTitle: "Subset" },
-        { text: "of", vi: "của" },
-        { text: "the", vi: "không gian" },
-        { text: "sample", vi: "mẫu" },
-        { text: "space.", vi: "không gian mẫu." }
-      ]
-    },
-    {
-      start: 12, end: 18,
-      words: [
-        { text: "Calculate", vi: "Tính" },
-        { text: "probability", vi: "xác suất,", detail: "<b>Probability (Xác suất - P(A))</b>:<br/>Khả năng xảy ra của biến cố: P(A) = n(A)/n(Ω).", detailTitle: "Probability (Xác suất)" },
-        { text: "for", vi: "cho" },
-        { text: "mutually", vi: "xung khắc" },
-        { text: "exclusive", vi: "biến cố xung khắc,", detail: "<b>Mutually exclusive events (Biến cố xung khắc)</b>:<br/>Hai biến cố không thể xảy ra đồng thời (giao bằng rỗng).", detailTitle: "Mutually exclusive" },
-        { text: "or", vi: "hoặc" },
-        { text: "complementary", vi: "đối,", detail: "<b>Complementary event (Biến cố đối - ¬A)</b>:<br/>Biến cố xảy ra khi và chỉ khi A không xảy ra: P(¬A) = 1 - P(A).", detailTitle: "Complementary event" },
-        { text: "events.", vi: "các biến cố." }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "probability of an event",
+        "vi": "xác suất của biến cố",
+        "detail": "<b>probability of an event</b>: xác suất của biến cố.",
+        "detailTitle": "probability of an event (xác suất của biến cố)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "favorable outcome",
+        "vi": "kết quả thuận lợi",
+        "detail": "<b>favorable outcome</b>: kết quả thuận lợi.",
+        "detailTitle": "favorable outcome (kết quả thuận lợi)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "equally likely",
+        "vi": "đồng khả năng",
+        "detail": "<b>equally likely</b>: đồng khả năng.",
+        "detailTitle": "equally likely (đồng khả năng)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "complement",
+        "vi": "biến cố đối",
+        "detail": "<b>complement</b>: biến cố đối.",
+        "detailTitle": "complement (biến cố đối)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "favorable outcome",
+        "vi": "kết quả thuận lợi",
+        "detail": "<b>favorable outcome</b>: kết quả thuận lợi.",
+        "detailTitle": "favorable outcome (kết quả thuận lợi)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "equally likely",
+        "vi": "đồng khả năng",
+        "detail": "<b>equally likely</b>: đồng khả năng.",
+        "detailTitle": "equally likely (đồng khả năng)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "complement",
+        "vi": "biến cố đối",
+        "detail": "<b>complement</b>: biến cố đối.",
+        "detailTitle": "complement (biến cố đối)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};

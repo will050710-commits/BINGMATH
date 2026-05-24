@@ -24,43 +24,117 @@ export default function Lesson13_KhaiNiemVecto() {
   const t=(vi,en)=>lang==="vi"?vi:en;
 
   const videoSubtitles = [
-    {
-      start: 0, end: 6,
-      words: [
-        { text: "A", vi: "Một" },
-        { text: "vector", vi: "vecto,", detail: "<b>Vector (Vectơ)</b>:<br/>Một đoạn thẳng có hướng, tức là có điểm đầu và điểm cuối xác định.", detailTitle: "Vector (Vectơ)" },
-        { text: "has", vi: "có" },
-        { text: "both", vi: "cả" },
-        { text: "magnitude", vi: "độ dài", detail: "<b>Magnitude (Độ dài vectơ)</b>:<br/>Khoảng cách giữa điểm đầu và điểm cuối của vectơ đó.", detailTitle: "Magnitude (Độ dài)" },
-        { text: "and", vi: "và" },
-        { text: "direction.", vi: "hướng.", detail: "<b>Direction (Hướng / Phương chiều)</b>: Phương đường thẳng chứa vectơ và chiều từ điểm đầu đến điểm cuối.", detailTitle: "Direction (Hướng)" }
-      ]
-    },
-    {
-      start: 6, end: 12,
-      words: [
-        { text: "Vector", vi: "Vectơ" },
-        { text: "addition", vi: "phép cộng,", detail: "<b>Vector addition (Cộng vectơ)</b>:<br/>Phép toán cộng hai vectơ theo quy tắc ba điểm hoặc quy tắc hình bình hành.", detailTitle: "Vector addition" },
-        { text: "gives", vi: "cho ra" },
-        { text: "a", vi: "một" },
-        { text: "resultant", vi: "tổng hợp" },
-        { text: "vector.", vi: "vecto tổng.", detail: "<b>Resultant vector (Vectơ tổng)</b>: Vectơ kết quả thu được từ phép cộng các vectơ thành phần.", detailTitle: "Resultant vector" }
-      ]
-    },
-    {
-      start: 12, end: 20,
-      words: [
-        { text: "Scalar", vi: "Vô hướng" },
-        { text: "multiplication", vi: "phép nhân,", detail: "<b>Scalar multiplication (Nhân vectơ với một số)</b>:<br/>Phép toán nhân số k với vectơ a để được vectơ mới.", detailTitle: "Scalar multiplication" },
-        { text: "and", vi: "và" },
-        { text: "dot", vi: "tích" },
-        { text: "product", vi: "vô hướng,", detail: "<b>Dot product (Tích vô hướng)</b>:<br/>Tích của độ dài hai vectơ với cosin của góc giữa chúng: a.b = |a|.|b|.cos(a,b).", detailTitle: "Dot product" },
-        { text: "of", vi: "của" },
-        { text: "orthogonal", vi: "vuông góc,", detail: "<b>Orthogonal (Vuông góc / Trực giao)</b>: Hai vectơ vuông góc khi và chỉ khi tích vô hướng của chúng bằng 0.", detailTitle: "Orthogonal (Vuông góc)" },
-        { text: "vectors.", vi: "các vectơ." }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "vectors",
+        "vi": "véc-tơ",
+        "detail": "<b>vectors</b>: véc-tơ.",
+        "detailTitle": "vectors (véc-tơ)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "magnitude",
+        "vi": "độ dài",
+        "detail": "<b>magnitude</b>: độ dài.",
+        "detailTitle": "magnitude (độ dài)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "direction",
+        "vi": "hướng",
+        "detail": "<b>direction</b>: hướng.",
+        "detailTitle": "direction (hướng)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "directed segment",
+        "vi": "đoạn thẳng có hướng",
+        "detail": "<b>directed segment</b>: đoạn thẳng có hướng.",
+        "detailTitle": "directed segment (đoạn thẳng có hướng)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "magnitude",
+        "vi": "độ dài",
+        "detail": "<b>magnitude</b>: độ dài.",
+        "detailTitle": "magnitude (độ dài)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "direction",
+        "vi": "hướng",
+        "detail": "<b>direction</b>: hướng.",
+        "detailTitle": "direction (hướng)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "directed segment",
+        "vi": "đoạn thẳng có hướng",
+        "detail": "<b>directed segment</b>: đoạn thẳng có hướng.",
+        "detailTitle": "directed segment (đoạn thẳng có hướng)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};

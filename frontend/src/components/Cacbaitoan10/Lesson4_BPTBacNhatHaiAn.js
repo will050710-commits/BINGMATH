@@ -74,51 +74,117 @@ export default function Lesson4_BPTBacNhatHaiAn() {
   const t = (vi, en) => (lang === "vi" ? vi : en);
 
   const videoSubtitles = [
-    {
-      start: 0, end: 6,
-      words: [
-        { text: "Let's", vi: "Hãy" },
-        { text: "solve", vi: "giải" },
-        { text: "a", vi: "một" },
-        { text: "linear", vi: "tuyến tính/bậc nhất" },
-        { text: "inequality", vi: "bất phương trình,", detail: "<b>Linear inequality (Bất phương trình bậc nhất)</b>:<br/>Bất phương trình dạng ax + by < c (hoặc >, ≤, ≥) với a, b không đồng thời bằng 0.", detailTitle: "Linear inequality" },
-        { text: "with", vi: "với" },
-        { text: "two", vi: "hai" },
-        { text: "variables.", vi: "ẩn số.", detail: "<b>Variables (Biến số / Ẩn số)</b>: Các chữ đại diện cho số chưa biết, thường là x và y.", detailTitle: "Variables (Biến số)" }
-      ]
-    },
-    {
-      start: 6, end: 12,
-      words: [
-        { text: "The", vi: "Đường" },
-        { text: "boundary", vi: "ranh giới" },
-        { text: "line", vi: "biên,", detail: "<b>Boundary line (Đường thẳng biên)</b>:<br/>Đường thẳng ax + by = c dùng để phân chia mặt phẳng tọa độ.", detailTitle: "Boundary line" },
-        { text: "divides", vi: "chia" },
-        { text: "the", vi: "mặt phẳng" },
-        { text: "coordinate", vi: "tọa độ" },
-        { text: "plane", vi: "mặt phẳng,", detail: "<b>Coordinate plane (Mặt phẳng tọa độ)</b>: Mặt phẳng Oxy được xác định bởi hai trục tọa độ Ox và Oy.", detailTitle: "Coordinate plane" },
-        { text: "into", vi: "thành" },
-        { text: "two", vi: "hai" },
-        { text: "half-planes.", vi: "nửa mặt phẳng.", detail: "<b>Half-plane (Nửa mặt phẳng)</b>:<br/>Một trong hai phần của mặt phẳng bị chia cắt bởi một đường thẳng biên.", detailTitle: "Half-plane" }
-      ]
-    },
-    {
-      start: 12, end: 18,
-      words: [
-        { text: "A", vi: "Một" },
-        { text: "system", vi: "hệ" },
-        { text: "of", vi: "các" },
-        { text: "inequalities", vi: "bất phương trình,", detail: "<b>System of inequalities (Hệ bất phương trình)</b>:<br/>Tập hợp gồm hai hay nhiều bất phương trình bậc nhất hai ẩn.", detailTitle: "System of inequalities" },
-        { text: "has", vi: "có" },
-        { text: "a", vi: "một" },
-        { text: "feasible", vi: "khả thi" },
-        { text: "region", vi: "miền nghiệm,", detail: "<b>Feasible region (Miền nghiệm)</b>:<br/>Phần mặt phẳng chứa các điểm có tọa độ thỏa mãn tất cả các bất phương trình trong hệ.", detailTitle: "Feasible region" },
-        { text: "defined", vi: "được xác định" },
-        { text: "by", vi: "bởi" },
-        { text: "constraints.", vi: "các ràng buộc.", detail: "<b>Constraints (Các ràng buộc / Điều kiện)</b>: Các bất phương trình giới hạn miền nghiệm trong bài toán quy hoạch tuyến tính.", detailTitle: "Constraints (Ràng buộc)" }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "linear inequalities in two variables",
+        "vi": "bất phương trình bậc nhất hai ẩn",
+        "detail": "<b>linear inequalities in two variables</b>: bất phương trình bậc nhất hai ẩn.",
+        "detailTitle": "linear inequalities in two variables (bất phương trình bậc nhất hai ẩn)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "solution region",
+        "vi": "miền nghiệm",
+        "detail": "<b>solution region</b>: miền nghiệm.",
+        "detailTitle": "solution region (miền nghiệm)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "boundary line",
+        "vi": "đường biên",
+        "detail": "<b>boundary line</b>: đường biên.",
+        "detailTitle": "boundary line (đường biên)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "half-plane",
+        "vi": "nửa mặt phẳng",
+        "detail": "<b>half-plane</b>: nửa mặt phẳng.",
+        "detailTitle": "half-plane (nửa mặt phẳng)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "solution region",
+        "vi": "miền nghiệm",
+        "detail": "<b>solution region</b>: miền nghiệm.",
+        "detailTitle": "solution region (miền nghiệm)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "boundary line",
+        "vi": "đường biên",
+        "detail": "<b>boundary line</b>: đường biên.",
+        "detailTitle": "boundary line (đường biên)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "half-plane",
+        "vi": "nửa mặt phẳng",
+        "detail": "<b>half-plane</b>: nửa mặt phẳng.",
+        "detailTitle": "half-plane (nửa mặt phẳng)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));

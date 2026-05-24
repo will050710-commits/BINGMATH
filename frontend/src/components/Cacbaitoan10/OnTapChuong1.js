@@ -90,34 +90,117 @@ export default function OnTapChuong1() {
   const t = (vi, en) => (lang==="vi" ? vi : en);
 
   const videoSubtitles = [
-    {
-      start: 0, end: 7,
-      words: [
-        { text: "Set", vi: "Tập hợp", detail: "<b>Set (Tập hợp)</b>: Một nhóm các đối tượng xác định.", detailTitle: "Set (Tập hợp)" },
-        { text: "operations", vi: "phép toán", detail: "<b>Operations (Các phép toán)</b>: Các cách biến đổi hoặc kết hợp các tập hợp.", detailTitle: "Operations (Phép toán)" },
-        { text: "include", vi: "bao gồm" },
-        { text: "union,", vi: "phép hợp,", detail: "<b>Union (Phép hợp - ∪)</b>:<br/>Tập hợp gồm tất cả các phần tử thuộc ít nhất một trong hai tập hợp.", detailTitle: "Union (Hợp)" },
-        { text: "intersection,", vi: "phép giao,", detail: "<b>Intersection (Phép giao - ∩)</b>:<br/>Tập hợp gồm các phần tử chung của cả hai tập hợp.", detailTitle: "Intersection (Giao)" },
-        { text: "difference,", vi: "phép hiệu,", detail: "<b>Difference (Phép hiệu - \\)</b>:<br/>Tập hợp các phần tử thuộc tập này nhưng không thuộc tập kia.", detailTitle: "Difference (Hiệu)" },
-        { text: "and", vi: "và" },
-        { text: "complement.", vi: "phần bù.", detail: "<b>Complement (Phần bù - C_B A)</b>:<br/>Hiệu B \\ A khi A là tập con của B.", detailTitle: "Complement (Phần bù)" }
-      ]
-    },
-    {
-      start: 7, end: 15,
-      words: [
-        { text: "We", vi: "Chúng ta" },
-        { text: "can", vi: "có thể" },
-        { text: "visualize", vi: "trực quan hóa" },
-        { text: "these", vi: "các" },
-        { text: "relations", vi: "quan hệ" },
-        { text: "using", vi: "bằng cách dùng" },
-        { text: "a", vi: "một" },
-        { text: "Venn", vi: "Venn" },
-        { text: "diagram.", vi: "biểu đồ.", detail: "<b>Venn diagram (Biểu đồ Venn)</b>:<br/>Hình vẽ hình học (thường là hình tròn) dùng để biểu diễn các tập hợp và quan hệ giữa chúng.", detailTitle: "Venn diagram" }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "propositions and sets",
+        "vi": "mệnh đề và tập hợp",
+        "detail": "<b>propositions and sets</b>: mệnh đề và tập hợp.",
+        "detailTitle": "propositions and sets (mệnh đề và tập hợp)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "logic",
+        "vi": "logic",
+        "detail": "<b>logic</b>: logic.",
+        "detailTitle": "logic (logic)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "set notation",
+        "vi": "ký hiệu tập hợp",
+        "detail": "<b>set notation</b>: ký hiệu tập hợp.",
+        "detailTitle": "set notation (ký hiệu tập hợp)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "review strategy",
+        "vi": "chiến lược ôn tập",
+        "detail": "<b>review strategy</b>: chiến lược ôn tập.",
+        "detailTitle": "review strategy (chiến lược ôn tập)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "logic",
+        "vi": "logic",
+        "detail": "<b>logic</b>: logic.",
+        "detailTitle": "logic (logic)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "set notation",
+        "vi": "ký hiệu tập hợp",
+        "detail": "<b>set notation</b>: ký hiệu tập hợp.",
+        "detailTitle": "set notation (ký hiệu tập hợp)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "review strategy",
+        "vi": "chiến lược ôn tập",
+        "detail": "<b>review strategy</b>: chiến lược ôn tập.",
+        "detailTitle": "review strategy (chiến lược ôn tập)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const toggleAnswer = (id) => setRevealedAnswers(p=>({...p,[id]:!p[id]}));

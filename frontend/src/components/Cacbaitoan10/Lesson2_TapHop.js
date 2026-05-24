@@ -60,42 +60,117 @@ export default function Lesson2_TapHop() {
   const t = (vi, en) => (lang === "vi" ? vi : en);
 
   const videoSubtitles = [
-    {
-      start: 0, end: 5,
-      words: [
-        { text: "Let's", vi: "Hãy" },
-        { text: "talk", vi: "nói" },
-        { text: "about", vi: "về" },
-        { text: "sets.", vi: "tập hợp.", detail: "<b>Sets (Tập hợp)</b>:<br/>Một nhóm các đối tượng, mỗi đối tượng gọi là phần tử.", detailTitle: "Sets (Tập hợp)" }
-      ]
-    },
-    {
-      start: 5, end: 12,
-      words: [
-        { text: "A", vi: "Một" },
-        { text: "set", vi: "tập hợp", detail: "<b>Set</b>: Tập hợp.", detailTitle: "Set" },
-        { text: "is", vi: "là" },
-        { text: "a", vi: "một" },
-        { text: "collection", vi: "nhóm/tập hợp", detail: "<b>Collection</b>: Tập hợp, bộ sưu tập.", detailTitle: "Collection" },
-        { text: "of", vi: "của" },
-        { text: "distinct", vi: "riêng biệt", detail: "<b>Distinct</b>: Khác biệt, phân biệt, không trùng lặp.", detailTitle: "Distinct (Riêng biệt)" },
-        { text: "objects.", vi: "đối tượng." }
-      ]
-    },
-    {
-      start: 12, end: 18,
-      words: [
-        { text: "The", vi: "Các" },
-        { text: "objects", vi: "đối tượng" },
-        { text: "are", vi: "được" },
-        { text: "called", vi: "gọi là" },
-        { text: "elements", vi: "phần tử", detail: "<b>Elements</b>: Phần tử của một tập hợp.", detailTitle: "Elements (Phần tử)" },
-        { text: "of", vi: "của" },
-        { text: "the", vi: "cái" },
-        { text: "set.", vi: "tập hợp." }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "sets",
+        "vi": "tập hợp",
+        "detail": "<b>sets</b>: tập hợp.",
+        "detailTitle": "sets (tập hợp)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "element",
+        "vi": "phần tử",
+        "detail": "<b>element</b>: phần tử.",
+        "detailTitle": "element (phần tử)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "subset",
+        "vi": "tập con",
+        "detail": "<b>subset</b>: tập con.",
+        "detailTitle": "subset (tập con)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "set notation",
+        "vi": "ký hiệu tập hợp",
+        "detail": "<b>set notation</b>: ký hiệu tập hợp.",
+        "detailTitle": "set notation (ký hiệu tập hợp)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "element",
+        "vi": "phần tử",
+        "detail": "<b>element</b>: phần tử.",
+        "detailTitle": "element (phần tử)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "subset",
+        "vi": "tập con",
+        "detail": "<b>subset</b>: tập con.",
+        "detailTitle": "subset (tập con)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "set notation",
+        "vi": "ký hiệu tập hợp",
+        "detail": "<b>set notation</b>: ký hiệu tập hợp.",
+        "detailTitle": "set notation (ký hiệu tập hợp)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
   const scrollTo = (id) => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };

@@ -97,48 +97,117 @@ export default function Lesson1_MenhDe() {
   const t = (vi, en) => (lang === "vi" ? vi : en);
 
   const videoSubtitles = [
-    {
-      start: 0, end: 5,
-      words: [
-        { text: "Let's", vi: "Hãy" },
-        { text: "study", vi: "nghiên cứu/học" },
-        { text: "mathematical", vi: "toán học", detail: "<b>Mathematical</b>: Thuộc về toán học, liên quan đến toán học.", detailTitle: "Mathematical (Toán học)" },
-        { text: "propositions.", vi: "mệnh đề.", detail: "<b>Proposition (Mệnh đề)</b>:<br/>Một câu khẳng định có tính đúng hoặc sai rõ ràng.", detailTitle: "Proposition (Mệnh đề)" }
-      ]
-    },
-    {
-      start: 5, end: 12,
-      words: [
-        { text: "Every", vi: "Mỗi" },
-        { text: "proposition", vi: "mệnh đề" },
-        { text: "has", vi: "có" },
-        { text: "a", vi: "một" },
-        { text: "truth", vi: "chân lý" },
-        { text: "value,", vi: "giá trị,", detail: "<b>Truth value (Giá trị chân lý)</b>:<br/>Tính Đúng (True) hoặc Sai (False) của một mệnh đề.", detailTitle: "Truth value" },
-        { text: "which", vi: "cái mà" },
-        { text: "is", vi: "là" },
-        { text: "either", vi: "hoặc" },
-        { text: "true", vi: "đúng", detail: "<b>True (Đúng)</b>: Mệnh đề có giá trị chân lý đúng, thường ký hiệu là T hoặc 1.", detailTitle: "True (Đúng)" },
-        { text: "or", vi: "hoặc" },
-        { text: "false.", vi: "sai.", detail: "<b>False (Sai)</b>: Mệnh đề có giá trị chân lý sai, thường ký hiệu là F hoặc 0.", detailTitle: "False (Sai)" }
-      ]
-    },
-    {
-      start: 12, end: 20,
-      words: [
-        { text: "We", vi: "Chúng ta" },
-        { text: "can", vi: "có thể" },
-        { text: "form", vi: "tạo ra" },
-        { text: "negation,", vi: "phép phủ định,", detail: "<b>Negation (Phủ định)</b>:<br/>Mệnh đề phủ định của P là ¬P, đúng khi P sai và sai khi P đúng.", detailTitle: "Negation (Phủ định)" },
-        { text: "implication,", vi: "phép kéo theo,", detail: "<b>Implication (Mệnh đề kéo theo)</b>:<br/>Mệnh đề 'Nếu P thì Q' (P ⇒ Q), chỉ sai khi P đúng và Q sai.", detailTitle: "Implication (Kéo theo)" },
-        { text: "equivalence,", vi: "mệnh đề tương đương,", detail: "<b>Equivalence (Mệnh đề tương đương)</b>:<br/>Mệnh đề 'P nếu và chỉ nếu Q' (P ⇔ Q), đúng khi P và Q có cùng giá trị chân lý.", detailTitle: "Equivalence (Tương đương)" },
-        { text: "or", vi: "hoặc" },
-        { text: "use", vi: "sử dụng" },
-        { text: "a", vi: "một" },
-        { text: "quantifier.", vi: "lượng từ.", detail: "<b>Quantifier (Lượng từ)</b>:<br/>Ký hiệu diễn tả số lượng như Với mọi (∀) hoặc Tồn tại (∃).", detailTitle: "Quantifier (Lượng từ)" }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "mathematical propositions",
+        "vi": "mệnh đề toán học",
+        "detail": "<b>mathematical propositions</b>: mệnh đề toán học.",
+        "detailTitle": "mathematical propositions (mệnh đề toán học)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "truth value",
+        "vi": "giá trị chân lý",
+        "detail": "<b>truth value</b>: giá trị chân lý.",
+        "detailTitle": "truth value (giá trị chân lý)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "negation",
+        "vi": "phủ định",
+        "detail": "<b>negation</b>: phủ định.",
+        "detailTitle": "negation (phủ định)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "implication",
+        "vi": "mệnh đề kéo theo",
+        "detail": "<b>implication</b>: mệnh đề kéo theo.",
+        "detailTitle": "implication (mệnh đề kéo theo)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "truth value",
+        "vi": "giá trị chân lý",
+        "detail": "<b>truth value</b>: giá trị chân lý.",
+        "detailTitle": "truth value (giá trị chân lý)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "negation",
+        "vi": "phủ định",
+        "detail": "<b>negation</b>: phủ định.",
+        "detailTitle": "negation (phủ định)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "implication",
+        "vi": "mệnh đề kéo theo",
+        "detail": "<b>implication</b>: mệnh đề kéo theo.",
+        "detailTitle": "implication (mệnh đề kéo theo)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));

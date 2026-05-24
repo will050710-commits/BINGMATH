@@ -23,49 +23,117 @@ export default function Lesson36_OnTapChuong10() {
   const t=(vi,en)=>lang==="vi"?vi:en;
 
   const videoSubtitles = [
-    {
-      start: 0, end: 6,
-      words: [
-        { text: "The", vi: "Không gian" },
-        { text: "sample", vi: "mẫu" },
-        { text: "space", vi: "không gian,", detail: "<b>Sample space (Không gian mẫu - Ω)</b>:<br/>Tập hợp tất cả các kết quả có thể xảy ra của một phép thử ngẫu nhiên.", detailTitle: "Sample space" },
-        { text: "contains", vi: "chứa" },
-        { text: "all", vi: "tất cả" },
-        { text: "outcomes", vi: "kết quả" },
-        { text: "of", vi: "của" },
-        { text: "a", vi: "một" },
-        { text: "random", vi: "ngẫu nhiên" },
-        { text: "experiment.", vi: "phép thử.", detail: "<b>Random experiment (Phép thử ngẫu nhiên)</b>:<br/>Hành động hay thí nghiệm có kết quả không thể đoán trước chính xác.", detailTitle: "Random experiment" }
-      ]
-    },
-    {
-      start: 6, end: 12,
-      words: [
-        { text: "An", vi: "Một" },
-        { text: "event", vi: "biến cố,", detail: "<b>Event (Biến cố)</b>:<br/>Một tập con của không gian mẫu Ω, đại diện cho một kết quả ta quan tâm.", detailTitle: "Event (Biến cố)" },
-        { text: "is", vi: "là" },
-        { text: "a", vi: "một" },
-        { text: "subset", vi: "tập con,", detail: "<b>Subset (Tập con)</b>: Tập hợp con của không gian mẫu.", detailTitle: "Subset" },
-        { text: "of", vi: "của" },
-        { text: "the", vi: "không gian" },
-        { text: "sample", vi: "mẫu" },
-        { text: "space.", vi: "không gian mẫu." }
-      ]
-    },
-    {
-      start: 12, end: 18,
-      words: [
-        { text: "Calculate", vi: "Tính" },
-        { text: "probability", vi: "xác suất,", detail: "<b>Probability (Xác suất - P(A))</b>:<br/>Khả năng xảy ra của biến cố: P(A) = n(A)/n(Ω).", detailTitle: "Probability (Xác suất)" },
-        { text: "for", vi: "cho" },
-        { text: "mutually", vi: "xung khắc" },
-        { text: "exclusive", vi: "biến cố xung khắc,", detail: "<b>Mutually exclusive events (Biến cố xung khắc)</b>:<br/>Hai biến cố không thể xảy ra đồng thời (giao bằng rỗng).", detailTitle: "Mutually exclusive" },
-        { text: "or", vi: "hoặc" },
-        { text: "complementary", vi: "đối,", detail: "<b>Complementary event (Biến cố đối - ¬A)</b>:<br/>Biến cố xảy ra khi và chỉ khi A không xảy ra: P(¬A) = 1 - P(A).", detailTitle: "Complementary event" },
-        { text: "events.", vi: "các biến cố." }
-      ]
-    }
-  ];
+  {
+    "start": 0,
+    "end": 12,
+    "words": [
+      {
+        "text": "This lesson introduces",
+        "vi": "Bài học này giới thiệu"
+      },
+      {
+        "text": "probability review",
+        "vi": "ôn tập xác suất",
+        "detail": "<b>probability review</b>: ôn tập xác suất.",
+        "detailTitle": "probability review (ôn tập xác suất)"
+      },
+      {
+        "text": "and the main ideas used in Grade 10 math.",
+        "vi": "và các ý chính dùng trong Toán 10."
+      }
+    ]
+  },
+  {
+    "start": 12,
+    "end": 30,
+    "words": [
+      {
+        "text": "First identify",
+        "vi": "Trước hết xác định"
+      },
+      {
+        "text": "sample space",
+        "vi": "không gian mẫu",
+        "detail": "<b>sample space</b>: không gian mẫu.",
+        "detailTitle": "sample space (không gian mẫu)"
+      },
+      {
+        "text": "then connect it with",
+        "vi": "sau đó liên hệ với"
+      },
+      {
+        "text": "event operation",
+        "vi": "phép toán biến cố",
+        "detail": "<b>event operation</b>: phép toán biến cố.",
+        "detailTitle": "event operation (phép toán biến cố)"
+      },
+      {
+        "text": "through examples.",
+        "vi": "qua các ví dụ."
+      }
+    ]
+  },
+  {
+    "start": 30,
+    "end": 55,
+    "words": [
+      {
+        "text": "Use",
+        "vi": "Sử dụng"
+      },
+      {
+        "text": "probability rule",
+        "vi": "quy tắc xác suất",
+        "detail": "<b>probability rule</b>: quy tắc xác suất.",
+        "detailTitle": "probability rule (quy tắc xác suất)"
+      },
+      {
+        "text": "carefully and check every condition before solving.",
+        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
+      }
+    ]
+  },
+  {
+    "start": 55,
+    "end": 9999,
+    "words": [
+      {
+        "text": "For practice, combine",
+        "vi": "Khi luyện tập, hãy kết hợp"
+      },
+      {
+        "text": "sample space",
+        "vi": "không gian mẫu",
+        "detail": "<b>sample space</b>: không gian mẫu.",
+        "detailTitle": "sample space (không gian mẫu)"
+      },
+      {
+        "text": ",",
+        "vi": ","
+      },
+      {
+        "text": "event operation",
+        "vi": "phép toán biến cố",
+        "detail": "<b>event operation</b>: phép toán biến cố.",
+        "detailTitle": "event operation (phép toán biến cố)"
+      },
+      {
+        "text": "and",
+        "vi": "và"
+      },
+      {
+        "text": "probability rule",
+        "vi": "quy tắc xác suất",
+        "detail": "<b>probability rule</b>: quy tắc xác suất.",
+        "detailTitle": "probability rule (quy tắc xác suất)"
+      },
+      {
+        "text": "step by step.",
+        "vi": "theo từng bước."
+      }
+    ]
+  }
+];
 
 
   const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
