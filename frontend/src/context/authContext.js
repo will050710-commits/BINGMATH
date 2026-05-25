@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 // ─────────────────────────────────────────────────────────────────────────────
 // FILE: frontend/src/context/authContext.js
@@ -60,6 +61,12 @@ export function AuthProvider({ children }) {
   const [ready,       setReady]       = useState(false);
   const [testResults, setTestResults] = useState([]);
   const [gameResults, setGameResults] = useState([]);
+  const [competitiveStats, setCompetitiveStats] = useState({
+    xp: 0,
+    current_streak: 0,
+    longest_streak: 0,
+    global_rank: 0,
+  });
 
   const loadProfile = useCallback(async () => {
     if (!getAccess()) { setReady(true); return; }
@@ -68,6 +75,12 @@ export function AuthProvider({ children }) {
       setUser(data.user);
       setTestResults(data.test_results || []);
       setGameResults(data.game_results || []);
+      
+      // Load competitive stats
+      const { ok: statsOk, data: statsData } = await apiFetch("/api/competitive-stats");
+      if (statsOk) {
+        setCompetitiveStats(statsData);
+      }
     } else {
       clearTokens(); setUser(null);
     }
@@ -93,7 +106,7 @@ export function AuthProvider({ children }) {
     return { ok, error: data.error || null };
   }
 
-  function logout() { clearTokens(); setUser(null); setTestResults([]); setGameResults([]); }
+  function logout() { clearTokens(); setUser(null); setTestResults([]); setGameResults([]); setCompetitiveStats({ xp: 0, current_streak: 0, longest_streak: 0, global_rank: 0 }); }
 
   async function updateProfile(fields) {
     const { ok, data } = await apiFetch("/api/me", { method: "PATCH", body: JSON.stringify(fields) });
@@ -142,7 +155,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthCtx.Provider value={{
-      user, ready, testResults, gameResults,
+      user, ready, testResults, gameResults, competitiveStats,
       bestScores, recentActivity, totalTests, totalGames, avgTest, avgGame,
       signup, login, logout, updateProfile, saveTestResult, saveGameResult,
       reloadProfile: loadProfile,

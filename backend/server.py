@@ -3,8 +3,8 @@ from datetime import timedelta
 from functools import lru_cache
 
 # pyrefly: ignore [untyped-import]
-import requests as req_lib
-import orjson
+import requests as req_lib # pyright: ignore[reportMissingModuleSource]
+import orjson # pyright: ignore[reportMissingImports]
 from flask import Flask, request, jsonify, g, Response, stream_with_context
 # pyrefly: ignore [untyped-import]
 from flask_cors import CORS
@@ -216,6 +216,70 @@ def save_history(sid: str, history: list):
         conn.close()
 
 
+# ── XP & Streak Calculation ───────────────────────────────────────────────────
+def calculate_xp(score: int, total: int, accuracy: float) -> int:
+    """
+    Calculate XP points from test performance.
+    Base XP = (score / total) * 100
+    Bonus XP = accuracy > 80% ? +20 : accuracy > 60% ? +10 : 0
+    """
+    base_xp = max(10, int((score / max(total, 1)) * 100))
+    bonus = 20 if accuracy >= 80 else (10 if accuracy >= 60 else 0)
+    return base_xp + bonus
+
+def get_user_xp(db, uid: int) -> int:
+    """Calculate total XP from all test results."""
+    rows = db.execute(
+        "SELECT score, total, accuracy FROM test_results WHERE user_id=?", (uid,)
+    ).fetchall()
+    return sum(calculate_xp(r["score"], r["total"], r["accuracy"] or 0) for r in rows)
+
+def get_user_streak(db, uid: int) -> tuple:
+    """
+    Return (current_streak, longest_streak) in days.
+    current_streak: consecutive days with at least 1 test taken
+    """
+    rows = db.execute(
+        "SELECT DATE(taken_at) as day FROM test_results WHERE user_id=? ORDER BY taken_at DESC",
+        (uid,)
+    ).fetchall()
+    
+    if not rows:
+        return 0, 0
+    
+    dates = [row["day"] for row in rows]
+    unique_days = sorted(set(dates), reverse=True)
+    
+    if not unique_days:
+        return 0, 0
+    
+    from datetime import datetime, timedelta
+    today = datetime.now().date()
+    current_streak = 0
+    check_date = today
+    
+    for day_str in unique_days:
+        day = datetime.strptime(day_str, "%Y-%m-%d").date()
+        if day == check_date or day == check_date - timedelta(days=1):
+            current_streak += 1
+            check_date = day
+        else:
+            break
+    
+    longest_streak = 1
+    streak_count = 1
+    for i in range(1, len(unique_days)):
+        prev_day = datetime.strptime(unique_days[i-1], "%Y-%m-%d").date()
+        curr_day = datetime.strptime(unique_days[i], "%Y-%m-%d").date()
+        if (prev_day - curr_day).days == 1:
+            streak_count += 1
+            longest_streak = max(longest_streak, streak_count)
+        else:
+            streak_count = 1
+    
+    return current_streak, longest_streak
+
+
 # ── Auth ──────────────────────────────────────────────────────────────────────
 @app.route("/api/signup", methods=["POST"])
 def signup():
@@ -334,6 +398,38 @@ def update_me():
     return jsonify({"user": user_dict(row)})
 
 
+@app.route("/api/competitive-stats", methods=["GET"])
+@jwt_required()
+def get_competitive_stats():
+    """Get user's XP, streaks, and ranking stats."""
+    uid = int(get_jwt_identity())
+    db  = get_db()
+    
+    xp = get_user_xp(db, uid)
+    current_streak, longest_streak = get_user_streak(db, uid)
+    
+    # Get user's global rank
+    rows = db.execute("""
+        SELECT u.id FROM users u
+        LEFT JOIN test_results tr ON u.id = tr.user_id
+        GROUP BY u.id
+        ORDER BY SUM(CASE WHEN tr.score IS NOT NULL THEN tr.score ELSE 0 END) DESC
+    """).fetchall()
+    
+    rank = 1
+    for i, r in enumerate(rows):
+        if r["id"] == uid:
+            rank = i + 1
+            break
+    
+    return jsonify({
+        "xp": xp,
+        "current_streak": current_streak,
+        "longest_streak": longest_streak,
+        "global_rank": rank,
+    })
+
+
 # ── Scores ────────────────────────────────────────────────────────────────────
 @app.route("/api/test-result", methods=["POST"])
 @jwt_required()
@@ -411,7 +507,7 @@ def leaderboard():
     """
     Public endpoint — no JWT required.
     For every user, take their BEST score on each (test_key, section) pair,
-    then SUM those bests → total_points.  Return top 20.
+    then SUM those bests → total_points. Calculate XP and streaks. Return top 20.
     """
     db   = get_db()
     rows = db.execute("""
@@ -443,9 +539,13 @@ def leaderboard():
     for i, r in enumerate(rows):
         tp  = r["total_points"]  or 0
         tpo = r["total_possible"] or 1
+        user_id = r["user_id"]
+        xp = get_user_xp(db, user_id)
+        current_streak, longest_streak = get_user_streak(db, user_id)
+        
         result.append({
             "rank":           i + 1,
-            "user_id":        r["user_id"],
+            "user_id":        user_id,
             "username":       r["username"],
             "school":         r["school"] or "",
             "grade":          r["grade"]  or "",
@@ -453,6 +553,9 @@ def leaderboard():
             "total_possible": tpo,
             "sections_done":  r["sections_done"],
             "accuracy":       round(tp / tpo * 100, 1),
+            "xp":             xp,
+            "current_streak": current_streak,
+            "longest_streak": longest_streak,
         })
     return jsonify(result)
 

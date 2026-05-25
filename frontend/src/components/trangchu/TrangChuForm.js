@@ -17,6 +17,7 @@ export default function TrangChuForm() {
     user, ready,
     bestScores, recentActivity,
     totalTests, totalGames, avgTest, avgGame,
+    competitiveStats,
     logout,
   } = useAuth();
 
@@ -182,6 +183,25 @@ export default function TrangChuForm() {
                 <div style={{ fontSize: 15 }}>{ic}</div>
                 <div style={{ fontSize: 17, fontWeight: 800, color: "#0B4F5C", lineHeight: 1 }}>{val}</div>
                 <div style={{ fontSize: 10, color: "#888", marginTop: 2 }}>{lb}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Competitive Stats */}
+        <div style={{ padding: "11px 16px", borderBottom: "1px solid #eee" }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#1a5276", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 7 }}>🏆 Thống kê cạnh tranh</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
+            {[
+              ["⭐", "XP", competitiveStats.xp || 0],
+              ["🔥", "Streak hiện tại", `${competitiveStats.current_streak || 0} ngày`],
+              ["🎯", "Streak dài nhất", `${competitiveStats.longest_streak || 0} ngày`],
+              ["🥇", "Xếp hạng toàn cầu", `#${competitiveStats.global_rank || 0}`],
+            ].map(([ic, lb, val]) => (
+              <div key={lb} style={{ background: "#eaf4fb", borderRadius: 7, padding: "7px 9px" }}>
+                <div style={{ fontSize: 15 }}>{ic}</div>
+                <div style={{ fontSize: 17, fontWeight: 800, color: "#1a5276", lineHeight: 1 }}>{val}</div>
+                <div style={{ fontSize: 10, color: "#666", marginTop: 2 }}>{lb}</div>
               </div>
             ))}
           </div>
@@ -445,12 +465,13 @@ export default function TrangChuForm() {
           <div style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,180,255,0.1)" }}>
 
             {/* Table header */}
-            <div style={{ display: "grid", gridTemplateColumns: "52px 1fr 120px 100px 90px", gap: 0, padding: "14px 24px", background: "rgba(14,165,233,0.12)", borderBottom: "1px solid rgba(255,255,255,0.08)", fontSize: 11, fontWeight: 700, color: "#7dd3fc", textTransform: "uppercase", letterSpacing: 1 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "52px 1fr 100px 90px 90px 90px", gap: 0, padding: "14px 24px", background: "rgba(14,165,233,0.12)", borderBottom: "1px solid rgba(255,255,255,0.08)", fontSize: 11, fontWeight: 700, color: "#7dd3fc", textTransform: "uppercase", letterSpacing: 1 }}>
               <span>#</span>
               <span>Học sinh</span>
+              <span style={{ textAlign: "center" }}>XP ⭐</span>
+              <span style={{ textAlign: "center" }}>Streak 🔥</span>
               <span style={{ textAlign: "center" }}>Tổng điểm</span>
               <span style={{ textAlign: "center" }}>Độ chính xác</span>
-              <span style={{ textAlign: "center" }}>Sections</span>
             </div>
 
             {/* Rows */}
@@ -478,7 +499,7 @@ export default function TrangChuForm() {
 
               return (
                 <div key={entry.user_id}
-                  style={{ display: "grid", gridTemplateColumns: "52px 1fr 120px 100px 90px", gap: 0, padding: "14px 24px", background: isMe ? "rgba(99,102,241,0.12)" : rowBg, borderBottom: "1px solid rgba(255,255,255,0.05)", alignItems: "center", transition: "background 0.2s" }}
+                  style={{ display: "grid", gridTemplateColumns: "52px 1fr 100px 90px 90px 90px", gap: 0, padding: "14px 24px", background: isMe ? "rgba(99,102,241,0.12)" : rowBg, borderBottom: "1px solid rgba(255,255,255,0.05)", alignItems: "center", transition: "background 0.2s" }}
                   onMouseEnter={e => { if (!isMe) e.currentTarget.style.background = "rgba(255,255,255,0.045)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = isMe ? "rgba(99,102,241,0.12)" : rowBg; }}
                 >
@@ -514,6 +535,22 @@ export default function TrangChuForm() {
                     </div>
                   </div>
 
+                  {/* XP */}
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>
+                      {entry.xp || 0}
+                    </div>
+                    <div style={{ fontSize: 10, color: "#4e7896", fontWeight: 400 }}>XP</div>
+                  </div>
+
+                  {/* Current Streak */}
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: entry.current_streak > 0 ? "#ef4444" : "#4e7896" }}>
+                      {entry.current_streak || 0}d
+                    </div>
+                    <div style={{ fontSize: 10, color: "#4e7896", fontWeight: 400 }}>Hiện tại</div>
+                  </div>
+
                   {/* Total points */}
                   <div style={{ textAlign: "center" }}>
                     <span style={{ fontSize: isTop3 ? 18 : 16, fontWeight: 800, color: isTop3 ? "#fbbf24" : "#7dd3fc" }}>
@@ -531,12 +568,6 @@ export default function TrangChuForm() {
                       <div style={{ height: "100%", width: `${entry.accuracy}%`, background: entry.accuracy >= 80 ? "linear-gradient(90deg,#4ade80,#22d3ee)" : entry.accuracy >= 60 ? "linear-gradient(90deg,#fbbf24,#f59e0b)" : "linear-gradient(90deg,#f87171,#ef4444)", borderRadius: 2, transition: "width 0.8s ease" }} />
                     </div>
                   </div>
-
-                  {/* Sections done */}
-                  <div style={{ textAlign: "center", fontSize: 14, fontWeight: 600, color: "#94a3b8" }}>
-                    {entry.sections_done}
-                    <div style={{ fontSize: 10, color: "#4e7896", fontWeight: 400 }}>sections</div>
-                  </div>
                 </div>
               );
             })}
@@ -544,7 +575,7 @@ export default function TrangChuForm() {
             {/* Footer note */}
             {!lbLoading && leaderboard.length > 0 && (
               <div style={{ padding: "12px 24px", background: "rgba(0,0,0,0.2)", fontSize: 11, color: "#4e7896", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                Điểm được tính từ điểm cao nhất của mỗi section trong tất cả các bài test đã hoàn thành
+                XP được tính từ độ chính xác bài test · Streak được cập nhật hàng ngày
               </div>
             )}
           </div>
