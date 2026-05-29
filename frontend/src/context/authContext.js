@@ -3,54 +3,37 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // FILE: frontend/src/context/authContext.js
 //
-// SETUP STEPS:
-//  1. Open frontend/src/app/layout.js (root layout).
-//     Import and wrap children:
-//       import { AuthProvider } from "@/context/authContext";
-//       ...
-//       <AuthProvider>{children}</AuthProvider>
-//
-//  2. Create frontend/.env.local and add:
-//       NEXT_PUBLIC_BACKEND_URL=https://YOUR-APP.onrender.com
-//     (Leave blank for local dev — defaults to localhost:5000)
-//
-//  3. In any component: const { user, login, ... } = useAuth();
+// Auth: Firebase Authentication (email/password)
+// Backend: Custom Flask API for scores, leaderboard, competitive stats
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  updateProfile as firebaseUpdateProfile,
+} from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 const AuthCtx = createContext(null);
 
-// ── Token storage ─────────────────────────────────────────────────────────
-function storeTokens(a, r)  { localStorage.setItem("dm_access", a);  localStorage.setItem("dm_refresh", r); }
-function clearTokens()       { localStorage.removeItem("dm_access");   localStorage.removeItem("dm_refresh"); }
-function getAccess()         { return typeof window !== "undefined" ? localStorage.getItem("dm_access")  : null; }
-function getRefresh()        { return typeof window !== "undefined" ? localStorage.getItem("dm_refresh") : null; }
-
-async function doRefresh() {
-  const rf = getRefresh();
-  if (!rf) return false;
-  try {
-    const res = await fetch(`${BASE}/api/refresh`, {
-      method: "POST", headers: { Authorization: `Bearer ${rf}`, "Content-Type": "application/json" },
-    });
-    if (!res.ok) { clearTokens(); return false; }
-    localStorage.setItem("dm_access", (await res.json()).access_token);
-    return true;
-  } catch { clearTokens(); return false; }
-}
-
+// ── Backend API fetch (no JWT needed — uses Firebase UID as identity) ─────────
 async function apiFetch(path, opts = {}) {
-  const token = getAccess();
-  const hdrs  = { "Content-Type": "application/json", ...opts.headers };
-  if (token) hdrs["Authorization"] = `Bearer ${token}`;
+  const hdrs = { "Content-Type": "application/json", ...opts.headers };
 
-  let res  = await fetch(`${BASE}${path}`, { ...opts, headers: hdrs });
-  if (res.status === 401 && await doRefresh()) {
-    hdrs["Authorization"] = `Bearer ${getAccess()}`;
-    res = await fetch(`${BASE}${path}`, { ...opts, headers: hdrs });
+  // Attach Firebase ID token if user is logged in
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    try {
+      const idToken = await currentUser.getIdToken();
+      hdrs["Authorization"] = `Bearer ${idToken}`;
+    } catch (_) {}
   }
+
+  const res = await fetch(`${BASE}${path}`, { ...opts, headers: hdrs });
   const data = await res.json().catch(() => ({}));
   return { ok: res.ok, status: res.status, data };
 }
@@ -68,49 +51,120 @@ export function AuthProvider({ children }) {
     global_rank: 0,
   });
 
-  const loadProfile = useCallback(async () => {
-    if (!getAccess()) { setReady(true); return; }
-    const { ok, data } = await apiFetch("/api/me");
-    if (ok) {
-      setUser(data.user);
-      setTestResults(data.test_results || []);
-      setGameResults(data.game_results || []);
-      
-      // Load competitive stats
+  // ── Load backend profile (scores + competitive stats) ─────────────────────
+  const loadBackendProfile = useCallback(async () => {
+    try {
+      const { ok, data } = await apiFetch("/api/me");
+      if (ok) {
+        setTestResults(data.test_results || []);
+        setGameResults(data.game_results || []);
+      }
       const { ok: statsOk, data: statsData } = await apiFetch("/api/competitive-stats");
       if (statsOk) {
         setCompetitiveStats(statsData);
       }
-    } else {
-      clearTokens(); setUser(null);
-    }
-    setReady(true);
+    } catch (_) {}
   }, []);
 
-  useEffect(() => { loadProfile(); }, [loadProfile]);
+  // ── Sync Firebase user → ensure backend user row exists ───────────────────
+  const syncUserToBackend = useCallback(async (firebaseUser) => {
+    if (!firebaseUser) return;
+    try {
+      // Try fetching profile — if 404, create user in backend
+      const idToken = await firebaseUser.getIdToken();
+      const res = await fetch(`${BASE}/api/me`, {
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+        },
+      });
+      if (res.status === 404 || res.status === 401) {
+        // User doesn't exist in backend yet — register them
+        await fetch(`${BASE}/api/firebase-sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`,
+          },
+          body: JSON.stringify({
+            email: firebaseUser.email,
+            username: firebaseUser.displayName || firebaseUser.email.split("@")[0],
+          }),
+        });
+      }
+    } catch (_) {}
+  }, []);
+
+  // ── Listen to Firebase auth state ─────────────────────────────────────────
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser({
+          id:          firebaseUser.uid,
+          email:       firebaseUser.email,
+          username:    firebaseUser.displayName || firebaseUser.email.split("@")[0],
+          name:        firebaseUser.displayName || firebaseUser.email.split("@")[0],
+          avatar_url:  firebaseUser.photoURL || "",
+          created_at:  firebaseUser.metadata?.creationTime || "",
+        });
+        await syncUserToBackend(firebaseUser);
+        await loadBackendProfile();
+      } else {
+        setUser(null);
+        setTestResults([]);
+        setGameResults([]);
+        setCompetitiveStats({ xp: 0, current_streak: 0, longest_streak: 0, global_rank: 0 });
+      }
+      setReady(true);
+    });
+    return () => unsub();
+  }, [loadBackendProfile, syncUserToBackend]);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   async function signup({ email, username, password, phone = "", school = "", grade = "" }) {
-    const { ok, data } = await apiFetch("/api/signup", {
-      method: "POST", body: JSON.stringify({ email, username, password, phone, school, grade }),
-    });
-    if (ok) { storeTokens(data.access_token, data.refresh_token); setUser(data.user); setTestResults([]); setGameResults([]); }
-    return { ok, error: data.error || null };
+    try {
+      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      // Set display name
+      await firebaseUpdateProfile(credential.user, { displayName: username });
+
+      // Sync to backend
+      const idToken = await credential.user.getIdToken();
+      await fetch(`${BASE}/api/firebase-sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ email, username, phone, school, grade }),
+      });
+
+      return { ok: true, error: null };
+    } catch (err) {
+      return { ok: false, error: _firebaseErrorMessage(err) };
+    }
   }
 
   async function login({ email, password }) {
-    const { ok, data } = await apiFetch("/api/login", {
-      method: "POST", body: JSON.stringify({ email, password }),
-    });
-    if (ok) { storeTokens(data.access_token, data.refresh_token); await loadProfile(); }
-    return { ok, error: data.error || null };
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      return { ok: true, error: null };
+    } catch (err) {
+      return { ok: false, error: _firebaseErrorMessage(err) };
+    }
   }
 
-  function logout() { clearTokens(); setUser(null); setTestResults([]); setGameResults([]); setCompetitiveStats({ xp: 0, current_streak: 0, longest_streak: 0, global_rank: 0 }); }
+  async function logout() {
+    await signOut(auth);
+  }
 
   async function updateProfile(fields) {
-    const { ok, data } = await apiFetch("/api/me", { method: "PATCH", body: JSON.stringify(fields) });
-    if (ok) setUser(data.user);
+    const { ok, data } = await apiFetch("/api/me", {
+      method: "PATCH",
+      body: JSON.stringify(fields),
+    });
+    if (ok && data.user) {
+      setUser(prev => ({ ...prev, ...data.user }));
+    }
     return { ok, error: data.error || null };
   }
 
@@ -118,18 +172,20 @@ export function AuthProvider({ children }) {
   async function saveTestResult({ test_key, section, score, total, answers = {}, time_spent = 0 }) {
     if (!user) return { ok: false, error: "Not logged in" };
     const { ok, data } = await apiFetch("/api/test-result", {
-      method: "POST", body: JSON.stringify({ test_key, section, score, total, answers, time_spent }),
+      method: "POST",
+      body: JSON.stringify({ test_key, section, score, total, answers, time_spent }),
     });
-    if (ok) await loadProfile();
+    if (ok) await loadBackendProfile();
     return { ok, error: data.error || null };
   }
 
   async function saveGameResult({ lesson_slug, mode, score, total }) {
     if (!user) return { ok: false, error: "Not logged in" };
     const { ok, data } = await apiFetch("/api/minigame-result", {
-      method: "POST", body: JSON.stringify({ lesson_slug, mode, score, total }),
+      method: "POST",
+      body: JSON.stringify({ lesson_slug, mode, score, total }),
     });
-    if (ok) await loadProfile();
+    if (ok) await loadBackendProfile();
     return { ok, error: data.error || null };
   }
 
@@ -158,7 +214,7 @@ export function AuthProvider({ children }) {
       user, ready, testResults, gameResults, competitiveStats,
       bestScores, recentActivity, totalTests, totalGames, avgTest, avgGame,
       signup, login, logout, updateProfile, saveTestResult, saveGameResult,
-      reloadProfile: loadProfile,
+      reloadProfile: loadBackendProfile,
     }}>
       {children}
     </AuthCtx.Provider>
@@ -169,4 +225,18 @@ export function useAuth() {
   const ctx = useContext(AuthCtx);
   if (!ctx) throw new Error("useAuth() must be inside <AuthProvider>");
   return ctx;
+}
+
+// ── Firebase error → human readable ──────────────────────────────────────────
+function _firebaseErrorMessage(err) {
+  const code = err?.code || "";
+  if (code === "auth/email-already-in-use")   return "Email này đã được đăng ký.";
+  if (code === "auth/invalid-email")           return "Email không hợp lệ.";
+  if (code === "auth/weak-password")           return "Mật khẩu phải có ít nhất 6 ký tự.";
+  if (code === "auth/user-not-found")          return "Không tìm thấy tài khoản với email này.";
+  if (code === "auth/wrong-password")          return "Sai mật khẩu. Vui lòng thử lại.";
+  if (code === "auth/invalid-credential")      return "Sai email hoặc mật khẩu. Vui lòng thử lại.";
+  if (code === "auth/too-many-requests")       return "Quá nhiều lần thử. Vui lòng thử lại sau.";
+  if (code === "auth/network-request-failed")  return "Không có kết nối mạng. Vui lòng kiểm tra internet.";
+  return err?.message || "Đăng nhập thất bại. Vui lòng thử lại.";
 }

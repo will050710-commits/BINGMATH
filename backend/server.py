@@ -1,5 +1,4 @@
 import os, sqlite3, json, uuid, time, threading, base64
-from datetime import timedelta
 from functools import lru_cache
 
 # pyrefly: ignore [untyped-import]
@@ -8,11 +7,24 @@ import orjson # pyright: ignore[reportMissingImports]
 from flask import Flask, request, jsonify, g, Response, stream_with_context
 # pyrefly: ignore [untyped-import]
 from flask_cors import CORS
-from flask_jwt_extended import (
-    JWTManager, create_access_token, create_refresh_token,
-    jwt_required, get_jwt_identity,
-)
-from werkzeug.security import generate_password_hash, check_password_hash
+
+# ── Firebase Admin SDK ────────────────────────────────────────────────────────
+try:
+    import firebase_admin
+    from firebase_admin import credentials, auth as firebase_auth
+    _fb_cred_path = os.environ.get("FIREBASE_CREDENTIALS_PATH", "")
+    if _fb_cred_path and os.path.exists(_fb_cred_path):
+        _fb_cred = credentials.Certificate(_fb_cred_path)
+    else:
+        # Fall back to Application Default Credentials (works with GOOGLE_APPLICATION_CREDENTIALS env var)
+        _fb_cred = credentials.ApplicationDefault()
+    if not firebase_admin._apps:
+        firebase_admin.initialize_app(_fb_cred)
+    _firebase_available = True
+except Exception as _fb_init_err:
+    print(f"[WARN] Firebase Admin SDK not initialised: {_fb_init_err}")
+    _firebase_available = False
+    firebase_auth = None
 
 try:
     from flask_compress import Compress  # type: ignore
@@ -31,15 +43,93 @@ CORS(app, resources={r"/api/*": {
     "max_age": 3600,
 }})
 
-app.config["JWT_SECRET_KEY"]            = os.environ.get("JWT_SECRET", "duomath-dev-secret-CHANGE-IN-PROD")
-app.config["JWT_ACCESS_TOKEN_EXPIRES"]  = timedelta(hours=12)
-app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
-jwt = JWTManager(app)
-
 DB_PATH   = os.path.join(os.path.dirname(__file__), "duomath.db")
 GROQ_BASE = "https://api.groq.com/openai/v1"
 GROQ_KEY  = os.environ.get("GROQ_API_KEY", "")
 SELF_URL  = os.environ.get("SELF_URL", "")
+
+
+# ── Firebase token verification ───────────────────────────────────────────────
+import jwt  # PyJWT
+
+_google_certs = {}
+_google_certs_expire = 0
+
+def get_google_public_key(kid):
+    global _google_certs, _google_certs_expire
+    now = time.time()
+    if not _google_certs or now > _google_certs_expire:
+        try:
+            res = req_lib.get("https://www.googleapis.com/robot/v1/metadata/x509/securetoken-system@system.gserviceaccount.com", timeout=5)
+            if res.status_code == 200:
+                _google_certs = res.json()
+                cc = res.headers.get("Cache-Control", "")
+                max_age = 3600
+                for part in cc.split(","):
+                    if "max-age" in part:
+                        max_age = int(part.split("=")[1])
+                _google_certs_expire = now + max_age
+        except Exception as e:
+            print(f"[WARN] Failed to fetch Google public keys: {e}")
+    return _google_certs.get(kid)
+
+def verify_firebase_token_manually(id_token):
+    project_id = os.environ.get("FIREBASE_PROJECT_ID", "duosteam-be693")
+    try:
+        header = jwt.get_unverified_header(id_token)
+        kid = header.get("kid")
+        if not kid:
+            raise Exception("No kid in JWT header")
+        
+        cert_str = get_google_public_key(kid)
+        if not cert_str:
+            raise Exception(f"Public key not found for kid: {kid}")
+            
+        decoded = jwt.decode(
+            id_token,
+            cert_str,
+            algorithms=["RS256"],
+            audience=project_id,
+            issuer=f"https://securetoken.google.com/{project_id}"
+        )
+        return decoded
+    except Exception as e:
+        raise Exception(f"Manual token verification failed: {e}")
+
+
+def get_firebase_uid():
+    """Verify Firebase ID token from Authorization header, return uid or abort 401."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return jsonify({"error": "Missing or invalid Authorization header."}), 401
+    id_token = auth_header[7:]
+    
+    # Try Firebase Admin SDK if available
+    if _firebase_available and firebase_auth is not None:
+        try:
+            decoded = firebase_auth.verify_id_token(id_token)
+            return decoded["uid"]
+        except Exception as sdk_err:
+            print(f"[INFO] SDK token verification failed: {sdk_err}. Falling back to manual verification...")
+            
+    # Fallback to manual verification using PyJWT
+    try:
+        decoded = verify_firebase_token_manually(id_token)
+        return decoded["sub"]  # Firebase UID is in the 'sub' claim
+    except Exception as e:
+        return jsonify({"error": f"Token verification failed: {e}"}), 401
+
+
+def firebase_protected(fn):
+    """Decorator: verify Firebase token, inject uid as first argument."""
+    from functools import wraps
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        result = get_firebase_uid()
+        if isinstance(result, tuple):
+            return result  # error response
+        return fn(result, *args, **kwargs)
+    return wrapper
 
 
 # ── Cached system prompts ─────────────────────────────────────────────────────
@@ -97,9 +187,10 @@ def init_db():
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            firebase_uid TEXT   UNIQUE,
             email       TEXT    UNIQUE NOT NULL COLLATE NOCASE,
             username    TEXT    NOT NULL,
-            password    TEXT    NOT NULL,
+            password    TEXT    DEFAULT '',
             phone       TEXT    DEFAULT '',
             school      TEXT    DEFAULT '',
             grade       TEXT    DEFAULT '',
@@ -139,7 +230,12 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_game_user  ON minigame_results(user_id, played_at DESC);
         CREATE INDEX IF NOT EXISTS idx_session_id ON sessions(session_id);
     """)
-    conn.commit()
+    # Migration: add firebase_uid column if it doesn't exist
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN firebase_uid TEXT UNIQUE")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists
     conn.close()
 
 init_db()
@@ -148,15 +244,16 @@ init_db()
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def user_dict(row):
     return {
-        "id":         row["id"],
-        "email":      row["email"],
-        "username":   row["username"],
-        "name":       row["username"],
-        "phone":      row["phone"],
-        "school":     row["school"],
-        "grade":      row["grade"],
-        "avatar_url": row["avatar_url"],
-        "created_at": row["created_at"],
+        "id":           row["id"],
+        "firebase_uid": row["firebase_uid"] if "firebase_uid" in row.keys() else None,
+        "email":        row["email"],
+        "username":     row["username"],
+        "name":         row["username"],
+        "phone":        row["phone"],
+        "school":       row["school"],
+        "grade":        row["grade"],
+        "avatar_url":   row["avatar_url"],
+        "created_at":   row["created_at"],
     }
 
 def test_dict(row):
@@ -246,18 +343,18 @@ def get_user_streak(db, uid: int) -> tuple:
     
     if not rows:
         return 0, 0
-    
+
+    from datetime import datetime, timedelta
     dates = [row["day"] for row in rows]
     unique_days = sorted(set(dates), reverse=True)
-    
+
     if not unique_days:
         return 0, 0
-    
-    from datetime import datetime, timedelta
+
     today = datetime.now().date()
     current_streak = 0
     check_date = today
-    
+
     for day_str in unique_days:
         day = datetime.strptime(day_str, "%Y-%m-%d").date()
         if day == check_date or day == check_date - timedelta(days=1):
@@ -265,7 +362,7 @@ def get_user_streak(db, uid: int) -> tuple:
             check_date = day
         else:
             break
-    
+
     longest_streak = 1
     streak_count = 1
     for i in range(1, len(unique_days)):
@@ -276,99 +373,74 @@ def get_user_streak(db, uid: int) -> tuple:
             longest_streak = max(longest_streak, streak_count)
         else:
             streak_count = 1
-    
+
     return current_streak, longest_streak
 
 
-# ── Auth ──────────────────────────────────────────────────────────────────────
-@app.route("/api/signup", methods=["POST"])
-def signup():
-    d = request.get_json(force=True) or {}
+# ── Auth ───────────────────────────────────────────────────────────────────────
+
+@app.route("/api/firebase-sync", methods=["POST"])
+@firebase_protected
+def firebase_sync(fb_uid):
+    """Create or fetch a user row keyed by Firebase UID.
+    Called by the frontend after Firebase signup/login."""
+    d        = request.get_json(force=True) or {}
     email    = (d.get("email")    or "").strip().lower()
-    username = (d.get("username") or "").strip()
-    password = (d.get("password") or "").strip()
+    username = (d.get("username") or "").strip() or email.split("@")[0]
     phone    = (d.get("phone")    or "").strip()
     school   = (d.get("school")   or "").strip()
     grade    = (d.get("grade")    or "").strip()
 
-    if not email or not username or not password:
-        return jsonify({"error": "Email, username and password are required."}), 400
-    if len(password) < 6:
-        return jsonify({"error": "Password must be at least 6 characters."}), 400
-    if len(username) < 2:
-        return jsonify({"error": "Username must be at least 2 characters."}), 400
+    if not email:
+        return jsonify({"error": "email is required."}), 400
 
     db = get_db()
-    if db.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone():
-        return jsonify({"error": "An account with this email already exists."}), 409
+    row = db.execute("SELECT * FROM users WHERE firebase_uid=?", (fb_uid,)).fetchone()
+    if row:
+        # User already exists - return their data
+        test_results, game_results = _fetch_scores(db, row["id"])
+        return jsonify({"user": user_dict(row), "test_results": test_results, "game_results": game_results})
 
+    # Check if email already exists (e.g. legacy account) - link it
+    row = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+    if row:
+        db.execute("UPDATE users SET firebase_uid=? WHERE id=?", (fb_uid, row["id"]))
+        db.commit()
+        test_results, game_results = _fetch_scores(db, row["id"])
+        return jsonify({"user": user_dict(row), "test_results": test_results, "game_results": game_results})
+
+    # New user
     cur = db.execute(
-        "INSERT INTO users (email, username, password, phone, school, grade)"
+        "INSERT INTO users (firebase_uid, email, username, phone, school, grade)"
         " VALUES (?, ?, ?, ?, ?, ?)",
-        (email, username, generate_password_hash(password), phone, school, grade),
+        (fb_uid, email, username, phone, school, grade),
     )
     db.commit()
-    new_id = cur.lastrowid
-    row = db.execute("SELECT * FROM users WHERE id=?", (new_id,)).fetchone()
-
-    return jsonify({
-        "access_token":  create_access_token(identity=str(new_id)),
-        "refresh_token": create_refresh_token(identity=str(new_id)),
-        "user":          user_dict(row),
-        "test_results":  [],
-        "game_results":  [],
-    }), 201
-
-
-@app.route("/api/login", methods=["POST"])
-def login():
-    d = request.get_json(force=True) or {}
-    email    = (d.get("email")    or "").strip().lower()
-    password = (d.get("password") or "").strip()
-
-    if not email or not password:
-        return jsonify({"error": "Email and password are required."}), 400
-
-    db  = get_db()
-    row = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
-    if not row or not check_password_hash(row["password"], password):
-        return jsonify({"error": "Invalid email or password."}), 401
-
-    uid = row["id"]
-    test_results, game_results = _fetch_scores(db, uid)
-    return jsonify({
-        "access_token":  create_access_token(identity=str(uid)),
-        "refresh_token": create_refresh_token(identity=str(uid)),
-        "user":          user_dict(row),
-        "test_results":  test_results,
-        "game_results":  game_results,
-    })
-
-
-@app.route("/api/refresh", methods=["POST"])
-@jwt_required(refresh=True)
-def refresh_token():
-    return jsonify({"access_token": create_access_token(identity=get_jwt_identity())})
+    row = db.execute("SELECT * FROM users WHERE id=?", (cur.lastrowid,)).fetchone()
+    return jsonify({"user": user_dict(row), "test_results": [], "game_results": []}), 201
 
 
 @app.route("/api/me", methods=["GET"])
-@jwt_required()
-def me():
-    uid = int(get_jwt_identity())
+@firebase_protected
+def me(fb_uid):
     db  = get_db()
-    row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+    row = db.execute("SELECT * FROM users WHERE firebase_uid=?", (fb_uid,)).fetchone()
     if not row:
         return jsonify({"error": "User not found."}), 404
-    test_results, game_results = _fetch_scores(db, uid)
+    test_results, game_results = _fetch_scores(db, row["id"])
     return jsonify({"user": user_dict(row), "test_results": test_results, "game_results": game_results})
 
 
 @app.route("/api/me", methods=["PATCH"])
-@jwt_required()
-def update_me():
-    uid = int(get_jwt_identity())
+@firebase_protected
+def update_me(fb_uid):
     d   = request.get_json(force=True) or {}
     db  = get_db()
+    row = db.execute("SELECT * FROM users WHERE firebase_uid=?", (fb_uid,)).fetchone()
+    if not row:
+        return jsonify({"error": "User not found."}), 404
+    uid = row["id"]
+
     REQUIRED_NON_EMPTY = {"username"}
     ALLOWED = ["username", "phone", "school", "grade", "avatar_url"]
     sets, vals, errors = [], [], []
@@ -399,29 +471,32 @@ def update_me():
 
 
 @app.route("/api/competitive-stats", methods=["GET"])
-@jwt_required()
-def get_competitive_stats():
+@firebase_protected
+def get_competitive_stats(fb_uid):
     """Get user's XP, streaks, and ranking stats."""
-    uid = int(get_jwt_identity())
     db  = get_db()
-    
+    row = db.execute("SELECT * FROM users WHERE firebase_uid=?", (fb_uid,)).fetchone()
+    if not row:
+        return jsonify({"xp": 0, "current_streak": 0, "longest_streak": 0, "global_rank": 0})
+    uid = row["id"]
+
     xp = get_user_xp(db, uid)
     current_streak, longest_streak = get_user_streak(db, uid)
-    
+
     # Get user's global rank
-    rows = db.execute("""
+    rank_rows = db.execute("""
         SELECT u.id FROM users u
         LEFT JOIN test_results tr ON u.id = tr.user_id
         GROUP BY u.id
         ORDER BY SUM(CASE WHEN tr.score IS NOT NULL THEN tr.score ELSE 0 END) DESC
     """).fetchall()
-    
+
     rank = 1
-    for i, r in enumerate(rows):
+    for i, r in enumerate(rank_rows):
         if r["id"] == uid:
             rank = i + 1
             break
-    
+
     return jsonify({
         "xp": xp,
         "current_streak": current_streak,
@@ -430,11 +505,15 @@ def get_competitive_stats():
     })
 
 
-# ── Scores ────────────────────────────────────────────────────────────────────
+# ── Scores ───────────────────────────────────────────────────────────────────────
 @app.route("/api/test-result", methods=["POST"])
-@jwt_required()
-def save_test():
-    uid = int(get_jwt_identity())
+@firebase_protected
+def save_test(fb_uid):
+    db  = get_db()
+    row = db.execute("SELECT id FROM users WHERE firebase_uid=?", (fb_uid,)).fetchone()
+    if not row:
+        return jsonify({"error": "User not found."}), 404
+    uid = row["id"]
     d   = request.get_json(force=True) or {}
     test_key   = d.get("test_key",  "")
     section    = d.get("section",   "")
@@ -447,7 +526,6 @@ def save_test():
     if not test_key or not section:
         return jsonify({"error": "test_key and section are required."}), 400
 
-    db = get_db()
     db.execute(
         "INSERT INTO test_results"
         " (user_id, test_key, section, score, total, accuracy, time_spent, answers)"
@@ -459,19 +537,26 @@ def save_test():
 
 
 @app.route("/api/test-results", methods=["GET"])
-@jwt_required()
-def get_tests():
-    uid  = int(get_jwt_identity())
-    rows = get_db().execute(
-        "SELECT * FROM test_results WHERE user_id=? ORDER BY taken_at DESC", (uid,)
+@firebase_protected
+def get_tests(fb_uid):
+    db  = get_db()
+    row = db.execute("SELECT id FROM users WHERE firebase_uid=?", (fb_uid,)).fetchone()
+    if not row:
+        return jsonify([]), 200
+    rows = db.execute(
+        "SELECT * FROM test_results WHERE user_id=? ORDER BY taken_at DESC", (row["id"],)
     ).fetchall()
     return jsonify([test_dict(r) for r in rows])
 
 
 @app.route("/api/minigame-result", methods=["POST"])
-@jwt_required()
-def save_game():
-    uid = int(get_jwt_identity())
+@firebase_protected
+def save_game(fb_uid):
+    db  = get_db()
+    row = db.execute("SELECT id FROM users WHERE firebase_uid=?", (fb_uid,)).fetchone()
+    if not row:
+        return jsonify({"error": "User not found."}), 404
+    uid = row["id"]
     d   = request.get_json(force=True) or {}
     slug  = d.get("lesson_slug", "")
     mode  = d.get("mode",  "mc")
@@ -481,7 +566,6 @@ def save_game():
     if not slug:
         return jsonify({"error": "lesson_slug is required."}), 400
 
-    db = get_db()
     db.execute(
         "INSERT INTO minigame_results (user_id, lesson_slug, mode, score, total)"
         " VALUES (?, ?, ?, ?, ?)",
@@ -492,11 +576,14 @@ def save_game():
 
 
 @app.route("/api/minigame-results", methods=["GET"])
-@jwt_required()
-def get_games():
-    uid  = int(get_jwt_identity())
-    rows = get_db().execute(
-        "SELECT * FROM minigame_results WHERE user_id=? ORDER BY played_at DESC", (uid,)
+@firebase_protected
+def get_games(fb_uid):
+    db  = get_db()
+    row = db.execute("SELECT id FROM users WHERE firebase_uid=?", (fb_uid,)).fetchone()
+    if not row:
+        return jsonify([]), 200
+    rows = db.execute(
+        "SELECT * FROM minigame_results WHERE user_id=? ORDER BY played_at DESC", (row["id"],)
     ).fetchall()
     return jsonify([game_dict(r) for r in rows])
 
