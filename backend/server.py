@@ -762,7 +762,7 @@ def health():
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    print(f"DuoMath API v3 (Flask) → http://localhost:{port}")
+    print(f"DuoMath API v3 (Flask) -> http://localhost:{port}")
     app.run(host="0.0.0.0", port=port,
             debug=os.environ.get("FLASK_ENV") != "production",
             threaded=True)
