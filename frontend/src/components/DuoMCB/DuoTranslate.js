@@ -74,7 +74,7 @@ export default function DuoTranslate({ children }) {
     setResults(null);
     try {
       
-      const parsed = await translateText(sessionId, text);
+      const parsed = await translateText(text);
       setResults(parsed);
     } catch (e) {
       setResults({ error: true, raw: `Unexpected error: ${e?.message || e}\n\nMake sure server.py is running.` });
