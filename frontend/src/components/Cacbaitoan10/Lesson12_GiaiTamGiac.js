@@ -1,6 +1,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -38,6 +39,7 @@ const RS = ({ items, onReset, scoreLabel, t }) => (
 );
 
 export default function Lesson12_GiaiTamGiac() {
+  const { user, saveGameResult } = useAuth();
   const [lang,setLang]=useState("vi");
   const [rev,setRev]=useState({});
   const [gm,setGm]=useState("mc");
@@ -206,6 +208,44 @@ export default function Lesson12_GiaiTamGiac() {
 
   const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
     ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Khái Niệm","1. Concept")],["k2","📖",t("2. Diện Tích","2. Area")],["k3","📖",t("3. Các TH Giải","3. Cases")],["k4","📖",t("4. Ứng Dụng","4. Applications")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+
+  
+  useEffect(() => {
+    if (md && user) {
+      saveGameResult({
+        lesson_slug: "Lesson12_GiaiTamGiac",
+        mode: "mc",
+        score: msc,
+        total: mcQ.length
+      });
+    }
+  }, [md, msc, user]);
+
+  useEffect(() => {
+    if (td && user) {
+      saveGameResult({
+        lesson_slug: "Lesson12_GiaiTamGiac",
+        mode: "tf",
+        score: ts,
+        total: tfC.length
+      });
+    }
+  }, [td, ts, user]);
+
+  useEffect(() => {
+    if (fc && user) {
+      const correctCount = fQ.filter(q => {
+        const r = (fa[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
+        return [q.ans, ...(q.alt || [])].map(a => a.toLowerCase().replace(/\s/g, "")).includes(r);
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson12_GiaiTamGiac",
+        mode: "fill",
+        score: correctCount,
+        total: fQ.length
+      });
+    }
+  }, [fc, fa, user]);
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>

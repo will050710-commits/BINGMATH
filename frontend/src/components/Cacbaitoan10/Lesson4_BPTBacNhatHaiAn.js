@@ -2,6 +2,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -13,6 +14,7 @@ const SectionHeader = ({ icon, title }) => (
 );
 
 export default function Lesson4_BPTBacNhatHaiAn() {
+  const { user, saveGameResult } = useAuth();
   const [lang, setLang] = useState("vi");
   const [revealedAnswers, setRevealedAnswers] = useState({});
   const [gameMode, setGameMode] = useState("mc");
@@ -356,6 +358,44 @@ export default function Lesson4_BPTBacNhatHaiAn() {
     correctText: q.answer,
     yourText: fillAnswers[q.id] || t("(bỏ trống)", "(blank)"),
   })) : [];
+
+  
+  useEffect(() => {
+    if (mcDone && user) {
+      saveGameResult({
+        lesson_slug: "Lesson4_BPTBacNhatHaiAn",
+        mode: "mc",
+        score: mcScore,
+        total: mcQuestions.length
+      });
+    }
+  }, [mcDone, mcScore, user]);
+
+  useEffect(() => {
+    if (tfDone && user) {
+      saveGameResult({
+        lesson_slug: "Lesson4_BPTBacNhatHaiAn",
+        mode: "tf",
+        score: tfScore,
+        total: tfCards.length
+      });
+    }
+  }, [tfDone, tfScore, user]);
+
+  useEffect(() => {
+    if (fillChecked && user) {
+      const correctCount = fillQuestions.filter((q) => {
+        const correct = q.answer.toLowerCase().replace(/\s/g, "");
+        return (fillAnswers[q.id] || "").toLowerCase().replace(/\s/g, "") === correct;
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson4_BPTBacNhatHaiAn",
+        mode: "fill",
+        score: correctCount,
+        total: fillQuestions.length
+      });
+    }
+  }, [fillChecked, fillAnswers, user]);
 
   return (
     <div style={{ width: "100%", background: "#ffffff", display: "flex", justifyContent: "center" }}>

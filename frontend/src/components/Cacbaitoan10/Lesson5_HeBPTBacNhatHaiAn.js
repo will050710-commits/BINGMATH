@@ -2,6 +2,7 @@
  
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -13,6 +14,7 @@ const SectionHeader = ({ icon, title }) => (
 );
 
 export default function Lesson5_HeBPTBacNhatHaiAn() {
+  const { user, saveGameResult } = useAuth();
   const [lang, setLang] = useState("vi");
   const [revealedAnswers, setRevealedAnswers] = useState({});
   const [gameMode, setGameMode] = useState("mc");
@@ -319,6 +321,44 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
   const mcResultItems = mcHistory.map((h) => ({ correct: h.correct, qText: mcQuestions[h.q].q, correctText: mcQuestions[h.q].options[mcQuestions[h.q].answer], yourText: mcQuestions[h.q].options[h.selected] }));
   const tfResultItems = tfHistory.map((h) => ({ correct: h.correct, qText: tfCards[h.q].stmt, correctText: tfCards[h.q].answer ? t("ĐÚNG", "TRUE") : t("SAI", "FALSE"), yourText: h.given ? t("ĐÚNG", "TRUE") : t("SAI", "FALSE") }));
   const fillResultItems = fillChecked ? fillQuestions.map((q) => ({ correct: checkFill(q.id), qText: q.template, correctText: q.answer, yourText: fillAnswers[q.id] || t("(bỏ trống)", "(blank)") })) : [];
+
+  
+  useEffect(() => {
+    if (mcDone && user) {
+      saveGameResult({
+        lesson_slug: "Lesson5_HeBPTBacNhatHaiAn",
+        mode: "mc",
+        score: mcScore,
+        total: mcQuestions.length
+      });
+    }
+  }, [mcDone, mcScore, user]);
+
+  useEffect(() => {
+    if (tfDone && user) {
+      saveGameResult({
+        lesson_slug: "Lesson5_HeBPTBacNhatHaiAn",
+        mode: "tf",
+        score: tfScore,
+        total: tfCards.length
+      });
+    }
+  }, [tfDone, tfScore, user]);
+
+  useEffect(() => {
+    if (fillChecked && user) {
+      const correctCount = fillQuestions.filter((q) => {
+        const correct = q.answer.toLowerCase().replace(/\s/g, "");
+        return (fillAnswers[q.id] || "").toLowerCase().replace(/\s/g, "") === correct;
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson5_HeBPTBacNhatHaiAn",
+        mode: "fill",
+        score: correctCount,
+        total: fillQuestions.length
+      });
+    }
+  }, [fillChecked, fillAnswers, user]);
 
   return (
     <div style={{ width: "100%", background: "#ffffff", display: "flex", justifyContent: "center" }}>

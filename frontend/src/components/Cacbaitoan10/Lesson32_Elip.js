@@ -1,6 +1,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -43,6 +44,7 @@ const RS = ({ items, onReset, scoreLabel, t }) => (
 );
 
 export default function Lesson32_Elip() {
+  const { user, saveGameResult } = useAuth();
   const [lang, setLang] = useState("vi");
   const [rev, setRev] = useState({});
   const [gm, setGm] = useState("mc");
@@ -242,6 +244,44 @@ export default function Lesson32_Elip() {
   const mri = mh.map(h => ({ correct: h.c, qText: mcQ[h.q].q, correctText: mcQ[h.q].o[mcQ[h.q].a], yourText: mcQ[h.q].o[h.s] }));
   const tri = th.map(h => ({ correct: h.c, qText: tfC[h.q].s, correctText: tfC[h.q].a ? t("Đúng", "True") : t("Sai", "False"), yourText: h.g ? t("Đúng", "True") : t("Sai", "False") }));
   const fri = fc ? fQ.map(q => ({ correct: cf(q.id), qText: q.tp, correctText: q.ans, yourText: fa[q.id] || t("(trống)", "(empty)") })) : [];
+
+  
+  useEffect(() => {
+    if (md && user) {
+      saveGameResult({
+        lesson_slug: "Lesson32_Elip",
+        mode: "mc",
+        score: msc,
+        total: mcQ.length
+      });
+    }
+  }, [md, msc, user]);
+
+  useEffect(() => {
+    if (td && user) {
+      saveGameResult({
+        lesson_slug: "Lesson32_Elip",
+        mode: "tf",
+        score: ts,
+        total: tfC.length
+      });
+    }
+  }, [td, ts, user]);
+
+  useEffect(() => {
+    if (fc && user) {
+      const correctCount = fQ.filter(q => {
+        const r = (fa[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
+        return [q.ans, ...(q.alt || [])].map(a => a.toLowerCase().replace(/\s/g, "")).includes(r);
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson32_Elip",
+        mode: "fill",
+        score: correctCount,
+        total: fQ.length
+      });
+    }
+  }, [fc, fa, user]);
 
   return (
     <div style={{ width: "100%", background: "#fff", display: "flex", justifyContent: "center" }}>

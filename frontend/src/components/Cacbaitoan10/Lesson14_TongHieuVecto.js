@@ -1,6 +1,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -8,6 +9,7 @@ const SH=({icon,title})=>(<div style={{display:"flex",alignItems:"center",gap:12
 const RS=({items,onReset,scoreLabel,t})=>(<div><div style={{textAlign:"center",marginBottom:24}}><div style={{fontSize:48,marginBottom:8}}>{items.filter(i=>i.correct).length===items.length?"🏆":items.filter(i=>i.correct).length>=items.length*0.6?"👍":"💪"}</div><div style={{fontSize:26,fontWeight:700,color:"#0B4F5C"}}>{items.filter(i=>i.correct).length} / {items.length}</div><div style={{color:"#777",fontSize:16,marginTop:4}}>{scoreLabel}</div></div><div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:24}}>{items.map((item,idx)=>(<div key={idx} style={{padding:"14px 18px",borderRadius:10,background:item.correct?"#eafaf1":"#fdf2f2",border:`1px solid ${item.correct?"#a9dfbf":"#f1948a"}`}}><div style={{display:"flex",alignItems:"flex-start",gap:10}}><span style={{fontSize:18,flexShrink:0}}>{item.correct?"✅":"❌"}</span><div style={{flex:1}}><div style={{fontSize:15,fontWeight:600,color:"#333",marginBottom:4}}>{t("Câu","Q")} {idx+1}: {item.qText}</div>{!item.correct&&<div style={{fontSize:14,color:"#922b21"}}>{t("Đáp án đúng:","Correct:")} <strong>{item.correctText}</strong></div>}{item.yourText&&!item.correct&&<div style={{fontSize:14,color:"#777"}}>{t("Bạn chọn:","You chose:")} {item.yourText}</div>}</div></div></div>))}</div><div style={{textAlign:"center"}}><button onClick={onReset} style={{padding:"12px 32px",background:"black",color:"white",border:"none",borderRadius:8,fontWeight:600,fontSize:15,cursor:"pointer"}}>🔄 {t("Chơi lại","Play Again")}</button></div></div>);
 
 export default function Lesson14_TongHieuVecto() {
+  const { user, saveGameResult } = useAuth();
   const [lang,setLang]=useState("vi");
   const [rev,setRev]=useState({});
   const [gm,setGm]=useState("mc");
@@ -155,6 +157,44 @@ export default function Lesson14_TongHieuVecto() {
   const fQ=[{'id': 'f1', 'tp': '→AB + →BC + →CA = ___', 'ans': '→0', 'alt': ['0', 'vec0', '→0'], 'h': ''}, {'id': 'f2', 'tp': 'Hình bình hành OABC: →OA + →OC = ___', 'ans': '→OB', 'alt': ['OB', 'vec(OB)'], 'h': 'Quy tắc hình bình hành'}, {'id': 'f3', 'tp': '→AB = →OB − ___', 'ans': '→OA', 'alt': ['OA', 'vec(OA)', '→OA'], 'h': ''}];
   const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
     ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Tổng Hai Vectơ","1. Vector Sum")],["k2","📖",t("2. Hình Bình Hành","2. Parallelogram Rule")],["k3","📖",t("3. Hiệu Hai Vectơ","3. Vector Difference")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮",t("Mini Game","Mini Game")]];
+
+  
+  useEffect(() => {
+    if (md && user) {
+      saveGameResult({
+        lesson_slug: "Lesson14_TongHieuVecto",
+        mode: "mc",
+        score: msc,
+        total: mcQ.length
+      });
+    }
+  }, [md, msc, user]);
+
+  useEffect(() => {
+    if (td && user) {
+      saveGameResult({
+        lesson_slug: "Lesson14_TongHieuVecto",
+        mode: "tf",
+        score: ts,
+        total: tfC.length
+      });
+    }
+  }, [td, ts, user]);
+
+  useEffect(() => {
+    if (fc && user) {
+      const correctCount = fQ.filter(q => {
+        const r = (fa[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
+        return [q.ans, ...(q.alt || [])].map(a => a.toLowerCase().replace(/\s/g, "")).includes(r);
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson14_TongHieuVecto",
+        mode: "fill",
+        score: correctCount,
+        total: fQ.length
+      });
+    }
+  }, [fc, fa, user]);
 
   return (
     <div style={{width:"100%",background:"#fff",display:"flex",justifyContent:"center"}}>

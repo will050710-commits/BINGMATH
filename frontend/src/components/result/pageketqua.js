@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/context/authContext";
 import { resetTimer, getTimeSpent, formatTime } from "../../utils/testTimer";
 import { clearAllAnswers } from "../../utils/answerStorage";
 import { SKILL_DEFS } from "../../utils/questionSkills";
@@ -21,6 +22,7 @@ function ShapesSVG({ shape, color }) {
 }
 
 export default function PageKetQua() {
+  const { user, saveTestResult } = useAuth();
   const [result, setResult] = useState(null);
   const [timeSpent, setTimeSpent] = useState("00:00:00");
   const [animatedScore, setAnimatedScore] = useState(0);
@@ -47,6 +49,59 @@ export default function PageKetQua() {
       resetTimer(exam);
     }
   }, []);
+
+  // ================= SAVE TO BACKEND =================
+  useEffect(() => {
+    if (!user || !result || result.isSaved) return;
+
+    const exam = result.testId || examId || "reading-test-1";
+    const savedTime = result.timeSpent ?? (Number(localStorage.getItem("timeSpent")) || 0);
+    const sections = ["section1", "section2", "section3"];
+    let anySaved = false;
+
+    const statsBySection = {};
+    sections.forEach(sec => {
+      const secQs = (result.questions || []).filter(q => q.section === sec);
+      if (secQs.length > 0) {
+        const score = secQs.filter(q => q.isCorrect).length;
+        const total = secQs.length;
+        const answers = {};
+        secQs.forEach(q => {
+          answers[q.key] = q.userAnswer || "";
+        });
+        statsBySection[sec] = { score, total, answers };
+      }
+    });
+
+    const saveAll = async () => {
+      for (const sec of sections) {
+        if (statsBySection[sec]) {
+          const { score, total, answers } = statsBySection[sec];
+          try {
+            await saveTestResult({
+              test_key: exam,
+              section: sec,
+              score,
+              total,
+              answers,
+              time_spent: savedTime
+            });
+            anySaved = true;
+          } catch (err) {
+            console.error(`Failed to save test result for ${sec}:`, err);
+          }
+        }
+      }
+
+      if (anySaved) {
+        const updatedResult = { ...result, isSaved: true };
+        setResult(updatedResult);
+        localStorage.setItem("readingTest_result", JSON.stringify(updatedResult));
+      }
+    };
+
+    saveAll();
+  }, [user, result, examId, saveTestResult]);
 
   // ================= SCORE ANIMATION =================
   useEffect(() => {

@@ -95,6 +95,52 @@ export function AuthProvider({ children }) {
     } catch (_) {}
   }, []);
 
+  // ── Sync local test results if any exist and are not saved yet ─────────────
+  const syncLocalResults = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    try {
+      const data = localStorage.getItem("readingTest_result");
+      if (!data) return;
+      const parsed = JSON.parse(data);
+      if (parsed && !parsed.isSaved) {
+        const exam = parsed.testId || "reading-test-1";
+        const savedTime = parsed.timeSpent ?? (Number(localStorage.getItem("timeSpent")) || 0);
+        const sections = ["section1", "section2", "section3"];
+        let anySaved = false;
+
+        for (const sec of sections) {
+          const secQs = (parsed.questions || []).filter(q => q.section === sec);
+          if (secQs.length > 0) {
+            const score = secQs.filter(q => q.isCorrect).length;
+            const total = secQs.length;
+            const answers = {};
+            secQs.forEach(q => {
+              answers[q.key] = q.userAnswer || "";
+            });
+            
+            const { ok } = await apiFetch("/api/test-result", {
+              method: "POST",
+              body: JSON.stringify({
+                test_key: exam,
+                section: sec,
+                score,
+                total,
+                answers,
+                time_spent: savedTime
+              }),
+            });
+            if (ok) anySaved = true;
+          }
+        }
+
+        if (anySaved) {
+          parsed.isSaved = true;
+          localStorage.setItem("readingTest_result", JSON.stringify(parsed));
+        }
+      }
+    } catch (_) {}
+  }, []);
+
   // ── Listen to Firebase auth state ─────────────────────────────────────────
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -108,6 +154,7 @@ export function AuthProvider({ children }) {
           created_at:  firebaseUser.metadata?.creationTime || "",
         });
         await syncUserToBackend(firebaseUser);
+        await syncLocalResults();
         await loadBackendProfile();
       } else {
         setUser(null);
@@ -118,7 +165,7 @@ export function AuthProvider({ children }) {
       setReady(true);
     });
     return () => unsub();
-  }, [loadBackendProfile, syncUserToBackend]);
+  }, [loadBackendProfile, syncUserToBackend, syncLocalResults]);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
   async function signup({ email, username, password, phone = "", school = "", grade = "" }) {

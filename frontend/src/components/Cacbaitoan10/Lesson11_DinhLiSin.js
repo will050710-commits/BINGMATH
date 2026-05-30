@@ -1,6 +1,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -38,6 +39,7 @@ const RS = ({ items, onReset, scoreLabel, t }) => (
 );
 
 export default function Lesson11_DinhLiSin() {
+  const { user, saveGameResult } = useAuth();
   const [lang,setLang]=useState("vi");
   const [rev,setRev]=useState({});
   const [gm,setGm]=useState("mc");
@@ -206,6 +208,44 @@ export default function Lesson11_DinhLiSin() {
 
   const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
     ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Định Lí Sin","1. The Law")],["k2","📖",t("2. Bán Kính R","2. Circumradius R")],["k3","📖",t("3. Khi Nào Dùng?","3. When to Use?")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
+
+  
+  useEffect(() => {
+    if (md && user) {
+      saveGameResult({
+        lesson_slug: "Lesson11_DinhLiSin",
+        mode: "mc",
+        score: msc,
+        total: mcQ.length
+      });
+    }
+  }, [md, msc, user]);
+
+  useEffect(() => {
+    if (td && user) {
+      saveGameResult({
+        lesson_slug: "Lesson11_DinhLiSin",
+        mode: "tf",
+        score: ts,
+        total: tfC.length
+      });
+    }
+  }, [td, ts, user]);
+
+  useEffect(() => {
+    if (fc && user) {
+      const correctCount = fQ.filter(q => {
+        const r = (fa[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
+        return [q.ans, ...(q.alt || [])].map(a => a.toLowerCase().replace(/\s/g, "")).includes(r);
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson11_DinhLiSin",
+        mode: "fill",
+        score: correctCount,
+        total: fQ.length
+      });
+    }
+  }, [fc, fa, user]);
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>

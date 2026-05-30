@@ -1,6 +1,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -37,6 +38,7 @@ const RS = ({ items, onReset, scoreLabel, t }) => (
 );
 
 export default function OnTapChuong6() {
+  const { user, saveGameResult } = useAuth();
   const [lang,setLang]=useState("vi");
   const [rev,setRev]=useState({});
   const [gm,setGm]=useState("mc");
@@ -204,6 +206,44 @@ export default function OnTapChuong6() {
   const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
   const tabs=[["tomTat","📚",t("Tóm Tắt","Summary")],
     ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["congThuc","📐",t("Công Thức","Formulas")],["baiTap","✏️",t("Bài Tập TH","Mixed")],["miniGame","🎮","Mini Game"]];
+
+  
+  useEffect(() => {
+    if (md && user) {
+      saveGameResult({
+        lesson_slug: "Lesson20_OnTapChuong6",
+        mode: "mc",
+        score: msc,
+        total: mcQ.length
+      });
+    }
+  }, [md, msc, user]);
+
+  useEffect(() => {
+    if (td && user) {
+      saveGameResult({
+        lesson_slug: "Lesson20_OnTapChuong6",
+        mode: "tf",
+        score: ts,
+        total: tfC.length
+      });
+    }
+  }, [td, ts, user]);
+
+  useEffect(() => {
+    if (fc && user) {
+      const correctCount = fQ.filter(q => {
+        const r = (fa[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
+        return [q.ans, ...(q.alt || [])].map(a => a.toLowerCase().replace(/\s/g, "")).includes(r);
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson20_OnTapChuong6",
+        mode: "fill",
+        score: correctCount,
+        total: fQ.length
+      });
+    }
+  }, [fc, fa, user]);
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>

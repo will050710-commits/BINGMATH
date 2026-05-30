@@ -1,6 +1,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -37,6 +38,7 @@ const RS = ({ items, onReset, scoreLabel, t }) => (
 );
 
 export default function Lesson19_HinhHocDoLuong2() {
+  const { user, saveGameResult } = useAuth();
   const [lang,setLang]=useState("vi");
   const [rev,setRev]=useState({});
   const [gm,setGm]=useState("mc");
@@ -214,6 +216,44 @@ export default function Lesson19_HinhHocDoLuong2() {
     {name:t("Hình thoi","Rhombus"),icon:"◇",area:t("S = d₁ · d₂ / 2","S=d₁·d₂/2"),perimeter:t("P = 4a","P=4a"),c:"#922b21",bg:"#fdf2f2"},
     {name:t("Hình thang","Trapezoid"),icon:"⌓",area:t("S = (a + b) · h / 2","S=(a+b)·h/2"),perimeter:t("P = a+b+c+d","P=a+b+c+d"),c:"#0B4F5C",bg:"#e8f8f5"},
   ];
+
+  
+  useEffect(() => {
+    if (md && user) {
+      saveGameResult({
+        lesson_slug: "Lesson19_HinhHocDoLuong2",
+        mode: "mc",
+        score: msc,
+        total: mcQ.length
+      });
+    }
+  }, [md, msc, user]);
+
+  useEffect(() => {
+    if (td && user) {
+      saveGameResult({
+        lesson_slug: "Lesson19_HinhHocDoLuong2",
+        mode: "tf",
+        score: ts,
+        total: tfC.length
+      });
+    }
+  }, [td, ts, user]);
+
+  useEffect(() => {
+    if (fc && user) {
+      const correctCount = fQ.filter(q => {
+        const r = (fa[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
+        return [q.ans, ...(q.alt || [])].map(a => a.toLowerCase().replace(/\s/g, "")).includes(r);
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson19_HinhHocDoLuong2",
+        mode: "fill",
+        score: correctCount,
+        total: fQ.length
+      });
+    }
+  }, [fc, fa, user]);
 
   return (
     <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>

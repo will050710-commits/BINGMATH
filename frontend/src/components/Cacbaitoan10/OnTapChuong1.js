@@ -1,6 +1,7 @@
 
 "use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -38,6 +39,7 @@ const ResultSummary = ({ items, onReset, scoreLabel, t }) => (
 );
 
 export default function OnTapChuong1() {
+  const { user, saveGameResult } = useAuth();
   const [lang, setLang] = useState("vi");
   const [revealedAnswers, setRevealedAnswers] = useState({});
   const [gameMode, setGameMode] = useState("mc");
@@ -261,6 +263,44 @@ export default function OnTapChuong1() {
 
   const tabs = [["tomTat","📚",t("Tóm Tắt","Summary")],
     ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["congThuc","📐",t("Công Thức","Formulas")],["baiTapTH","✏️",t("Bài Tập TH","Mixed Exercises")],["miniGame","🎮",t("Mini Game","Mini Game")]];
+
+  
+  useEffect(() => {
+    if (mcDone && user) {
+      saveGameResult({
+        lesson_slug: "OnTapChuong1",
+        mode: "mc",
+        score: mcScore,
+        total: mcQuestions.length
+      });
+    }
+  }, [mcDone, mcScore, user]);
+
+  useEffect(() => {
+    if (tfDone && user) {
+      saveGameResult({
+        lesson_slug: "OnTapChuong1",
+        mode: "tf",
+        score: tfScore,
+        total: tfCards.length
+      });
+    }
+  }, [tfDone, tfScore, user]);
+
+  useEffect(() => {
+    if (fillChecked && user) {
+      const correctCount = fillQuestions.filter((q) => {
+        const correct = q.answer.toLowerCase().replace(/\s/g, "");
+        return (fillAnswers[q.id] || "").toLowerCase().replace(/\s/g, "") === correct;
+      }).length;
+      saveGameResult({
+        lesson_slug: "OnTapChuong1",
+        mode: "fill",
+        score: correctCount,
+        total: fillQuestions.length
+      });
+    }
+  }, [fillChecked, fillAnswers, user]);
 
   return (
     <div style={{ width: "100%", background: "#ffffff", display: "flex", justifyContent: "center" }}>

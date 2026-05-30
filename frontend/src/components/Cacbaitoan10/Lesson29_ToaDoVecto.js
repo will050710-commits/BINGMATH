@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
@@ -38,6 +39,7 @@ const RS = ({ items, onReset, scoreLabel, t }) => (
 );
 
 export default function Lesson29_ToaDoVecto() {
+  const { user, saveGameResult } = useAuth();
   const [lang, setLang] = useState("vi");
   const [rev, setRev] = useState({});
   const [gm, setGm] = useState("mc");
@@ -222,6 +224,44 @@ export default function Lesson29_ToaDoVecto() {
   const tabs = [["w", "🚀", t("Khởi động", "Warm-Up")],
     ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")], ["k1", "📖", t("1. Tọa Độ Vectơ", "1. Coordinates")], ["k2", "📖", t("2. Trung Điểm & TT", "2. Midpoint & Centroid")], ["th", "✏️", t("Thực Hành", "Practice")], ["mg", "🎮", t("Mini Game", "Mini Game")]];
   
+  
+  useEffect(() => {
+    if (md && user) {
+      saveGameResult({
+        lesson_slug: "Lesson29_ToaDoVecto",
+        mode: "mc",
+        score: msc,
+        total: mcQ.length
+      });
+    }
+  }, [md, msc, user]);
+
+  useEffect(() => {
+    if (td && user) {
+      saveGameResult({
+        lesson_slug: "Lesson29_ToaDoVecto",
+        mode: "tf",
+        score: ts,
+        total: tfC.length
+      });
+    }
+  }, [td, ts, user]);
+
+  useEffect(() => {
+    if (fc && user) {
+      const correctCount = fQ.filter(q => {
+        const r = (fa[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
+        return [q.ans, ...(q.alt || [])].map(a => a.toLowerCase().replace(/\s/g, "")).includes(r);
+      }).length;
+      saveGameResult({
+        lesson_slug: "Lesson29_ToaDoVecto",
+        mode: "fill",
+        score: correctCount,
+        total: fQ.length
+      });
+    }
+  }, [fc, fa, user]);
+
   return (
     <div style={{ width: "100%", background: "#fff", display: "flex", justifyContent: "center" }}>
       <div style={{ width: "1200px", maxWidth: "95%", color: "black", paddingTop: 60, paddingBottom: 80 }}>
