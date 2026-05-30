@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 24, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Latitude%207300/OneDrive/M%C3%A1y%20t%C3%ADnh/duosteam%20-%20Copy/duosteam/src/app/Lesson24_OnTapChuong7/page.js"],"sourcesContent":["import OnTapChuong7 from \"@/components/Cacbaitoan10/Lesson24_OnTapChuong7\";\r\nexport default function Lesson24_OnTapChuong7Page() {\r\n  return <OnTapChuong7 />;\r\n}"],"names":[],"mappings":";;;;;AAAA;;;AACe,SAAS;IACtB,qBAAO,yWAAC,iLAAY;;;;;AACtB"}}]
-}

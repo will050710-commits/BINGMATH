@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../../../../duosteam/src/app/DuoSideBar/page.js"],"sourcesContent":["\"use client\";\r\nimport DuoSideBar from \"@/components/DuoSideBar/DuoSideBar\";\r\nexport default function Page() {\r\n    return <DuoSideBar />;\r\n}"],"names":[],"mappings":""}

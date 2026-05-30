@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../../../../duosteam/src/app/dashboard/page.js"],"sourcesContent":["import Dashboard from \"@/components/TrangChuform\";\r\n\r\nexport default function DashboardPage() {\r\n  return <Dashboard />;\r\n}\r\n"],"names":[],"mappings":""}

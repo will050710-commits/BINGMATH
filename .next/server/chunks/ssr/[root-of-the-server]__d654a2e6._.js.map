@@ -1,1 +1,0 @@
-{"version":3,"sources":["../../../../../duosteam/src/app/Ham-so-bac-hai/page.js"],"sourcesContent":["import HamSobacHai from \"@/components/Cacbaitoan10/Lesson8_HamSoBacHai\";\r\nexport default function HamSoBacHaiPage() {\r\n    {return <HamSobacHai/>;}\r\n}"],"names":[],"mappings":""}

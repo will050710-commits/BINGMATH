@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Latitude%207300/OneDrive/M%C3%A1y%20t%C3%ADnh/duosteam%20-%20Copy/duosteam/node_modules/.pnpm/next%4016.1.6_%40babel%2Bcore%407.2_64d5eeabc3e5d7da937e2327328eb8d4/node_modules/next/src/client/components/builtin/unauthorized.tsx"],"sourcesContent":["import { HTTPAccessErrorFallback } from '../http-access-fallback/error-fallback'\n\nexport default function Unauthorized() {\n  return (\n    <HTTPAccessErrorFallback\n      status={401}\n      message=\"You're not authorized to access this page.\"\n    />\n  )\n}\n"],"names":["Unauthorized","HTTPAccessErrorFallback","status","message"],"mappings":";;;+BAEA,WAAA;;;eAAwBA;;;;+BAFgB;AAEzB,SAASA;IACtB,OAAA,WAAA,GACE,CAAA,GAAA,YAAA,GAAA,EAACC,eAAAA,uBAAuB,EAAA;QACtBC,QAAQ;QACRC,SAAQ;;AAGd","ignoreList":[0]}}]
-}

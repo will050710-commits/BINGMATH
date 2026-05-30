@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 18, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Latitude%207300/OneDrive/M%C3%A1y%20t%C3%ADnh/duosteam%20-%20Copy/duosteam/src/app/Lesson22_GiaiBPTBacHai/page.js"],"sourcesContent":["import GiaiBPTBacHai from \"@/components/Cacbaitoan10/Lesson21_GiaiBPTBacHai\";\r\nexport default function Lesson22_GiaiBPTBacHaiPage() {\r\n  return <GiaiBPTBacHai />;\r\n}"],"names":[],"mappings":";;;;;;;;;;;;AACe,SAAS;IACtB,qBAAO,yWAAC;;;;;AACV"}}]
-}

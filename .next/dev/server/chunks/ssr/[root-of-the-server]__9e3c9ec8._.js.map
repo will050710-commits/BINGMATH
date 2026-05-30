@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 24, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/Latitude%207300/OneDrive/M%C3%A1y%20t%C3%ADnh/duosteam%20-%20Copy/duosteam/src/app/page.js"],"sourcesContent":["import TrangChuForm from \"@/components/trangchu/TrangChuForm\";\r\nexport default function Page() {\r\n  return <TrangChuForm />;\r\n}"],"names":[],"mappings":";;;;;AAAA;;;AACe,SAAS;IACtB,qBAAO,yWAAC,oKAAY;;;;;AACtB"}}]
-}
