@@ -58,6 +58,9 @@ export function AuthProvider({ children }) {
       if (ok) {
         setTestResults(data.test_results || []);
         setGameResults(data.game_results || []);
+        if (data.user) {
+          setUser(prev => prev ? { ...prev, ...data.user } : data.user);
+        }
       }
       const { ok: statsOk, data: statsData } = await apiFetch("/api/competitive-stats");
       if (statsOk) {
