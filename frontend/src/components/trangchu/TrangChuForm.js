@@ -11,6 +11,138 @@ import DuoMCBSidebar from "../DuoMCB/DuoMCBSidebar";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
 
+// ── EditProfileModal: module-level component to prevent React from remounting
+// it when TrangChuForm re-renders due to auth context updates. ──────────────
+function EditProfileModal({ onClose }) {
+  const { user, updateProfile, reloadProfile } = useAuth();
+  const [username, setUsername] = useState(user?.username || "");
+  const [phone, setPhone] = useState(user?.phone || "");
+  const [school, setSchool] = useState(user?.school || "");
+  const [grade, setGrade] = useState(user?.grade || "");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMsg("");
+    setSuccessMsg("");
+    if (!username.trim()) {
+      setErrorMsg("Tên người dùng không được để trống.");
+      return;
+    }
+    if (username.trim().length < 2) {
+      setErrorMsg("Tên người dùng phải có ít nhất 2 ký tự.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const { ok, error } = await updateProfile({
+        username: username.trim(),
+        phone: phone.trim(),
+        school: school.trim(),
+        grade: grade.trim(),
+      });
+      if (ok) {
+        setSuccessMsg("Cập nhật thông tin thành công!");
+        if (reloadProfile) await reloadProfile();
+        setTimeout(() => onClose(), 1500);
+      } else {
+        setErrorMsg(error || "Đã xảy ra lỗi khi cập nhật thông tin.");
+      }
+    } catch (err) {
+      setErrorMsg("Không thể kết nối đến máy chủ.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: 8,
+    background: "rgba(255,255,255,0.05)",
+    border: "1px solid rgba(255,255,255,0.15)",
+    color: "white",
+    fontSize: 14,
+    outline: "none",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0,
+      backgroundColor: "rgba(10, 10, 26, 0.75)",
+      backdropFilter: "blur(8px)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 2000,
+    }}>
+      <div style={{
+        background: "rgba(15, 23, 42, 0.9)",
+        backdropFilter: "blur(16px)",
+        border: "1px solid rgba(255, 255, 255, 0.15)",
+        borderRadius: 16,
+        width: "480px", maxWidth: "90%",
+        padding: 28,
+        boxShadow: "0 24px 64px rgba(0,0,0,0.4), 0 0 32px rgba(14,165,233,0.1)",
+        color: "white",
+      }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#7dd3fc" }}>✏️ Chỉnh sửa thông tin cá nhân</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 24, cursor: "pointer" }}>&times;</button>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {errorMsg && (
+            <div style={{ background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#fca5a5" }}>
+              ⚠️ {errorMsg}
+            </div>
+          )}
+          {successMsg && (
+            <div style={{ background: "rgba(74,222,128,0.2)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#86efac" }}>
+              ✅ {successMsg}
+            </div>
+          )}
+
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Tên học sinh *</label>
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="Nhập tên học sinh" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Số điện thoại</label>
+            <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Nhập số điện thoại" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Trường</label>
+            <input type="text" value={school} onChange={(e) => setSchool(e.target.value)} placeholder="Nhập tên trường học" style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Lớp</label>
+            <select value={grade} onChange={(e) => setGrade(e.target.value)} style={{ ...inputStyle, background: "rgba(15,23,42,0.95)", cursor: "pointer" }}>
+              <option value="">-- Chọn lớp --</option>
+              <option value="Lớp 10">Lớp 10</option>
+              <option value="Lớp 11">Lớp 11</option>
+              <option value="Lớp 12">Lớp 12</option>
+            </select>
+          </div>
+
+          <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+            <button type="button" onClick={onClose} disabled={loading}
+              style={{ flex: 1, padding: "11px 0", background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
+              Hủy
+            </button>
+            <button type="submit" disabled={loading}
+              style={{ flex: 1, padding: "11px 0", background: loading ? "rgba(99,102,241,0.5)" : "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(99,102,241,0.3)" }}>
+              {loading ? "Đang lưu..." : "Lưu thay đổi"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function TrangChuForm() {
   const router = useRouter();
   const {
@@ -268,227 +400,7 @@ export default function TrangChuForm() {
     );
   }
 
-  function EditProfileModal({ onClose }) {
-    const { user, updateProfile, reloadProfile } = useAuth();
-    const [username, setUsername] = useState(user?.username || "");
-    const [phone, setPhone] = useState(user?.phone || "");
-    const [school, setSchool] = useState(user?.school || "");
-    const [grade, setGrade] = useState(user?.grade || "");
-    const [loading, setLoading] = useState(false);
-    const [errorMsg, setErrorMsg] = useState("");
-    const [successMsg, setSuccessMsg] = useState("");
 
-    const handleSubmit = async (e) => {
-      e.preventDefault();
-      setErrorMsg("");
-      setSuccessMsg("");
-      if (!username.trim()) {
-        setErrorMsg("Tên người dùng không được để trống.");
-        return;
-      }
-      if (username.trim().length < 2) {
-        setErrorMsg("Tên người dùng phải có ít nhất 2 ký tự.");
-        return;
-      }
-      setLoading(true);
-      try {
-        const { ok, error } = await updateProfile({
-          username: username.trim(),
-          phone: phone.trim(),
-          school: school.trim(),
-          grade: grade.trim(),
-        });
-        if (ok) {
-          setSuccessMsg("Cập nhật thông tin thành công!");
-          if (reloadProfile) {
-            await reloadProfile();
-          }
-          setTimeout(() => {
-            onClose();
-          }, 1500);
-        } else {
-          setErrorMsg(error || "Đã xảy ra lỗi khi cập nhật thông tin.");
-        }
-      } catch (err) {
-        setErrorMsg("Không thể kết nối đến máy chủ.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    return (
-      <div style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(10, 10, 26, 0.75)",
-        backdropFilter: "blur(8px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 2000,
-      }}>
-        <div style={{
-          background: "rgba(15, 23, 42, 0.85)",
-          backdropFilter: "blur(16px)",
-          border: "1px solid rgba(255, 255, 255, 0.15)",
-          borderRadius: 16,
-          width: "480px",
-          maxWidth: "90%",
-          padding: 28,
-          boxShadow: "0 24px 64px rgba(0, 0, 0, 0.4), 0 0 32px rgba(14, 165, 233, 0.1)",
-          color: "white",
-        }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#7dd3fc" }}>✏️ Chỉnh sửa thông tin cá nhân</h3>
-            <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 24, cursor: "pointer", display: "flex", alignItems: "center" }}>&times;</button>
-          </div>
-
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {errorMsg && (
-              <div style={{ background: "rgba(239, 68, 68, 0.2)", border: "1px solid rgba(239, 68, 68, 0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#fca5a5" }}>
-                ⚠️ {errorMsg}
-              </div>
-            )}
-            {successMsg && (
-              <div style={{ background: "rgba(74, 222, 128, 0.2)", border: "1px solid rgba(74, 222, 128, 0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#86efac" }}>
-                ✅ {successMsg}
-              </div>
-            )}
-
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Tên học sinh *</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                required
-                placeholder="Nhập tên học sinh"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "white",
-                  fontSize: 14,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Số điện thoại</label>
-              <input
-                type="text"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="Nhập số điện thoại"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "white",
-                  fontSize: 14,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Trường</label>
-              <input
-                type="text"
-                value={school}
-                onChange={(e) => setSchool(e.target.value)}
-                placeholder="Nhập tên trường học"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "white",
-                  fontSize: 14,
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Lớp</label>
-              <select
-                value={grade}
-                onChange={(e) => setGrade(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  background: "rgba(15, 23, 42, 0.95)",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                  color: "white",
-                  fontSize: 14,
-                  outline: "none",
-                  cursor: "pointer",
-                  boxSizing: "border-box",
-                }}
-              >
-                <option value="">-- Chọn lớp --</option>
-                <option value="Lớp 10">Lớp 10</option>
-                <option value="Lớp 11">Lớp 11</option>
-                <option value="Lớp 12">Lớp 12</option>
-              </select>
-            </div>
-
-            <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  padding: "11px 0",
-                  background: "rgba(255,255,255,0.1)",
-                  color: "white",
-                  border: "1px solid rgba(255,255,255,0.2)",
-                  borderRadius: 8,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.2s"
-                }}
-              >
-                Hủy
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  padding: "11px 0",
-                  background: "linear-gradient(135deg,#0ea5e9,#6366f1)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: 8,
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  boxShadow: "0 4px 12px rgba(99,102,241,0.3)",
-                  transition: "all 0.2s"
-                }}
-              >
-                {loading ? "Đang lưu..." : "Lưu thay đổi"}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={{ width: "100%", minHeight: "100vh", background: "#0a0a1a", position: "relative", overflow: "hidden" }}>
