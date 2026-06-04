@@ -85,6 +85,176 @@ def cached_system_prompt(variant: str = "text") -> str:
         "Explain briefly step-by-step."
     )
 
+# ── LightRAG-style Mathematical Knowledge Graph & Retriever ────────────────
+MATH_CONCEPT_GRAPH = {
+    "nodes": {
+        "phuong_trinh_bac_hai": {
+            "id": "phuong_trinh_bac_hai",
+            "name": "Phương trình bậc hai",
+            "english_name": "Quadratic Equation",
+            "keywords": ["phương trình bậc 2", "phương trình bậc hai", "quadratic equation", "quadratic"],
+            "definition": "Phương trình có dạng ax^2 + bx + c = 0 (với a khác 0).",
+            "formulas": "ax^2 + bx + c = 0 (a \\neq 0)\nNghiệm: x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}",
+            "examples": "Giải x^2 - 5x + 6 = 0. Ta có a=1, b=-5, c=6. Delta = 25 - 24 = 1 > 0. Nghiệm x1=3, x2=2."
+        },
+        "biet_thuc_delta": {
+            "id": "biet_thuc_delta",
+            "name": "Biệt thức Delta",
+            "english_name": "Discriminant Delta",
+            "keywords": ["delta", "biệt thức", "discriminant"],
+            "definition": "Giá trị đại số dùng để xác định số lượng và tính chất nghiệm của phương trình bậc hai.",
+            "formulas": "\\Delta = b^2 - 4ac\n- \\Delta > 0: 2 nghiệm phân biệt.\n- \\Delta = 0: 1 nghiệm kép.\n- \\Delta < 0: vô nghiệm thực.",
+            "examples": "Với x^2 + x + 1 = 0, Delta = 1^2 - 4(1)(1) = -3 < 0 -> Phương trình vô nghiệm."
+        },
+        "he_thuc_vi_et": {
+            "id": "he_thuc_vi_et",
+            "name": "Hệ thức Vi-ét",
+            "english_name": "Vieta's Formulas",
+            "keywords": ["vi-ét", "viet", "viét", "vieta"],
+            "definition": "Mối quan hệ giữa các nghiệm của phương trình đa thức và các hệ số của nó.",
+            "formulas": "Với phương trình bậc hai ax^2 + bx + c = 0:\n- Tổng nghiệm: S = x_1 + x_2 = -\\frac{b}{a}\n- Tích nghiệm: P = x_1 \\cdot x_2 = \\frac{c}{a}",
+            "examples": "Nhẩm nghiệm x^2 - 7x + 12 = 0. Có S = 7, P = 12. Hai nghiệm là x1=3, x2=4."
+        },
+        "dao_ham": {
+            "id": "dao_ham",
+            "name": "Đạo hàm",
+            "english_name": "Derivative",
+            "keywords": ["đạo hàm", "derivative", "tính đạo hàm", "đạo hàm cấp"],
+            "definition": "Tỉ số giữa số gia của hàm số và số gia của đối số tại một điểm khi số gia của đối số tiến dần về 0. Đại diện cho tốc độ biến thiên.",
+            "formulas": "f'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x + \\Delta x) - f(x)}{\\Delta x}\nCông thức cơ bản: (x^n)' = n x^{n-1}, (\\sin x)' = \\cos x, (e^x)' = e^x",
+            "examples": "Đạo hàm của f(x) = 3x^2 - 5x là f'(x) = 6x - 5."
+        },
+        "cuc_tri": {
+            "id": "cuc_tri",
+            "name": "Cực trị hàm số",
+            "english_name": "Extrema of Functions",
+            "keywords": ["cực trị", "cực đại", "cực tiểu", "extrema", "local maximum", "local minimum"],
+            "definition": "Các điểm mà tại đó giá trị hàm số lớn nhất hoặc nhỏ nhất trong một khoảng lân cận. Điểm cực trị là nghiệm của f'(x) = 0 hoặc làm f'(x) không xác định và đạo hàm đổi dấu khi qua điểm đó.",
+            "formulas": "Quy tắc 1: Nếu f'(x) đổi dấu từ dương sang âm khi qua x0 -> x0 là điểm cực đại.\nQuy tắc 2: Nếu f'(x0) = 0 và f''(x0) > 0 -> x0 là điểm cực tiểu.",
+            "examples": "Tìm cực trị y = x^2 - 4x. y' = 2x - 4. y' = 0 <=> x = 2. Vì y'' = 2 > 0 nên x = 2 là điểm cực tiểu."
+        },
+        "tiem_can": {
+            "id": "tiem_can",
+            "name": "Đường tiệm cận",
+            "english_name": "Asymptote",
+            "keywords": ["tiệm cận", "tiệm cận ngang", "tiệm cận đứng", "tiệm cận xiên", "asymptote"],
+            "definition": "Đường thẳng mà đồ thị hàm số tiến gần vô hạn nhưng không bao giờ cắt (hoặc chỉ cắt ở vô cực) khi biến số tiến ra vô cùng hoặc điểm gián đoạn.",
+            "formulas": "- Tiệm cận đứng: x = x0 nếu \\lim_{x \\to x0} f(x) = \\pm\\infty\n- Tiệm cận ngang: y = y0 nếu \\lim_{x \\to \\pm\\infty} f(x) = y0",
+            "examples": "Hàm số y = (2x+1)/(x-1) có tiệm cận đứng x=1 và tiệm cận ngang y=2."
+        },
+        "tich_phan": {
+            "id": "tich_phan",
+            "name": "Tích phân",
+            "english_name": "Integral",
+            "keywords": ["tích phân", "nguyên hàm", "integral", "integration", "antiderivative"],
+            "definition": "Phép toán ngược của đạo hàm (nguyên hàm), đại diện cho diện tích hình phẳng giới hạn bởi đồ thị hàm số.",
+            "formulas": "Công thức Newton-Leibniz: \\int_a^b f(x) dx = F(b) - F(a)\nCông thức tích phân từng phần: \\int u dv = uv - \\int v du",
+            "examples": "Tính \\int_0^1 x dx = [x^2 / 2]_0^1 = 1/2."
+        },
+        "gioi_han": {
+            "id": "gioi_han",
+            "name": "Giới hạn",
+            "english_name": "Limit",
+            "keywords": ["giới hạn", "limit", "lim", "tiến tới"],
+            "definition": "Giá trị mà một hàm số hoặc một dãy số tiến gần đến khi biến số hoặc chỉ số tiến đến một giá trị nào đó.",
+            "formulas": "\\lim_{x \\to x_0} f(x) = L\nMột số giới hạn đặc biệt: \\lim_{x \\to 0} \\frac{\\sin x}{x} = 1, \\lim_{n \\to \\infty} (1 + \\frac{1}{n})^n = e",
+            "examples": "Tính lim (x->2) (x^2 - 4)/(x - 2) = lim (x->2) (x+2) = 4."
+        }
+    },
+    "edges": [
+        {"source": "phuong_trinh_bac_hai", "target": "biet_thuc_delta", "relation": "sử dụng để xác định số lượng và tính chất nghiệm"},
+        {"source": "phuong_trinh_bac_hai", "target": "he_thuc_vi_et", "relation": "áp dụng hệ thức để tìm nhanh tổng và tích hai nghiệm"},
+        {"source": "biet_thuc_delta", "target": "he_thuc_vi_et", "relation": "được kiểm tra trước để đảm bảo phương trình có nghiệm trước khi áp dụng hệ thức"},
+        {"source": "dao_ham", "target": "cuc_tri", "relation": "được lập bảng xét dấu và tìm nghiệm f'(x)=0 để xác định điểm cực trị"},
+        {"source": "dao_ham", "target": "tich_phan", "relation": "tích phân là phép toán ngược của đạo hàm (nguyên hàm)"},
+        {"source": "gioi_han", "target": "tiem_can", "relation": "dùng giới hạn ra vô cực hoặc giới hạn một bên để tìm đường tiệm cận"},
+        {"source": "gioi_han", "target": "dao_ham", "relation": "định nghĩa đạo hàm được xây dựng dựa trên giới hạn tỉ số số gia"}
+    ]
+}
+
+def extract_graph_entities(query: str) -> list:
+    matched_ids = []
+    query_lower = query.lower()
+    for node_id, node_data in MATH_CONCEPT_GRAPH["nodes"].items():
+        if node_id in query_lower:
+            matched_ids.append(node_id)
+            continue
+        if node_data["name"].lower() in query_lower:
+            matched_ids.append(node_id)
+            continue
+        if node_data["english_name"].lower() in query_lower:
+            matched_ids.append(node_id)
+            continue
+        for kw in node_data["keywords"]:
+            if kw in query_lower:
+                matched_ids.append(node_id)
+                break
+    return matched_ids
+
+def retrieve_math_context(query: str) -> str:
+    matched_ids = extract_graph_entities(query)
+    local_contexts = []
+    seen_neighbors = set()
+    
+    for node_id in matched_ids:
+        node = MATH_CONCEPT_GRAPH["nodes"][node_id]
+        node_ctx = (
+            f"### Khái niệm: {node['name']} ({node['english_name']})\n"
+            f"- Định nghĩa: {node['definition']}\n"
+            f"- Công thức quan trọng:\n{node['formulas']}\n"
+            f"- Ví dụ áp dụng: {node['examples']}\n"
+        )
+        local_contexts.append(node_ctx)
+        
+        relations = []
+        for edge in MATH_CONCEPT_GRAPH["edges"]:
+            if edge["source"] == node_id:
+                target_node = MATH_CONCEPT_GRAPH["nodes"][edge["target"]]
+                relations.append(f"  * Có liên quan đến '{target_node['name']}' qua mối quan hệ: {edge['relation']}.")
+                if edge["target"] not in matched_ids and edge["target"] not in seen_neighbors:
+                    seen_neighbors.add(edge["target"])
+            elif edge["target"] == node_id:
+                source_node = MATH_CONCEPT_GRAPH["nodes"][edge["source"]]
+                relations.append(f"  * Được liên kết từ '{source_node['name']}' qua mối quan hệ: {edge['relation']}.")
+                if edge["source"] not in matched_ids and edge["source"] not in seen_neighbors:
+                    seen_neighbors.add(edge["source"])
+                    
+        if relations:
+            local_contexts.append("- Mối quan hệ trong hệ thống:\n" + "\n".join(relations) + "\n")
+            
+    if seen_neighbors:
+        neighbor_ctxs = []
+        for n_id in seen_neighbors:
+            n_node = MATH_CONCEPT_GRAPH["nodes"][n_id]
+            neighbor_ctxs.append(f"  * {n_node['name']}: {n_node['definition']} (Công thức: {n_node['formulas'].splitlines()[0] if n_node['formulas'] else ''})")
+        local_contexts.append("### Khái niệm liên quan lân cận:\n" + "\n".join(neighbor_ctxs) + "\n")
+        
+    global_context = (
+        "### Hướng dẫn gia sư toán bậc trung học (Lớp 10-12):\n"
+        "- Trình bày giải thích toán học ngắn gọn, rõ ràng theo từng bước (Step-by-step).\n"
+        "- Sử dụng ký hiệu LaTeX cho các công thức toán để hiển thị đẹp mắt (ví dụ: $ax^2 + bx + c = 0$ hoặc $$\\Delta = b^2 - 4ac$$).\n"
+        "- Luôn đối chiếu kỹ các công thức toán học và biệt thức Delta, hệ thức Vi-ét khi học sinh hỏi về phương trình bậc hai hoặc cực trị.\n"
+        "- Giải thích bằng tiếng Việt một cách tự nhiên và ngắn gọn."
+    )
+    
+    if matched_ids:
+        joined_local = "\n".join(local_contexts)
+        hybrid_context = (
+            f"=== BẢN ĐỒ TRI THỨC TOÁN HỌC (Retrieved Concept Graph - Local Mode) ===\n"
+            f"{joined_local}\n"
+            f"=== HƯỚNG DẪN HỆ THỐNG TOÀN CỤC (Global Mode) ===\n"
+            f"{global_context}\n"
+            f"========================================================================\n"
+        )
+    else:
+        hybrid_context = (
+            f"=== HƯỚNG DẪN HỆ THỐNG TOÀN CỤC (Global Mode) ===\n"
+            f"{global_context}\n"
+            f"========================================================================\n"
+        )
+        
+    return hybrid_context
+
 def extract_text_from_image(image_bytes: bytes) -> str:
     if not _ocr_available or ocr_reader is None:
         return ""
@@ -572,10 +742,14 @@ async def chat(request: Request):
         system_prompt = cached_system_prompt("text")
         history.append({"role": "user", "content": user_message})
 
+    # Retrieve mathematical context using LightRAG-style retriever
+    retrieved_kb = retrieve_math_context(user_message)
+    full_system_prompt = f"{system_prompt}\n\n{retrieved_kb}"
+
     # Build messages without mutating history dicts (slicing shares dict refs in Python)
     context_history = history[-5:-1]  # previous turns, excluding the just-appended user turn
     messages = (
-        [{"role": "system", "content": system_prompt}]
+        [{"role": "system", "content": full_system_prompt}]
         + context_history
         + [{"role": "user", "content": user_content}]
     )
