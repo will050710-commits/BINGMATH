@@ -9,7 +9,18 @@ const STORAGE_KEYS = {
   MATHMAPS: "duomath_mathmaps",
   ADMINS: "duomath_admins",
   CURRENT_USER: "duomath_current_user",
+  LEADERBOARDS: "duomath_mathmap_leaderboards",
 };
+
+const SEED_LEADERBOARD_DEFAULT = [
+  { username: "MathGod_2k7", grade: "Lớp 12", score: 9840, accuracy: 98.2, combo: 156 },
+  { username: "QuadraticKing", grade: "Lớp 11", score: 9120, accuracy: 95.6, combo: 134 },
+  { username: "PiMaster", grade: "Lớp 12", score: 8870, accuracy: 93.1, combo: 128 },
+  { username: "TrigWhiz", grade: "Lớp 11", score: 8540, accuracy: 91.7, combo: 119 },
+  { username: "Sigma_Boy", grade: "Lớp 10", score: 8210, accuracy: 89.4, combo: 108 },
+  { username: "Calculus_Pro", grade: "Lớp 12", score: 7980, accuracy: 87.2, combo: 99 },
+  { username: "AlgebraQueen", grade: "Lớp 11", score: 7650, accuracy: 85.0, combo: 92 },
+];
 
 // ── Mock seed data (shown in forum by default) ─────────────────────────────
 const SEED_MAPS = [
@@ -179,6 +190,7 @@ export function MathMapStoreProvider({ children }) {
   const [maps, setMapsRaw] = useState([]);
   const [admins, setAdminsRaw] = useState([SUPER_ADMIN_EMAIL]);
   const [currentUser, setCurrentUserRaw] = useState(null); // { email }
+  const [leaderboards, setLeaderboardsRaw] = useState({});
   const [hydrated, setHydrated] = useState(false);
 
   // Hydrate from localStorage on client
@@ -192,6 +204,9 @@ export function MathMapStoreProvider({ children }) {
 
     const storedUser = loadFromStorage(STORAGE_KEYS.CURRENT_USER, null);
     setCurrentUserRaw(storedUser);
+
+    const storedLeaderboards = loadFromStorage(STORAGE_KEYS.LEADERBOARDS, {});
+    setLeaderboardsRaw(storedLeaderboards);
 
     setHydrated(true);
   }, []);
@@ -323,6 +338,37 @@ export function MathMapStoreProvider({ children }) {
     return maps.filter(m => m.status === "ranked" || m.status === "qualified");
   }, [maps]);
 
+  // ── Leaderboards ───────────────────────────────────────────────────────
+  const saveLeaderboardScore = useCallback((mapId, username, grade, score, accuracy, combo) => {
+    setLeaderboardsRaw(prev => {
+      const mapLbs = prev[mapId] || SEED_LEADERBOARD_DEFAULT;
+      // Add or update the user's score if it's higher than their previous score on this map
+      const existingIdx = mapLbs.findIndex(x => x.username.toLowerCase() === username.toLowerCase());
+      let nextList = [...mapLbs];
+      if (existingIdx !== -1) {
+        if (score > mapLbs[existingIdx].score) {
+          nextList[existingIdx] = { username, grade, score, accuracy, combo };
+        } else {
+          return prev;
+        }
+      } else {
+        nextList.push({ username, grade, score, accuracy, combo });
+      }
+      const next = { ...prev, [mapId]: nextList };
+      saveToStorage(STORAGE_KEYS.LEADERBOARDS, next);
+      return next;
+    });
+  }, []);
+
+  const getLeaderboardForMap = useCallback((mapId) => {
+    const list = leaderboards[mapId] || SEED_LEADERBOARD_DEFAULT;
+    return [...list].sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (b.accuracy !== a.accuracy) return b.accuracy - a.accuracy;
+      return b.combo - a.combo;
+    }).map((x, idx) => ({ ...x, rank: idx + 1 }));
+  }, [leaderboards]);
+
   const value = {
     hydrated,
     maps,
@@ -347,6 +393,9 @@ export function MathMapStoreProvider({ children }) {
     // Getters
     getMapsByStatus,
     getPublicMaps,
+    // Leaderboards
+    saveLeaderboardScore,
+    getLeaderboardForMap,
     // Constants
     SUPER_ADMIN_EMAIL,
     ADMIN_PASSWORD,

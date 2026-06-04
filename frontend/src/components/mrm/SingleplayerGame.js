@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMathMapStore } from "@/context/MathMapStore";
+import { useAuth } from "@/context/authContext";
 
 // ── Mock data ──────────────────────────────────────────────────────────────
 const MOCK_MATHMAPS = {
@@ -107,7 +109,13 @@ const MAX_HP = 5;
 const TIME_PER_QUESTION = 30; // seconds
 
 export default function SingleplayerGame({ mapId }) {
-  const mapData = MOCK_MATHMAPS[mapId] || DEFAULT_MAP;
+  const { saveLeaderboardScore, maps, hydrated } = useMathMapStore();
+  const { user } = useAuth();
+
+  let mapData = (hydrated && maps.find(m => m.id === mapId)) || MOCK_MATHMAPS[mapId] || DEFAULT_MAP;
+  if (!mapData.questions || mapData.questions.length === 0) {
+    mapData = MOCK_MATHMAPS[mapId] || DEFAULT_MAP;
+  }
   const { questions } = mapData;
 
   const [phase, setPhase] = useState("intro"); // intro | playing | result
@@ -128,6 +136,19 @@ export default function SingleplayerGame({ mapId }) {
 
   const question = questions[currentQ];
   const isLastQ = currentQ === questions.length - 1;
+
+  // Save score to leaderboard when game ends
+  useEffect(() => {
+    if (phase === "result") {
+      const correctCount = answers.filter(a => a.correct).length;
+      const accuracy = answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0;
+      
+      const username = user?.username || user?.email?.split("@")[0] || "Người chơi";
+      const grade = user?.grade || "Lớp 11";
+      
+      saveLeaderboardScore(mapId, username, grade, score, accuracy, maxCombo);
+    }
+  }, [phase, answers, score, maxCombo, user, mapId, saveLeaderboardScore]);
 
   // ─── Timer ───────────────────────────────────────────────────────────────
   const startTimer = useCallback(() => {

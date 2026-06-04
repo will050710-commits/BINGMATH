@@ -1,7 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
+ 
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useMathMapStore } from "@/context/MathMapStore";
 
 // ── Mock MathMap data ──────────────────────────────────────────────────────
 const MOCK_MATHMAPS = [
@@ -202,6 +203,7 @@ function MathMapCard({ map, selected, onSelect }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 export default function SingleplayerListing() {
+  const { getLeaderboardForMap, getPublicMaps, hydrated } = useMathMapStore();
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("Tất cả");
   const [statusFilter, setStatusFilter] = useState("Tất cả");
@@ -210,10 +212,11 @@ export default function SingleplayerListing() {
   const [lbScope, setLbScope] = useState("Global");
   const [showFilters, setShowFilters] = useState(false);
 
-  const selectedMapData = MOCK_MATHMAPS.find(m => m.id === selectedMap);
+  const currentMaps = hydrated ? getPublicMaps() : MOCK_MATHMAPS;
+  const selectedMapData = currentMaps.find(m => m.id === selectedMap);
 
   // Filter + sort
-  const filteredMaps = MOCK_MATHMAPS
+  const filteredMaps = currentMaps
     .filter(m => {
       const q = search.toLowerCase();
       if (q && !m.title.toLowerCase().includes(q) && !m.creator.toLowerCase().includes(q) && !m.tags.some(t => t.toLowerCase().includes(q))) return false;
@@ -522,11 +525,11 @@ export default function SingleplayerListing() {
 
           {/* LB Rows */}
           <div style={{ flex: 1, overflowY: "auto" }}>
-            {MOCK_LEADERBOARD.map((entry, i) => {
+            {getLeaderboardForMap(selectedMap).map((entry, i) => {
               const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
               const rankColor = i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : i === 2 ? "#cd7f32" : "rgba(255,255,255,0.4)";
               return (
-                <div key={entry.rank} style={{
+                <div key={entry.username + "_" + i} style={{
                   display: "flex", alignItems: "center", gap: 10,
                   padding: "10px 14px",
                   borderBottom: "1px solid rgba(255,255,255,0.04)",
