@@ -2,7 +2,7 @@
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @next/next/no-img-element */
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Accordion, AccordionItem } from "@heroui/react";
@@ -11,30 +11,56 @@ import DuoMCBSidebar from "../DuoMCB/DuoMCBSidebar";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
 
-// ── EditProfileModal: module-level component to prevent React from remounting
-// it when TrangChuForm re-renders due to auth context updates. ──────────────
+/// ── EditProfileModal (avatar upload + profile edit) ────────────────────
 function EditProfileModal({ onClose }) {
-  const { user, updateProfile, reloadProfile } = useAuth();
+  const { user, updateProfile, uploadAvatar, reloadProfile } = useAuth();
   const [username, setUsername] = useState(user?.username || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [school, setSchool] = useState(user?.school || "");
   const [grade, setGrade] = useState(user?.grade || "");
   const [loading, setLoading] = useState(false);
+  const [avatarLoading, setAvatarLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar_url || "");
+  const fileInputRef = useRef(null);
+
+  // Handle avatar file selection
+  const handleAvatarChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Local preview
+    const objectUrl = URL.createObjectURL(file);
+    setAvatarPreview(objectUrl);
+    setErrorMsg("");
+    setSuccessMsg("");
+    setAvatarLoading(true);
+
+    try {
+      const { ok, error } = await uploadAvatar(file);
+      if (ok) {
+        setSuccessMsg("Ảnh đại diện đã được cập nhật!");
+        if (reloadProfile) await reloadProfile();
+      } else {
+        setErrorMsg(error || "Upload ảnh thất bại.");
+        setAvatarPreview(user?.avatar_url || ""); // revert
+      }
+    } catch {
+      setErrorMsg("Không thể upload ảnh.");
+      setAvatarPreview(user?.avatar_url || "");
+    } finally {
+      setAvatarLoading(false);
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
-    if (!username.trim()) {
-      setErrorMsg("Tên người dùng không được để trống.");
-      return;
-    }
-    if (username.trim().length < 2) {
-      setErrorMsg("Tên người dùng phải có ít nhất 2 ký tự.");
-      return;
-    }
+    if (!username.trim()) { setErrorMsg("Tên người dùng không được để trống."); return; }
+    if (username.trim().length < 2) { setErrorMsg("Tên người dùng phải có ít nhất 2 ký tự."); return; }
     setLoading(true);
     try {
       const { ok, error } = await updateProfile({
@@ -44,13 +70,14 @@ function EditProfileModal({ onClose }) {
         grade: grade.trim(),
       });
       if (ok) {
-        setSuccessMsg("Cập nhật thông tin thành công!");
+        setSuccessMsg("Đã lưu thông tin thành công!");
+        // reloadProfile ensures context user state is fully fresh from backend
         if (reloadProfile) await reloadProfile();
-        setTimeout(() => onClose(), 1500);
+        setTimeout(() => onClose(), 1400);
       } else {
         setErrorMsg(error || "Đã xảy ra lỗi khi cập nhật thông tin.");
       }
-    } catch (err) {
+    } catch {
       setErrorMsg("Không thể kết nối đến máy chủ.");
     } finally {
       setLoading(false);
@@ -58,83 +85,152 @@ function EditProfileModal({ onClose }) {
   };
 
   const inputStyle = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 8,
+    width: "100%", padding: "10px 12px", borderRadius: 8,
     background: "rgba(255,255,255,0.05)",
     border: "1px solid rgba(255,255,255,0.15)",
-    color: "white",
-    fontSize: 14,
-    outline: "none",
-    boxSizing: "border-box",
+    color: "white", fontSize: 14, outline: "none", boxSizing: "border-box",
   };
+
+  const currentAvatar = avatarPreview || user?.avatar_url || "";
+  const initials = (user?.username || "U")[0].toUpperCase();
 
   return (
     <div style={{
       position: "fixed", inset: 0,
-      backgroundColor: "rgba(10, 10, 26, 0.75)",
-      backdropFilter: "blur(8px)",
+      backgroundColor: "rgba(10,10,26,0.8)",
+      backdropFilter: "blur(10px)",
       display: "flex", alignItems: "center", justifyContent: "center",
       zIndex: 2000,
     }}>
       <div style={{
-        background: "rgba(15, 23, 42, 0.9)",
+        background: "rgba(15,23,42,0.95)",
         backdropFilter: "blur(16px)",
-        border: "1px solid rgba(255, 255, 255, 0.15)",
-        borderRadius: 16,
-        width: "480px", maxWidth: "90%",
-        padding: 28,
-        boxShadow: "0 24px 64px rgba(0,0,0,0.4), 0 0 32px rgba(14,165,233,0.1)",
-        color: "white",
+        border: "1px solid rgba(255,255,255,0.15)",
+        borderRadius: 16, width: "500px", maxWidth: "92%",
+        padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.5), 0 0 32px rgba(14,165,233,0.1)",
+        color: "white", maxHeight: "90vh", overflowY: "auto",
       }}>
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "#7dd3fc" }}>✏️ Chỉnh sửa thông tin cá nhân</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", fontSize: 24, cursor: "pointer" }}>&times;</button>
+          <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#7dd3fc" }}>
+            ✏️ Chỉnh sửa thông tin cá nhân
+          </h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 24, cursor: "pointer" }}>&times;</button>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {errorMsg && (
-            <div style={{ background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#fca5a5" }}>
-              ⚠️ {errorMsg}
-            </div>
-          )}
-          {successMsg && (
-            <div style={{ background: "rgba(74,222,128,0.2)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#86efac" }}>
-              ✅ {successMsg}
-            </div>
-          )}
+        {/* ── Avatar Upload Section ── */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 16,
+          padding: "16px", borderRadius: 12, marginBottom: 20,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+        }}>
+          {/* Avatar display */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            {currentAvatar ? (
+              <img
+                src={currentAvatar}
+                style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover",
+                  border: "3px solid rgba(14,165,233,0.5)",
+                  boxShadow: "0 0 20px rgba(14,165,233,0.3)",
+                  opacity: avatarLoading ? 0.5 : 1, transition: "opacity 0.3s",
+                }}
+              />
+            ) : (
+              <div style={{
+                width: 72, height: 72, borderRadius: "50%",
+                background: "linear-gradient(135deg,#0B4F5C,#1a9ab5)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "white", fontWeight: 800, fontSize: 28,
+                border: "3px solid rgba(14,165,233,0.5)",
+              }}>{initials}</div>
+            )}
+            {avatarLoading && (
+              <div style={{
+                position: "absolute", inset: 0, borderRadius: "50%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(0,0,0,0.4)", fontSize: 20,
+              }}>⏳</div>
+            )}
+          </div>
 
+          {/* Upload controls */}
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "white", marginBottom: 4 }}>
+              Ảnh đại diện
+            </div>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 10 }}>
+              JPG, PNG, GIF • Tối đa 5MB
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              style={{ display: "none" }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={avatarLoading}
+              style={{
+                padding: "7px 16px", borderRadius: 7, cursor: avatarLoading ? "not-allowed" : "pointer",
+                background: "rgba(14,165,233,0.15)",
+                border: "1px solid rgba(14,165,233,0.35)",
+                color: "#7dd3fc", fontSize: 12, fontWeight: 600,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={e => { if (!avatarLoading) e.currentTarget.style.background = "rgba(14,165,233,0.25)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(14,165,233,0.15)"; }}
+            >
+              {avatarLoading ? "⏳ Uploading..." : "📷 Chọn ảnh"}
+            </button>
+          </div>
+        </div>
+
+        {/* Messages */}
+        {errorMsg && (
+          <div style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#fca5a5", marginBottom: 14 }}>
+            ⚠️ {errorMsg}
+          </div>
+        )}
+        {successMsg && (
+          <div style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#86efac", marginBottom: 14 }}>
+            ✅ {successMsg}
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Tên học sinh *</label>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="Nhập tên học sinh" style={inputStyle} />
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} required placeholder="Nhập tên học sinh" style={inputStyle} />
           </div>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Số điện thoại</label>
-            <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Nhập số điện thoại" style={inputStyle} />
+            <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Nhập số điện thoại" style={inputStyle} />
           </div>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Trường</label>
-            <input type="text" value={school} onChange={(e) => setSchool(e.target.value)} placeholder="Nhập tên trường học" style={inputStyle} />
+            <input type="text" value={school} onChange={e => setSchool(e.target.value)} placeholder="Nhập tên trường học" style={inputStyle} />
           </div>
           <div>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 6 }}>Lớp</label>
-            <select value={grade} onChange={(e) => setGrade(e.target.value)} style={{ ...inputStyle, background: "rgba(15,23,42,0.95)", cursor: "pointer" }}>
+            <select value={grade} onChange={e => setGrade(e.target.value)} style={{ ...inputStyle, background: "rgba(15,23,42,0.95)", cursor: "pointer" }}>
               <option value="">-- Chọn lớp --</option>
               <option value="Lớp 10">Lớp 10</option>
               <option value="Lớp 11">Lớp 11</option>
               <option value="Lớp 12">Lớp 12</option>
             </select>
           </div>
-
-          <div style={{ display: "flex", gap: 12, marginTop: 10 }}>
+          <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
             <button type="button" onClick={onClose} disabled={loading}
-              style={{ flex: 1, padding: "11px 0", background: "rgba(255,255,255,0.1)", color: "white", border: "1px solid rgba(255,255,255,0.2)", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
+              style={{ flex: 1, padding: "11px 0", background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
               Hủy
             </button>
             <button type="submit" disabled={loading}
-              style={{ flex: 1, padding: "11px 0", background: loading ? "rgba(99,102,241,0.5)" : "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", boxShadow: "0 4px 12px rgba(99,102,241,0.3)" }}>
-              {loading ? "Đang lưu..." : "Lưu thay đổi"}
+              style={{ flex: 1, padding: "11px 0", background: loading ? "rgba(99,102,241,0.4)" : "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", boxShadow: loading ? "none" : "0 4px 12px rgba(99,102,241,0.3)" }}>
+              {loading ? "⏳ Đang lưu..." : "Lưu thay đổi"}
             </button>
           </div>
         </form>
@@ -156,22 +252,10 @@ export default function TrangChuForm() {
   const [showFlyer, setShowFlyer] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [lbLoading, setLbLoading] = useState(true);
 
   const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 
-  const fetchLeaderboard = useCallback(async () => {
-    try {
-      setLbLoading(true);
-      const res = await fetch(`${BASE}/api/leaderboard`);
-      if (res.ok) setLeaderboard(await res.json());
-    } catch { /* silent */ } finally {
-      setLbLoading(false);
-    }
-  }, [BASE]);
 
-  useEffect(() => { fetchLeaderboard(); }, [fetchLeaderboard]);
   const flyerSteps = [
     {
       icon: "📖", title: "Bilingual Lessons", color: "#0B4F5C", bg: "#e8f4f6",
@@ -285,9 +369,17 @@ export default function TrangChuForm() {
       <div style={dropStyle}>
         {/* Header */}
         <div style={{ padding: "14px 16px 12px", borderBottom: "1px solid #eee", display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 38, height: 38, borderRadius: "50%", background: "linear-gradient(135deg,#0B4F5C,#1a9ab5)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
-            {(user.username || "U")[0].toUpperCase()}
-          </div>
+          {user.avatar_url ? (
+            <img
+              src={user.avatar_url}
+              style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover", border: "2px solid #c8e6f0", flexShrink: 0 }}
+            />
+          ) : (
+            <div style={{ width: 38, height: 38, borderRadius: "50%", background: "linear-gradient(135deg,#0B4F5C,#1a9ab5)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
+              {(user.username || "U")[0].toUpperCase()}
+            </div>
+          )}
+
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: "#111" }}>{user.username}</div>
             <div style={{ fontSize: 11, color: "#888" }}>{user.email}</div>
@@ -504,6 +596,25 @@ export default function TrangChuForm() {
             <Link href="/Cacbaitoan" style={{ textDecoration: "none", color: "black", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", padding: "10px 12px", borderRadius: 8, background: "white", whiteSpace: "nowrap" }}>
               Math lessons ›
             </Link>
+
+            {/* 🎮 MRM Button */}
+            <Link href="/mrm" style={{ textDecoration: "none" }}>
+              <button style={{
+                color: "white",
+                boxShadow: "0 4px 12px rgba(99,102,241,0.35)",
+                padding: "10px 14px", borderRadius: 8,
+                background: "linear-gradient(135deg, #6366f1, #0ea5e9)",
+                border: "none", fontSize: 14, cursor: "pointer",
+                fontWeight: 700, display: "flex", alignItems: "center",
+                gap: 6, whiteSpace: "nowrap", transition: "all 0.2s",
+              }}
+                onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 6px 20px rgba(99,102,241,0.5)"; }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 4px 12px rgba(99,102,241,0.35)"; }}
+              >
+                🎮 MRM
+              </button>
+            </Link>
+
             {ready && !user && (
               <Link href="/login">
                 <button style={{ background: "black", color: "white", border: "none", borderRadius: 8, padding: "10px 16px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -512,15 +623,26 @@ export default function TrangChuForm() {
               </Link>
             )}
 
-            {/* Profile avatar */}
+            {/* Profile avatar button */}
             <div data-profile-root style={{ position: "relative" }}>
               <button onClick={() => setShowProfile(v => !v)}
                 style={{ background: "none", border: "none", cursor: "pointer", padding: 3, display: "flex", alignItems: "center" }}
                 title={user ? user.username : "Tài khoản"}>
                 {user ? (
-                  <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#0B4F5C,#1a9ab5)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: 15, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
-                    {(user.username || "U")[0].toUpperCase()}
-                  </div>
+                  user.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      style={{
+                        width: 36, height: 36, borderRadius: "50%", objectFit: "cover",
+                        border: "2px solid rgba(255,255,255,0.3)",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                      }}
+                    />
+                  ) : (
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "linear-gradient(135deg,#0B4F5C,#1a9ab5)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: 15, boxShadow: "0 2px 8px rgba(0,0,0,0.2)" }}>
+                      {(user.username || "U")[0].toUpperCase()}
+                    </div>
+                  )
                 ) : (
                   <Avatar isBordered color="primary" src="/images/defaultuser.png" style={{ width: 36, height: 36 }} />
                 )}
@@ -606,143 +728,8 @@ export default function TrangChuForm() {
           })}
         </div>
 
-        {/* ═══════ LEADERBOARD ═══════ */}
-        <div className="reveal" data-reveal style={{ marginTop: 70, marginBottom: 70 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
-            <div>
-              <h2 style={{ fontSize: 28, color: "white", margin: 0 }}>🏆 Bảng xếp hạng</h2>
-              <p style={{ color: "#93c5fd", fontSize: 14, marginTop: 4, margin: 0 }}>
-                Tổng điểm cao nhất từ tất cả các bài test · Cập nhật theo thời gian thực
-              </p>
-            </div>
-            <button
-              onClick={fetchLeaderboard}
-              style={{ background: "rgba(14,165,233,0.15)", border: "1px solid rgba(14,165,233,0.4)", color: "#7dd3fc", borderRadius: 8, padding: "8px 16px", fontSize: 13, cursor: "pointer", fontWeight: 600, transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(14,165,233,0.3)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(14,165,233,0.15)"; }}
-            >
-              🔄 Làm mới
-            </button>
-          </div>
 
-          <div style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(12px)", borderRadius: 16, border: "1px solid rgba(255,255,255,0.12)", overflow: "hidden", boxShadow: "0 8px 32px rgba(0,180,255,0.1)" }}>
-
-            {/* Table header */}
-            <div style={{ display: "grid", gridTemplateColumns: "52px 1fr 100px 90px 90px 90px", gap: 0, padding: "14px 24px", background: "rgba(14,165,233,0.12)", borderBottom: "1px solid rgba(255,255,255,0.08)", fontSize: 11, fontWeight: 700, color: "#7dd3fc", textTransform: "uppercase", letterSpacing: 1 }}>
-              <span>#</span>
-              <span>Học sinh</span>
-              <span style={{ textAlign: "center" }}>XP ⭐</span>
-              <span style={{ textAlign: "center" }}>Streak 🔥</span>
-              <span style={{ textAlign: "center" }}>Tổng điểm</span>
-              <span style={{ textAlign: "center" }}>Độ chính xác</span>
-            </div>
-
-            {/* Rows */}
-            {lbLoading ? (
-              <div style={{ padding: "48px 24px", textAlign: "center", color: "#4e7896" }}>
-                <div style={{ fontSize: 28, marginBottom: 8 }}>⏳</div>
-                <div style={{ fontSize: 14 }}>Đang tải dữ liệu…</div>
-              </div>
-            ) : leaderboard.length === 0 ? (
-              <div style={{ padding: "48px 24px", textAlign: "center", color: "#4e7896" }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>🏅</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: "#7dd3fc", marginBottom: 6 }}>Chưa có dữ liệu</div>
-                <div style={{ fontSize: 13 }}>Hãy là người đầu tiên hoàn thành một bài test!</div>
-              </div>
-            ) : leaderboard.map((entry, idx) => {
-              const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
-              const isTop3 = idx < 3;
-              const rowBg = idx === 0
-                ? "rgba(255,215,0,0.07)"
-                : idx === 1 ? "rgba(192,192,192,0.06)"
-                : idx === 2 ? "rgba(205,127,50,0.06)"
-                : idx % 2 === 0 ? "rgba(255,255,255,0.025)" : "transparent";
-              const rankColor = idx === 0 ? "#fbbf24" : idx === 1 ? "#94a3b8" : idx === 2 ? "#cd7f32" : "#4e7896";
-              const isMe = user && entry.username === user.username;
-
-              return (
-                <div key={entry.user_id}
-                  style={{ display: "grid", gridTemplateColumns: "52px 1fr 100px 90px 90px 90px", gap: 0, padding: "14px 24px", background: isMe ? "rgba(99,102,241,0.12)" : rowBg, borderBottom: "1px solid rgba(255,255,255,0.05)", alignItems: "center", transition: "background 0.2s" }}
-                  onMouseEnter={e => { if (!isMe) e.currentTarget.style.background = "rgba(255,255,255,0.045)"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = isMe ? "rgba(99,102,241,0.12)" : rowBg; }}
-                >
-                  {/* Rank */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    {medal
-                      ? <span style={{ fontSize: 20 }}>{medal}</span>
-                      : <span style={{ fontSize: 14, fontWeight: 700, color: rankColor, minWidth: 24, textAlign: "center" }}>{entry.rank}</span>
-                    }
-                  </div>
-
-                  {/* Name + badges */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      <span style={{ fontWeight: isTop3 ? 700 : 600, fontSize: isTop3 ? 15 : 14, color: isTop3 ? "white" : "#cbd5e1", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {entry.username}
-                      </span>
-                      {isMe && (
-                        <span style={{ fontSize: 10, fontWeight: 700, background: "rgba(99,102,241,0.3)", color: "#a5b4fc", border: "1px solid rgba(99,102,241,0.5)", borderRadius: 10, padding: "1px 7px" }}>Bạn</span>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {entry.grade && (
-                        <span style={{ fontSize: 10, color: "#38bdf8", background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.25)", borderRadius: 8, padding: "1px 6px" }}>
-                          {entry.grade}
-                        </span>
-                      )}
-                      {entry.school && (
-                        <span style={{ fontSize: 10, color: "#94a3b8", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          🏫 {entry.school}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* XP */}
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: "#fbbf24" }}>
-                      {entry.xp || 0}
-                    </div>
-                    <div style={{ fontSize: 10, color: "#4e7896", fontWeight: 400 }}>XP</div>
-                  </div>
-
-                  {/* Current Streak */}
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, color: entry.current_streak > 0 ? "#ef4444" : "#4e7896" }}>
-                      {entry.current_streak || 0}d
-                    </div>
-                    <div style={{ fontSize: 10, color: "#4e7896", fontWeight: 400 }}>Hiện tại</div>
-                  </div>
-
-                  {/* Total points */}
-                  <div style={{ textAlign: "center" }}>
-                    <span style={{ fontSize: isTop3 ? 18 : 16, fontWeight: 800, color: isTop3 ? "#fbbf24" : "#7dd3fc" }}>
-                      {entry.total_points}
-                    </span>
-                    <span style={{ fontSize: 11, color: "#4e7896", marginLeft: 3 }}>/{entry.total_possible}</span>
-                  </div>
-
-                  {/* Accuracy bar */}
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: entry.accuracy >= 80 ? "#4ade80" : entry.accuracy >= 60 ? "#fbbf24" : "#f87171", marginBottom: 4 }}>
-                      {entry.accuracy}%
-                    </div>
-                    <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${entry.accuracy}%`, background: entry.accuracy >= 80 ? "linear-gradient(90deg,#4ade80,#22d3ee)" : entry.accuracy >= 60 ? "linear-gradient(90deg,#fbbf24,#f59e0b)" : "linear-gradient(90deg,#f87171,#ef4444)", borderRadius: 2, transition: "width 0.8s ease" }} />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Footer note */}
-            {!lbLoading && leaderboard.length > 0 && (
-              <div style={{ padding: "12px 24px", background: "rgba(0,0,0,0.2)", fontSize: 11, color: "#4e7896", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-                XP được tính từ độ chính xác bài test · Streak được cập nhật hàng ngày
-              </div>
-            )}
-          </div>
-        </div>
+        {/* ═══════ FOOTER (was leaderboard section) ═══════ */}
 
         <div className="reveal" data-reveal style={{ marginBottom: 60, marginTop: 60 }}>
           <div style={{

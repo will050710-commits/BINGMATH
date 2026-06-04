@@ -229,6 +229,55 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_test_user  ON test_results(user_id, taken_at DESC);
         CREATE INDEX IF NOT EXISTS idx_game_user  ON minigame_results(user_id, played_at DESC);
         CREATE INDEX IF NOT EXISTS idx_session_id ON sessions(session_id);
+
+        -- ══ MRM: MathMaps ══
+        CREATE TABLE IF NOT EXISTS mathmaps (
+            id              TEXT    PRIMARY KEY,
+            creator_uid     TEXT    NOT NULL,
+            title           TEXT    NOT NULL,
+            title_en        TEXT    DEFAULT '',
+            grade           TEXT    NOT NULL,
+            difficulty_fmp  REAL    DEFAULT 5.0,
+            status          TEXT    DEFAULT 'pending',
+            settings        TEXT    DEFAULT '{}',
+            tags            TEXT    DEFAULT '[]',
+            bgm_url         TEXT    DEFAULT '',
+            thumbnail_url   TEXT    DEFAULT '',
+            description     TEXT    DEFAULT '',
+            plays           INTEGER DEFAULT 0,
+            favorites       INTEGER DEFAULT 0,
+            rating          REAL    DEFAULT 0,
+            created_at      TEXT    DEFAULT (datetime('now')),
+            updated_at      TEXT    DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS mathmap_questions (
+            id              TEXT    PRIMARY KEY,
+            mathmap_id      TEXT    NOT NULL,
+            type            TEXT    DEFAULT 'multiple_choice',
+            order_num       INTEGER DEFAULT 1,
+            content_vi      TEXT    NOT NULL,
+            content_en      TEXT    DEFAULT '',
+            options         TEXT    DEFAULT '[]',
+            correct_answer  TEXT    NOT NULL,
+            explanation_vi  TEXT    DEFAULT '',
+            points          INTEGER DEFAULT 100,
+            time_seconds    INTEGER DEFAULT 30,
+            FOREIGN KEY (mathmap_id) REFERENCES mathmaps(id)
+        );
+        CREATE TABLE IF NOT EXISTS mrm_matches (
+            id              TEXT    PRIMARY KEY,
+            player1_uid     TEXT    NOT NULL,
+            player2_uid     TEXT    NOT NULL,
+            winner_uid      TEXT    DEFAULT '',
+            mp_change_p1    INTEGER DEFAULT 0,
+            mp_change_p2    INTEGER DEFAULT 0,
+            mathmap_id      TEXT    DEFAULT '',
+            played_at       TEXT    DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_mathmap_grade  ON mathmaps(grade, status);
+        CREATE INDEX IF NOT EXISTS idx_mathmap_plays  ON mathmaps(plays DESC);
+        CREATE INDEX IF NOT EXISTS idx_mathmap_q      ON mathmap_questions(mathmap_id, order_num);
+        CREATE INDEX IF NOT EXISTS idx_mrm_match_p1   ON mrm_matches(player1_uid, played_at DESC);
     """)
     # Migration: add firebase_uid column if it doesn't exist
     try:
@@ -239,6 +288,171 @@ def init_db():
     conn.close()
 
 init_db()
+
+
+# ═─ MRM / MathMap API Endpoints ────────────────────────────────────────────────────────
+
+@app.route("/api/mathmaps", methods=["GET"])
+def get_mathmaps():
+    """List MathMaps with optional filters: grade, status, sort, search, page."""
+    db = get_db()
+    grade  = request.args.get("grade", "")
+    status = request.args.get("status", "")
+    sort   = request.args.get("sort", "plays")
+    search = request.args.get("q", "")
+    page   = max(1, int(request.args.get("page", 1)))
+    per_page = 20
+
+    conditions = []
+    params = []
+    if grade:
+        conditions.append("grade = ?")
+        params.append(grade)
+    if status:
+        conditions.append("status = ?")
+        params.append(status)
+    if search:
+        conditions.append("(title LIKE ? OR title_en LIKE ? OR tags LIKE ?)")
+        like = f"%{search}%"
+        params.extend([like, like, like])
+
+    where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+    sort_sql = {
+        "plays":  "plays DESC",
+        "rating": "rating DESC",
+        "newest": "created_at DESC",
+        "diff_asc": "difficulty_fmp ASC",
+        "diff_desc": "difficulty_fmp DESC",
+    }.get(sort, "plays DESC")
+
+    offset = (page - 1) * per_page
+    rows = db.execute(
+        f"SELECT * FROM mathmaps {where_sql} ORDER BY {sort_sql} LIMIT ? OFFSET ?",
+        params + [per_page, offset]
+    ).fetchall()
+
+    total = db.execute(
+        f"SELECT COUNT(*) FROM mathmaps {where_sql}", params
+    ).fetchone()[0]
+
+    return jsonify({
+        "mathmaps": [dict(r) for r in rows],
+        "total": total,
+        "page": page,
+        "pages": max(1, (total + per_page - 1) // per_page),
+    })
+
+
+@app.route("/api/mathmaps", methods=["POST"])
+@firebase_protected
+def create_mathmap(uid):
+    """Create a new MathMap. Body: title, title_en, grade, bgm_url, tags, settings, description, questions."""
+    body = request.get_json(force=True) or {}
+    if not body.get("title") or not body.get("grade"):
+        return jsonify({"error": "title and grade are required"}), 400
+
+    db = get_db()
+    mm_id = str(uuid.uuid4())[:8]
+    questions = body.pop("questions", [])
+
+    db.execute("""
+        INSERT INTO mathmaps (id, creator_uid, title, title_en, grade, bgm_url, tags, description, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+    """, [
+        mm_id, uid,
+        body.get("title", ""),
+        body.get("title_en", ""),
+        body.get("grade", ""),
+        body.get("bgm_url", ""),
+        json.dumps(body.get("tags", [])),
+        body.get("description", ""),
+    ])
+
+    # Insert questions
+    for i, q in enumerate(questions):
+        q_id = str(uuid.uuid4())[:10]
+        db.execute("""
+            INSERT INTO mathmap_questions
+              (id, mathmap_id, type, order_num, content_vi, content_en, options, correct_answer, explanation_vi, points, time_seconds)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            q_id, mm_id,
+            q.get("type", "multiple_choice"),
+            i + 1,
+            q.get("content_vi", ""),
+            q.get("content_en", ""),
+            json.dumps(q.get("options", [])),
+            str(q.get("correct_answer", "")),
+            q.get("explanation_vi", ""),
+            int(q.get("points", 100)),
+            max(15, int(q.get("time_seconds", 30))),  # enforce min 15s
+        ])
+
+    db.commit()
+    return jsonify({"ok": True, "mathmap_id": mm_id}), 201
+
+
+@app.route("/api/mathmaps/<mm_id>", methods=["GET"])
+def get_mathmap(mm_id):
+    """Get single MathMap with all questions."""
+    db = get_db()
+    row = db.execute("SELECT * FROM mathmaps WHERE id = ?", [mm_id]).fetchone()
+    if not row:
+        return jsonify({"error": "MathMap not found"}), 404
+
+    questions = db.execute(
+        "SELECT * FROM mathmap_questions WHERE mathmap_id = ? ORDER BY order_num",
+        [mm_id]
+    ).fetchall()
+
+    mm = dict(row)
+    mm["tags"] = json.loads(mm.get("tags") or "[]")
+    mm["settings"] = json.loads(mm.get("settings") or "{}")
+    mm["questions"] = [
+        {**dict(q), "options": json.loads(q["options"] or "[]")} for q in questions
+    ]
+    return jsonify(mm)
+
+
+@app.route("/api/mathmaps/<mm_id>/play", methods=["PATCH"])
+def record_play(mm_id):
+    """Increment play count for a MathMap."""
+    db = get_db()
+    db.execute("UPDATE mathmaps SET plays = plays + 1 WHERE id = ?", [mm_id])
+    db.commit()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/mrm/leaderboard", methods=["GET"])
+def mrm_leaderboard():
+    """MRM global leaderboard from match history."""
+    db = get_db()
+    grade = request.args.get("grade", "")
+    limit = min(50, int(request.args.get("limit", 20)))
+
+    grade_join = "JOIN users u ON u.firebase_uid = w.winner_uid" if grade else ""
+    grade_filter = "WHERE u.grade = ?" if grade else ""
+    params = ([grade] if grade else []) + [limit]
+
+    rows = db.execute(f"""
+        SELECT w.winner_uid, COUNT(*) as wins,
+               u.username, u.grade, u.avatar_url
+        FROM mrm_matches w
+        JOIN users u ON u.firebase_uid = w.winner_uid
+        {grade_filter}
+        GROUP BY w.winner_uid
+        ORDER BY wins DESC
+        LIMIT ?
+    """, params).fetchall()
+
+    return jsonify([{
+        "uid": r["winner_uid"],
+        "username": r["username"],
+        "grade": r["grade"],
+        "avatar_url": r["avatar_url"],
+        "wins": r["wins"],
+    } for r in rows])
+
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

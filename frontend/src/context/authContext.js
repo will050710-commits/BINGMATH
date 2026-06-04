@@ -15,7 +15,8 @@ import {
   onAuthStateChanged,
   updateProfile as firebaseUpdateProfile,
 } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth, storage } from "@/lib/firebase";
 
 const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 const AuthCtx = createContext(null);
@@ -213,9 +214,41 @@ export function AuthProvider({ children }) {
       body: JSON.stringify(fields),
     });
     if (ok && data.user) {
-      setUser(prev => ({ ...prev, ...data.user }));
+      // Fix: merge ALL returned user fields immediately into state
+      setUser(prev => ({
+        ...prev,
+        ...data.user,
+        // Preserve Firebase-only fields not stored in backend
+        id: prev?.id,
+        email: prev?.email || data.user.email,
+      }));
     }
     return { ok, error: data.error || null };
+  }
+
+  // ── Avatar upload (Firebase Storage → backend PATCH) ─────────────────────
+  async function uploadAvatar(file) {
+    if (!file || !auth.currentUser) return { ok: false, error: "Not logged in" };
+
+    // Validate file type + size
+    if (!file.type.startsWith("image/")) return { ok: false, error: "Chỉ hỗ trợ file ảnh." };
+    if (file.size > 5 * 1024 * 1024) return { ok: false, error: "Ảnh phải nhỏ hơn 5MB." };
+
+    try {
+      // Upload to Firebase Storage: avatars/{firebase_uid}/{timestamp}
+      const uid = auth.currentUser.uid;
+      const ext = file.name.split(".").pop() || "jpg";
+      const storageRef = ref(storage, `avatars/${uid}/${Date.now()}.${ext}`);
+
+      await uploadBytes(storageRef, file, { contentType: file.type });
+      const downloadURL = await getDownloadURL(storageRef);
+
+      // Persist URL to backend
+      const { ok, error } = await updateProfile({ avatar_url: downloadURL });
+      return { ok, error, url: downloadURL };
+    } catch (err) {
+      return { ok: false, error: err.message || "Upload thất bại." };
+    }
   }
 
   // ── Score savers ──────────────────────────────────────────────────────────
@@ -263,7 +296,8 @@ export function AuthProvider({ children }) {
     <AuthCtx.Provider value={{
       user, ready, testResults, gameResults, competitiveStats,
       bestScores, recentActivity, totalTests, totalGames, avgTest, avgGame,
-      signup, login, logout, updateProfile, saveTestResult, saveGameResult,
+      signup, login, logout, updateProfile, uploadAvatar,
+      saveTestResult, saveGameResult,
       reloadProfile: loadBackendProfile,
     }}>
       {children}

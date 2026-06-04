@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from contextlib import asynccontextmanager
 
-import httpx
+import httpx # pyright: ignore[reportMissingImports]
 import orjson
 from fastapi import FastAPI, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
