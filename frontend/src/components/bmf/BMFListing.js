@@ -2,91 +2,10 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useMathMapStore } from "@/context/MathMapStore";
 
-// ── Mock data ──────────────────────────────────────────────────────────────
-const MOCK_MAPS = [
-  {
-    id: "mm001", title: "Phương trình bậc hai nâng cao", title_en: "Advanced Quadratic Equations",
-    creator: "NguyenVanA", grade: "Lớp 11", difficulty_fmp: 7.8,
-    plays: 14200, rating: 4.9, favorites: 342,
-    tags: ["#ĐạiSố11", "#PhuongTrinhBacHai", "#NangCao"],
-    status: "ranked", question_count: 12, updated: "2026-06-02",
-    thumbnail_color: "linear-gradient(135deg, #0ea5e9, #6366f1)", icon: "📐",
-    description: "Tổng hợp các dạng phương trình bậc hai nâng cao từ đề thi THPT QG 3 năm gần nhất.",
-  },
-  {
-    id: "mm002", title: "Hình học phẳng cơ bản", title_en: "Basic Plane Geometry",
-    creator: "TranThiB", grade: "Lớp 10", difficulty_fmp: 4.2,
-    plays: 9870, rating: 4.6, favorites: 201,
-    tags: ["#HinhHoc10", "#CoBan", "#TamGiac"],
-    status: "ranked", question_count: 10, updated: "2026-05-28",
-    thumbnail_color: "linear-gradient(135deg, #10b981, #059669)", icon: "📏",
-    description: "Bộ câu hỏi hình học phẳng từ cơ bản đến trung bình, phù hợp ôn thi cuối học kỳ.",
-  },
-  {
-    id: "mm003", title: "Đạo hàm & Ứng dụng", title_en: "Derivatives & Applications",
-    creator: "LeVanC", grade: "Lớp 12", difficulty_fmp: 8.5,
-    plays: 7340, rating: 4.7, favorites: 289,
-    tags: ["#GiaiTich12", "#DaoHam", "#CucTri", "#SieuNangCao"],
-    status: "ranked", question_count: 15, updated: "2026-06-01",
-    thumbnail_color: "linear-gradient(135deg, #f59e0b, #ef4444)", icon: "∫",
-    description: "Đạo hàm, cực trị, tiếp tuyến và ứng dụng thực tế. Dành cho học sinh lớp 12 ôn thi ĐH.",
-  },
-  {
-    id: "mm004", title: "Lượng giác - Tổng hợp", title_en: "Trigonometry Comprehensive",
-    creator: "PhamThiD", grade: "Lớp 11", difficulty_fmp: 6.3,
-    plays: 11560, rating: 4.4, favorites: 178,
-    tags: ["#LuongGiac11", "#SinCos", "#TongHop"],
-    status: "ranked", question_count: 10, updated: "2026-05-30",
-    thumbnail_color: "linear-gradient(135deg, #8b5cf6, #6d28d9)", icon: "θ",
-    description: "Tổng hợp công thức lượng giác, phương trình và bất phương trình lượng giác.",
-  },
-  {
-    id: "mm005", title: "Xác suất & Thống kê", title_en: "Probability & Statistics",
-    creator: "HoangVanE", grade: "Lớp 12", difficulty_fmp: 5.1,
-    plays: 6200, rating: 4.2, favorites: 134,
-    tags: ["#XacSuat12", "#ThongKe", "#TrungBinh"],
-    status: "qualified", question_count: 8, updated: "2026-05-25",
-    thumbnail_color: "linear-gradient(135deg, #ec4899, #db2777)", icon: "σ",
-    description: "Xác suất cổ điển, thống kê mô tả và phân phối xác suất cơ bản.",
-  },
-  {
-    id: "mm006", title: "Dãy số - Cấp số cộng & nhân", title_en: "Sequences: AP & GP",
-    creator: "NguyenThiF", grade: "Lớp 11", difficulty_fmp: 6.8,
-    plays: 8900, rating: 4.5, favorites: 220,
-    tags: ["#DaySo11", "#CapSoCong", "#CapSoNhan"],
-    status: "ranked", question_count: 12, updated: "2026-06-03",
-    thumbnail_color: "linear-gradient(135deg, #06b6d4, #0891b2)", icon: "∑",
-    description: "Cấp số cộng, cấp số nhân, tổng n số hạng và ứng dụng.",
-  },
-  {
-    id: "mm007", title: "Mệnh đề & Tập hợp", title_en: "Logic & Set Theory",
-    creator: "BuiVanG", grade: "Lớp 10", difficulty_fmp: 3.5,
-    plays: 5600, rating: 4.0, favorites: 98,
-    tags: ["#MenhDe10", "#TapHop", "#CoBan"],
-    status: "ranked", question_count: 8, updated: "2026-05-20",
-    thumbnail_color: "linear-gradient(135deg, #22d3ee, #0ea5e9)", icon: "∈",
-    description: "Mệnh đề logic, tập hợp và các phép toán tập hợp cơ bản cho học sinh lớp 10.",
-  },
-  {
-    id: "mm008", title: "Tích phân xác định", title_en: "Definite Integrals",
-    creator: "NguyenVanA", grade: "Lớp 12", difficulty_fmp: 9.2,
-    plays: 4100, rating: 4.8, favorites: 312,
-    tags: ["#GiaiTich12", "#TichPhan", "#SieuKho"],
-    status: "ranked", question_count: 10, updated: "2026-06-04",
-    thumbnail_color: "linear-gradient(135deg, #dc2626, #991b1b)", icon: "∮",
-    description: "Tích phân xác định, diện tích hình phẳng và ứng dụng. Cực khó — cho học sinh xuất sắc!",
-  },
-  {
-    id: "mm009", title: "Hàm số bậc hai & đồ thị", title_en: "Quadratic Functions & Graphs",
-    creator: "VuThiH", grade: "Lớp 10", difficulty_fmp: 5.5,
-    plays: 7800, rating: 4.3, favorites: 156,
-    tags: ["#HamSo10", "#DoThi", "#ParabolA"],
-    status: "qualified", question_count: 9, updated: "2026-05-15",
-    thumbnail_color: "linear-gradient(135deg, #84cc16, #65a30d)", icon: "∪",
-    description: "Hàm số bậc hai, parabol, giá trị cực trị và đồ thị trong hệ tọa độ.",
-  },
-];
+// MOCK_MAPS removed — data now comes from MathMapStore (localStorage + seed data)
+
 
 const GRADES = ["Tất cả", "Lớp 10", "Lớp 11", "Lớp 12"];
 const STATUSES = ["Tất cả", "ranked", "qualified", "pending"];
@@ -262,6 +181,7 @@ function BMFMapRow({ map }) {
 
 // ── Main BMF Listing ───────────────────────────────────────────────────────
 export default function BMFListing() {
+  const { getPublicMaps, checkAutoPromote } = useMathMapStore();
   const [search, setSearch] = useState("");
   const [grade, setGrade] = useState("Tất cả");
   const [status, setStatus] = useState("Tất cả");
@@ -269,23 +189,27 @@ export default function BMFListing() {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [page, setPage] = useState(1);
 
+  // Run auto-promote check on mount
+  useState(() => { checkAutoPromote && checkAutoPromote(); });
+
+  const ALL_MAPS = getPublicMaps();
   const PER_PAGE = 6;
 
-  const filtered = MOCK_MAPS
+  const filtered = ALL_MAPS
     .filter(m => {
       const q = search.toLowerCase();
-      if (q && !m.title.toLowerCase().includes(q) && !m.creator.toLowerCase().includes(q) && !m.tags.some(t => t.toLowerCase().includes(q))) return false;
+      if (q && !m.title.toLowerCase().includes(q) && !m.creator.toLowerCase().includes(q) && !(m.tags || []).some(t => t.toLowerCase().includes(q))) return false;
       if (grade !== "Tất cả" && m.grade !== grade) return false;
       if (status !== "Tất cả" && m.status !== status) return false;
       return true;
     })
     .sort((a, b) => {
-      if (sortBy === "Nổi bật") return (b.plays + b.favorites * 10) - (a.plays + a.favorites * 10);
-      if (sortBy === "Mới nhất") return b.updated.localeCompare(a.updated);
-      if (sortBy === "Đánh giá cao") return b.rating - a.rating;
-      if (sortBy === "Lượt chơi") return b.plays - a.plays;
-      if (sortBy === "Độ khó ↑") return a.difficulty_fmp - b.difficulty_fmp;
-      if (sortBy === "Độ khó ↓") return b.difficulty_fmp - a.difficulty_fmp;
+      if (sortBy === "Nổi bật") return ((b.plays || 0) + (b.favorites || 0) * 10) - ((a.plays || 0) + (a.favorites || 0) * 10);
+      if (sortBy === "Mới nhất") return (b.updatedAt || b.updated || "").localeCompare(a.updatedAt || a.updated || "");
+      if (sortBy === "Đánh giá cao") return (b.rating || 0) - (a.rating || 0);
+      if (sortBy === "Lượt chơi") return (b.plays || 0) - (a.plays || 0);
+      if (sortBy === "Độ khó ↑") return (a.difficulty_fmp || 0) - (b.difficulty_fmp || 0);
+      if (sortBy === "Độ khó ↓") return (b.difficulty_fmp || 0) - (a.difficulty_fmp || 0);
       return 0;
     });
 
@@ -322,6 +246,13 @@ export default function BMFListing() {
           }}>
             + Đăng MathMap
           </button>
+        </Link>
+        <Link href="/admin" style={{ textDecoration: "none" }}>
+          <button style={{
+            padding: "9px 16px", borderRadius: 8, fontSize: 12,
+            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+            color: "#f87171", cursor: "pointer", fontWeight: 600,
+          }}>🛡️ Admin</button>
         </Link>
         <Link href="/" style={{ textDecoration: "none" }}>
           <button style={{

@@ -2,6 +2,7 @@
 "use client";
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { useMathMapStore } from "@/context/MathMapStore";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const GRADES = ["Lớp 10", "Lớp 11", "Lớp 12"];
@@ -459,9 +460,11 @@ function PreviewCard({ metadata, questions }) {
 
 // ── Main Creator Component ─────────────────────────────────────────────────
 export default function MathMapCreator() {
+  const { submitMap } = useMathMapStore();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [submittedId, setSubmittedId] = useState(null);
 
   const [metadata, setMetadata] = useState({
     title: "", title_en: "", grade: "Lớp 11",
@@ -536,7 +539,23 @@ export default function MathMapCreator() {
   const handleSubmit = async () => {
     if (!validate()) { setStep(1); return; }
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1800));
+    await new Promise(r => setTimeout(r, 1000));
+    // Compute derived fields
+    const totalTime = questions.reduce((s, q) => s + q.time_seconds, 0);
+    const avgTime = questions.length > 0 ? Math.round(totalTime / questions.length) : 30;
+    const mapData = {
+      ...metadata,
+      creator: "Bạn",
+      creatorEmail: "user@duomath.vn",
+      question_count: questions.length,
+      time_avg: avgTime,
+      difficulty_fmp: Math.min(9.9, Math.max(1, questions.length * 0.6 + avgTime / 30)),
+      questions,
+      thumbnail_color: "linear-gradient(135deg, #a78bfa, #6d28d9)",
+      icon: "📐",
+    };
+    const id = submitMap(mapData);
+    setSubmittedId(id);
     setSubmitting(false);
     setSubmitted(true);
   };
@@ -559,14 +578,44 @@ export default function MathMapCreator() {
         <h2 style={{ fontSize: 28, fontWeight: 800, color: "white", textAlign: "center" }}>
           MathMap đã được gửi thành công!
         </h2>
-        <p style={{ color: "rgba(255,255,255,0.55)", textAlign: "center", maxWidth: 420 }}>
-          Bài toán của bạn đang chờ AI phân loại và kiểm duyệt. Kết quả sẽ được thông báo trong vòng 24h.
+
+        {/* Status pipeline */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 0,
+          background: "rgba(15,23,42,0.7)", border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 12, overflow: "hidden",
+        }}>
+          {[
+            { label: "Pending", desc: "Chờ admin duyệt", color: "#94a3b8", active: true },
+            { label: "Qualified", desc: "Đã duyệt", color: "#fbbf24", active: false },
+            { label: "Ranked", desc: "Sau 24h", color: "#22d3ee", active: false },
+          ].map((s, i) => (
+            <div key={s.label} style={{
+              display: "flex", alignItems: "center",
+            }}>
+              <div style={{
+                padding: "14px 22px", textAlign: "center",
+                background: s.active ? `${s.color}18` : "transparent",
+                borderLeft: i > 0 ? "1px solid rgba(255,255,255,0.06)" : "none",
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 800, color: s.active ? s.color : "rgba(255,255,255,0.25)", letterSpacing: 1 }}>
+                  {s.active ? "▶ " : ""}{s.label}
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>{s.desc}</div>
+              </div>
+              {i < 2 && <span style={{ fontSize: 14, color: "rgba(255,255,255,0.15)", padding: "0 4px" }}>→</span>}
+            </div>
+          ))}
+        </div>
+
+        <p style={{ color: "rgba(255,255,255,0.55)", textAlign: "center", maxWidth: 460, fontSize: 13, lineHeight: 1.7 }}>
+          Bài đã được lưu với trạng thái <strong style={{ color: "#94a3b8" }}>Pending</strong>. Admin sẽ xem xét và duyệt lên <strong style={{ color: "#fbbf24" }}>Qualified</strong>. Sau 24h sẽ tự động lên <strong style={{ color: "#22d3ee" }}>Ranked</strong> và xuất hiện trên BMF Forum.
         </p>
         <div style={{ display: "flex", gap: 12 }}>
           <Link href="/bmf"><button style={{
             padding: "12px 24px", background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
             color: "#000", border: "none", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 14,
-          }}>💬 Xem trên BMF Forum</button></Link>
+          }}>💬 Xem BMF Forum</button></Link>
           <button onClick={() => { setSubmitted(false); setStep(0); setQuestions([newQuestion(1)]); setMetadata({ title: "", title_en: "", grade: "Lớp 11", bgm: "dramatic01", tags: [], description: "" }); }} style={{
             padding: "12px 24px", background: "rgba(255,255,255,0.08)",
             color: "white", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 10, fontWeight: 700, cursor: "pointer", fontSize: 14,

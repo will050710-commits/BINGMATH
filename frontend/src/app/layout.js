@@ -3,6 +3,7 @@ import "./globals.css";
 import "@heroui/react";
 import HeroProvider from "../../HeroProvider";
 import { AuthProvider } from "@/context/authContext";
+import { MathMapStoreProvider } from "@/context/MathMapStore";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,7 +29,9 @@ export default function RootLayout({ children }) {
       >
         <HeroProvider>
           <AuthProvider>
-            {children}
+            <MathMapStoreProvider>
+              {children}
+            </MathMapStoreProvider>
           </AuthProvider>
         </HeroProvider>
       </body>

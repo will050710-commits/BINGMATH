@@ -428,8 +428,9 @@ export default function SingleplayerListing() {
 
                 {/* Action buttons */}
                 <div style={{ display: "flex", gap: 8 }}>
+                  <Link href={`/mrm/singleplayer/${selectedMap}`} style={{ flex: 1, textDecoration: "none" }}>
                   <button style={{
-                    flex: 1, padding: "12px 0",
+                    width: "100%", padding: "12px 0",
                     background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
                     color: "#000", border: "none", borderRadius: 10,
                     fontSize: 14, fontWeight: 800, cursor: "pointer",
@@ -441,6 +442,7 @@ export default function SingleplayerListing() {
                   >
                     ▶ Chơi ngay
                   </button>
+                  </Link>
                   <button style={{
                     padding: "12px 14px",
                     background: "rgba(34,211,238,0.1)",

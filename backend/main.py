@@ -11,15 +11,15 @@ from contextlib import asynccontextmanager
 
 import httpx # pyright: ignore[reportMissingImports]
 import orjson
-from fastapi import FastAPI, Request, HTTPException, Depends
-from fastapi.responses import JSONResponse, StreamingResponse
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
+from fastapi import FastAPI, Request, HTTPException, Depends # pyright: ignore[reportMissingImports]
+from fastapi.responses import JSONResponse, StreamingResponse # pyright: ignore[reportMissingImports]
+from fastapi.middleware.cors import CORSMiddleware # pyright: ignore[reportMissingImports]
+from fastapi.middleware.gzip import GZipMiddleware # pyright: ignore[reportMissingImports]
 
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash # pyright: ignore[reportMissingImports]
 
 # ── JWT (lightweight PyJWT) ───────────────────────────────────────────────────
-import jwt as pyjwt
+import jwt as pyjwt # pyright: ignore[reportMissingImports]
 
 JWT_SECRET    = os.environ.get("JWT_SECRET", "duomath-dev-secret-CHANGE-IN-PROD")
 JWT_ALGORITHM = "HS256"
@@ -59,7 +59,7 @@ def get_identity(request: Request) -> str:
 # ── OCR (optional) ───────────────────────────────────────────────────────────
 try:
     # pyrefly: ignore [missing-import]
-    import easyocr
+    import easyocr # pyright: ignore[reportMissingImports]
     ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False)
     _ocr_available = True
 except ImportError:
@@ -89,7 +89,7 @@ def extract_text_from_image(image_bytes: bytes) -> str:
     if not _ocr_available or ocr_reader is None:
         return ""
     try:
-        from PIL import Image
+        from PIL import Image # pyright: ignore[reportMissingImports]
         img = Image.open(io.BytesIO(image_bytes))
         result = ocr_reader.readtext(img, detail=0)
         return "\n".join(result)
@@ -720,7 +720,7 @@ async def health():
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    import uvicorn
+    import uvicorn # pyright: ignore[reportMissingImports]
     port = int(os.environ.get("PORT", 5000))
     print(f"DuoMath API v4 (FastAPI) -> http://localhost:{port}")
     uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info")

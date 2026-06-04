@@ -746,6 +746,9 @@ export default function TrangChuForm() {
                 <span style={{ fontWeight: 800, fontSize: 18, color: "#7dd3fc", letterSpacing: "-0.5px" }}>DUOMATH</span>
               </div>
               <span style={{ fontSize: 12, color: "#93c5fd", fontStyle: "italic" }}>Bilingual Math for STEM learners</span>
+              <Link href="/admin" style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", textDecoration: "none", marginTop: 6, display: "inline-block", transition: "color 0.2s" }} onMouseEnter={e => e.currentTarget.style.color = "#a78bfa"} onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.25)"}>
+                🛡️ Admin Panel
+              </Link>
             </div>
 
             <div style={{ width: 1, background: "rgba(255,255,255,0.2)", alignSelf: "stretch", minHeight: 80 }} />
