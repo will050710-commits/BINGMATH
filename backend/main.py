@@ -75,14 +75,24 @@ SELF_URL  = os.environ.get("SELF_URL", "")
 # ── Cached prompts ───────────────────────────────────────────────────────────
 @lru_cache(maxsize=4)
 def cached_system_prompt(variant: str = "text") -> str:
+    math_formatting_guide = (
+        "\nIMPORTANT MATH FORMATTING RULES:\n"
+        "- Write ALL mathematical formulas, variables, and equations using LaTeX.\n"
+        "- Use double dollar signs '$$ ... $$' for block/display formulas (always on a separate line).\n"
+        "- Use single dollar signs '$ ... $' for inline formulas (e.g., $x = 2$, $y = ax^2$).\n"
+        "- Never use plain text for variables (write $x$ instead of x, $a$ instead of a).\n"
+        "- Keep explanations in brief, bulleted step-by-step format."
+    )
     if variant == "image":
         return (
             "You are a Vietnamese math tutor for grades 10-12. "
             "Solve math problems briefly step-by-step."
+            + math_formatting_guide
         )
     return (
         "You are a concise Vietnamese math tutor for grades 10-12. "
         "Explain briefly step-by-step."
+        + math_formatting_guide
     )
 
 # ── LightRAG-style Mathematical Knowledge Graph & Retriever ────────────────
@@ -232,7 +242,9 @@ def retrieve_math_context(query: str) -> str:
     global_context = (
         "### Hướng dẫn gia sư toán bậc trung học (Lớp 10-12):\n"
         "- Trình bày giải thích toán học ngắn gọn, rõ ràng theo từng bước (Step-by-step).\n"
-        "- Sử dụng ký hiệu LaTeX cho các công thức toán để hiển thị đẹp mắt (ví dụ: $ax^2 + bx + c = 0$ hoặc $$\\Delta = b^2 - 4ac$$).\n"
+        "- BẮT BUỘC sử dụng ký hiệu LaTeX cho các công thức toán:\n"
+        "  * Dùng $$ ... $$ cho phương trình độc lập (block math, ví dụ: $$ax^2 + bx + c = 0$$).\n"
+        "  * Dùng $ ... $ cho biến số, công thức nằm trong dòng (inline math, ví dụ: $x$, $y = ax^2$).\n"
         "- Luôn đối chiếu kỹ các công thức toán học và biệt thức Delta, hệ thức Vi-ét khi học sinh hỏi về phương trình bậc hai hoặc cực trị.\n"
         "- Giải thích bằng tiếng Việt một cách tự nhiên và ngắn gọn."
     )

@@ -12,6 +12,7 @@
     "@heroui/react": "^2.8.10",
     "firebase": "^12.14.0",
     "framer-motion": "^12.35.1",
+    "katex": "^0.17.0",
     "next": "^16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3"

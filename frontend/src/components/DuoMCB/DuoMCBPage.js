@@ -5,12 +5,136 @@ import Image from "next/image";
 import { createSession, chat } from "./duoServer";
 import Link from "next/link";
 import TrangChuForm from "../trangchu/TrangChuForm";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 const SUGGESTED = [
   { icon: "📐", text: "Solve x² - 5x + 6 = 0 step by step" },
   { icon: "📊", text: "Explain mean, median and standard deviation" },
   { icon: "📝", text: "Give me bilingual exercises on trigonometry" },
   { icon: "🧪", text: "What is Newton's second law of motion?" },
 ];
+
+// ── LaTeX & Markdown Parser Helper Functions ────────────────────────────────
+function parseMathAndText(text) {
+  if (!text) return [];
+  const tokens = [];
+  let index = 0;
+  
+  while (index < text.length) {
+    const nextBlock = text.indexOf("$$", index);
+    const nextBlockBracket = text.indexOf("\\[", index);
+    const nextInline = text.indexOf("$", index);
+    const nextInlineParen = text.indexOf("\\(", index);
+    
+    const finders = [
+      { type: "block_dollar", index: nextBlock, startLen: 2, endDelim: "$$" },
+      { type: "block_bracket", index: nextBlockBracket, startLen: 2, endDelim: "\\]" },
+      { type: "inline_dollar", index: nextInline, startLen: 1, endDelim: "$" },
+      { type: "inline_paren", index: nextInlineParen, startLen: 2, endDelim: "\\)" }
+    ].filter(f => f.index !== -1).sort((a, b) => a.index - b.index);
+    
+    if (finders.length === 0) {
+      tokens.push({ type: "text", content: text.substring(index) });
+      break;
+    }
+    
+    const first = finders[0];
+    
+    if (first.index > index) {
+      tokens.push({ type: "text", content: text.substring(index, first.index) });
+    }
+    
+    const searchStart = first.index + first.startLen;
+    const endIdx = text.indexOf(first.endDelim, searchStart);
+    
+    if (endIdx === -1) {
+      tokens.push({ type: "text", content: text.substring(first.index) });
+      break;
+    }
+    
+    const mathContent = text.substring(searchStart, endIdx);
+    const isBlock = first.type.startsWith("block");
+    tokens.push({ type: "math", content: mathContent, isBlock });
+    
+    index = endIdx + first.endDelim.length;
+  }
+  
+  return tokens;
+}
+
+function renderTextWithMarkdown(text, key, styles) {
+  const lines = text.split("\n");
+  return (
+    <span key={key}>
+      {lines.map((line, lineIdx) => {
+        let content = line;
+        let isHeader = false;
+        let isBullet = false;
+        
+        if (content.startsWith("### ")) {
+          content = content.replace("### ", "");
+          isHeader = true;
+        } else if (content.startsWith("## ")) {
+          content = content.replace("## ", "");
+          isHeader = true;
+        } else if (content.startsWith("# ")) {
+          content = content.replace("# ", "");
+          isHeader = true;
+        }
+        
+        if (content.trim().startsWith("- ")) {
+          content = content.trim().replace("- ", "");
+          isBullet = true;
+        } else if (content.trim().startsWith("* ")) {
+          content = content.trim().replace("* ", "");
+          isBullet = true;
+        }
+        
+        const boldRegex = /\*\*([\s\S]*?)\*\*/g;
+        const parts = [];
+        let lastIdx = 0;
+        let match;
+        
+        while ((match = boldRegex.exec(content)) !== null) {
+          if (match.index > lastIdx) {
+            parts.push(content.substring(lastIdx, match.index));
+          }
+          parts.push(<strong key={match.index}>{match[1]}</strong>);
+          lastIdx = boldRegex.lastIndex;
+        }
+        
+        if (lastIdx < content.length) {
+          parts.push(content.substring(lastIdx));
+        }
+        
+        const renderedLine = parts.length > 0 ? parts : content;
+        
+        if (isHeader) {
+          return (
+            <h3 key={lineIdx} className={styles.msgHeader}>
+              {renderedLine}
+            </h3>
+          );
+        }
+        
+        if (isBullet) {
+          return (
+            <li key={lineIdx} className={styles.msgListItem}>
+              {renderedLine}
+            </li>
+          );
+        }
+        
+        return (
+          <span key={lineIdx}>
+            {renderedLine}
+            {lineIdx < lines.length - 1 && <br />}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
 
 export default function DuoMCBPage() {
   const [messages, setMessages] = useState([]);
@@ -213,9 +337,27 @@ export default function DuoMCBPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={m.image} alt="Uploaded" className={styles.bubbleImage} />
                     )}
-                    {(m.content || "").split("\n").map((line, i) => (
-                      <span key={i}>{line}<br /></span>
-                    ))}
+                    {parseMathAndText(m.content || "").map((token, idx) => {
+                      if (token.type === "text") {
+                        return renderTextWithMarkdown(token.content, idx, styles);
+                      } else {
+                        try {
+                          const html = katex.renderToString(token.content.trim(), {
+                            displayMode: token.isBlock,
+                            throwOnError: false
+                          });
+                          return (
+                            <span 
+                              key={idx} 
+                              dangerouslySetInnerHTML={{ __html: html }} 
+                              style={token.isBlock ? { display: "block", margin: "0.5em 0" } : {}}
+                            />
+                          );
+                        } catch (err) {
+                          return <code key={idx}>{token.content}</code>;
+                        }
+                      }
+                    })}
                   </div>
                   {m.role === "user" && <div className={styles.userAvatar}>👤</div>}
                 </div>
