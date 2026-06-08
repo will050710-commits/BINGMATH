@@ -4,6 +4,7 @@ import "@heroui/react";
 import HeroProvider from "../../HeroProvider";
 import { AuthProvider } from "@/context/authContext";
 import { MathMapStoreProvider } from "@/context/MathMapStore";
+import PageTransition from "@/components/PageTransition/PageTransition";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +31,9 @@ export default function RootLayout({ children }) {
         <HeroProvider>
           <AuthProvider>
             <MathMapStoreProvider>
-              {children}
+              <PageTransition>
+                {children}
+              </PageTransition>
             </MathMapStoreProvider>
           </AuthProvider>
         </HeroProvider>

@@ -15,8 +15,7 @@ import {
   onAuthStateChanged,
   updateProfile as firebaseUpdateProfile,
 } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, storage } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 
 const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000";
 const AuthCtx = createContext(null);
@@ -214,41 +213,75 @@ export function AuthProvider({ children }) {
       body: JSON.stringify(fields),
     });
     if (ok && data.user) {
-      // Fix: merge ALL returned user fields immediately into state
       setUser(prev => ({
         ...prev,
         ...data.user,
-        // Preserve Firebase-only fields not stored in backend
         id: prev?.id,
         email: prev?.email || data.user.email,
       }));
+      // Also update Firebase displayName if username changed
+      if (fields.username && auth.currentUser) {
+        try {
+          await firebaseUpdateProfile(auth.currentUser, { displayName: fields.username });
+        } catch (_) {}
+      }
     }
     return { ok, error: data.error || null };
   }
 
-  // ── Avatar upload (Firebase Storage → backend PATCH) ─────────────────────
+  // ── Avatar upload (client-side resize + base64 → backend PATCH) ───────────
+  // No Firebase Storage needed — avoids all CORS issues.
   async function uploadAvatar(file) {
     if (!file || !auth.currentUser) return { ok: false, error: "Not logged in" };
 
-    // Validate file type + size
-    if (!file.type.startsWith("image/")) return { ok: false, error: "Chỉ hỗ trợ file ảnh." };
+    // Validate file type: accept jpg, png, gif, webp
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      return { ok: false, error: "Chỉ hỗ trợ JPG, PNG, GIF, WebP." };
+    }
     if (file.size > 5 * 1024 * 1024) return { ok: false, error: "Ảnh phải nhỏ hơn 5MB." };
 
     try {
-      // Upload to Firebase Storage: avatars/{firebase_uid}/{timestamp}
-      const uid = auth.currentUser.uid;
-      const ext = file.name.split(".").pop() || "jpg";
-      const storageRef = ref(storage, `avatars/${uid}/${Date.now()}.${ext}`);
-
-      await uploadBytes(storageRef, file, { contentType: file.type });
-      const downloadURL = await getDownloadURL(storageRef);
-
-      // Persist URL to backend
-      const { ok, error } = await updateProfile({ avatar_url: downloadURL });
-      return { ok, error, url: downloadURL };
+      // Resize to max 200×200 and convert to PNG data URL
+      const dataUrl = await resizeImageToDataURL(file, 200);
+      const { ok, error } = await updateProfile({ avatar_url: dataUrl });
+      return { ok, error, url: dataUrl };
     } catch (err) {
       return { ok: false, error: err.message || "Upload thất bại." };
     }
+  }
+
+  // ── Helper: resize image file → base64 data URL (max px on longest side) ──
+  function resizeImageToDataURL(file, maxPx = 200) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        let { width, height } = img;
+        if (width > maxPx || height > maxPx) {
+          if (width >= height) {
+            height = Math.round((height * maxPx) / width);
+            width = maxPx;
+          } else {
+            width = Math.round((width * maxPx) / height);
+            height = maxPx;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        // Always export as PNG for lossless quality and broad support
+        resolve(canvas.toDataURL("image/png"));
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error("Không thể đọc file ảnh."));
+      };
+      img.src = objectUrl;
+    });
   }
 
   // ── Score savers ──────────────────────────────────────────────────────────

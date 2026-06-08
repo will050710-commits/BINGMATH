@@ -152,4 +152,58 @@ body {
 @keyframes tickUp {
   0%   { transform: translateY(0); opacity: 1; }
   100% { transform: translateY(-40px); opacity: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CSS VIEW TRANSITIONS API
+   https://developer.chrome.com/docs/web-platform/view-transitions
+   Works in Chrome 111+, Edge 111+. Graceful no-op elsewhere.
+═══════════════════════════════════════════════════════════ */
+
+/* Root element gets a view-transition-name so the browser can
+   snapshot the old and new page states */
+:root {
+  view-transition-name: none; /* let pages define their own names */
+}
+
+/* ── Entering page: slides up from slightly below + fades in ── */
+@keyframes vt-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Exiting page: slides down + fades out ── */
+@keyframes vt-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+
+/* The NEW (incoming) page snapshot */
+::view-transition-new(root) {
+  animation: vt-slide-in 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+/* The OLD (outgoing) page snapshot */
+::view-transition-old(root) {
+  animation: vt-slide-out 0.25s cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+
+/* Respect the user's motion preference */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-new(root),
+  ::view-transition-old(root) {
+    animation: none;
+  }
 }

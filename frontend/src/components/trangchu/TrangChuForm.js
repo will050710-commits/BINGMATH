@@ -160,12 +160,12 @@ function EditProfileModal({ onClose }) {
               Ảnh đại diện
             </div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 10 }}>
-              JPG, PNG, GIF • Tối đa 5MB
+              JPG, PNG, GIF, WebP • Tối đa 5MB • Tự động resize về 200×200
             </div>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/gif,image/webp"
               onChange={handleAvatarChange}
               style={{ display: "none" }}
             />
@@ -183,7 +183,7 @@ function EditProfileModal({ onClose }) {
               onMouseEnter={e => { if (!avatarLoading) e.currentTarget.style.background = "rgba(14,165,233,0.25)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(14,165,233,0.15)"; }}
             >
-              {avatarLoading ? "⏳ Uploading..." : "📷 Chọn ảnh"}
+              {avatarLoading ? "⏳ Đang xử lý..." : "📷 Chọn ảnh"}
             </button>
           </div>
         </div>

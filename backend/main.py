@@ -50,6 +50,93 @@ def decode_token(token: str) -> str:
     except pyjwt.InvalidTokenError:
         raise HTTPException(401, "Invalid token")
 
+async def verify_firebase_token(id_token: str) -> dict:
+    """Verify a Firebase ID token using Google's public keys via HTTP."""
+    try:
+        import time as _time
+        # Decode without verification first to get kid
+        import base64 as _b64
+        header_b64 = id_token.split(".")[0]
+        # Pad base64
+        header_b64 += "=" * (4 - len(header_b64) % 4)
+        header = json.loads(_b64.urlsafe_b64decode(header_b64))
+        
+        async with httpx.AsyncClient() as client:
+            r = await client.get(
+                "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+                timeout=5
+            )
+            certs = r.json()
+        
+        from cryptography.hazmat.primitives.serialization import load_pem_public_key  # pyright: ignore
+        from cryptography.hazmat.backends import default_backend  # pyright: ignore
+        import cryptography.hazmat.primitives.asymmetric.rsa as _rsa  # pyright: ignore
+        
+        kid = header.get("kid", "")
+        if kid not in certs:
+            raise ValueError("Unknown kid")
+        
+        # Use PyJWT to verify with the cert
+        payload = pyjwt.decode(
+            id_token,
+            certs[kid],
+            algorithms=["RS256"],
+            audience="duosteam-be693",
+            options={"verify_exp": True},
+        )
+        return payload
+    except Exception as e:
+        raise HTTPException(401, f"Invalid Firebase token: {e}")
+
+
+def get_identity_sync(request: Request) -> str:
+    """Sync version — only works for backend JWT tokens."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing token")
+    return decode_token(auth_header[7:])
+
+
+async def get_firebase_uid_or_backend_id(request: Request) -> tuple[str, bool]:
+    """
+    Returns (identifier, is_firebase) where:
+    - is_firebase=True  → identifier is a Firebase UID string
+    - is_firebase=False → identifier is a backend integer user id (as string)
+    """
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing token")
+    token = auth_header[7:]
+    
+    # Try backend JWT first (fast path)
+    try:
+        identity = decode_token(token)
+        return (identity, False)
+    except HTTPException:
+        pass
+    
+    # Try Firebase ID token
+    payload = await verify_firebase_token(token)
+    return (payload["sub"], True)  # sub = firebase UID
+
+
+async def resolve_user_id(request: Request) -> int:
+    """Always returns the backend integer user ID, regardless of token type."""
+    identity, is_firebase = await get_firebase_uid_or_backend_id(request)
+    if not is_firebase:
+        return int(identity)
+    
+    # Look up by firebase_uid
+    db = get_db()
+    try:
+        row = db.execute("SELECT id FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+        if not row:
+            raise HTTPException(404, "User not found. Please sync first via /api/firebase-sync")
+        return row["id"]
+    finally:
+        db.close()
+
+
 def get_identity(request: Request) -> str:
     auth = request.headers.get("Authorization", "")
     if not auth.startswith("Bearer "):
@@ -293,16 +380,19 @@ def init_db():
     conn = _make_conn()
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS users (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            email       TEXT    UNIQUE NOT NULL COLLATE NOCASE,
-            username    TEXT    NOT NULL,
-            password    TEXT    NOT NULL,
-            phone       TEXT    DEFAULT '',
-            school      TEXT    DEFAULT '',
-            grade       TEXT    DEFAULT '',
-            avatar_url  TEXT    DEFAULT '',
-            created_at  TEXT    DEFAULT (datetime('now'))
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            email        TEXT    UNIQUE NOT NULL COLLATE NOCASE,
+            username     TEXT    NOT NULL,
+            password     TEXT    NOT NULL DEFAULT '',
+            phone        TEXT    DEFAULT '',
+            school       TEXT    DEFAULT '',
+            grade        TEXT    DEFAULT '',
+            avatar_url   TEXT    DEFAULT '',
+            firebase_uid TEXT    UNIQUE,
+            created_at   TEXT    DEFAULT (datetime('now'))
         );
+        -- Add firebase_uid column if upgrading from old schema
+        CREATE INDEX IF NOT EXISTS idx_firebase_uid ON users(firebase_uid);
         CREATE TABLE IF NOT EXISTS test_results (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id     INTEGER NOT NULL,
@@ -337,7 +427,15 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_session_id ON sessions(session_id);
     """)
     conn.commit()
+    # ── Migration: add firebase_uid column to existing databases ──────────────
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN firebase_uid TEXT UNIQUE")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_firebase_uid ON users(firebase_uid)")
+        conn.commit()
+    except Exception:
+        pass  # Column already exists in new databases
     conn.close()
+
 
 def get_db():
     return _make_conn()
@@ -524,7 +622,7 @@ async def refresh_token(request: Request):
 
 @app.get("/api/me")
 async def me(request: Request):
-    uid = int(get_identity(request))
+    uid = await resolve_user_id(request)
     db = get_db()
     try:
         row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
@@ -540,9 +638,84 @@ async def me(request: Request):
         db.close()
 
 
+@app.post("/api/firebase-sync")
+async def firebase_sync(request: Request):
+    """Upsert a user record keyed on Firebase UID. Called on first login."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing token")
+    
+    token = auth_header[7:]
+    # Accept Firebase token OR backend JWT
+    try:
+        firebase_payload = await verify_firebase_token(token)
+        firebase_uid = firebase_payload["sub"]
+        token_email  = firebase_payload.get("email", "")
+    except HTTPException:
+        raise HTTPException(401, "Could not verify Firebase token")
+    
+    d = await request.json()
+    email    = (d.get("email")    or token_email or "").strip().lower()
+    username = (d.get("username") or email.split("@")[0]).strip()
+    phone    = (d.get("phone")    or "").strip()
+    school   = (d.get("school")   or "").strip()
+    grade    = (d.get("grade")    or "").strip()
+    
+    if not email:
+        raise HTTPException(400, "Email is required")
+    
+    db = get_db()
+    try:
+        # Try to add firebase_uid column if it doesn't exist (migration)
+        try:
+            db.execute("ALTER TABLE users ADD COLUMN firebase_uid TEXT UNIQUE")
+            db.execute("CREATE INDEX IF NOT EXISTS idx_firebase_uid ON users(firebase_uid)")
+            db.commit()
+        except Exception:
+            pass  # Column already exists
+        
+        # Check if user already exists by firebase_uid
+        row = db.execute("SELECT * FROM users WHERE firebase_uid=?", (firebase_uid,)).fetchone()
+        if row:
+            # Update profile fields if provided
+            updates = []
+            vals = []
+            if username: updates.append("username=?"); vals.append(username)
+            if phone:    updates.append("phone=?");    vals.append(phone)
+            if school:   updates.append("school=?");   vals.append(school)
+            if grade:    updates.append("grade=?");    vals.append(grade)
+            if updates:
+                vals.append(row["id"])
+                db.execute(f"UPDATE users SET {', '.join(updates)} WHERE id=?", vals)
+                db.commit()
+            row = db.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
+            return JSONResponse({"synced": True, "user": user_dict(row)})
+        
+        # Check by email (user may have registered via email/password too)
+        row = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+        if row:
+            # Link firebase_uid to existing account
+            db.execute("UPDATE users SET firebase_uid=? WHERE id=?", (firebase_uid, row["id"]))
+            db.commit()
+            row = db.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
+            return JSONResponse({"synced": True, "user": user_dict(row)})
+        
+        # Create new user
+        cur = db.execute(
+            "INSERT INTO users (email, username, password, phone, school, grade, firebase_uid)"
+            " VALUES (?, ?, '', ?, ?, ?, ?)",
+            (email, username, phone, school, grade, firebase_uid),
+        )
+        db.commit()
+        row = db.execute("SELECT * FROM users WHERE id=?", (cur.lastrowid,)).fetchone()
+        return JSONResponse({"synced": True, "created": True, "user": user_dict(row)}, status_code=201)
+    finally:
+        db.close()
+
+
 @app.patch("/api/me")
 async def update_me(request: Request):
-    uid = int(get_identity(request))
+    uid = await resolve_user_id(request)
     d = await request.json()
     REQUIRED_NON_EMPTY = {"username"}
     ALLOWED = ["username", "phone", "school", "grade", "avatar_url"]
