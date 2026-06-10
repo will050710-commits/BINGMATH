@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/authContext";
 import ReportUserModal from "@/components/ReportUserModal";
+import { getQuestionsForCard } from "@/data/multiplayerQuestions";
 
 // ── Constants & Configs ──────────────────────────────────────────────────
 const BOTS = [
@@ -13,19 +14,6 @@ const BOTS = [
   { username: "PiMaster", elo: 1650, rank: "Gold I", accuracy: 0.76, minSpeed: 5000, maxSpeed: 9500, avatar: "🧠" },
   { username: "TrigWhiz", elo: 1520, rank: "Silver III", accuracy: 0.70, minSpeed: 6000, maxSpeed: 11000, avatar: "📐" },
   { username: "Sigma_Boy", elo: 1600, rank: "Gold I", accuracy: 0.74, minSpeed: 5000, maxSpeed: 10000, avatar: "🐺" },
-];
-
-const MULTIPLAYER_QUESTIONS = [
-  { text: "Tìm nghiệm thực của phương trình: x² - 5x + 6 = 0", options: ["x = 2 và x = 3", "x = 1 và x = 6", "x = -2 và x = -3", "x = 2 và x = -3"], correct: 0, explain: "x² - 5x + 6 = (x-2)(x-3) = 0" },
-  { text: "Trong tam giác vuông, cos(60°) bằng bao nhiêu?", options: ["1/2", "√3/2", "√2/2", "1"], correct: 0, explain: "cos(60°) = 1/2 là giá trị cơ bản" },
-  { text: "Đạo hàm của hàm số y = x³ là:", options: ["3x²", "x²", "3x", "2x²"], correct: 0, explain: "(x³)' = 3x²" },
-  { text: "Cho cấp số cộng có u₁ = 2 và công sai d = 3. Tìm u₅:", options: ["14", "17", "11", "15"], correct: 0, explain: "u₅ = u₁ + 4d = 2 + 12 = 14" },
-  { text: "Đồ thị hàm số bậc hai y = ax² + bx + c (a ≠ 0) là hình gì?", options: ["Parabol", "Đường thẳng", "Hyperbol", "Đường tròn"], correct: 0, explain: "Đồ thị hàm số bậc hai là một đường Parabol." },
-  { text: "Diện tích tam giác có cạnh đáy a = 6cm, chiều cao h = 4cm là:", options: ["12 cm²", "24 cm²", "10 cm²", "8 cm²"], correct: 0, explain: "S = (1/2) * a * h = 12" },
-  { text: "Đạo hàm của hàm số y = sin(x) là:", options: ["cos(x)", "-cos(x)", "sin(x)", "-sin(x)"], correct: 0, explain: "(sin x)' = cos x" },
-  { text: "Phương trình x² + 2x + 5 = 0 có bao nhiêu nghiệm thực?", options: ["0 nghiệm", "1 nghiệm kép", "2 nghiệm phân biệt", "Vô số nghiệm"], correct: 0, explain: "Δ = 4 - 20 = -16 < 0 nên vô nghiệm thực." },
-  { text: "Giá trị của log₂ (8) bằng:", options: ["3", "4", "2", "8"], correct: 0, explain: "8 = 2³ nên log₂ (8) = 3" },
-  { text: "Cho cấp số nhân có u₁ = 3, công bội q = 2. Tìm u₄:", options: ["24", "18", "12", "48"], correct: 0, explain: "u₄ = u₁ * q³ = 3 * 8 = 24" }
 ];
 
 const INITIAL_ROOMS = [
@@ -96,6 +84,7 @@ export default function MultiplayerLobby() {
   const [botBigHP, setBotBigHP] = useState(3);
   const [chooser, setChooser] = useState(null); // "player" | "bot"
   const [selectedCard, setSelectedCard] = useState(null);
+  const [activeQuestions, setActiveQuestions] = useState([]);
   const [forumCards] = useState([
     { id: "fc1", title: "Phương trình bậc hai nâng cao", desc: "Chuyên đề Delta và Hệ thức Vi-ét", icon: "📐" },
     { id: "fc2", title: "Đạo hàm & Cực trị hàm số", desc: "Khảo sát sự biến thiên và cực đại cực tiểu", icon: "📈" },
@@ -342,6 +331,8 @@ export default function MultiplayerLobby() {
 
   // ─── Initialize Battle Arena (5 Hearts Round) ─────────────────────────
   const initializeMatch = (bot, card) => {
+    const questions = getQuestionsForCard(card);
+    setActiveQuestions(questions);
     setGameState("playing");
     setCurrentQ(0);
     setPlayerHP(5);
@@ -351,11 +342,11 @@ export default function MultiplayerLobby() {
     setMaxCombo(0);
     setEvaluating(false);
     setFeedMessages([`Chủ đề: ${card ? card.title : "Tổng hợp"} - Trận đấu bắt đầu!`]);
-    loadQuestion(0, bot);
+    loadQuestion(0, bot, questions);
   };
 
   // ─── Load Question & Bot Timer ────────────────────────────────────────
-  const loadQuestion = (qIdx, bot) => {
+  const loadQuestion = (qIdx, bot, questions = activeQuestions) => {
     setPlayerSelected(null);
     setBotSelected(null);
     setPlayerSubmitted(false);
@@ -382,14 +373,15 @@ export default function MultiplayerLobby() {
     clearTimeout(botTimerRef.current);
     const botDelay = Math.floor(Math.random() * (bot.maxSpeed - bot.minSpeed) + bot.minSpeed);
     botTimerRef.current = setTimeout(() => {
-      simulateBotAnswer(qIdx, bot);
+      simulateBotAnswer(qIdx, bot, questions);
     }, botDelay);
   };
 
   // ─── Simulate Bot Answering ───────────────────────────────────────────
-  const simulateBotAnswer = (qIdx, bot) => {
+  const simulateBotAnswer = (qIdx, bot, questions = activeQuestions) => {
     const isBotCorrect = Math.random() < bot.accuracy;
-    const currentQuestion = MULTIPLAYER_QUESTIONS[qIdx];
+    const currentQuestion = questions[qIdx];
+    if (!currentQuestion) return;
     let chosenOption;
 
     if (isBotCorrect) {
@@ -443,7 +435,8 @@ export default function MultiplayerLobby() {
 
   // ─── Evaluation details (Speed-First tiebreaker logic) ──────────────────
   const evaluateAnswers = (pSelected, bSelected) => {
-    const currentQuestion = MULTIPLAYER_QUESTIONS[currentQ];
+    const currentQuestion = activeQuestions[currentQ];
+    if (!currentQuestion) return;
     const isPlayerCorrect = pSelected === currentQuestion.correct;
     const isBotCorrect = bSelected === currentQuestion.correct;
 
@@ -503,12 +496,12 @@ export default function MultiplayerLobby() {
 
     // Timeout evaluation before next step
     setTimeout(() => {
-      if (nextPlayerHP <= 0 || nextBotHP <= 0 || currentQ === MULTIPLAYER_QUESTIONS.length - 1) {
+      if (nextPlayerHP <= 0 || nextBotHP <= 0 || currentQ === activeQuestions.length - 1) {
         endDuelRound(nextPlayerHP, nextBotHP);
       } else {
         setCurrentQ(prev => {
           const nextQIdx = prev + 1;
-          loadQuestion(nextQIdx, botOpponent);
+          loadQuestion(nextQIdx, botOpponent, activeQuestions);
           return nextQIdx;
         });
       }
@@ -1256,7 +1249,7 @@ export default function MultiplayerLobby() {
             padding: "24px 20px", maxWidth: 720, margin: "0 auto", width: "100%",
           }}>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 700, marginBottom: 12 }}>
-              CÂU HỎI {currentQ + 1} / {MULTIPLAYER_QUESTIONS.length}
+              CÂU HỎI {currentQ + 1} / {activeQuestions.length}
             </div>
 
             <div style={{
@@ -1267,20 +1260,20 @@ export default function MultiplayerLobby() {
               fontSize: 18, fontWeight: 700, lineHeight: 1.6, textAlign: "center",
               color: "white",
             }}>
-              {MULTIPLAYER_QUESTIONS[currentQ].text}
+              {activeQuestions[currentQ]?.text}
             </div>
 
             {/* OPTIONS */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%", marginBottom: 16 }}>
-              {MULTIPLAYER_QUESTIONS[currentQ].options.map((opt, i) => {
+              {(activeQuestions[currentQ]?.options ?? []).map((opt, i) => {
                 let bg = "rgba(15,23,42,0.75)";
                 let border = "rgba(255,255,255,0.08)";
                 let color = "white";
 
                 if (evaluating) {
-                  if (i === MULTIPLAYER_QUESTIONS[currentQ].correct) {
+                  if (i === activeQuestions[currentQ].correct) {
                     bg = "rgba(34,197,94,0.18)"; border = "rgba(34,197,94,0.6)"; color = "#4ade80";
-                  } else if (i === playerSelected && i !== MULTIPLAYER_QUESTIONS[currentQ].correct) {
+                  } else if (i === playerSelected && i !== activeQuestions[currentQ].correct) {
                     bg = "rgba(239,68,68,0.18)"; border = "rgba(239,68,68,0.6)"; color = "#f87171";
                   }
                 } else if (playerSelected === i) {
@@ -1294,7 +1287,7 @@ export default function MultiplayerLobby() {
                     disabled={playerSubmitted || evaluating}
                     style={{
                       padding: "16px 20px", borderRadius: 12, fontSize: 14,
-                      fontWeight: playerSelected === i || (evaluating && i === MULTIPLAYER_QUESTIONS[currentQ].correct) ? 700 : 400,
+                      fontWeight: playerSelected === i || (evaluating && i === activeQuestions[currentQ].correct) ? 700 : 400,
                       background: bg, border: `2px solid ${border}`, color,
                       cursor: playerSubmitted || evaluating ? "default" : "pointer",
                       transition: "all 0.18s", textAlign: "left",
@@ -1320,7 +1313,7 @@ export default function MultiplayerLobby() {
               }}>
                 <span>💡 Đối thủ chọn: <strong>{["A", "B", "C", "D"][botSelected] || "—"}</strong> ({botCorrect ? "Đúng" : "Sai"})</span>
                 <span>•</span>
-                <span>Giải thích: {MULTIPLAYER_QUESTIONS[currentQ].explain}</span>
+                <span>Giải thích: {activeQuestions[currentQ]?.explain}</span>
               </div>
             )}
           </div>

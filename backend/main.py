@@ -52,41 +52,57 @@ def decode_token(token: str) -> str:
 
 async def verify_firebase_token(id_token: str) -> dict:
     """Verify a Firebase ID token using Google's public keys via HTTP."""
+    project_id = os.environ.get("FIREBASE_PROJECT_ID", "duosteam-be693")
     try:
-        import time as _time
-        # Decode without verification first to get kid
-        import base64 as _b64
-        header_b64 = id_token.split(".")[0]
-        # Pad base64
-        header_b64 += "=" * (4 - len(header_b64) % 4)
-        header = json.loads(_b64.urlsafe_b64decode(header_b64))
-        
-        async with httpx.AsyncClient() as client:
-            r = await client.get(
-                "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
-                timeout=5
-            )
-            certs = r.json()
-        
-        from cryptography.hazmat.primitives.serialization import load_pem_public_key  # pyright: ignore
-        from cryptography.hazmat.backends import default_backend  # pyright: ignore
-        import cryptography.hazmat.primitives.asymmetric.rsa as _rsa  # pyright: ignore
-        
-        kid = header.get("kid", "")
-        if kid not in certs:
-            raise ValueError("Unknown kid")
-        
-        # Use PyJWT to verify with the cert
+        header = pyjwt.get_unverified_header(id_token)
+        kid = header.get("kid")
+        if not kid:
+            raise ValueError("No kid in JWT header")
+
+        cert_str = await _get_google_public_key(kid)
+        if not cert_str:
+            raise ValueError(f"Public key not found for kid: {kid}")
+
         payload = pyjwt.decode(
             id_token,
-            certs[kid],
+            cert_str,
             algorithms=["RS256"],
-            audience="duosteam-be693",
+            audience=project_id,
+            issuer=f"https://securetoken.google.com/{project_id}",
             options={"verify_exp": True},
         )
         return payload
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(401, f"Invalid Firebase token: {e}")
+
+
+_google_certs: dict = {}
+_google_certs_expire: float = 0.0
+
+async def _get_google_public_key(kid: str) -> str | None:
+    global _google_certs, _google_certs_expire
+    now = time.time()
+    if not _google_certs or now > _google_certs_expire:
+        async with httpx.AsyncClient(timeout=5) as client:
+            for url in (
+                "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+                "https://www.googleapis.com/robot/v1/metadata/x509/securetoken-system@system.gserviceaccount.com",
+            ):
+                r = await client.get(url)
+                if r.status_code == 200:
+                    _google_certs = r.json()
+                    break
+            else:
+                raise ValueError("Could not fetch Google public keys")
+        cc = r.headers.get("Cache-Control", "")
+        max_age = 3600
+        for part in cc.split(","):
+            if "max-age" in part:
+                max_age = int(part.split("=")[1])
+        _google_certs_expire = now + max_age
+    return _google_certs.get(kid)
 
 
 def get_identity_sync(request: Request) -> str:
@@ -806,6 +822,83 @@ async def update_me(request: Request):
         db.commit()
         row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         return JSONResponse({"user": user_dict(row)})
+    finally:
+        db.close()
+
+
+def _calculate_xp(score: int, total: int, accuracy: float) -> int:
+    base_xp = score * 10
+    bonus = 20 if accuracy >= 80 else (10 if accuracy >= 60 else 0)
+    return base_xp + bonus
+
+def _get_user_xp(db, uid: int) -> int:
+    rows = db.execute(
+        "SELECT score, total, accuracy FROM test_results WHERE user_id=?", (uid,)
+    ).fetchall()
+    return sum(_calculate_xp(r["score"], r["total"], r["accuracy"] or 0) for r in rows)
+
+def _get_user_streak(db, uid: int) -> tuple[int, int]:
+    rows = db.execute(
+        "SELECT DATE(taken_at) as day FROM test_results WHERE user_id=? ORDER BY taken_at DESC",
+        (uid,),
+    ).fetchall()
+    if not rows:
+        return 0, 0
+
+    unique_days = sorted({row["day"] for row in rows}, reverse=True)
+    today = datetime.now().date()
+    current_streak = 0
+    check_date = today
+
+    for day_str in unique_days:
+        day = datetime.strptime(day_str, "%Y-%m-%d").date()
+        if day == check_date or day == check_date - timedelta(days=1):
+            current_streak += 1
+            check_date = day
+        else:
+            break
+
+    longest_streak = 1
+    streak_count = 1
+    for i in range(1, len(unique_days)):
+        prev_day = datetime.strptime(unique_days[i - 1], "%Y-%m-%d").date()
+        curr_day = datetime.strptime(unique_days[i], "%Y-%m-%d").date()
+        if (prev_day - curr_day).days == 1:
+            streak_count += 1
+            longest_streak = max(longest_streak, streak_count)
+        else:
+            streak_count = 1
+
+    return current_streak, longest_streak
+
+
+@app.get("/api/competitive-stats")
+async def competitive_stats(request: Request):
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        xp = _get_user_xp(db, uid)
+        current_streak, longest_streak = _get_user_streak(db, uid)
+
+        rank_rows = db.execute("""
+            SELECT u.id FROM users u
+            LEFT JOIN test_results tr ON u.id = tr.user_id
+            GROUP BY u.id
+            ORDER BY SUM(CASE WHEN tr.score IS NOT NULL THEN tr.score ELSE 0 END) DESC
+        """).fetchall()
+
+        global_rank = 1
+        for i, r in enumerate(rank_rows):
+            if r["id"] == uid:
+                global_rank = i + 1
+                break
+
+        return JSONResponse({
+            "xp": xp,
+            "current_streak": current_streak,
+            "longest_streak": longest_streak,
+            "global_rank": global_rank,
+        })
     finally:
         db.close()
 

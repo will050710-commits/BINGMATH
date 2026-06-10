@@ -5,11 +5,47 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Avatar } from "@heroui/react";
 import DuoMCBSidebar from "../DuoMCB/DuoMCBSidebar";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
 import { useMathMapStore } from "@/context/MathMapStore";
+
+function getInitials(name) {
+  const parts = (name || "U").trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return (parts[0] || "U").slice(0, 2).toUpperCase();
+}
+
+function UserAvatar({ user, size = 34, style = {} }) {
+  const initials = getInitials(user?.username || user?.email?.split("@")[0] || "U");
+  if (user?.avatar_url) {
+    return (
+      <img
+        src={user.avatar_url}
+        alt={user.username || "Avatar"}
+        style={{
+          width: size, height: size, borderRadius: "50%", objectFit: "cover",
+          border: "2px solid rgba(56,189,248,0.4)",
+          boxShadow: "0 0 10px rgba(56,189,248,0.2)",
+          ...style,
+        }}
+      />
+    );
+  }
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      background: "linear-gradient(135deg,#0ea5e9,#6366f1)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      color: "white", fontWeight: 800, fontSize: size <= 36 ? 12 : 16,
+      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+      letterSpacing: -0.5,
+      ...style,
+    }}>
+      {initials}
+    </div>
+  );
+}
 
 /// ── EditProfileModal (avatar upload + profile edit) ────────────────────
 function EditProfileModal({ onClose }) {
@@ -89,7 +125,7 @@ function EditProfileModal({ onClose }) {
   };
 
   const currentAvatar = avatarPreview || user?.avatar_url || "";
-  const initials = (user?.username || "U")[0].toUpperCase();
+  const initials = getInitials(user?.username || user?.email?.split("@")[0] || "U");
 
   return (
     <div style={{
@@ -97,15 +133,15 @@ function EditProfileModal({ onClose }) {
       backgroundColor: "rgba(10,10,26,0.85)",
       backdropFilter: "blur(12px)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 2000,
+      zIndex: 2000, padding: "16px",
     }}>
       <div style={{
         background: "rgba(15,23,42,0.95)",
         backdropFilter: "blur(20px)",
         border: "1px solid rgba(255,255,255,0.15)",
-        borderRadius: 16, width: "500px", maxWidth: "92%",
-        padding: 28, boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 32px rgba(14,165,233,0.15)",
-        color: "white", maxHeight: "90vh", overflowY: "auto",
+        borderRadius: 16, width: "100%", maxWidth: 560,
+        padding: "28px 32px", boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 32px rgba(14,165,233,0.15)",
+        color: "white",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#38bdf8" }}> Chỉnh sửa thông tin cá nhân</h3>
@@ -131,10 +167,11 @@ function EditProfileModal({ onClose }) {
             ) : (
               <div style={{
                 width: 72, height: 72, borderRadius: "50%",
-                background: "linear-gradient(135deg,#0B4F5C,#1a9ab5)",
+                background: "linear-gradient(135deg,#0ea5e9,#6366f1)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                color: "white", fontWeight: 800, fontSize: 28,
+                color: "white", fontWeight: 800, fontSize: 22,
                 border: "3px solid rgba(14,165,233,0.5)",
+                letterSpacing: -1,
               }}>{initials}</div>
             )}
             {avatarLoading && (
@@ -190,8 +227,8 @@ function EditProfileModal({ onClose }) {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div>
+        <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
+          <div style={{ gridColumn: "1 / -1" }}>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#38bdf8", marginBottom: 6 }}>Tên học sinh *</label>
             <input type="text" value={username} onChange={e => setUsername(e.target.value)} required placeholder="Nhập tên học sinh" style={inputStyle} />
           </div>
@@ -203,7 +240,7 @@ function EditProfileModal({ onClose }) {
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#38bdf8", marginBottom: 6 }}>Trường</label>
             <input type="text" value={school} onChange={e => setSchool(e.target.value)} placeholder="Nhập tên trường học" style={inputStyle} />
           </div>
-          <div>
+          <div style={{ gridColumn: "1 / -1" }}>
             <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#38bdf8", marginBottom: 6 }}>Lớp</label>
             <select value={grade} onChange={e => setGrade(e.target.value)} style={{ ...inputStyle, background: "rgba(15,23,42,0.95)", cursor: "pointer" }}>
               <option value="">-- Chọn lớp --</option>
@@ -212,7 +249,7 @@ function EditProfileModal({ onClose }) {
               <option value="Lớp 12">Lớp 12</option>
             </select>
           </div>
-          <div style={{ display: "flex", gap: 12, marginTop: 6 }}>
+          <div style={{ display: "flex", gap: 12, marginTop: 6, gridColumn: "1 / -1" }}>
             <button type="button" onClick={onClose} disabled={loading}
               style={{ flex: 1, padding: "11px 0", background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
               Hủy
@@ -349,16 +386,7 @@ export default function TrangChuForm() {
       <div style={dropStyle}>
         {/* Header */}
         <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", gap: 10 }}>
-          {user.avatar_url ? (
-            <img
-              src={user.avatar_url}
-              style={{ width: 38, height: 38, borderRadius: "50%", objectFit: "cover", border: "2px solid #38bdf8", flexShrink: 0 }}
-            />
-          ) : (
-            <div style={{ width: 38, height: 38, borderRadius: "50%", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: 16, flexShrink: 0 }}>
-              {(user.username || "U")[0].toUpperCase()}
-            </div>
-          )}
+          <UserAvatar user={user} size={38} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: "white" }}>{user.username}</div>
             <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{user.email}</div>
@@ -629,7 +657,7 @@ export default function TrangChuForm() {
           
           {/* Logo & Owl Mascot */}
           <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/images/duosteamicon.png" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
+            <img src="/images/duosteamicon.png" alt="DuoMath" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} onError={(e) => { e.currentTarget.src = "/images/duosteamicon.svg"; }} />
             <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 1.5, background: "linear-gradient(135deg, #38bdf8, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               DUOMATH
             </span>
@@ -681,22 +709,9 @@ export default function TrangChuForm() {
                 style={{ background: "none", border: "none", cursor: "pointer", padding: 3, display: "flex", alignItems: "center" }}
                 title={user ? user.username : "Tài khoản"}>
                 {user ? (
-                  user.avatar_url ? (
-                    <img
-                      src={user.avatar_url}
-                      style={{
-                        width: 34, height: 34, borderRadius: "50%", objectFit: "cover",
-                        border: "2px solid rgba(56,189,248,0.4)",
-                        boxShadow: "0 0 10px rgba(56,189,248,0.2)",
-                      }}
-                    />
-                  ) : (
-                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 800, fontSize: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.3)" }}>
-                      {(user.username || "U")[0].toUpperCase()}
-                    </div>
-                  )
+                  <UserAvatar user={user} size={34} />
                 ) : (
-                  <Avatar isBordered color="primary" src="/images/defaultuser.png" style={{ width: 34, height: 34 }} />
+                  <UserAvatar user={{ username: "?" }} size={34} />
                 )}
               </button>
               {showProfile && <ProfileDropdown />}
@@ -720,12 +735,12 @@ export default function TrangChuForm() {
                 position: "relative",
                 width: "380px",
                 height: "380px",
-                background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, rgba(5,5,18,0) 70%)",
+                background: "transparent",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}>
-                <img src="/images/duosteamicon.png" style={{ width: "240px", maxWidth: "90%", filter: "drop-shadow(0 8px 30px rgba(99,102,241,0.35))", animation: "floatMascot 6s ease-in-out infinite" }} />
+                <img src="/images/duosteamicon.png" alt="DuoMath mascot" style={{ width: "240px", maxWidth: "90%", filter: "drop-shadow(0 8px 30px rgba(99,102,241,0.35))", animation: "floatMascot 6s ease-in-out infinite" }} onError={(e) => { e.currentTarget.src = "/images/duosteamicon.svg"; }} />
                 <div style={{ position: "absolute", bottom: "10%", background: "rgba(15,23,42,0.6)", padding: "8px 16px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", fontSize: 13, color: "#a78bfa", fontWeight: 700, letterSpacing: 0.5, boxShadow: "0 4px 15px rgba(0,0,0,0.3)" }}>
                   💡 Fun Math Learn
                 </div>
@@ -937,7 +952,7 @@ export default function TrangChuForm() {
               {/* Left branding */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 220 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <img src="/images/duosteamicon.png" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />
+                  <img src="/images/duosteamicon.png" alt="DuoMath" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} onError={(e) => { e.currentTarget.src = "/images/duosteamicon.svg"; }} />
                   <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 0.5 }}>DUOMATH</span>
                 </div>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontStyle: "italic" }}>
