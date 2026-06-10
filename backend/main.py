@@ -124,15 +124,38 @@ async def resolve_user_id(request: Request) -> int:
     """Always returns the backend integer user ID, regardless of token type."""
     identity, is_firebase = await get_firebase_uid_or_backend_id(request)
     if not is_firebase:
-        return int(identity)
-    
-    # Look up by firebase_uid
+        uid = int(identity)
+    else:
+        # Look up by firebase_uid
+        db = get_db()
+        try:
+            row = db.execute("SELECT id FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+            if not row:
+                raise HTTPException(404, "User not found. Please sync first via /api/firebase-sync")
+            uid = row["id"]
+        finally:
+            db.close()
+
+    # Check if user is banned
     db = get_db()
     try:
-        row = db.execute("SELECT id FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-        if not row:
-            raise HTTPException(404, "User not found. Please sync first via /api/firebase-sync")
-        return row["id"]
+        row = db.execute("SELECT banned, ban_reason FROM users WHERE id=?", (uid,)).fetchone()
+        if row and row["banned"] == 1:
+            reason = row["ban_reason"] or "Không rõ lý do"
+            raise HTTPException(403, f"Tài khoản của bạn đã bị khóa. Lý do: {reason}")
+        return uid
+    finally:
+        db.close()
+
+
+async def verify_admin(request: Request) -> int:
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        row = db.execute("SELECT is_admin, email FROM users WHERE id=?", (uid,)).fetchone()
+        if not row or (row["is_admin"] != 1 and row["email"].lower() != "will050710@gmail.com"):
+            raise HTTPException(403, "Forbidden: Admin access required.")
+        return uid
     finally:
         db.close()
 
@@ -422,18 +445,51 @@ def init_db():
             history     TEXT    DEFAULT '[]',
             created_at  TEXT    DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS reports (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            reporter_id      INTEGER NOT NULL,
+            reported_user_id INTEGER NOT NULL,
+            reason           TEXT NOT NULL,
+            status           TEXT DEFAULT 'pending',
+            created_at       TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (reporter_id) REFERENCES users(id),
+            FOREIGN KEY (reported_user_id) REFERENCES users(id)
+        );
         CREATE INDEX IF NOT EXISTS idx_test_user  ON test_results(user_id, taken_at DESC);
         CREATE INDEX IF NOT EXISTS idx_game_user  ON minigame_results(user_id, played_at DESC);
         CREATE INDEX IF NOT EXISTS idx_session_id ON sessions(session_id);
     """)
     conn.commit()
-    # ── Migration: add firebase_uid column to existing databases ──────────────
+    
+    # Migrations for existing DB
     try:
         conn.execute("ALTER TABLE users ADD COLUMN firebase_uid TEXT UNIQUE")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_firebase_uid ON users(firebase_uid)")
         conn.commit()
     except Exception:
-        pass  # Column already exists in new databases
+        pass
+        
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0")
+        conn.commit()
+    except Exception:
+        pass
+
+    try:
+        conn.execute("ALTER TABLE users ADD COLUMN ban_reason TEXT")
+        conn.commit()
+    except Exception:
+        pass
+
+    # Automatically set will050710@gmail.com as admin
+    conn.execute("UPDATE users SET is_admin=1 WHERE email='will050710@gmail.com'")
+    conn.commit()
     conn.close()
 
 
@@ -442,12 +498,16 @@ def get_db():
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def user_dict(row):
+    keys = row.keys() if hasattr(row, 'keys') else []
     return {
         "id": row["id"], "email": row["email"],
         "username": row["username"], "name": row["username"],
         "phone": row["phone"], "school": row["school"],
         "grade": row["grade"], "avatar_url": row["avatar_url"],
         "created_at": row["created_at"],
+        "is_admin": row["is_admin"] if "is_admin" in keys else 0,
+        "banned": row["banned"] if "banned" in keys else 0,
+        "ban_reason": row["ban_reason"] if "ban_reason" in keys else "",
     }
 
 def test_dict(row):
@@ -756,7 +816,7 @@ async def update_me(request: Request):
 
 @app.post("/api/test-result")
 async def save_test(request: Request):
-    uid = int(get_identity(request))
+    uid = await resolve_user_id(request)
     d = await request.json()
     test_key   = d.get("test_key", "")
     section    = d.get("section", "")
@@ -785,7 +845,7 @@ async def save_test(request: Request):
 
 @app.get("/api/test-results")
 async def get_tests(request: Request):
-    uid = int(get_identity(request))
+    uid = await resolve_user_id(request)
     db = get_db()
     try:
         rows = db.execute(
@@ -798,7 +858,7 @@ async def get_tests(request: Request):
 
 @app.post("/api/minigame-result")
 async def save_game(request: Request):
-    uid = int(get_identity(request))
+    uid = await resolve_user_id(request)
     d = await request.json()
     slug  = d.get("lesson_slug", "")
     mode  = d.get("mode", "mc")
@@ -823,7 +883,7 @@ async def save_game(request: Request):
 
 @app.get("/api/minigame-results")
 async def get_games(request: Request):
-    uid = int(get_identity(request))
+    uid = await resolve_user_id(request)
     db = get_db()
     try:
         rows = db.execute(
@@ -1075,6 +1135,180 @@ async def health():
         "vision_model":  "meta-llama/llama-4-scout-17b-16e-instruct",
         "ocr_available": _ocr_available,
     })
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  ADMIN & REPORTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/admin/users")
+async def admin_get_users(request: Request):
+    await verify_admin(request)
+    db = get_db()
+    try:
+        rows = db.execute("""
+            SELECT u.*, 
+                   (SELECT COUNT(*) FROM test_results WHERE user_id = u.id) as tests_count,
+                   (SELECT COUNT(*) FROM minigame_results WHERE user_id = u.id) as games_count
+            FROM users u
+        """).fetchall()
+        users_list = []
+        for r in rows:
+            d = user_dict(r)
+            d["tests_count"] = r["tests_count"]
+            d["games_count"] = r["games_count"]
+            users_list.append(d)
+        return JSONResponse(users_list)
+    finally:
+        db.close()
+
+
+@app.patch("/api/admin/users/{user_id}/role")
+async def admin_change_role(user_id: int, request: Request):
+    await verify_admin(request)
+    d = await request.json()
+    is_admin = int(d.get("is_admin", 0))
+    db = get_db()
+    try:
+        # Prevent demoting the super admin email
+        row = db.execute("SELECT email FROM users WHERE id=?", (user_id,)).fetchone()
+        if row and row["email"].lower() == "will050710@gmail.com":
+            raise HTTPException(400, "Không thể thu hồi quyền Super Admin.")
+        
+        db.execute("UPDATE users SET is_admin=? WHERE id=?", (is_admin, user_id))
+        db.commit()
+        return JSONResponse({"ok": True})
+    finally:
+        db.close()
+
+
+@app.patch("/api/admin/users/{user_id}/ban")
+async def admin_ban_user(user_id: int, request: Request):
+    await verify_admin(request)
+    d = await request.json()
+    banned = int(d.get("banned", 1))
+    reason = d.get("reason", "").strip()
+    db = get_db()
+    try:
+        # Prevent banning the super admin email
+        row = db.execute("SELECT email FROM users WHERE id=?", (user_id,)).fetchone()
+        if row and row["email"].lower() == "will050710@gmail.com":
+            raise HTTPException(400, "Không thể khóa tài khoản Super Admin.")
+            
+        db.execute("UPDATE users SET banned=?, ban_reason=? WHERE id=?", (banned, reason, user_id))
+        db.commit()
+        return JSONResponse({"ok": True})
+    finally:
+        db.close()
+
+
+@app.post("/api/reports")
+async def create_report(request: Request):
+    reporter_id = await resolve_user_id(request)
+    d = await request.json()
+    reported_user_id = d.get("reported_user_id")
+    reported_username = d.get("reported_username")
+    reason = d.get("reason", "").strip()
+    if not reason:
+        raise HTTPException(400, "Lý do báo cáo không được để trống.")
+    db = get_db()
+    try:
+        target_uid = None
+        if reported_user_id:
+            target_uid = int(reported_user_id)
+        elif reported_username:
+            row = db.execute("SELECT id FROM users WHERE username=? COLLATE NOCASE", (reported_username.strip(),)).fetchone()
+            if not row:
+                raise HTTPException(404, f"Không tìm thấy người dùng có tên '{reported_username}'.")
+            target_uid = row["id"]
+        else:
+            raise HTTPException(400, "reported_user_id hoặc reported_username là bắt buộc.")
+            
+        db.execute(
+            "INSERT INTO reports (reporter_id, reported_user_id, reason) VALUES (?, ?, ?)",
+            (reporter_id, target_uid, reason)
+        )
+        db.commit()
+        return JSONResponse({"ok": True}, status_code=201)
+    finally:
+        db.close()
+
+
+@app.get("/api/admin/reports")
+async def admin_get_reports(request: Request):
+    await verify_admin(request)
+    db = get_db()
+    try:
+        rows = db.execute("""
+            SELECT r.*, 
+                   u1.username as reporter_name, u1.email as reporter_email,
+                   u2.username as reported_name, u2.email as reported_email, u2.banned as reported_banned
+            FROM reports r
+            JOIN users u1 ON r.reporter_id = u1.id
+            JOIN users u2 ON r.reported_user_id = u2.id
+            ORDER BY r.created_at DESC
+        """).fetchall()
+        reports_list = []
+        for r in rows:
+            reports_list.append({
+                "id": r["id"],
+                "reporter_id": r["reporter_id"],
+                "reporter_name": r["reporter_name"],
+                "reporter_email": r["reporter_email"],
+                "reported_user_id": r["reported_user_id"],
+                "reported_name": r["reported_name"],
+                "reported_email": r["reported_email"],
+                "reported_banned": r["reported_banned"],
+                "reason": r["reason"],
+                "status": r["status"],
+                "created_at": r["created_at"],
+            })
+        return JSONResponse(reports_list)
+    finally:
+        db.close()
+
+
+@app.post("/api/admin/reports/{report_id}/resolve")
+async def admin_resolve_report(report_id: int, request: Request):
+    await verify_admin(request)
+    d = await request.json()
+    status = d.get("status", "resolved")
+    db = get_db()
+    try:
+        db.execute("UPDATE reports SET status=? WHERE id=?", (status, report_id))
+        db.commit()
+        return JSONResponse({"ok": True})
+    finally:
+        db.close()
+
+
+@app.get("/api/admin/stats")
+async def admin_get_stats(request: Request):
+    await verify_admin(request)
+    db = get_db()
+    try:
+        total_users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        total_tests = db.execute("SELECT COUNT(*) FROM test_results").fetchone()[0]
+        total_games = db.execute("SELECT COUNT(*) FROM minigame_results").fetchone()[0]
+        total_reports = db.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
+        pending_reports = db.execute("SELECT COUNT(*) FROM reports WHERE status='pending'").fetchone()[0]
+        
+        # Count mathmaps
+        try:
+            total_mathmaps = db.execute("SELECT COUNT(*) FROM mathmaps").fetchone()[0]
+        except Exception:
+            total_mathmaps = 0
+            
+        return JSONResponse({
+            "total_users": total_users,
+            "total_tests": total_tests,
+            "total_games": total_games,
+            "total_reports": total_reports,
+            "pending_reports": pending_reports,
+            "total_mathmaps": total_mathmaps,
+        })
+    finally:
+        db.close()
 
 
 # ── Run ───────────────────────────────────────────────────────────────────────

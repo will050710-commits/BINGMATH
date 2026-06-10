@@ -2,6 +2,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import ReportUserModal from "@/components/ReportUserModal";
 
 // ── Math particles background ──────────────────────────────────────────────
 const MATH_SYMBOLS = ["∑", "∫", "π", "√", "∞", "Δ", "∂", "∇", "⊕", "≈", "≠", "±", "×", "÷", "α", "β", "θ", "λ", "μ", "σ"];
@@ -184,79 +185,83 @@ function OwlSVG({ isActive }) {
 }
 
 // ── Mode Card Button ────────────────────────────────────────────────────────
-function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, index }) {
+function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, index, onClick }) {
   const [hovered, setHovered] = useState(false);
 
-  return (
-    <Link href={href} style={{ textDecoration: "none" }}>
-      <div
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          animation: `btnExpand 0.5s ${delay} cubic-bezier(0.2,0.8,0.2,1) both`,
-          width: 220,
-          background: hovered
-            ? `linear-gradient(135deg, ${color}33, ${color}22)`
-            : "rgba(15, 23, 42, 0.8)",
-          backdropFilter: "blur(16px)",
-          border: `2px solid ${hovered ? color : color + "55"}`,
-          borderRadius: 20,
-          padding: "28px 24px",
-          cursor: "pointer",
-          transition: "all 0.3s cubic-bezier(0.2,0.8,0.2,1)",
-          transform: hovered ? "translateY(-8px) scale(1.04)" : "translateY(0) scale(1)",
-          boxShadow: hovered
-            ? `0 24px 48px ${color}44, 0 0 32px ${color}22`
-            : `0 8px 24px rgba(0,0,0,0.4)`,
-          textAlign: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Shine overlay */}
-        <div style={{
-          position: "absolute", inset: 0,
-          background: `linear-gradient(135deg, ${color}18 0%, transparent 60%)`,
-          borderRadius: 18,
-          opacity: hovered ? 1 : 0,
-          transition: "opacity 0.3s",
-        }} />
+  const cardContent = (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
+      style={{
+        animation: `btnExpand 0.5s ${delay} cubic-bezier(0.2,0.8,0.2,1) both`,
+        width: 220,
+        background: hovered
+          ? `linear-gradient(135deg, ${color}33, ${color}22)`
+          : "rgba(15, 23, 42, 0.8)",
+        backdropFilter: "blur(16px)",
+        border: `2px solid ${hovered ? color : color + "55"}`,
+        borderRadius: 20,
+        padding: "28px 24px",
+        cursor: "pointer",
+        transition: "all 0.3s cubic-bezier(0.2,0.8,0.2,1)",
+        transform: hovered ? "translateY(-8px) scale(1.04)" : "translateY(0) scale(1)",
+        boxShadow: hovered
+          ? `0 24px 48px ${color}44, 0 0 32px ${color}22`
+          : `0 8px 24px rgba(0,0,0,0.4)`,
+        textAlign: "center",
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Shine overlay */}
+      <div style={{
+        position: "absolute", inset: 0,
+        background: `linear-gradient(135deg, ${color}18 0%, transparent 60%)`,
+        borderRadius: 18,
+        opacity: hovered ? 1 : 0,
+        transition: "opacity 0.3s",
+      }} />
 
-        <div style={{ fontSize: 52, marginBottom: 12, display: "block", lineHeight: 1 }}>
-          {icon}
-        </div>
-        <div style={{
-          fontSize: 20, fontWeight: 800, color: "white",
-          marginBottom: 4, letterSpacing: 0.5,
-        }}>
-          {label}
-        </div>
-        <div style={{
-          fontSize: 12, color: color, fontWeight: 600,
-          marginBottom: 10, opacity: 0.9,
-        }}>
-          {labelEn}
-        </div>
-        <div style={{
-          fontSize: 12, color: "rgba(255,255,255,0.6)",
-          lineHeight: 1.5,
-        }}>
-          {desc}
-        </div>
-        <div style={{
-          marginTop: 16,
-          background: hovered ? color : color + "33",
-          color: hovered ? "white" : color,
-          borderRadius: 10,
-          padding: "8px 16px",
-          fontSize: 13, fontWeight: 700,
-          transition: "all 0.3s",
-        }}>
-          {hovered ? "→ Vào ngay!" : "Chọn →"}
-        </div>
+      <div style={{ fontSize: 52, marginBottom: 12, display: "block", lineHeight: 1 }}>
+        {icon}
       </div>
-    </Link>
+      <div style={{
+        fontSize: 20, fontWeight: 800, color: "white",
+        marginBottom: 4, letterSpacing: 0.5,
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontSize: 12, color: color, fontWeight: 600,
+        marginBottom: 10, opacity: 0.9,
+      }}>
+        {labelEn}
+      </div>
+      <div style={{
+        fontSize: 12, color: "rgba(255,255,255,0.6)",
+        lineHeight: 1.5,
+      }}>
+        {desc}
+      </div>
+      <div style={{
+        marginTop: 16,
+        background: hovered ? color : color + "33",
+        color: hovered ? "white" : color,
+        borderRadius: 10,
+        padding: "8px 16px",
+        fontSize: 13, fontWeight: 700,
+        transition: "all 0.3s",
+      }}>
+        {hovered ? (href ? "→ Vào ngay!" : "→ Báo cáo!") : "Chọn →"}
+      </div>
+    </div>
   );
+
+  if (href) {
+    return <Link href={href} style={{ textDecoration: "none" }}>{cardContent}</Link>;
+  }
+  return cardContent;
 }
 
 // ── Main MRM Home Component ────────────────────────────────────────────────
@@ -264,6 +269,7 @@ export default function MRMHomePage() {
   const [owlActive, setOwlActive] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const handleOwlClick = () => {
     setOwlActive(true);
@@ -280,12 +286,12 @@ export default function MRMHomePage() {
 
   const modes = [
     {
-      icon: "🎯",
-      label: "Singleplayer",
-      labelEn: "Play Solo",
-      desc: "Tải MathMap, luyện tập và leo bảng xếp hạng toàn cầu",
-      href: "/mrm/singleplayer",
-      color: "#22d3ee",
+      icon: "🚩",
+      label: "Báo cáo",
+      labelEn: "Report Player",
+      desc: "Báo cáo hành vi vi phạm hoặc gian lận trong đấu hạng",
+      onClick: () => setShowReportModal(true),
+      color: "#ef4444",
       delay: "0.05s",
     },
     {
@@ -567,6 +573,10 @@ export default function MRMHomePage() {
           ))}
         </div>
       </main>
+
+      {showReportModal && (
+        <ReportUserModal onClose={() => setShowReportModal(false)} />
+      )}
     </div>
   );
 }

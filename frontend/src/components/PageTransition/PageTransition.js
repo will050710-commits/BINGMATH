@@ -1,34 +1,44 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 /**
  * PageTransition
- * Wraps page children and fires document.startViewTransition() on every
- * route change, giving the CSS View Transitions API a chance to animate.
- *
- * Usage: wrap {children} in layout.js with <PageTransition>{children}</PageTransition>
+ * Wraps page children and applies a smooth fade & slide transition
+ * whenever the route (pathname) changes.
  */
 export default function PageTransition({ children }) {
   const pathname = usePathname();
-  const isFirst = useRef(true);
+  const [displayChildren, setDisplayChildren] = useState(children);
+  const [transitionStage, setTransitionStage] = useState("fadeIn");
 
   useEffect(() => {
-    // Skip the very first mount — no "old" page to transition from
-    if (isFirst.current) {
-      isFirst.current = false;
-      return;
-    }
+    // When the route changes, start fading out
+    setTransitionStage("fadeOut");
+    
+    // Wait for fade-out to complete, swap contents, then fade in
+    const timer = setTimeout(() => {
+      setDisplayChildren(children);
+      setTransitionStage("fadeIn");
+    }, 200);
 
-    // Fire the native View Transition if supported
-    if (!document.startViewTransition) return;
-
-    // The actual DOM swap is handled by Next.js; we just need the API
-    // to know a transition is happening so it captures the snapshot.
-    // Calling startViewTransition with an empty callback is enough —
-    // Next.js will update the DOM on its own schedule.
-    document.startViewTransition(() => {});
+    return () => clearTimeout(timer);
   }, [pathname]);
 
-  return children;
+  // Handle case where children update independently of pathname
+  useEffect(() => {
+    setDisplayChildren(children);
+  }, [children]);
+
+  return (
+    <div
+      style={{
+        transition: "opacity 200ms cubic-bezier(0.4, 0, 0.2, 1), transform 200ms cubic-bezier(0.4, 0, 0.2, 1)",
+        opacity: transitionStage === "fadeIn" ? 1 : 0,
+        transform: transitionStage === "fadeIn" ? "translateY(0)" : "translateY(8px)",
+      }}
+    >
+      {displayChildren}
+    </div>
+  );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/authContext";
+import ReportUserModal from "@/components/ReportUserModal";
 
 // ── Constants & Configs ──────────────────────────────────────────────────
 const BOTS = [
@@ -86,9 +87,21 @@ export default function MultiplayerLobby() {
   const [countdown, setCountdown] = useState(null);
 
   // ─── Matchmaker / Game States ──────────────────────────────────────────
-  const [gameState, setGameState] = useState("lobby"); // lobby | matching | faceoff | playing | ended
+  const [gameState, setGameState] = useState("lobby"); // lobby | matching | faceoff | card_choosing | playing | ended
   const [matchTimer, setMatchTimer] = useState(0);
   const [botOpponent, setBotOpponent] = useState(null);
+
+  // ─── Card Choosing Phase States ────────────────────────────────────────
+  const [playerBigHP, setPlayerBigHP] = useState(3);
+  const [botBigHP, setBotBigHP] = useState(3);
+  const [chooser, setChooser] = useState(null); // "player" | "bot"
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [forumCards] = useState([
+    { id: "fc1", title: "Phương trình bậc hai nâng cao", desc: "Chuyên đề Delta và Hệ thức Vi-ét", icon: "📐" },
+    { id: "fc2", title: "Đạo hàm & Cực trị hàm số", desc: "Khảo sát sự biến thiên và cực đại cực tiểu", icon: "📈" },
+    { id: "fc3", title: "Hình học phẳng Oxyz", desc: "Hệ tọa độ, vector và phương trình đường thẳng", icon: "🌐" },
+    { id: "fc4", title: "Dãy số & Cấp số cộng", desc: "Tìm số hạng tổng quát và tính tổng S_n", icon: "🔢" },
+  ]);
 
   // ─── Battle States ─────────────────────────────────────────────────────
   const [currentQ, setCurrentQ] = useState(0);
@@ -110,10 +123,92 @@ export default function MultiplayerLobby() {
 
   const [timeLeft, setTimeLeft] = useState(30);
 
+  // ─── Speed-First Timestamps ────────────────────────────────────────────
+  const [playerAnswerTime, setPlayerAnswerTime] = useState(null);
+  const [botAnswerTime, setBotAnswerTime] = useState(null);
+
   // ─── ELO Delta state ───────────────────────────────────────────────────
   const [eloDelta, setEloDelta] = useState(0);
 
-  // Refs for timers
+  // ─── Report User States ────────────────────────────────────────────────
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [selectedReportUser, setSelectedReportUser] = useState("");
+
+  // ─── Web Audio API BGM Synthesizer ──────────────────────────────────────
+  const [isMuted, setIsMuted] = useState(false);
+  const synthRef = useRef(null);
+
+  const startBgm = useCallback(() => {
+    if (isMuted || synthRef.current || typeof window === "undefined") return;
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const notes = [130.81, 146.83, 164.81, 196.00, 220.00]; // Pentatonic bass C3-D3-E3-G3-A3
+      const leadNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+      const bassPattern = [0, 3, 4, 3, 2, 3, 2, 1];
+      const leadPattern = [0, 2, 3, 4, 3, 2, 5, 4];
+      let stepIndex = 0;
+
+      const scheduler = () => {
+        const time = ctx.currentTime;
+        // Bass note
+        const bassOsc = ctx.createOscillator();
+        const bassGain = ctx.createGain();
+        bassOsc.type = "triangle";
+        bassOsc.frequency.setValueAtTime(notes[bassPattern[stepIndex % bassPattern.length]], time);
+        bassGain.gain.setValueAtTime(0.06, time);
+        bassGain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+        bassOsc.connect(bassGain);
+        bassGain.connect(ctx.destination);
+        bassOsc.start(time);
+        bassOsc.stop(time + 0.3);
+
+        // Lead note on alternate steps
+        if (stepIndex % 2 === 0) {
+          const leadOsc = ctx.createOscillator();
+          const leadGain = ctx.createGain();
+          leadOsc.type = "sine";
+          leadOsc.frequency.setValueAtTime(leadNotes[leadPattern[(stepIndex / 2) % leadPattern.length]], time);
+          leadGain.gain.setValueAtTime(0.02, time);
+          leadGain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+          leadOsc.connect(leadGain);
+          leadGain.connect(ctx.destination);
+          leadOsc.start(time);
+          leadOsc.stop(time + 0.2);
+        }
+
+        stepIndex++;
+      };
+
+      const timer = setInterval(scheduler, 250); // 120 BPM
+      synthRef.current = {
+        stop: () => {
+          clearInterval(timer);
+          ctx.close();
+          synthRef.current = null;
+        }
+      };
+    } catch (e) {
+      console.error(e);
+    }
+  }, [isMuted]);
+
+  const stopBgm = useCallback(() => {
+    if (synthRef.current) {
+      synthRef.current.stop();
+    }
+  }, []);
+
+  // Listen to gameState changes to control BGM
+  useEffect(() => {
+    if (["faceoff", "card_choosing", "playing"].includes(gameState)) {
+      startBgm();
+    } else {
+      stopBgm();
+    }
+    return () => stopBgm();
+  }, [gameState, startBgm, stopBgm]);
+
+  // Timers Refs
   const questionTimerRef = useRef(null);
   const botTimerRef = useRef(null);
   const matchingTimerRef = useRef(null);
@@ -146,10 +241,7 @@ export default function MultiplayerLobby() {
   useEffect(() => {
     if (gameState !== "lobby" || tab !== "browse") return;
     const interval = setInterval(() => {
-      // Online players fluctuate
       setOnlineCount(prev => prev + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 4));
-
-      // Fluctuate room counts and status
       setRooms(prev => {
         return prev.map(r => {
           if (Math.random() > 0.75) {
@@ -171,16 +263,14 @@ export default function MultiplayerLobby() {
     matchingTimerRef.current = setInterval(() => {
       setMatchTimer(prev => {
         const next = prev + 1;
-        // Search matches after 4 seconds
         if (next >= 4) {
           clearInterval(matchingTimerRef.current);
           const matchedBot = BOTS[Math.floor(Math.random() * BOTS.length)];
           setBotOpponent(matchedBot);
           setGameState("faceoff");
 
-          // Transit to game after faceoff countdown
           setTimeout(() => {
-            initializeMatch(matchedBot);
+            startCardChoosingPhase(matchedBot, true);
           }, 2500);
         }
         return next;
@@ -206,13 +296,12 @@ export default function MultiplayerLobby() {
         setCountdown(null);
         setJoiningRoomId(null);
 
-        // Match bot associated with host
         const botTemplate = BOTS.find(b => b.username === room.host) || BOTS[0];
         setBotOpponent(botTemplate);
         setGameState("faceoff");
 
         setTimeout(() => {
-          initializeMatch(botTemplate);
+          startCardChoosingPhase(botTemplate, true);
         }, 2500);
       } else {
         setCountdown(c);
@@ -220,8 +309,39 @@ export default function MultiplayerLobby() {
     }, 1000);
   };
 
-  // ─── Initialize Battle Arena ──────────────────────────────────────────
-  const initializeMatch = (bot) => {
+  // ─── Card Choosing Phase Initialization ────────────────────────────────
+  const startCardChoosingPhase = (bot, isFirstRound = false) => {
+    setGameState("card_choosing");
+    setSelectedCard(null);
+    if (isFirstRound) {
+      setPlayerBigHP(3);
+      setBotBigHP(3);
+      setChooser(Math.random() < 0.5 ? "player" : "bot");
+    } else {
+      setChooser(prev => prev === "player" ? "bot" : "player");
+    }
+  };
+
+  const handleSelectCard = (card) => {
+    setSelectedCard(card);
+    setTimeout(() => {
+      initializeMatch(botOpponent, card);
+    }, 2000);
+  };
+
+  // Bot card selection simulation
+  useEffect(() => {
+    if (gameState === "card_choosing" && chooser === "bot" && !selectedCard) {
+      const timer = setTimeout(() => {
+        const randomCard = forumCards[Math.floor(Math.random() * forumCards.length)];
+        handleSelectCard(randomCard);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState, chooser, selectedCard, forumCards]);
+
+  // ─── Initialize Battle Arena (5 Hearts Round) ─────────────────────────
+  const initializeMatch = (bot, card) => {
     setGameState("playing");
     setCurrentQ(0);
     setPlayerHP(5);
@@ -230,7 +350,7 @@ export default function MultiplayerLobby() {
     setCombo(0);
     setMaxCombo(0);
     setEvaluating(false);
-    setFeedMessages(["Trận đấu bắt đầu! Chúc may mắn."]);
+    setFeedMessages([`Chủ đề: ${card ? card.title : "Tổng hợp"} - Trận đấu bắt đầu!`]);
     loadQuestion(0, bot);
   };
 
@@ -242,10 +362,11 @@ export default function MultiplayerLobby() {
     setBotSubmitted(false);
     setPlayerCorrect(null);
     setBotCorrect(null);
+    setPlayerAnswerTime(null);
+    setBotAnswerTime(null);
     setEvaluating(false);
     setTimeLeft(30);
 
-    // Reset current question timer
     clearInterval(questionTimerRef.current);
     questionTimerRef.current = setInterval(() => {
       setTimeLeft(prev => {
@@ -258,7 +379,6 @@ export default function MultiplayerLobby() {
       });
     }, 1000);
 
-    // Bot answer timer
     clearTimeout(botTimerRef.current);
     const botDelay = Math.floor(Math.random() * (bot.maxSpeed - bot.minSpeed) + bot.minSpeed);
     botTimerRef.current = setTimeout(() => {
@@ -279,6 +399,7 @@ export default function MultiplayerLobby() {
       chosenOption = wrongs[Math.floor(Math.random() * wrongs.length)];
     }
 
+    setBotAnswerTime(Date.now());
     setBotSelected(chosenOption);
     setBotSubmitted(true);
   };
@@ -305,6 +426,7 @@ export default function MultiplayerLobby() {
   // ─── Player selects answer ────────────────────────────────────────────
   const handlePlayerAnswer = (optionIdx) => {
     if (playerSubmitted || evaluating) return;
+    setPlayerAnswerTime(Date.now());
     setPlayerSelected(optionIdx);
     setPlayerSubmitted(true);
   };
@@ -319,7 +441,7 @@ export default function MultiplayerLobby() {
     }
   }, [playerSubmitted, botSubmitted, evaluating, gameState, playerSelected, botSelected]);
 
-  // ─── Evaluation details ───────────────────────────────────────────────
+  // ─── Evaluation details (Speed-First tiebreaker logic) ──────────────────
   const evaluateAnswers = (pSelected, bSelected) => {
     const currentQuestion = MULTIPLAYER_QUESTIONS[currentQ];
     const isPlayerCorrect = pSelected === currentQuestion.correct;
@@ -332,30 +454,49 @@ export default function MultiplayerLobby() {
     let nextBotHP = botHP;
     const logs = [];
 
-    // Player damages bot
-    if (isPlayerCorrect) {
+    if (isPlayerCorrect && isBotCorrect) {
+      // Both correct -> Speed-First tiebreaker
+      const pTime = playerAnswerTime || Infinity;
+      const bTime = botAnswerTime || Infinity;
+      if (pTime < bTime) {
+        nextBotHP = Math.max(0, botHP - 1);
+        setBotHP(nextBotHP);
+        logs.push(`⚡ Bạn đúng & NHANH HƠN! Gây 1 ST lên ${botOpponent.username}.`);
+        setCombo(prev => {
+          const nextC = prev + 1;
+          setMaxCombo(m => Math.max(m, nextC));
+          return nextC;
+        });
+        setScore(prev => prev + 100 + combo * 10);
+      } else if (bTime < pTime) {
+        nextPlayerHP = Math.max(0, playerHP - 1);
+        setPlayerHP(nextPlayerHP);
+        logs.push(`🔥 ${botOpponent.username} đúng & NHANH HƠN! Bạn mất 1 HP.`);
+        setCombo(0);
+      } else {
+        logs.push(`🤝 Cả hai đều đúng và nhanh ngang nhau! Không ai mất HP.`);
+      }
+    } else if (isPlayerCorrect && !isBotCorrect) {
+      // Only player correct
       nextBotHP = Math.max(0, botHP - 1);
       setBotHP(nextBotHP);
-      logs.push(`🎯 Bạn trả lời đúng! Gây 1 ST lên ${botOpponent.username}.`);
+      logs.push(`🎯 Bạn đúng, đối thủ sai! Gây 1 ST.`);
       setCombo(prev => {
         const nextC = prev + 1;
         setMaxCombo(m => Math.max(m, nextC));
         return nextC;
       });
-      // Score calculation
       setScore(prev => prev + 100 + combo * 10);
-    } else {
-      logs.push(`❌ Bạn trả lời sai.`);
-      setCombo(0);
-    }
-
-    // Bot damages player
-    if (isBotCorrect) {
+    } else if (!isPlayerCorrect && isBotCorrect) {
+      // Only bot correct
       nextPlayerHP = Math.max(0, playerHP - 1);
       setPlayerHP(nextPlayerHP);
-      logs.push(`🔥 ${botOpponent.username} trả lời đúng! Bạn mất 1 HP.`);
+      logs.push(`🔥 Bạn sai, đối thủ đúng! Bạn mất 1 HP.`);
+      setCombo(0);
     } else {
-      logs.push(`💨 Đối thủ trả lời sai.`);
+      // Both incorrect
+      logs.push(`💨 Cả hai cùng sai! Không ai bị trừ HP.`);
+      setCombo(0);
     }
 
     setFeedMessages(logs);
@@ -363,7 +504,7 @@ export default function MultiplayerLobby() {
     // Timeout evaluation before next step
     setTimeout(() => {
       if (nextPlayerHP <= 0 || nextBotHP <= 0 || currentQ === MULTIPLAYER_QUESTIONS.length - 1) {
-        endMatch(nextPlayerHP, nextBotHP);
+        endDuelRound(nextPlayerHP, nextBotHP);
       } else {
         setCurrentQ(prev => {
           const nextQIdx = prev + 1;
@@ -374,21 +515,52 @@ export default function MultiplayerLobby() {
     }, 2800);
   };
 
-  // ─── End Match ────────────────────────────────────────────────────────
-  const endMatch = (finalPlayerHP, finalBotHP) => {
+  // ─── End Duel Round (HP check & Big HP update) ─────────────────────────
+  const endDuelRound = (finalPlayerHP, finalBotHP) => {
+    clearInterval(questionTimerRef.current);
+    clearTimeout(botTimerRef.current);
+
+    let roundWinner = null;
+    if (finalPlayerHP > 0 && finalBotHP === 0) {
+      roundWinner = "player";
+    } else if (finalPlayerHP === 0 && finalBotHP > 0) {
+      roundWinner = "bot";
+    } else {
+      // Compare remaining HP, then score
+      if (finalPlayerHP > finalBotHP) roundWinner = "player";
+      else if (finalBotHP > finalPlayerHP) roundWinner = "bot";
+      else roundWinner = score > 300 ? "player" : "bot";
+    }
+
+    let nextPlayerBigHP = playerBigHP;
+    let nextBotBigHP = botBigHP;
+
+    if (roundWinner === "player") {
+      nextBotBigHP = Math.max(0, botBigHP - 1);
+      setBotBigHP(nextBotBigHP);
+      setFeedMessages([`🎉 Bạn đã THẮNG ván đấu này! ${botOpponent.username} mất 1 Tim lớn.`]);
+    } else {
+      nextPlayerBigHP = Math.max(0, playerBigHP - 1);
+      setPlayerBigHP(nextPlayerBigHP);
+      setFeedMessages([`😢 Bạn đã THUA ván đấu này! Bạn mất 1 Tim lớn.`]);
+    }
+
+    setTimeout(() => {
+      if (nextPlayerBigHP <= 0 || nextBotBigHP <= 0) {
+        endMatch(nextPlayerBigHP, nextBotBigHP);
+      } else {
+        startCardChoosingPhase(botOpponent, false);
+      }
+    }, 3000);
+  };
+
+  // ─── End Match (Match outcome & ELO update) ────────────────────────────
+  const endMatch = (finalPlayerBigHP, finalBotBigHP) => {
     setGameState("ended");
     clearInterval(questionTimerRef.current);
     clearTimeout(botTimerRef.current);
 
-    let won = false;
-    if (finalPlayerHP > 0 && finalBotHP === 0) {
-      won = true;
-    } else if (finalPlayerHP === 0 && finalBotHP > 0) {
-      won = false;
-    } else {
-      // tiebreaker: compare HP, then score
-      won = finalPlayerHP > finalBotHP || (finalPlayerHP === finalBotHP && score > 300);
-    }
+    const won = finalPlayerBigHP > 0 && finalBotBigHP === 0;
 
     // ELO Updates
     const delta = won ? 25 : -15;
@@ -411,7 +583,7 @@ export default function MultiplayerLobby() {
     }}>
       {/* ─── LOBBY / NON-GAME SCREEN ─── */}
       {gameState === "lobby" && (
-        <>
+        <div className="slide-active">
           {/* HEADER */}
           <header style={{
             display: "flex", alignItems: "center", gap: 16,
@@ -487,7 +659,7 @@ export default function MultiplayerLobby() {
           </div>
 
           {/* MAIN CONTENT */}
-          <div style={{ flex: 1, display: "flex", gap: 0, overflow: "hidden" }}>
+          <div style={{ display: "flex", gap: 0, overflow: "hidden", minHeight: "calc(100vh - 110px)" }}>
             {/* LEFT SIDEBAR: Tab contents */}
             <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px" }}>
               {tab === "browse" && (
@@ -533,6 +705,21 @@ export default function MultiplayerLobby() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
                           <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>{room.host}</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedReportUser(room.host);
+                              setShowReportModal(true);
+                            }}
+                            style={{
+                              background: "none", border: "none", color: "#ef4444",
+                              cursor: "pointer", fontSize: 11, padding: "0 4px",
+                              marginLeft: 2, display: "inline-flex", alignItems: "center",
+                            }}
+                            title="Báo cáo người dùng"
+                          >
+                            🚩
+                          </button>
                           <DiffBadge fmp={room.diff} />
                           <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{room.grade}</span>
                         </div>
@@ -604,7 +791,6 @@ export default function MultiplayerLobby() {
                     </div>
                   ))}
                   <button onClick={() => {
-                    // Create simulated room and go directly into matchmaking
                     setTab("browse");
                     const newRoomId = `r_${Date.now()}`;
                     const newRoom = {
@@ -619,7 +805,6 @@ export default function MultiplayerLobby() {
                       elo: `${playerElo - 50}+`
                     };
                     setRooms(prev => [newRoom, ...prev]);
-                    // Auto match with random bot after 1s
                     setTimeout(() => handleJoinRoom(newRoom), 100);
                   }} style={{
                     width: "100%", padding: "14px 0", marginTop: 8, borderRadius: 10,
@@ -696,7 +881,7 @@ export default function MultiplayerLobby() {
               )}
             </div>
 
-            {/* RIGHT SIDEBAR: Stats info */}
+            {/* RIGHT SIDEBAR */}
             <div style={{
               width: 280, flexShrink: 0,
               background: "rgba(2,6,23,0.95)",
@@ -704,21 +889,20 @@ export default function MultiplayerLobby() {
               display: "flex", flexDirection: "column", padding: 18, gap: 16,
               overflowY: "auto",
             }}>
-              {/* How to play */}
               <div style={{
                 background: "rgba(167,139,250,0.06)",
                 border: "1px solid rgba(167,139,250,0.15)",
                 borderRadius: 10, padding: 14,
               }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 10 }}>
-                  ⚔️ Cách chơi Multiplayer
+                  ⚔️ Luật chơi Speed-First
                 </div>
                 {[
-                  "2 người chơi cùng giải một bộ câu hỏi",
-                  "Mỗi câu trả lời đúng gây sát thương cho đối thủ",
-                  "Khóa câu hỏi khi cả hai đã nộp bài",
-                  "Càng trả lời đúng liên tiếp, sát thương càng tăng",
-                  "Nhận ELO khi Thắng, bị trừ ELO khi Thua",
+                  "2 người chơi cùng giải một bộ câu hỏi từ thẻ chủ đề toán học.",
+                  "Nếu cả hai cùng đúng: Người trả lời NHANH hơn gây sát thương 1 HP.",
+                  "Nếu chỉ một người đúng: Người trả lời sai bị trừ 1 HP.",
+                  "Nếu cả hai cùng sai: Không ai bị trừ HP.",
+                  "Đấu 3 vòng chọn bài. Mỗi vòng có 5 HP. Ai hết 3 Tim lớn trước sẽ bị loại."
                 ].map((step, i) => (
                   <div key={i} style={{
                     display: "flex", gap: 8, marginBottom: 8, fontSize: 11,
@@ -730,7 +914,6 @@ export default function MultiplayerLobby() {
                 ))}
               </div>
 
-              {/* Season info */}
               <div style={{
                 background: "rgba(251,191,36,0.06)",
                 border: "1px solid rgba(251,191,36,0.15)",
@@ -753,22 +936,9 @@ export default function MultiplayerLobby() {
                   </div>
                 </div>
               </div>
-
-              {/* Online players */}
-              <div style={{
-                background: "rgba(34,211,238,0.04)",
-                border: "1px solid rgba(34,211,238,0.1)",
-                borderRadius: 10, padding: 14,
-              }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#22d3ee", marginBottom: 8 }}>
-                  👥 Đang online
-                </div>
-                <div style={{ fontSize: 28, fontWeight: 800, color: "white" }}>{onlineCount}</div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>người chơi đang ở phòng chờ</div>
-              </div>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* ─── MATCHMAKER ACTIVE SEARCH SCREEN ─── */}
@@ -776,8 +946,7 @@ export default function MultiplayerLobby() {
         <div style={{
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           background: "radial-gradient(circle, #0f0728 0%, #030010 100%)",
-        }}>
-          {/* Radar animation */}
+        }} className="slide-active">
           <div style={{ position: "relative", width: 160, height: 160, marginBottom: 30 }}>
             <div style={{
               position: "absolute", inset: 0, borderRadius: "50%",
@@ -815,13 +984,6 @@ export default function MultiplayerLobby() {
           >
             Hủy tìm trận
           </button>
-
-          <style>{`
-            @keyframes pingRadar {
-              0% { transform: scale(0.6); opacity: 1; }
-              100% { transform: scale(1.4); opacity: 0; }
-            }
-          `}</style>
         </div>
       )}
 
@@ -831,7 +993,7 @@ export default function MultiplayerLobby() {
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           background: "linear-gradient(135deg, #090514 0%, #020106 100%)",
           padding: 24,
-        }}>
+        }} className="slide-active">
           <div style={{ display: "flex", alignItems: "center", gap: 60, marginBottom: 40, flexWrap: "wrap", justifyContent: "center" }}>
             {/* Player */}
             <div style={{
@@ -870,13 +1032,107 @@ export default function MultiplayerLobby() {
           <h2 style={{ fontSize: 24, fontWeight: 900, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 2, animation: "flash 1.5s infinite" }}>
             Trận đấu chuẩn bị bắt đầu...
           </h2>
+        </div>
+      )}
 
-          <style>{`
-            @keyframes slideInLeft { from { transform: translateX(-100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-            @keyframes slideInRight { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-            @keyframes bounceIn { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-            @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-          `}</style>
+      {/* ─── CARD CHOOSING PHASE SCREEN ─── */}
+      {gameState === "card_choosing" && botOpponent && (
+        <div style={{
+          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+          background: "radial-gradient(circle, #0e0728 0%, #030010 100%)",
+          padding: 24,
+        }} className="slide-active">
+          {/* Header section with Big HP (Tim lớn) */}
+          <div style={{
+            display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 600,
+            marginBottom: 32, alignItems: "center", background: "rgba(255,255,255,0.03)",
+            border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "12px 20px"
+          }}>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#a78bfa" }}>{playerUsername}</div>
+              <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <span key={i} style={{ fontSize: 20, filter: i < playerBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
+                ))}
+              </div>
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>CHỌN CHỦ ĐỀ</div>
+            <div style={{ textAlign: "right" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#f87171" }}>{botOpponent.username}</div>
+              <div style={{ display: "flex", gap: 4, marginTop: 4, justifyContent: "flex-end" }}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <span key={i} style={{ fontSize: 20, filter: i < botBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ textAlign: "center", marginBottom: 32 }}>
+            <h2 style={{ fontSize: 22, fontWeight: 800, color: "white", marginBottom: 8 }}>
+              {chooser === "player" ? "Đến lượt bạn chọn chủ đề!" : `${botOpponent.username} đang chọn chủ đề...`}
+            </h2>
+            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+              {chooser === "player"
+                ? "Lựa chọn 1 lá bài toán học từ Forum để bắt đầu đấu tay đôi"
+                : "Chờ đối thủ lựa chọn chủ đề toán học"
+              }
+            </p>
+          </div>
+
+          {/* Cards Grid */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 20, width: "100%", maxWidth: 880, marginBottom: 40,
+          }}>
+            {forumCards.map(card => {
+              const isSelected = selectedCard && selectedCard.id === card.id;
+              return (
+                <div
+                  key={card.id}
+                  onClick={() => {
+                    if (chooser !== "player" || selectedCard) return;
+                    handleSelectCard(card);
+                  }}
+                  style={{
+                    background: isSelected ? "rgba(167, 139, 250, 0.15)" : "rgba(15, 23, 42, 0.8)",
+                    border: isSelected ? "2px solid #a78bfa" : "1px solid rgba(255, 255, 255, 0.1)",
+                    borderRadius: 16, padding: "28px 20px", textAlign: "center",
+                    cursor: chooser === "player" && !selectedCard ? "pointer" : "default",
+                    boxShadow: isSelected ? "0 0 32px rgba(167, 139, 250, 0.3)" : "0 8px 16px rgba(0,0,0,0.3)",
+                    transition: "all 0.25s",
+                    transform: isSelected ? "scale(1.05)" : "none",
+                  }}
+                  onMouseEnter={e => {
+                    if (chooser === "player" && !selectedCard) {
+                      e.currentTarget.style.borderColor = "rgba(167, 139, 250, 0.6)";
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (chooser === "player" && !selectedCard) {
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
+                      e.currentTarget.style.transform = "none";
+                    }
+                  }}
+                >
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>{card.icon}</div>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, color: "white", marginBottom: 8 }}>{card.title}</h3>
+                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.4 }}>{card.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {selectedCard && (
+            <div style={{
+              padding: "12px 24px", background: "rgba(34, 197, 94, 0.15)",
+              border: "1px solid rgba(34, 197, 94, 0.4)", borderRadius: 10,
+              color: "#4ade80", fontSize: 14, fontWeight: 700,
+              animation: "pulse 1.5s infinite"
+            }}>
+              Chủ đề "{selectedCard.title}" đã được chọn! Chuẩn bị đấu...
+            </div>
+          )}
         </div>
       )}
 
@@ -885,10 +1141,10 @@ export default function MultiplayerLobby() {
         <div style={{
           flex: 1, display: "flex", flexDirection: "column",
           background: "linear-gradient(135deg, #02020a, #0b0718)",
-        }}>
+        }} className="slide-active">
           {/* TOP BAR / HEAD-TO-HEAD HP */}
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 120px 1fr",
+            display: "grid", gridTemplateColumns: "1fr 160px 1fr",
             padding: "16px 28px", borderBottom: "1px solid rgba(255,255,255,0.06)",
             background: "rgba(2,2,8,0.9)", backdropFilter: "blur(12px)",
           }}>
@@ -896,7 +1152,14 @@ export default function MultiplayerLobby() {
             <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div style={{ fontSize: 28 }}>🎓</div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "white" }}>{playerUsername}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: "white" }}>{playerUsername}</span>
+                  <div style={{ display: "flex", gap: 1.5 }}>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <span key={i} style={{ fontSize: 11, filter: i < playerBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
+                    ))}
+                  </div>
+                </div>
                 <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
                   {Array.from({ length: 5 }).map((_, i) => (
                     <span key={i} style={{
@@ -915,8 +1178,21 @@ export default function MultiplayerLobby() {
               </div>
             </div>
 
-            {/* Timer (Center) */}
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            {/* Timer & Sound (Center) */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+              <button onClick={() => {
+                if (isMuted) {
+                  setIsMuted(false);
+                } else {
+                  setIsMuted(true);
+                  stopBgm();
+                }
+              }} style={{
+                background: "none", border: "none", color: "rgba(255,255,255,0.6)",
+                cursor: "pointer", fontSize: 16
+              }}>
+                {isMuted ? "🔇" : "🔊"}
+              </button>
               <div style={{
                 width: 48, height: 48, borderRadius: "50%",
                 border: `3px solid ${timeLeft < 10 ? "#ef4444" : "#a78bfa"}`,
@@ -937,7 +1213,14 @@ export default function MultiplayerLobby() {
                 </span>
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "white" }}>{botOpponent.username}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", gap: 1.5 }}>
+                    {Array.from({ length: 3 }).map((_, i) => (
+                      <span key={i} style={{ fontSize: 11, filter: i < botBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
+                    ))}
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: 800, color: "white" }}>{botOpponent.username}</span>
+                </div>
                 <div style={{ display: "flex", gap: 3, marginTop: 4, justifyContent: "flex-end" }}>
                   {Array.from({ length: 5 }).map((_, i) => (
                     <span key={i} style={{
@@ -960,7 +1243,7 @@ export default function MultiplayerLobby() {
           }}>
             {feedMessages.map((msg, i) => (
               <span key={i} style={{
-                color: msg.includes("🎯") ? "#4ade80" : msg.includes("🔥") ? "#f87171" : "#cbd5e1",
+                color: msg.includes("⚡") || msg.includes("🎯") || msg.includes("🎉") ? "#4ade80" : msg.includes("🔥") || msg.includes("😢") ? "#f87171" : "#cbd5e1",
                 fontWeight: 600, animation: "fadeInUp 0.3s ease-out both"
               }}>{msg}</span>
             ))}
@@ -1045,8 +1328,8 @@ export default function MultiplayerLobby() {
           {/* LEAVE BUTTON */}
           <div style={{ display: "flex", justifyContent: "center", padding: "16px 0", background: "rgba(2,2,8,0.3)" }}>
             <button onClick={() => {
-              if (confirm("Bạn có chắc muốn bỏ chạy? Bạn sẽ bị trừ ELO.")) {
-                endMatch(0, 5);
+              if (confirm("Bạn có chắc muốn bỏ chạy? Bạn sẽ bị xử thua trận và trừ ELO.")) {
+                endMatch(0, 3);
               }
             }} style={{
               padding: "8px 24px", borderRadius: 8, fontSize: 12, fontWeight: 700,
@@ -1063,7 +1346,7 @@ export default function MultiplayerLobby() {
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
           background: "linear-gradient(135deg, #090514 0%, #020106 100%)",
           padding: 24,
-        }}>
+        }} className="slide-active">
           {/* Trophy / Broken Sword Icon */}
           <div style={{
             fontSize: 80, marginBottom: 20,
@@ -1112,17 +1395,17 @@ export default function MultiplayerLobby() {
             width: "100%", maxWidth: 360, marginBottom: 40,
           }}>
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>HP CỦA BẠN</div>
-              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: "#fbbf24" }}>{playerHP} / 5</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>TIM LỚN CỦA BẠN</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: "#fbbf24" }}>{playerBigHP} / 3</div>
             </div>
             <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>ĐỐI THỦ HP</div>
-              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: "#ef4444" }}>{botHP} / 5</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>ĐỐI THỦ TIM LỚN</div>
+              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: "#ef4444" }}>{botBigHP} / 3</div>
             </div>
           </div>
 
           {/* Actions */}
-          <div style={{ display: "flex", gap: 16 }}>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
             <button onClick={startMatching} style={{
               padding: "14px 36px", borderRadius: 10, fontSize: 14, fontWeight: 700,
               background: "linear-gradient(135deg, #a78bfa, #6d28d9)",
@@ -1138,9 +1421,53 @@ export default function MultiplayerLobby() {
             }}>
               Quay lại Lobby
             </button>
+            <button onClick={() => {
+              setSelectedReportUser(botOpponent.username);
+              setShowReportModal(true);
+            }} style={{
+              padding: "14px 32px", borderRadius: 10, fontSize: 14, fontWeight: 700,
+              background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
+              color: "#f87171", cursor: "pointer",
+            }}>
+              🚩 Báo cáo đối thủ
+            </button>
           </div>
         </div>
       )}
+
+      {/* Report User Modal */}
+      {showReportModal && (
+        <ReportUserModal
+          targetUsername={selectedReportUser}
+          onClose={() => setShowReportModal(false)}
+        />
+      )}
+
+      <style>{`
+        .slide-active {
+          animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes slideIn {
+          from { transform: translateY(12px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes pingRadar {
+          0% { transform: scale(0.6); opacity: 1; }
+          100% { transform: scale(1.4); opacity: 0; }
+        }
+        @keyframes slideInLeft { from { transform: translateX(-100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideInRight { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes bounceIn { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.05); opacity: 0.8; }
+        }
+        @keyframes fadeInUp {
+          from { transform: translateY(8px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+      `}</style>
     </div>
   );
 }

@@ -376,7 +376,7 @@ function QuestionEditor({ q, index, onChange, onDelete, onMoveUp, onMoveDown, is
 }
 
 // ── Preview Card ───────────────────────────────────────────────────────────
-function PreviewCard({ metadata, questions }) {
+function PreviewCard({ metadata, questions, customBgData, customBgmName }) {
   const totalTime = questions.reduce((s, q) => s + q.time_seconds, 0);
   const avgDiff = questions.length > 0 ? (totalTime / questions.length / 30 * 5).toFixed(1) : "—";
 
@@ -389,11 +389,11 @@ function PreviewCard({ metadata, questions }) {
       {/* Thumbnail */}
       <div style={{
         height: 140,
-        background: "linear-gradient(135deg, #0ea5e9, #6366f1)",
+        background: customBgData ? `url(${customBgData}) center/cover no-repeat` : "linear-gradient(135deg, #0ea5e9, #6366f1)",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 56, position: "relative",
       }}>
-        📐
+        {!customBgData && "📐"}
         <div style={{
           position: "absolute", inset: 0,
           background: "linear-gradient(to bottom, transparent 50%, rgba(5,10,20,0.8) 100%)",
@@ -413,7 +413,7 @@ function PreviewCard({ metadata, questions }) {
             ["📚", "Khối", metadata.grade || "—"],
             ["❓", "Số câu", questions.length],
             ["⏱", "Tổng thời gian", `${totalTime}s`],
-            ["🎵", "BGM", BGM_OPTIONS.find(b => b.id === metadata.bgm)?.label.replace(/🎵 |📤 /, "") || "—"],
+            ["🎵", "BGM", metadata.bgm === "custom" ? (customBgmName || "Nhạc tự chọn") : (BGM_OPTIONS.find(b => b.id === metadata.bgm)?.label.replace(/🎵 |📤 /, "") || "—")],
           ].map(([icon, label, val]) => (
             <div key={label} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 8, padding: "8px 10px" }}>
               <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{icon} {label}</div>
@@ -475,6 +475,47 @@ export default function MathMapCreator() {
   const [questions, setQuestions] = useState([newQuestion(1)]);
   const [customTag, setCustomTag] = useState("");
   const [validationErrors, setValidationErrors] = useState([]);
+
+  // Custom uploads
+  const [customBgmData, setCustomBgmData] = useState("");
+  const [customBgmName, setCustomBgmName] = useState("");
+  const [audioPreviewUrl, setAudioPreviewUrl] = useState(null);
+  const [customBgData, setCustomBgData] = useState("");
+  const [customBgName, setCustomBgName] = useState("");
+
+  const handleBgmUpload = (file) => {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Nhạc nền phải nhỏ hơn 10MB");
+      return;
+    }
+    setCustomBgmName(file.name);
+    const audioUrl = URL.createObjectURL(file);
+    setAudioPreviewUrl(audioUrl);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCustomBgmData(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleBgUpload = (file) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert("Ảnh nền phải nhỏ hơn 5MB");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      alert("Chỉ chấp nhận file ảnh");
+      return;
+    }
+    setCustomBgName(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setCustomBgData(e.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
 
   const updateMeta = (field, value) => setMetadata(prev => ({ ...prev, [field]: value }));
   const toggleTag = (tag) => {
@@ -553,6 +594,8 @@ export default function MathMapCreator() {
       questions,
       thumbnail_color: "linear-gradient(135deg, #a78bfa, #6d28d9)",
       icon: "📐",
+      bgm_url: metadata.bgm === "custom" ? customBgmData : metadata.bgm,
+      thumbnail_url: customBgData || "",
     };
     const id = submitMap(mapData);
     setSubmittedId(id);
@@ -747,6 +790,95 @@ export default function MathMapCreator() {
                         </div>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Custom BGM Upload */}
+                {metadata.bgm === "custom" && (
+                  <div style={{
+                    marginTop: 10,
+                    padding: 16,
+                    borderRadius: 10,
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px dashed rgba(167, 139, 250, 0.4)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                  }}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleBgmUpload(file);
+                    }}
+                    onClick={() => document.getElementById("bgm-file-input").click()}
+                  >
+                    <input
+                      id="bgm-file-input"
+                      type="file"
+                      accept="audio/*"
+                      onChange={e => handleBgmUpload(e.target.files?.[0])}
+                      style={{ display: "none" }}
+                    />
+                    <div style={{ fontSize: 24 }}>🎵</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#c4b5fd", textAlign: "center" }}>
+                      {customBgmName ? `Đã chọn: ${customBgmName}` : "Kéo thả file MP3 hoặc Nhấp để chọn"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                      Hỗ trợ MP3, WAV, OGG • Tối đa 10MB
+                    </div>
+                    {audioPreviewUrl && (
+                      <div onClick={e => e.stopPropagation()} style={{ width: "100%", marginTop: 8 }}>
+                        <audio src={audioPreviewUrl} controls style={{ width: "100%", height: 32 }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Custom Background Image Upload */}
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 8, display: "block" }}>
+                    🖼️ Hình nền MathMap (Background Image)
+                  </label>
+                  <div style={{
+                    padding: 16,
+                    borderRadius: 10,
+                    background: "rgba(255, 255, 255, 0.04)",
+                    border: "1px dashed rgba(34, 211, 238, 0.4)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 8,
+                    cursor: "pointer",
+                  }}
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => {
+                      e.preventDefault();
+                      const file = e.dataTransfer.files?.[0];
+                      if (file) handleBgUpload(file);
+                    }}
+                    onClick={() => document.getElementById("bg-file-input").click()}
+                  >
+                    <input
+                      id="bg-file-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={e => handleBgUpload(e.target.files?.[0])}
+                      style={{ display: "none" }}
+                    />
+                    {customBgData ? (
+                      <img src={customBgData} style={{ width: "100%", maxHeight: 120, objectFit: "cover", borderRadius: 8 }} />
+                    ) : (
+                      <div style={{ fontSize: 24 }}>🖼️</div>
+                    )}
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#22d3ee", textAlign: "center" }}>
+                      {customBgName ? `Đã chọn: ${customBgName}` : "Kéo thả file ảnh hoặc Nhấp để chọn"}
+                    </div>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
+                      Hỗ trợ JPG, PNG, WEBP • Tối đa 5MB
+                    </div>
                   </div>
                 </div>
 
@@ -968,7 +1100,7 @@ export default function MathMapCreator() {
             <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)", marginBottom: 10, letterSpacing: 1, textTransform: "uppercase" }}>
               Preview
             </div>
-            <PreviewCard metadata={metadata} questions={questions} />
+            <PreviewCard metadata={metadata} questions={questions} customBgData={customBgData} customBgmName={customBgmName} />
 
             {/* Stats */}
             <div style={{
