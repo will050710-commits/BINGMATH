@@ -46,11 +46,12 @@ body {
    MRM / BMF GLOBAL ANIMATIONS
 ═══════════════════════════════════════════════════════════ */
 
-/* Floating shapes on homepage */
+/* Floating shapes on homepage - enhanced teal/purple motion */
 @keyframes floatShape {
-  0%   { transform: translateY(0px) rotate(0deg); }
-  50%  { transform: translateY(-24px) rotate(8deg); }
-  100% { transform: translateY(4px) rotate(-4deg); }
+  0%   { transform: translateY(0px) rotate(0deg) scale(1); }
+  30%  { transform: translateY(-18px) rotate(5deg) scale(1.03); }
+  60%  { transform: translateY(-28px) rotate(-3deg) scale(0.98); }
+  100% { transform: translateY(6px) rotate(7deg) scale(1.01); }
 }
 
 /* Owl mascot floating */

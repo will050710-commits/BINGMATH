@@ -47,29 +47,48 @@ function MathParticles() {
 // ── Geometric background shapes ────────────────────────────────────────────
 function BackgroundShapes() {
   const shapes = [
-    { size: 160, left: "5%",  top: "12%", delay: "0s",   dur: "20s", color: "#06b6d4" },
-    { size: 100, left: "82%", top: "8%",  delay: "4s",   dur: "25s", color: "#818cf8" },
-    { size: 80,  left: "60%", top: "65%", delay: "2s",   dur: "17s", color: "#38bdf8" },
-    { size: 120, left: "15%", top: "72%", delay: "7s",   dur: "22s", color: "#a78bfa" },
-    { size: 60,  left: "90%", top: "50%", delay: "1s",   dur: "14s", color: "#67e8f9" },
-    { size: 90,  left: "45%", top: "20%", delay: "9s",   dur: "28s", color: "#c4b5fd" },
+    { size: 180, left: "3%",  top: "8%",  delay: "0s",   dur: "22s", color: "#06b6d4", type: 0 },
+    { size: 110, left: "80%", top: "6%",  delay: "3s",   dur: "26s", color: "#818cf8", type: 1 },
+    { size: 90,  left: "58%", top: "62%", delay: "1.5s", dur: "18s", color: "#38bdf8", type: 2 },
+    { size: 130, left: "12%", top: "70%", delay: "7s",   dur: "24s", color: "#a78bfa", type: 3 },
+    { size: 70,  left: "88%", top: "48%", delay: "0.5s", dur: "15s", color: "#67e8f9", type: 4 },
+    { size: 100, left: "42%", top: "18%", delay: "9s",   dur: "30s", color: "#c4b5fd", type: 0 },
+    { size: 60,  left: "72%", top: "82%", delay: "4s",   dur: "20s", color: "#22d3ee", type: 1 },
+    { size: 140, left: "28%", top: "45%", delay: "6s",   dur: "27s", color: "#7c3aed", type: 2 },
+    { size: 50,  left: "50%", top: "88%", delay: "2s",   dur: "16s", color: "#0891b2", type: 3 },
+    { size: 85,  left: "92%", top: "25%", delay: "11s",  dur: "21s", color: "#8b5cf6", type: 4 },
+    { size: 75,  left: "20%", top: "30%", delay: "5s",   dur: "19s", color: "#4f46e5", type: 0 },
+    { size: 55,  left: "65%", top: "35%", delay: "8s",   dur: "23s", color: "#0e7490", type: 1 },
   ];
+
+  const renderShape = (s, i) => {
+    const sharedProps = { stroke: s.color, strokeWidth: "1.5", fill: s.color + "18" };
+    switch (s.type % 5) {
+      case 0: return <polygon points="50,4 96,75 4,75" {...sharedProps} />;
+      case 1: return <rect x="12" y="12" width="76" height="76" rx="6" {...sharedProps} />;
+      case 2: return <polygon points="50,4 96,50 50,96 4,50" {...sharedProps} />;
+      case 3: return <circle cx="50" cy="50" r="42" {...sharedProps} />;
+      case 4: return <polygon points="50,4 61,35 95,35 68,57 79,91 50,70 21,91 32,57 5,35 39,35" {...sharedProps} />;
+      default: return null;
+    }
+  };
 
   return (
     <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {/* Deep background gradient pulse */}
+      <div style={{
+        position: "absolute", inset: 0,
+        background: "radial-gradient(ellipse 80% 60% at 20% 40%, rgba(6,182,212,0.06) 0%, transparent 60%), radial-gradient(ellipse 60% 70% at 80% 70%, rgba(124,58,237,0.07) 0%, transparent 60%)",
+      }} />
       {shapes.map((s, i) => (
         <svg key={i} viewBox="0 0 100 100" style={{
           position: "absolute", left: s.left, top: s.top,
-          width: s.size, height: s.size, opacity: 0.12,
-          filter: `drop-shadow(0 0 16px ${s.color}88)`,
+          width: s.size, height: s.size,
+          opacity: 0.1 + (i % 3) * 0.04,
+          filter: `drop-shadow(0 0 20px ${s.color}99) drop-shadow(0 0 6px ${s.color}55)`,
           animation: `floatShape ${s.dur} ${s.delay} ease-in-out infinite alternate`,
         }}>
-          {i % 3 === 0
-            ? <polygon points="50,5 95,90 5,90" stroke={s.color} strokeWidth="2" fill={s.color + "20"} />
-            : i % 3 === 1
-              ? <rect x="15" y="15" width="70" height="70" stroke={s.color} strokeWidth="2" fill={s.color + "20"} />
-              : <polygon points="50,5 95,50 50,95 5,50" stroke={s.color} strokeWidth="2" fill={s.color + "20"} />
-          }
+          {renderShape(s, i)}
         </svg>
       ))}
     </div>
@@ -253,7 +272,7 @@ function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, inde
         fontSize: 13, fontWeight: 700,
         transition: "all 0.3s",
       }}>
-        {hovered ? (href ? "→ Vào ngay!" : "→ Báo cáo!") : "Chọn →"}
+        {hovered ? "→ Vào ngay!" : "Chọn →"}
       </div>
     </div>
   );
@@ -286,12 +305,12 @@ export default function MRMHomePage() {
 
   const modes = [
     {
-      icon: "🚩",
-      label: "Báo cáo",
-      labelEn: "Report Player",
-      desc: "Báo cáo hành vi vi phạm hoặc gian lận trong đấu hạng",
-      onClick: () => setShowReportModal(true),
-      color: "#ef4444",
+      icon: "🎯",
+      label: "Singleplayer",
+      labelEn: "Solo Practice",
+      desc: "Luyện tập một mình với MathMap đa dạng — Theo dõi tiến độ cá nhân",
+      href: "/mrm/singleplayer",
+      color: "#22d3ee",
       delay: "0.05s",
     },
     {
@@ -350,16 +369,19 @@ export default function MRMHomePage() {
         </Link>
 
         <nav style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Link href="/mrm/singleplayer" style={{
-            color: "rgba(255,255,255,0.7)", textDecoration: "none",
-            fontSize: 14, fontWeight: 500, padding: "8px 14px", borderRadius: 8,
-            transition: "all 0.2s",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.color = "white"; e.currentTarget.style.background = "rgba(34,211,238,0.1)"; }}
+          <button
+            onClick={() => setShowReportModal(true)}
+            style={{
+              color: "rgba(255,255,255,0.7)", background: "transparent",
+              border: "none", textDecoration: "none",
+              fontSize: 14, fontWeight: 500, padding: "8px 14px", borderRadius: 8,
+              transition: "all 0.2s", cursor: "pointer",
+            }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.background = "transparent"; }}
           >
-            🎯 Singleplayer
-          </Link>
+            🚩 Báo cáo
+          </button>
           <Link href="/mrm/creator" style={{
             color: "rgba(255,255,255,0.7)", textDecoration: "none",
             fontSize: 14, fontWeight: 500, padding: "8px 14px", borderRadius: 8,

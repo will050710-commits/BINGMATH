@@ -151,17 +151,29 @@ export default function CacBaiLamPage() {
       {/* Floating shapes */}
       <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
         {SHAPES.map((s, i) => (
-          <div key={i} style={{ position: "absolute", left: s.left, top: s.top, width: s.size, height: s.size, opacity: 0.5, filter: `drop-shadow(0 0 12px ${s.color}88)`, animation: `floatShape ${s.dur} ${s.delay} ease-in-out infinite alternate` }}>
+          <div key={i} style={{ position: "absolute", left: s.left, top: s.top, width: s.size, height: s.size, opacity: 0.18 + (i % 2) * 0.06, filter: `drop-shadow(0 0 18px ${s.color}bb) drop-shadow(0 0 6px ${s.color}66)`, animation: `floatShape ${s.dur} ${s.delay} ease-in-out infinite alternate` }}>
             <ShapesSVG shape={s.shape} color={s.color} />
           </div>
         ))}
       </div>
 
       <div style={{ width: "1200px", maxWidth: "95%", color: "white", paddingTop: 60, paddingBottom: 80, position: "relative", zIndex: 1 }}>
-        <Link href="/Trangchu" style={{ textDecoration: "none", color: "white", background: "rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.18)", boxShadow: "0 4px 12px rgba(0,0,0,0.2)", padding: "12px 16px", borderRadius: 8, fontSize: 15 }}>
-          ← {("Quay lại")}
+        <Link href="/" style={{ textDecoration: "none" }}>
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: 8,
+            background: "rgba(255,255,255,0.06)",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 8, padding: "7px 14px", marginBottom: 24,
+            fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)",
+            cursor: "pointer", transition: "all 0.2s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = "white"; e.currentTarget.style.background = "rgba(56,189,248,0.1)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.3)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+          >
+            ← Trang chủ
+          </div>
         </Link>
-        <h1 style={{ fontSize: 32, fontWeight: "bold", color: "white", marginBottom: 8, letterSpacing: 1, paddingTop: 20 }}>
+        <h1 style={{ fontSize: 32, fontWeight: "bold", color: "white", marginBottom: 8, letterSpacing: 1, paddingTop: 0 }}>
           Grade 10
         </h1>
         <p style={{ color: "#93c5fd", fontSize: 18, marginBottom: 48 }}>

@@ -6,6 +6,7 @@ import { createSession, chat } from "./duoServer";
 /**
  * DuoMCBSidebar
  * Drop this into ANY page/component to get a sliding chatbot from the right.
+ * Toggle button is a floating icon that opens the panel on click.
  *
  * Usage:
  *   import DuoMCBSidebar from "@/components/DuoMCB/DuoMCBSidebar";
@@ -47,10 +48,14 @@ export default function DuoMCBSidebar() {
 
   return (
     <>
-      {/* Floating toggle button */}
-      <button className={`${styles.fab} ${isOpen ? styles.fabHide : ""}`} onClick={() => setIsOpen(true)} title="Open DuoMCB">
-        <span className={styles.fabIcon}>🎓</span>
-        <span className={styles.fabLabel}>DuoMCB</span>
+      {/* Floating toggle button — icon only, round */}
+      <button
+        className={`${styles.fab} ${isOpen ? styles.fabHide : ""}`}
+        onClick={() => setIsOpen(true)}
+        title="Mở DuoMCB AI"
+        aria-label="Mở DuoMCB AI Chatbot"
+      >
+        🎓
       </button>
 
       {/* Backdrop */}

@@ -552,9 +552,13 @@ export default function TrangChuForm() {
     <div style={{ width: "100%", minHeight: "100vh", background: "#050512", position: "relative", overflow: "hidden", color: "white" }}>
       {showEditModal && <EditProfileModal onClose={() => setShowEditModal(false)} />}
 
-      {/* ═══════ FLOATING MATH SYMBOLS BACKGROUND ═══════ */}
+      {/* ═══════ GEOMETRIC FLOATING SHAPES BACKGROUND ═══════ */}
       <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
-        <div style={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 30%, rgba(99,102,241,0.08) 0%, rgba(5,5,18,0) 70%)" }} />
+        {/* Ambient glow layers */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse 70% 50% at 15% 35%, rgba(6,182,212,0.06) 0%, transparent 65%), radial-gradient(ellipse 60% 60% at 85% 70%, rgba(124,58,237,0.07) 0%, transparent 65%)",
+        }} />
         {mathSymbols.map((s) => (
           <div
             key={s.id}
@@ -564,8 +568,12 @@ export default function TrangChuForm() {
               left: s.left,
               bottom: "-100px",
               fontSize: s.size,
-              color: "rgba(255, 255, 255, 0.12)",
-              textShadow: "0 0 10px rgba(99,102,241,0.2)",
+              color: s.id % 3 === 0 ? "rgba(6,182,212,0.18)" : s.id % 3 === 1 ? "rgba(124,58,237,0.14)" : "rgba(56,189,248,0.12)",
+              textShadow: s.id % 3 === 0
+                ? "0 0 18px rgba(6,182,212,0.5), 0 0 6px rgba(6,182,212,0.3)"
+                : s.id % 3 === 1
+                ? "0 0 18px rgba(124,58,237,0.5), 0 0 6px rgba(124,58,237,0.3)"
+                : "0 0 14px rgba(56,189,248,0.4)",
               animationDelay: s.delay,
               animationDuration: s.dur,
               fontFamily: "'Courier New', Courier, monospace",
@@ -574,6 +582,32 @@ export default function TrangChuForm() {
           >
             {s.char}
           </div>
+        ))}
+        {/* SVG Geometric shapes - teal/purple palette */}
+        {[
+          { w: 160, l: "4%",  t: "10%",  c: "#06b6d4", d: "0s",   dur: "22s", pts: "50,4 96,75 4,75" },
+          { w: 100, l: "82%", t: "5%",   c: "#8b5cf6", d: "4s",   dur: "26s", rect: true },
+          { w: 80,  l: "60%", t: "63%",  c: "#38bdf8", d: "2s",   dur: "18s", diamond: true },
+          { w: 120, l: "14%", t: "73%",  c: "#a78bfa", d: "7s",   dur: "24s", pts: "50,4 96,75 4,75" },
+          { w: 65,  l: "90%", t: "50%",  c: "#22d3ee", d: "1s",   dur: "15s", rect: true },
+          { w: 95,  l: "44%", t: "19%",  c: "#c4b5fd", d: "9s",   dur: "30s", diamond: true },
+          { w: 55,  l: "73%", t: "83%",  c: "#0891b2", d: "3.5s", dur: "20s", pts: "50,4 96,75 4,75" },
+          { w: 135, l: "27%", t: "44%",  c: "#7c3aed", d: "6s",   dur: "27s", diamond: true },
+        ].map((s, i) => (
+          <svg key={i} viewBox="0 0 100 100" style={{
+            position: "absolute", left: s.l, top: s.t,
+            width: s.w, height: s.w,
+            opacity: 0.09 + (i % 3) * 0.03,
+            filter: `drop-shadow(0 0 18px ${s.c}99) drop-shadow(0 0 5px ${s.c}55)`,
+            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
+          }}>
+            {s.rect
+              ? <rect x="12" y="12" width="76" height="76" rx="6" stroke={s.c} strokeWidth="1.5" fill={s.c + "15"} />
+              : s.diamond
+              ? <polygon points="50,4 96,50 50,96 4,50" stroke={s.c} strokeWidth="1.5" fill={s.c + "15"} />
+              : <polygon points={s.pts} stroke={s.c} strokeWidth="1.5" fill={s.c + "15"} />
+            }
+          </svg>
         ))}
       </div>
 
