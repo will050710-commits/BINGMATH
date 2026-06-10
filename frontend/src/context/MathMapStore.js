@@ -454,7 +454,7 @@ export function MathMapStoreProvider({ children }) {
     // Constants
     SUPER_ADMIN_EMAIL,
     SUPER_ADMIN_PASSWORD,
-    ADMIN_PASSWORD,
+    DEFAULT_ADMIN_PASSWORD,
   };
 
   return (
