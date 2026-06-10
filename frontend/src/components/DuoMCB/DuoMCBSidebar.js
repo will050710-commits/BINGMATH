@@ -1,12 +1,15 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import styles from "./DuoMCBSidebar.module.css";
 import { createSession, chat } from "./duoServer";
 
 /**
- * DuoMCBSidebar — composable AI chat panel toggled from bottom-right FAB.
+ * DuoMCBSidebar — composable AI chat panel toggled from bottom-right sticky FAB.
+ * Rendered via portal on document.body so position:fixed works while scrolling.
  */
 export default function DuoMCBSidebar() {
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -15,6 +18,7 @@ export default function DuoMCBSidebar() {
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
+  useEffect(() => { setMounted(true); }, []);
   useEffect(() => { initSession(); }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
   useEffect(() => {
@@ -44,16 +48,13 @@ export default function DuoMCBSidebar() {
     } finally { setLoading(false); }
   }
 
-  function toggleSidebar() {
-    setIsOpen((prev) => !prev);
-  }
+  if (!mounted) return null;
 
-  return (
+  return createPortal(
     <>
-      {/* Bottom-right toggle — always visible */}
       <button
         className={`${styles.fab} ${isOpen ? styles.fabActive : ""}`}
-        onClick={toggleSidebar}
+        onClick={() => setIsOpen((prev) => !prev)}
         title={isOpen ? "Đóng DuoMCB AI" : "Mở DuoMCB AI"}
         aria-label={isOpen ? "Đóng DuoMCB AI Chatbot" : "Mở DuoMCB AI Chatbot"}
         aria-expanded={isOpen}
@@ -61,16 +62,11 @@ export default function DuoMCBSidebar() {
         {isOpen ? "✕" : "🎓"}
       </button>
 
-      {/* Only mount panel when open — prevents white strip leak */}
       {isOpen && (
         <>
           <div className={styles.backdrop} onClick={() => setIsOpen(false)} aria-hidden="true" />
 
-          <aside
-            className={`${styles.panel} ${styles.panelOpen}`}
-            role="dialog"
-            aria-label="DuoMCB AI Tutor"
-          >
+          <aside className={styles.panel} role="dialog" aria-label="DuoMCB AI Tutor">
             <div className={styles.panelHeader}>
               <div className={styles.panelTitle}>
                 <span>🎓</span>
@@ -129,6 +125,7 @@ export default function DuoMCBSidebar() {
           </aside>
         </>
       )}
-    </>
+    </>,
+    document.body
   );
 }

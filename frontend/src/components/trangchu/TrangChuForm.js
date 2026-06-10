@@ -5,7 +5,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import DuoMCBSidebar from "../DuoMCB/DuoMCBSidebar";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
 import { useMathMapStore } from "@/context/MathMapStore";
@@ -339,10 +338,7 @@ export default function TrangChuForm() {
 
   function handleSignOut() { logout(); setShowProfile(false); router.push("/"); }
 
-  const isUserAdmin = user && (
-    admins.map(e => e.toLowerCase()).includes(user.email.toLowerCase()) || 
-    user.email.toLowerCase() === "will050710@gmail.com"
-  );
+  const isUserAdmin = user && admins.map(e => e.toLowerCase()).includes(user.email.toLowerCase());
 
   const dropStyle = {
     position: "absolute", top: "calc(100% + 10px)", right: 0,
@@ -657,7 +653,7 @@ export default function TrangChuForm() {
           
           {/* Logo & Owl Mascot */}
           <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/images/duosteamicon.png" alt="DuoMath" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} onError={(e) => { e.currentTarget.src = "/images/duosteamicon.svg"; }} />
+            <img src="/images/duosteamicon-removebg-preview.png" alt="DuoMath" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
             <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 1.5, background: "linear-gradient(135deg, #38bdf8, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               DUOMATH
             </span>
@@ -740,7 +736,7 @@ export default function TrangChuForm() {
                 alignItems: "center",
                 justifyContent: "center",
               }}>
-                <img src="/images/duosteamicon.png" alt="DuoMath mascot" style={{ width: "240px", maxWidth: "90%", filter: "drop-shadow(0 8px 30px rgba(99,102,241,0.35))", animation: "floatMascot 6s ease-in-out infinite" }} onError={(e) => { e.currentTarget.src = "/images/duosteamicon.svg"; }} />
+                <img src="/images/duosteamicon-removebg-preview.png" alt="DuoMath mascot" style={{ width: "240px", maxWidth: "90%", filter: "drop-shadow(0 8px 30px rgba(99,102,241,0.35))", animation: "floatMascot 6s ease-in-out infinite" }} />
                 <div style={{ position: "absolute", bottom: "10%", background: "rgba(15,23,42,0.6)", padding: "8px 16px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", fontSize: 13, color: "#a78bfa", fontWeight: 700, letterSpacing: 0.5, boxShadow: "0 4px 15px rgba(0,0,0,0.3)" }}>
                   💡 Fun Math Learn
                 </div>
@@ -952,7 +948,7 @@ export default function TrangChuForm() {
               {/* Left branding */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 220 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <img src="/images/duosteamicon.png" alt="DuoMath" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} onError={(e) => { e.currentTarget.src = "/images/duosteamicon.svg"; }} />
+                  <img src="/images/duosteamicon-removebg-preview.png" alt="DuoMath" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />
                   <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 0.5 }}>DUOMATH</span>
                 </div>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontStyle: "italic" }}>
@@ -1109,7 +1105,6 @@ export default function TrangChuForm() {
           }
         }
       `}</style>
-      <DuoMCBSidebar />
     </div>
   );
 }

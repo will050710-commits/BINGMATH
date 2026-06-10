@@ -3,7 +3,12 @@ import { createContext, useContext, useState, useEffect, useCallback } from "rea
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const SUPER_ADMIN_EMAIL = "will050710@gmail.com";
-const ADMIN_PASSWORD = "duomath2026"; // Simple shared password for demo
+const SUPER_ADMIN_PASSWORD = "williammath2026";
+const DEFAULT_ADMIN_PASSWORD = "duomath2026";
+
+const ADMIN_PASSWORDS = {
+  [SUPER_ADMIN_EMAIL.toLowerCase()]: SUPER_ADMIN_PASSWORD,
+};
 
 const STORAGE_KEYS = {
   MATHMAPS: "duomath_mathmaps",
@@ -156,8 +161,37 @@ function loadFromStorage(key, fallback) {
 }
 
 function saveToStorage(key, value) {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* ignore */ }
+  if (typeof window === "undefined") return false;
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (err) {
+    console.error("[MathMapStore] localStorage save failed:", err);
+    return false;
+  }
+}
+
+/** Strip large base64 blobs before persisting — prevents QuotaExceededError */
+function sanitizeMapForStorage(map) {
+  const copy = { ...map };
+  if (typeof copy.bgm_url === "string" && copy.bgm_url.startsWith("data:")) {
+    copy.bgm_url = copy.customBgmName || "custom";
+    copy.hasCustomBgm = true;
+  }
+  if (typeof copy.thumbnail_url === "string" && copy.thumbnail_url.startsWith("data:")) {
+    copy.thumbnail_url = copy.customBgName || "";
+    copy.hasCustomBg = true;
+  }
+  if (Array.isArray(copy.questions)) {
+    copy.questions = copy.questions.map((q) => {
+      const nq = { ...q };
+      if (typeof nq.image_url === "string" && nq.image_url.startsWith("data:")) {
+        nq.image_url = "";
+      }
+      return nq;
+    });
+  }
+  return copy;
 }
 
 /** Merge seed maps with user-submitted maps from localStorage, de-duplicating by id */
@@ -216,7 +250,7 @@ export function MathMapStoreProvider({ children }) {
     setMapsRaw(prev => {
       const next = typeof updater === "function" ? updater(prev) : updater;
       // Only persist non-seed maps
-      const toStore = next.filter(m => !m.isSeed);
+      const toStore = next.filter(m => !m.isSeed).map(sanitizeMapForStorage);
       saveToStorage(STORAGE_KEYS.MATHMAPS, toStore);
       return next;
     });
@@ -239,14 +273,24 @@ export function MathMapStoreProvider({ children }) {
 
   // ── Auth ──────────────────────────────────────────────────────────────
   const login = useCallback((email, password) => {
-    if (password !== ADMIN_PASSWORD) return { ok: false, error: "Sai mật khẩu" };
     const emailLower = email.trim().toLowerCase();
     const adminList = loadFromStorage(STORAGE_KEYS.ADMINS, [SUPER_ADMIN_EMAIL]);
     if (!adminList.map(e => e.toLowerCase()).includes(emailLower)) {
       return { ok: false, error: "Email này không có quyền admin" };
     }
+    const expected = ADMIN_PASSWORDS[emailLower] ?? DEFAULT_ADMIN_PASSWORD;
+    if (password !== expected) return { ok: false, error: "Sai mật khẩu" };
     setCurrentUser({ email: email.trim() });
     return { ok: true };
+  }, [setCurrentUser]);
+
+  const syncAdminSession = useCallback((email) => {
+    if (!email) return;
+    const emailLower = email.trim().toLowerCase();
+    const adminList = loadFromStorage(STORAGE_KEYS.ADMINS, [SUPER_ADMIN_EMAIL]);
+    if (adminList.map(e => e.toLowerCase()).includes(emailLower)) {
+      setCurrentUser({ email: email.trim() });
+    }
   }, [setCurrentUser]);
 
   const logout = useCallback(() => setCurrentUser(null), [setCurrentUser]);
@@ -291,8 +335,18 @@ export function MathMapStoreProvider({ children }) {
       updatedAt: new Date().toISOString(),
       isSeed: false,
     };
+
+    const stored = loadFromStorage(STORAGE_KEYS.MATHMAPS, []);
+    const nextStore = [...stored, sanitizeMapForStorage(newMap)];
+    if (!saveToStorage(STORAGE_KEYS.MATHMAPS, nextStore)) {
+      return {
+        ok: false,
+        error: "Không lưu được MathMap (bộ nhớ trình duyệt đầy). Hãy bỏ nhạc/ảnh nền tùy chỉnh hoặc giảm số câu hỏi.",
+      };
+    }
+
     setMaps(prev => [...prev, newMap]);
-    return id;
+    return { ok: true, id };
   }, [setMaps]);
 
   const approveMap = useCallback((id) => {
@@ -377,6 +431,7 @@ export function MathMapStoreProvider({ children }) {
     // Auth
     login,
     logout,
+    syncAdminSession,
     // Permissions
     isSuperAdmin,
     isAdmin,
@@ -398,6 +453,7 @@ export function MathMapStoreProvider({ children }) {
     getLeaderboardForMap,
     // Constants
     SUPER_ADMIN_EMAIL,
+    SUPER_ADMIN_PASSWORD,
     ADMIN_PASSWORD,
   };
 

@@ -1,6 +1,6 @@
-/* ── FAB toggle button (bottom-right) ── */
+/* ── FAB toggle button (bottom-right, sticky on scroll) ── */
 .fab {
-  position: fixed; bottom: 24px; right: 24px; z-index: 900;
+  position: fixed; bottom: 24px; right: 24px; z-index: 9999;
   display: flex; align-items: center; justify-content: center;
   background: linear-gradient(135deg, #06b6d4, #7c3aed);
   color: white; border: none;
@@ -22,7 +22,7 @@
 
 /* ── Backdrop ── */
 .backdrop {
-  position: fixed; inset: 0; z-index: 910;
+  position: fixed; inset: 0; z-index: 9998;
   background: rgba(2,6,23,0.65);
   backdrop-filter: blur(4px);
   animation: fadeIn 0.25s ease;
@@ -30,7 +30,7 @@
 
 /* ── Panel ── */
 .panel {
-  position: fixed; top: 0; right: 0; z-index: 920;
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 9999;
   width: min(380px, 100vw); height: 100vh; height: 100dvh;
   background: linear-gradient(180deg, #0a0f1e 0%, #0d1526 100%);
   border-left: 1px solid rgba(6,182,212,0.2);

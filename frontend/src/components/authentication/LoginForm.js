@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/authContext";
+import { useMathMapStore } from "@/context/MathMapStore";
 
 function getAuthErrorMessage(error, fallback) {
   const message = error?.message || "";
@@ -27,6 +28,7 @@ function getAuthErrorMessage(error, fallback) {
 
 export default function LoginForm() {
   const { login }  = useAuth();
+  const { isAdmin, syncAdminSession } = useMathMapStore();
   const router     = useRouter();
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
@@ -40,9 +42,18 @@ export default function LoginForm() {
     if (!email.trim() || !password) { setError("Please fill in all fields."); return; }
     setLoading(true);
     try {
-      const { ok, error: err } = await login({ email: email.trim().toLowerCase(), password });
-      if (ok) router.push("/");
-      else    setError(err || "Sai email hoặc mật khẩu. Vui lòng thử lại.");
+      const emailNorm = email.trim().toLowerCase();
+      const { ok, error: err } = await login({ email: emailNorm, password });
+      if (ok) {
+        if (isAdmin(emailNorm)) {
+          syncAdminSession(emailNorm);
+          router.push("/admin");
+        } else {
+          router.push("/");
+        }
+      } else {
+        setError(err || "Sai email hoặc mật khẩu. Vui lòng thử lại.");
+      }
     } catch (authErr) {
       setError(getAuthErrorMessage(authErr, "Đăng nhập thất bại. Vui lòng thử lại."));
     } finally {

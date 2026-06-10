@@ -854,15 +854,19 @@ function ReportsTab({ showNotif }) {
 
 // ── Main AdminPanel Component ──────────────────────────────────────────────
 export default function AdminPanel() {
+  const { user: firebaseUser } = useAuth();
   const {
     maps, admins, currentUser, hydrated,
-    login, logout,
+    login, logout, syncAdminSession,
     isSuperAdmin, isAdmin,
     grantAdmin, revokeAdmin,
     approveMap, rejectMap, forceRanked, deleteMap,
     getMapsByStatus,
     SUPER_ADMIN_EMAIL,
   } = useMathMapStore();
+
+  const effectiveAdminEmail = firebaseUser?.email || currentUser?.email || "";
+  const hasAdminAccess = effectiveAdminEmail && isAdmin(effectiveAdminEmail);
 
   const [tab, setTab] = useState("pending");
   const [loginEmail, setLoginEmail] = useState("");
@@ -906,13 +910,20 @@ export default function AdminPanel() {
     if (!result.ok) setLoginError(result.error);
   };
 
+  // Auto-grant admin session when logged in via Firebase
+  useEffect(() => {
+    if (firebaseUser?.email && isAdmin(firebaseUser.email)) {
+      syncAdminSession(firebaseUser.email);
+    }
+  }, [firebaseUser, isAdmin, syncAdminSession]);
+
   // Load backend stats
   useEffect(() => {
-    if (!currentUser || !isAdmin(currentUser.email)) return;
+    if (!hasAdminAccess) return;
     adminFetch("/api/admin/stats").then(({ ok, data }) => {
       if (ok) setAdminStats(data);
     });
-  }, [currentUser, isAdmin]);
+  }, [hasAdminAccess]);
 
   const pendingMaps   = getMapsByStatus("pending");
   const qualifiedMaps = getMapsByStatus("qualified");
@@ -937,7 +948,7 @@ export default function AdminPanel() {
   }
 
   // ─── Login gate ──────────────────────────────────────────────────────────
-  if (!currentUser || !isAdmin(currentUser.email)) {
+  if (!hasAdminAccess) {
     return (
       <div style={{
         minHeight: "100vh",
@@ -1038,7 +1049,7 @@ export default function AdminPanel() {
             background: "rgba(34,211,238,0.05)", border: "1px solid rgba(34,211,238,0.15)",
             borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.45)", lineHeight: 1.6,
           }}>
-            💡 Chỉ những email được cấp quyền admin mới có thể đăng nhập. Super Admin có thể cấp quyền cho email khác tại tab Quản lý Admin.
+            💡 Đăng nhập bằng tài khoản Firebase (nếu đã được cấp quyền admin) hoặc dùng form này. Super Admin: will050710@gmail.com
           </div>
 
           <div style={{ marginTop: 16, textAlign: "center" }}>
@@ -1051,7 +1062,7 @@ export default function AdminPanel() {
     );
   }
 
-  const amISuperAdmin = isSuperAdmin(currentUser.email);
+  const amISuperAdmin = isSuperAdmin(effectiveAdminEmail);
   const pendingReports = adminStats?.pending_reports ?? 0;
 
   // ─── Admin Dashboard ─────────────────────────────────────────────────────
@@ -1100,7 +1111,7 @@ export default function AdminPanel() {
         }}>
           <span style={{ fontSize: 16 }}>{amISuperAdmin ? "👑" : "🛡️"}</span>
           <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "white" }}>{currentUser.email}</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "white" }}>{effectiveAdminEmail}</div>
             <div style={{ fontSize: 10, color: amISuperAdmin ? "#fbbf24" : "#a78bfa" }}>
               {amISuperAdmin ? "Super Admin" : "Admin"}
             </div>

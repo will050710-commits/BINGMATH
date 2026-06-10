@@ -5,6 +5,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useMathMapStore } from "@/context/MathMapStore";
+import { useAuth } from "@/context/authContext";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const GRADES = ["Lớp 10", "Lớp 11", "Lớp 12"];
@@ -463,10 +464,12 @@ function PreviewCard({ metadata, questions, customBgData, customBgmName }) {
 // ── Main Creator Component ─────────────────────────────────────────────────
 export default function MathMapCreator() {
   const { submitMap } = useMathMapStore();
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [submittedId, setSubmittedId] = useState(null);
+  const [submitError, setSubmitError] = useState("");
 
   const [metadata, setMetadata] = useState({
     title: "", title_en: "", grade: "Lớp 11",
@@ -582,14 +585,14 @@ export default function MathMapCreator() {
   const handleSubmit = async () => {
     if (!validate()) { setStep(1); return; }
     setSubmitting(true);
-    await new Promise(r => setTimeout(r, 1000));
-    // Compute derived fields
+    setSubmitError("");
+    await new Promise(r => setTimeout(r, 600));
     const totalTime = questions.reduce((s, q) => s + q.time_seconds, 0);
     const avgTime = questions.length > 0 ? Math.round(totalTime / questions.length) : 30;
     const mapData = {
       ...metadata,
-      creator: "Bạn",
-      creatorEmail: "user@duomath.vn",
+      creator: user?.username || user?.email?.split("@")[0] || "Bạn",
+      creatorEmail: user?.email || "anonymous@duomath.vn",
       question_count: questions.length,
       time_avg: avgTime,
       difficulty_fmp: Math.min(9.9, Math.max(1, questions.length * 0.6 + avgTime / 30)),
@@ -597,11 +600,17 @@ export default function MathMapCreator() {
       thumbnail_color: "linear-gradient(135deg, #a78bfa, #6d28d9)",
       icon: "📐",
       bgm_url: metadata.bgm === "custom" ? customBgmData : metadata.bgm,
+      customBgmName: customBgmName || "",
       thumbnail_url: customBgData || "",
+      customBgName: customBgName || "",
     };
-    const id = submitMap(mapData);
-    setSubmittedId(id);
+    const result = submitMap(mapData);
     setSubmitting(false);
+    if (!result.ok) {
+      setSubmitError(result.error || "Không thể gửi MathMap. Vui lòng thử lại.");
+      return;
+    }
+    setSubmittedId(result.id);
     setSubmitted(true);
   };
 
@@ -1050,6 +1059,16 @@ export default function MathMapCreator() {
                     </div>
                   ))}
                 </div>
+
+                {submitError && (
+                  <div style={{
+                    marginBottom: 14, padding: "12px 14px",
+                    background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)",
+                    borderRadius: 10, fontSize: 13, color: "#fca5a5", lineHeight: 1.5,
+                  }}>
+                    ⚠️ {submitError}
+                  </div>
+                )}
 
                 <button
                   onClick={handleSubmit} disabled={submitting}
