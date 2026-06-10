@@ -247,13 +247,6 @@ export default function BMFListing() {
             + Đăng MathMap
           </button>
         </Link>
-        <Link href="/admin" style={{ textDecoration: "none" }}>
-          <button style={{
-            padding: "9px 16px", borderRadius: 8, fontSize: 12,
-            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
-            color: "#f87171", cursor: "pointer", fontWeight: 600,
-          }}>🛡️ Admin</button>
-        </Link>
         <Link href="/" style={{ textDecoration: "none" }}>
           <button style={{
             padding: "9px 16px", borderRadius: 8, fontSize: 13,
