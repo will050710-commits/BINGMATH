@@ -4,7 +4,7 @@ from functools import lru_cache
 # pyrefly: ignore [untyped-import]
 import requests as req_lib # pyright: ignore[reportMissingModuleSource]
 import orjson # pyright: ignore[reportMissingImports]
-from flask import Flask, request, jsonify, g, Response, stream_with_context
+from flask import Flask, request, jsonify, g, Response, stream_with_context # pyright: ignore[reportMissingImports]
 # pyrefly: ignore [untyped-import]
 from flask_cors import CORS
 
@@ -667,26 +667,54 @@ def update_me(fb_uid):
     for f in ALLOWED:
         if f not in d:
             continue
-        val = str(d[f]).strip()
+        val = str(d[f]).strip() if d[f] is not None else ""
+        
+        # Validate each field
         if f in REQUIRED_NON_EMPTY and not val:
             errors.append(f"'{f}' cannot be empty.")
             continue
-        if f == "username" and len(val) < 2:
+        if f == "username" and val and len(val) < 2:
             errors.append("Username must be at least 2 characters.")
             continue
-        sets.append(f"{f}=?")
-        vals.append(val)
+        if f == "username" and val and len(val) > 100:
+            errors.append("Username is too long (max 100 characters).")
+            continue
+        if f == "phone" and val and len(val) > 20:
+            errors.append("Phone number is too long.")
+            continue
+        if f == "school" and val and len(val) > 100:
+            errors.append("School name is too long.")
+            continue
+        if f == "avatar_url" and val:
+            # Validate base64 data URL for avatar
+            if not val.startswith("data:image/"):
+                errors.append("Invalid avatar format. Must be a valid image data URL.")
+                continue
+            # Limit base64 size to ~500KB (typical for JPEG 160x160 is ~20KB)
+            # but allow for edge cases
+            if len(val) > 600000:
+                errors.append("Avatar image is too large. Please use a smaller image.")
+                continue
+        
+        if val:  # Only add non-empty values
+            sets.append(f"{f}=?")
+            vals.append(val)
 
     if errors:
         return jsonify({"error": " ".join(errors)}), 400
     if not sets:
         return jsonify({"error": "Nothing to update."}), 400
 
-    vals.append(uid)
-    db.execute(f"UPDATE users SET {', '.join(sets)} WHERE id=?", vals)
-    db.commit()
-    row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
-    return jsonify({"user": user_dict(row)})
+    try:
+        vals.append(uid)
+        db.execute(f"UPDATE users SET {', '.join(sets)} WHERE id=?", vals)
+        db.commit()
+        row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        return jsonify({"user": user_dict(row)})
+    except Exception as e:
+        db.rollback()
+        print(f"[ERROR] Failed to update user {uid}: {e}")
+        return jsonify({"error": "Failed to update profile. Please try again."}), 500
 
 
 @app.route("/api/competitive-stats", methods=["GET"])

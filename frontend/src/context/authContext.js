@@ -28,13 +28,18 @@ async function apiFetch(path, opts = {}) {
   const currentUser = auth.currentUser;
   if (currentUser) {
     try {
-      const idToken = await currentUser.getIdToken();
+      // force=true ensures we get a fresh token (avoids 401 from expired tokens)
+      const idToken = await currentUser.getIdToken(/* forceRefresh = */ true);
       hdrs["Authorization"] = `Bearer ${idToken}`;
     } catch (_) {}
   }
 
   const res = await fetch(`${BASE}${path}`, { ...opts, headers: hdrs });
   const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    // Log for debugging — visible in browser DevTools Console
+    console.error(`[apiFetch] ${opts.method || 'GET'} ${path} → ${res.status}`, data);
+  }
   return { ok: res.ok, status: res.status, data };
 }
 
@@ -208,10 +213,23 @@ export function AuthProvider({ children }) {
   }
 
   async function updateProfile(fields) {
-    const { ok, data } = await apiFetch("/api/me", {
+    let { ok, data, status } = await apiFetch("/api/me", {
       method: "PATCH",
       body: JSON.stringify(fields),
     });
+
+    // If 404: user isn't in backend DB yet — auto-sync then retry once
+    if (status === 404 && auth.currentUser) {
+      try {
+        await syncUserToBackend(auth.currentUser);
+        const retry = await apiFetch("/api/me", {
+          method: "PATCH",
+          body: JSON.stringify(fields),
+        });
+        ok = retry.ok; data = retry.data; status = retry.status;
+      } catch (_) {}
+    }
+
     if (ok && data.user) {
       setUser(prev => ({
         ...prev,
@@ -226,13 +244,22 @@ export function AuthProvider({ children }) {
         } catch (_) {}
       }
     }
-    return { ok, error: data.error || null };
+    // FastAPI raises HTTPException → { detail: "..." }
+    // Legacy errors → { error: "..." }
+    const errMsg = data.error || data.detail || (
+      status === 401 ? "Phiên đăng nhập hết hạn, vui lòng đăng nhập lại." :
+      status === 403 ? "Tài khoản bị khóa." :
+      status === 404 ? "Không tìm thấy tài khoản. Vui lòng đăng xuất và đăng nhập lại." :
+      null
+    );
+    return { ok, error: errMsg };
   }
 
-  // ── Avatar upload (client-side resize + base64 → backend PATCH) ────────────────────────────────
+  // ── Avatar upload (client-side resize + base64 → backend PATCH) ──────────────────
   // No Firebase Storage needed — avoids all CORS issues.
   async function uploadAvatar(file) {
-    if (!file || !auth.currentUser) return { ok: false, error: "Not logged in" };
+    if (!file) return { ok: false, error: "Chưa chọn file." };
+    if (!auth.currentUser) return { ok: false, error: "Bạn chưa đăng nhập. Vui lòng đăng nhập lại." };
 
     // Validate file type: accept jpg, png, gif, webp
     const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
@@ -244,44 +271,113 @@ export function AuthProvider({ children }) {
     try {
       // Resize to max 160×160 and convert to JPEG (much smaller than PNG)
       const dataUrl = await resizeImageToDataURL(file, 160);
-      const { ok, error } = await updateProfile({ avatar_url: dataUrl });
+      
+      if (!dataUrl || !dataUrl.startsWith("data:")) {
+        return { ok: false, error: "Không thể xử lý ảnh. Vui lòng thử ảnh khác." };
+      }
+
+      // Add timeout for the update request (10 seconds)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Yêu cầu upload hết thời gian chờ (10s). Vui lòng thử lại.")), 10000)
+      );
+      
+      const { ok, error } = await Promise.race([
+        updateProfile({ avatar_url: dataUrl }),
+        timeoutPromise
+      ]);
+      
+      if (!ok) {
+        return { ok: false, error: error || "Không thể lưu ảnh lên server. Vui lòng thử lại." };
+      }
       // Return the dataUrl so the caller can update the preview immediately
-      return { ok, error, url: dataUrl };
+      return { ok: true, error: null, url: dataUrl };
     } catch (err) {
-      return { ok: false, error: err.message || "Upload thất bại." };
+      console.error("[uploadAvatar] error:", err);
+      const msg = err?.message || err?.toString?.() || "Upload thất bại.";
+      // Provide more specific error messages for common issues
+      if (msg.includes("timeout") || msg.includes("hết thời gian")) {
+        return { ok: false, error: "Upload quá lâu. Vui lòng kiểm tra kết nối mạng." };
+      }
+      if (msg.includes("Network") || msg.includes("network")) {
+        return { ok: false, error: "Lỗi kết nối mạng. Vui lòng kiểm tra Internet." };
+      }
+      return { ok: false, error: msg || "Upload thất bại." };
     }
   }
 
   // ── Helper: resize image file → base64 data URL (max px on longest side) ──
   function resizeImageToDataURL(file, maxPx = 160) {
     return new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        let { width, height } = img;
-        if (width > maxPx || height > maxPx) {
-          if (width >= height) {
-            height = Math.round((height * maxPx) / width);
-            width = maxPx;
-          } else {
-            width = Math.round((width * maxPx) / height);
-            height = maxPx;
+      try {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+        
+        // Add timeout for image loading (5 seconds)
+        const loadTimeout = setTimeout(() => {
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Không thể tải ảnh (timeout). Vui lòng thử lại."));
+        }, 5000);
+        
+        img.onload = () => {
+          clearTimeout(loadTimeout);
+          try {
+            URL.revokeObjectURL(objectUrl);
+            let { width, height } = img;
+            
+            // Validate dimensions
+            if (!width || !height || width <= 0 || height <= 0) {
+              throw new Error("Kích thước ảnh không hợp lệ.");
+            }
+            
+            if (width > maxPx || height > maxPx) {
+              if (width >= height) {
+                height = Math.round((height * maxPx) / width);
+                width = maxPx;
+              } else {
+                width = Math.round((width * maxPx) / height);
+                height = maxPx;
+              }
+            }
+            
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            
+            if (!ctx) {
+              throw new Error("Không thể tạo canvas để xử lý ảnh.");
+            }
+            
+            ctx.drawImage(img, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+            
+            // Validate the resulting data URL
+            if (!dataUrl || dataUrl.length < 100) {
+              throw new Error("Ảnh xử lý không hợp lệ.");
+            }
+            
+            resolve(dataUrl);
+          } catch (err) {
+            reject(err);
           }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        // JPEG is ~5× smaller than PNG for photos — keeps base64 under 20KB
-        resolve(canvas.toDataURL("image/jpeg", 0.82));
-      };
-      img.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error("Không thể đọc file ảnh."));
-      };
-      img.src = objectUrl;
+        };
+        
+        img.onerror = () => {
+          clearTimeout(loadTimeout);
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Không thể đọc file ảnh. File có thể bị hỏng."));
+        };
+        
+        img.onabort = () => {
+          clearTimeout(loadTimeout);
+          URL.revokeObjectURL(objectUrl);
+          reject(new Error("Việc tải ảnh bị hủy."));
+        };
+        
+        img.src = objectUrl;
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
     });
   }
 

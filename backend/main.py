@@ -802,15 +802,37 @@ async def update_me(request: Request):
     for f in ALLOWED:
         if f not in d:
             continue
-        val = str(d[f]).strip()
+        val = str(d[f]).strip() if d[f] is not None else ""
+        
+        # Validate each field
         if f in REQUIRED_NON_EMPTY and not val:
             errors.append(f"'{f}' cannot be empty.")
             continue
-        if f == "username" and len(val) < 2:
+        if f == "username" and val and len(val) < 2:
             errors.append("Username must be at least 2 characters.")
             continue
-        sets.append(f"{f}=?")
-        vals.append(val)
+        if f == "username" and val and len(val) > 100:
+            errors.append("Username is too long (max 100 characters).")
+            continue
+        if f == "phone" and val and len(val) > 20:
+            errors.append("Phone number is too long.")
+            continue
+        if f == "school" and val and len(val) > 100:
+            errors.append("School name is too long.")
+            continue
+        if f == "avatar_url" and val:
+            # Validate base64 data URL for avatar
+            if not val.startswith("data:image/"):
+                errors.append("Invalid avatar format. Must be a valid image data URL.")
+                continue
+            # Limit base64 size to ~500KB
+            if len(val) > 600000:
+                errors.append("Avatar image is too large. Please use a smaller image.")
+                continue
+        
+        if val:  # Only add non-empty values
+            sets.append(f"{f}=?")
+            vals.append(val)
 
     if errors:
         raise HTTPException(400, " ".join(errors))
@@ -824,6 +846,10 @@ async def update_me(request: Request):
         db.commit()
         row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         return JSONResponse({"user": user_dict(row)})
+    except Exception as e:
+        db.rollback()
+        print(f"[ERROR] Failed to update user {uid}: {e}")
+        raise HTTPException(500, "Failed to update profile. Please try again.")
     finally:
         db.close()
 

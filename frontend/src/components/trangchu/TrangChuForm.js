@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable react-hooks/static-components */
 /* eslint-disable jsx-a11y/alt-text */
 /* eslint-disable @next/next/no-img-element */
@@ -73,6 +74,18 @@ function EditProfileModal({ onClose }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file before processing
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      setErrorMsg("Định dạng file không hỗ trợ. Vui lòng chọn JPG, PNG, GIF hoặc WebP.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMsg("Ảnh quá lớn (tối đa 5MB). Vui lòng chọn ảnh khác.");
+      return;
+    }
+
     // Show a temporary local preview while uploading
     const objectUrl = URL.createObjectURL(file);
     setAvatarPreview(objectUrl);
@@ -85,14 +98,15 @@ function EditProfileModal({ onClose }) {
       if (ok) {
         // Replace temp objectUrl with the permanent base64 dataUrl
         setAvatarPreview(url || user?.avatar_url || "");
-        setSuccessMsg("Ảnh đại diện đã được cập nhật!");
+        setSuccessMsg("✅ Ảnh đại diện đã được cập nhật!");
         if (reloadProfile) await reloadProfile();
       } else {
-        setErrorMsg(error || "Upload ảnh thất bại.");
+        setErrorMsg(error || "❌ Upload ảnh thất bại. Vui lòng thử lại.");
         setAvatarPreview(user?.avatar_url || "");
       }
-    } catch {
-      setErrorMsg("Không thể upload ảnh.");
+    } catch (err) {
+      console.error("[handleAvatarChange] error:", err);
+      setErrorMsg("❌ Lỗi xử lý ảnh. Vui lòng thử lại.");
       setAvatarPreview(user?.avatar_url || "");
     } finally {
       setAvatarLoading(false);
@@ -104,25 +118,54 @@ function EditProfileModal({ onClose }) {
     e.preventDefault();
     setErrorMsg("");
     setSuccessMsg("");
-    if (!username.trim()) { setErrorMsg("Tên người dùng không được để trống."); return; }
-    if (username.trim().length < 2) { setErrorMsg("Tên người dùng phải có ít nhất 2 ký tự."); return; }
+    
+    if (!username.trim()) { 
+      setErrorMsg("Tên người dùng không được để trống."); 
+      return; 
+    }
+    if (username.trim().length < 2) { 
+      setErrorMsg("Tên người dùng phải có ít nhất 2 ký tự."); 
+      return; 
+    }
+    if (phone.trim() && !/^\d{10,}$/.test(phone.trim().replace(/\D/g, ""))) {
+      setErrorMsg("Số điện thoại không hợp lệ.");
+      return;
+    }
+    
     setLoading(true);
     try {
-      const { ok, error } = await updateProfile({
-        username: username.trim(),
-        phone: phone.trim(),
-        school: school.trim(),
-        grade: grade.trim(),
-      });
+      // Add timeout for profile update (10 seconds)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Yêu cầu cập nhật hết thời gian chờ. Vui lòng thử lại.")), 10000)
+      );
+      
+      const { ok, error } = await Promise.race([
+        updateProfile({
+          username: username.trim(),
+          phone: phone.trim(),
+          school: school.trim(),
+          grade: grade.trim(),
+        }),
+        timeoutPromise
+      ]);
+      
       if (ok) {
-        setSuccessMsg("Đã lưu thông tin thành công!");
+        setSuccessMsg("✅ Đã lưu thông tin thành công!");
         if (reloadProfile) await reloadProfile();
         setTimeout(() => onClose(), 1400);
       } else {
-        setErrorMsg(error || "Đã xảy ra lỗi khi cập nhật thông tin.");
+        setErrorMsg(error || "❌ Đã xảy ra lỗi khi cập nhật thông tin.");
       }
-    } catch {
-      setErrorMsg("Không thể kết nối đến máy chủ.");
+    } catch (err) {
+      console.error("[handleSubmit] error:", err);
+      const msg = err?.message || String(err);
+      if (msg.includes("timeout") || msg.includes("hết thời gian")) {
+        setErrorMsg("❌ Kết nối quá lâu. Vui lòng kiểm tra Internet và thử lại.");
+      } else if (msg.includes("Network") || msg.includes("network")) {
+        setErrorMsg("❌ Lỗi kết nối mạng. Vui lòng kiểm tra Internet.");
+      } else {
+        setErrorMsg("❌ Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
+      }
     } finally {
       setLoading(false);
     }
@@ -245,13 +288,15 @@ function EditProfileModal({ onClose }) {
         </div>
 
         {errorMsg && (
-          <div style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#fca5a5", marginBottom: 14 }}>
-            ⚠️ {errorMsg}
+          <div style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "12px 14px", fontSize: 13, color: "#fca5a5", marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
+            <span>{errorMsg}</span>
           </div>
         )}
         {successMsg && (
-          <div style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: 8, padding: "10px 12px", fontSize: 13, color: "#86efac", marginBottom: 14 }}>
-            ✅ {successMsg}
+          <div style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: 8, padding: "12px 14px", fontSize: 13, color: "#86efac", marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
+            <span>{successMsg}</span>
           </div>
         )}
 
