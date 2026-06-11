@@ -96,113 +96,7 @@ function BackgroundShapes() {
   );
 }
 
-// ── SVG Owl Mascot ─────────────────────────────────────────────────────────
-function OwlSVG({ isActive }) {
-  return (
-    <svg viewBox="0 0 200 220" width="200" height="220" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="bodyGrad" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="#22d3ee" />
-          <stop offset="60%" stopColor="#0891b2" />
-          <stop offset="100%" stopColor="#0e7490" />
-        </radialGradient>
-        <radialGradient id="bellyGrad" cx="50%" cy="40%" r="60%">
-          <stop offset="0%" stopColor="#e0f2fe" />
-          <stop offset="100%" stopColor="#bae6fd" />
-        </radialGradient>
-        <radialGradient id="eyeGrad" cx="40%" cy="35%" r="60%">
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#e0f2fe" />
-        </radialGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-      </defs>
-
-      {/* Body */}
-      <ellipse cx="100" cy="130" rx="65" ry="75" fill="url(#bodyGrad)" />
-
-      {/* Wings */}
-      <ellipse cx="42" cy="145" rx="28" ry="48" fill="#0891b2" transform="rotate(-15, 42, 145)" />
-      <ellipse cx="158" cy="145" rx="28" ry="48" fill="#0891b2" transform="rotate(15, 158, 145)" />
-
-      {/* Wing feather lines */}
-      {[0, 10, 20].map(off => (
-        <line key={off} x1={30 + off} y1={120 + off * 1.5} x2={20 + off} y2={175 + off} stroke="#06b6d4" strokeWidth="1.5" opacity="0.5" />
-      ))}
-      {[0, 10, 20].map(off => (
-        <line key={off + 10} x1={170 - off} y1={120 + off * 1.5} x2={180 - off} y2={175 + off} stroke="#06b6d4" strokeWidth="1.5" opacity="0.5" />
-      ))}
-
-      {/* Belly */}
-      <ellipse cx="100" cy="145" rx="38" ry="50" fill="url(#bellyGrad)" />
-
-      {/* Belly feather pattern */}
-      {[130, 145, 160, 175].map((y, i) => (
-        <ellipse key={y} cx="100" cy={y} rx={32 - i * 3} ry="7" fill="none" stroke="#93c5fd" strokeWidth="1" opacity="0.4" />
-      ))}
-
-      {/* Head */}
-      <ellipse cx="100" cy="75" rx="52" ry="52" fill="url(#bodyGrad)" />
-
-      {/* Ear tufts */}
-      <polygon points="62,30 52,8 75,28" fill="#0891b2" />
-      <polygon points="138,30 148,8 125,28" fill="#0891b2" />
-      <line x1="62" y1="30" x2="52" y2="8" stroke="#22d3ee" strokeWidth="1" />
-      <line x1="138" y1="30" x2="148" y2="8" stroke="#22d3ee" strokeWidth="1" />
-
-      {/* Eye rings */}
-      <circle cx="78" cy="76" r="22" fill="white" opacity="0.95" filter="url(#glow)" />
-      <circle cx="122" cy="76" r="22" fill="white" opacity="0.95" filter="url(#glow)" />
-      <circle cx="78" cy="76" r="18" fill="url(#eyeGrad)" />
-      <circle cx="122" cy="76" r="18" fill="url(#eyeGrad)" />
-
-      {/* Pupils — with blink */}
-      <g style={{ animation: "owlBlink 4s 2s ease-in-out infinite", transformOrigin: "78px 76px" }}>
-        <circle cx="78" cy="76" r="10" fill="#0c4a6e" />
-        <circle cx="122" cy="76" r="10" fill="#0c4a6e" />
-        <circle cx="74" cy="72" r="3.5" fill="white" opacity="0.9" />
-        <circle cx="118" cy="72" r="3.5" fill="white" opacity="0.9" />
-      </g>
-
-      {/* Iris shine */}
-      <circle cx="84" cy="70" r="4" fill="#22d3ee" opacity="0.4" />
-      <circle cx="128" cy="70" r="4" fill="#22d3ee" opacity="0.4" />
-
-      {/* Beak */}
-      <polygon points="100,88 90,100 110,100" fill="#fbbf24" />
-      <line x1="90" y1="94" x2="110" y2="94" stroke="#f59e0b" strokeWidth="1.5" />
-
-      {/* Feet */}
-      <g fill="#fbbf24">
-        <rect x="82" y="198" width="8" height="14" rx="3" transform="rotate(-10,82,198)" />
-        <rect x="90" y="200" width="8" height="14" rx="3" />
-        <rect x="98" y="198" width="8" height="14" rx="3" transform="rotate(10,98,198)" />
-        <rect x="110" y="198" width="8" height="14" rx="3" transform="rotate(-10,110,198)" />
-        <rect x="118" y="200" width="8" height="14" rx="3" />
-        <rect x="126" y="198" width="8" height="14" rx="3" transform="rotate(10,126,198)" />
-      </g>
-
-      {/* Graduation cap when active */}
-      {isActive && (
-        <g>
-          <rect x="68" y="38" width="64" height="8" rx="2" fill="#1e1b4b" />
-          <polygon points="100,20 140,38 100,44 60,38" fill="#312e81" />
-          <line x1="140" y1="38" x2="148" y2="55" stroke="#fbbf24" strokeWidth="2" />
-          <circle cx="148" cy="58" r="4" fill="#fbbf24" />
-        </g>
-      )}
-
-      {/* Math formula floating above when active */}
-      {isActive && (
-        <text x="100" y="14" textAnchor="middle" fill="#22d3ee" fontSize="11" fontFamily="monospace" fontWeight="bold" opacity="0.9">
-          E = mc²
-        </text>
-      )}
-    </svg>
-  );
-}
+// ── Owl Mascot (homepage png image wrapper) ───────────────────────────────
 
 // ── Mode Card Button ────────────────────────────────────────────────────────
 function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, index, onClick }) {
@@ -490,7 +384,37 @@ export default function MRMHomePage() {
               position: "relative", zIndex: 2,
             }}
           >
-            <OwlSVG isActive={owlActive} />
+            {owlActive && (
+              <div style={{
+                position: "absolute",
+                top: -24,
+                left: "50%",
+                transform: "translateX(-50%)",
+                background: "rgba(15,23,42,0.85)",
+                color: "#22d3ee",
+                padding: "6px 12px",
+                borderRadius: 20,
+                fontSize: 12,
+                fontWeight: 800,
+                whiteSpace: "nowrap",
+                border: "1px solid rgba(34,211,238,0.4)",
+                boxShadow: "0 0 15px rgba(34,211,238,0.3)",
+                backdropFilter: "blur(4px)",
+                animation: "heartPulse 1.5s infinite"
+              }}>
+                E = mc² 🎓
+              </div>
+            )}
+            <img
+              src="/images/duosteamicon-removebg-preview.png"
+              alt="DuoMath Mascot"
+              style={{
+                width: 200,
+                height: 220,
+                objectFit: "contain",
+                filter: "drop-shadow(0 8px 25px rgba(34,211,238,0.3))"
+              }}
+            />
           </div>
 
           {/* Mode buttons — expand from owl */}

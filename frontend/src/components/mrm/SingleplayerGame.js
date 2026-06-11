@@ -302,7 +302,57 @@ export default function SingleplayerGame({ mapId }) {
   if (!mapData.questions || mapData.questions.length === 0) {
     mapData = MOCK_MATHMAPS[mapId] || DEFAULT_MAP;
   }
-  const { questions } = mapData;
+  
+  const rawQuestions = mapData.questions || [];
+
+  // Normalize questions from both mock seed format and user-created format
+  const questions = rawQuestions.map((q, idx) => {
+    // If it's already in the mock format:
+    if (q.text && Array.isArray(q.options) && typeof q.options[0] === 'string' && typeof q.correct === 'number') {
+      return {
+        id: q.id || `q-${idx}`,
+        type: 'multiple_choice',
+        text: q.text,
+        options: q.options,
+        correct: q.correct,
+        explain: q.explain || '',
+        points: q.points || 100,
+        timeLimit: q.time_seconds || 30,
+      };
+    }
+    
+    // Otherwise, normalize from user-created format:
+    const type = q.type || 'multiple_choice';
+    const text = q.content_vi || q.content_en || 'Câu hỏi chưa có nội dung';
+    const explain = q.explanation_vi || q.explanation_en || '';
+    const points = q.points || 100;
+    const timeLimit = q.time_seconds || 30;
+
+    if (type === 'multiple_choice') {
+      const opts = Array.isArray(q.options)
+        ? q.options.map(o => o.text_vi || o.text_en || '')
+        : ['', '', '', ''];
+      const correctMap = { a: 0, b: 1, c: 2, d: 3 };
+      const correct = correctMap[(q.correct_answer || 'a').toLowerCase()] ?? 0;
+      return { id: q.id, type, text, options: opts, correct, explain, points, timeLimit };
+    } else if (type === 'true_false') {
+      const opts = ['Đúng (True)', 'Sai (False)'];
+      const correct = q.correct_answer === 'true' ? 0 : 1;
+      return { id: q.id, type, text, options: opts, correct, explain, points, timeLimit };
+    } else if (type === 'fill_in_blank') {
+      return {
+        id: q.id,
+        type,
+        text,
+        options: [],
+        correctAnswerText: (q.correct_answer || '').trim(),
+        explain,
+        points,
+        timeLimit,
+      };
+    }
+    return { id: q.id, type: 'multiple_choice', text, options: ['', '', '', ''], correct: 0, explain, points, timeLimit };
+  });
 
   const [phase, setPhase] = useState("intro"); // intro | playing | result
   const [currentQ, setCurrentQ] = useState(0);
@@ -316,12 +366,17 @@ export default function SingleplayerGame({ mapId }) {
   const [answers, setAnswers] = useState([]); // { correct, time }
   const [swapUsed, setSwapUsed] = useState(false);
   const [lastPoints, setLastPoints] = useState(null); // for animation
+  const [blankInput, setBlankInput] = useState(""); // text input for fill_in_blank questions
 
   const timerRef = useRef(null);
   const router = useRouter();
 
   const question = questions[currentQ];
   const isLastQ = currentQ === questions.length - 1;
+
+  const bgmLabel = mapData.bgm === "custom" 
+    ? (mapData.customBgmName || "Nhạc tự chọn") 
+    : (mapData.bgm || "Chill Lofi");
 
   // Save score to leaderboard when game ends
   useEffect(() => {
@@ -339,7 +394,8 @@ export default function SingleplayerGame({ mapId }) {
   // ─── Timer ───────────────────────────────────────────────────────────────
   const startTimer = useCallback(() => {
     clearInterval(timerRef.current);
-    setTimeLeft(TIME_PER_QUESTION);
+    const limit = question ? (question.timeLimit || 30) : 30;
+    setTimeLeft(limit);
     timerRef.current = setInterval(() => {
       setTimeLeft(prev => {
         if (prev <= 1) {
@@ -351,7 +407,7 @@ export default function SingleplayerGame({ mapId }) {
         return prev - 1;
       });
     }, 1000);
-  }, [currentQ]); // eslint-disable-line
+  }, [currentQ, question]); // eslint-disable-line
 
   useEffect(() => {
     if (phase === "playing") startTimer();
@@ -362,16 +418,29 @@ export default function SingleplayerGame({ mapId }) {
   const handleAnswer = (optionIdx, timeout = false) => {
     if (selected !== null || showExplain) return;
     clearInterval(timerRef.current);
-    const isCorrect = !timeout && optionIdx === question.correct;
-    setSelected(optionIdx === -1 ? null : optionIdx);
+    const limit = question ? (question.timeLimit || 30) : 30;
+
+    let isCorrect = false;
+    if (!timeout) {
+      if (question.type === "fill_in_blank") {
+        const userAns = typeof optionIdx === "string" ? optionIdx.trim().toLowerCase() : "";
+        const correctAns = (question.correctAnswerText || "").trim().toLowerCase();
+        isCorrect = userAns === correctAns;
+      } else {
+        isCorrect = optionIdx === question.correct;
+      }
+    }
+
+    setSelected(optionIdx === -1 || optionIdx === null ? null : optionIdx);
     setShowExplain(true);
 
     const timeBonus = Math.floor(timeLeft * 3);
     const newCombo = isCorrect ? combo + 1 : 0;
     const comboBonus = isCorrect ? newCombo * 10 : 0;
-    const pts = isCorrect ? (100 + timeBonus + comboBonus) : 0;
+    const basePoints = question ? (question.points || 100) : 100;
+    const pts = isCorrect ? (basePoints + timeBonus + comboBonus) : 0;
 
-    setAnswers(prev => [...prev, { correct: isCorrect, time: TIME_PER_QUESTION - timeLeft, points: pts }]);
+    setAnswers(prev => [...prev, { correct: isCorrect, time: limit - timeLeft, points: pts }]);
 
     if (isCorrect) {
       setScore(prev => prev + pts);
@@ -390,7 +459,7 @@ export default function SingleplayerGame({ mapId }) {
       }
     }
 
-    // Auto-advance after 1.5s
+    // Auto-advance after 2s
     setTimeout(() => {
       if (isLastQ || (!isCorrect && hp <= 1)) {
         setPhase("result");
@@ -398,8 +467,9 @@ export default function SingleplayerGame({ mapId }) {
         setCurrentQ(prev => prev + 1);
         setSelected(null);
         setShowExplain(false);
+        setBlankInput("");
       }
-    }, 1500);
+    }, 2000);
   };
 
   const handleSwap = () => {
@@ -413,6 +483,7 @@ export default function SingleplayerGame({ mapId }) {
       setCurrentQ(prev => prev + 1);
       setSelected(null);
       setShowExplain(false);
+      setBlankInput("");
     }
   };
 
@@ -446,7 +517,7 @@ export default function SingleplayerGame({ mapId }) {
         <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap", justifyContent: "center" }}>
           {[
             { icon: "❤️", label: `${MAX_HP} tim`, color: "#f87171" },
-            { icon: "⏱", label: `${TIME_PER_QUESTION}s/câu`, color: "#fbbf24" },
+            { icon: "⏱", label: `${mapData.time_avg || 30}s/câu`, color: "#fbbf24" },
             { icon: "🃏", label: "1 Swap Card", color: "#a78bfa" },
             { icon: "💎", label: "Combo bonus", color: "#22d3ee" },
           ].map(f => (
@@ -576,6 +647,7 @@ export default function SingleplayerGame({ mapId }) {
               setShowExplain(false);
               setAnswers([]);
               setSwapUsed(false);
+              setBlankInput("");
             }}
             style={{
               padding: "12px 28px", borderRadius: 10, fontSize: 14, fontWeight: 700,
@@ -601,7 +673,6 @@ export default function SingleplayerGame({ mapId }) {
   }
 
   // ─── Render: Playing ─────────────────────────────────────────────────────
-  const timerFrac = timeLeft / TIME_PER_QUESTION;
   const timerColor = timerFrac > 0.5 ? "#22d3ee" : timerFrac > 0.25 ? "#fbbf24" : "#ef4444";
 
   return (
@@ -723,44 +794,98 @@ export default function SingleplayerGame({ mapId }) {
           {question.text}
         </div>
 
-        {/* Options */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, width: "100%" }}>
-          {question.options.map((opt, i) => {
-            let bg = "rgba(15,23,42,0.7)";
-            let border = "rgba(255,255,255,0.08)";
-            let color = "white";
-
-            if (showExplain) {
-              if (i === question.correct) {
-                bg = "rgba(34,197,94,0.15)"; border = "rgba(34,197,94,0.5)"; color = "#4ade80";
-              } else if (i === selected && i !== question.correct) {
-                bg = "rgba(239,68,68,0.15)"; border = "rgba(239,68,68,0.5)"; color = "#f87171";
-              }
-            }
-
-            return (
+        {/* Options / Input */}
+        {question.type === "fill_in_blank" ? (
+          <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 12 }}>
+            <input
+              type="text"
+              value={blankInput}
+              onChange={e => setBlankInput(e.target.value)}
+              disabled={showExplain}
+              onKeyDown={e => {
+                if (e.key === "Enter" && blankInput.trim()) {
+                  handleAnswer(blankInput);
+                }
+              }}
+              placeholder="Nhập câu trả lời của bạn..."
+              style={{
+                width: "100%",
+                padding: "14px 16px",
+                borderRadius: 10,
+                background: "rgba(15,23,42,0.7)",
+                border: showExplain
+                  ? (answers[currentQ]?.correct ? "2px solid rgba(74,222,128,0.5)" : "2px solid rgba(239,68,68,0.5)")
+                  : "2px solid rgba(255,255,255,0.08)",
+                color: showExplain
+                  ? (answers[currentQ]?.correct ? "#4ade80" : "#f87171")
+                  : "white",
+                fontSize: 15,
+                outline: "none",
+                textAlign: "center",
+                transition: "all 0.2s",
+              }}
+            />
+            {!showExplain && (
               <button
-                key={i}
-                onClick={() => handleAnswer(i)}
-                disabled={showExplain}
+                onClick={() => handleAnswer(blankInput)}
+                disabled={!blankInput.trim()}
                 style={{
-                  padding: "14px 16px", borderRadius: 10, fontSize: 14,
-                  fontWeight: selected === i || (showExplain && i === question.correct) ? 700 : 400,
-                  background: bg, border: `2px solid ${border}`, color,
-                  cursor: showExplain ? "default" : "pointer",
-                  transition: "all 0.2s", textAlign: "left",
+                  width: "100%",
+                  padding: "12px 0",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  background: blankInput.trim() ? "linear-gradient(135deg, #22d3ee, #0ea5e9)" : "rgba(255,255,255,0.04)",
+                  border: "none",
+                  color: blankInput.trim() ? "#000" : "rgba(255,255,255,0.25)",
+                  cursor: blankInput.trim() ? "pointer" : "default",
+                  boxShadow: blankInput.trim() ? "0 4px 16px rgba(34,211,238,0.25)" : "none",
+                  transition: "all 0.2s",
                 }}
-                onMouseEnter={e => { if (!showExplain) e.currentTarget.style.borderColor = "rgba(34,211,238,0.4)"; }}
-                onMouseLeave={e => { if (!showExplain) e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
               >
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginRight: 6 }}>
-                  {["A", "B", "C", "D"][i]}.
-                </span>
-                {opt}
+                Gửi câu trả lời 🚀
               </button>
-            );
-          })}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, width: "100%" }}>
+            {question.options.map((opt, i) => {
+              let bg = "rgba(15,23,42,0.7)";
+              let border = "rgba(255,255,255,0.08)";
+              let color = "white";
+
+              if (showExplain) {
+                if (i === question.correct) {
+                  bg = "rgba(34,197,94,0.15)"; border = "rgba(34,197,94,0.5)"; color = "#4ade80";
+                } else if (i === selected && i !== question.correct) {
+                  bg = "rgba(239,68,68,0.15)"; border = "rgba(239,68,68,0.5)"; color = "#f87171";
+                }
+              }
+
+              return (
+                <button
+                  key={i}
+                  onClick={() => handleAnswer(i)}
+                  disabled={showExplain}
+                  style={{
+                    padding: "14px 16px", borderRadius: 10, fontSize: 14,
+                    fontWeight: selected === i || (showExplain && i === question.correct) ? 700 : 400,
+                    background: bg, border: `2px solid ${border}`, color,
+                    cursor: showExplain ? "default" : "pointer",
+                    transition: "all 0.2s", textAlign: "left",
+                  }}
+                  onMouseEnter={e => { if (!showExplain) e.currentTarget.style.borderColor = "rgba(34,211,238,0.4)"; }}
+                  onMouseLeave={e => { if (!showExplain) e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
+                >
+                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginRight: 6 }}>
+                    {["A", "B", "C", "D"][i]}.
+                  </span>
+                  {opt}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Explanation */}
         {showExplain && (
@@ -790,3 +915,4 @@ export default function SingleplayerGame({ mapId }) {
     </div>
   );
 }
+
