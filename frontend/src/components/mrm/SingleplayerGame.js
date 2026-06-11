@@ -673,6 +673,8 @@ export default function SingleplayerGame({ mapId }) {
   }
 
   // ─── Render: Playing ─────────────────────────────────────────────────────
+  const limit = question ? (question.timeLimit || 30) : 30;
+  const timerFrac = timeLeft / limit;
   const timerColor = timerFrac > 0.5 ? "#22d3ee" : timerFrac > 0.25 ? "#fbbf24" : "#ef4444";
 
   return (
