@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { clearTestSession } from "@/utils/testTimer";
@@ -49,6 +50,7 @@ function UserAvatar({ user, size = 34, style = {} }) {
 /// ── EditProfileModal (avatar upload + profile edit) ────────────────────
 function EditProfileModal({ onClose }) {
   const { user, updateProfile, uploadAvatar, reloadProfile } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [username, setUsername] = useState(user?.username || "");
   const [phone, setPhone] = useState(user?.phone || "");
   const [school, setSchool] = useState(user?.school || "");
@@ -60,10 +62,18 @@ function EditProfileModal({ onClose }) {
   const [avatarPreview, setAvatarPreview] = useState(user?.avatar_url || "");
   const fileInputRef = useRef(null);
 
+  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Show a temporary local preview while uploading
     const objectUrl = URL.createObjectURL(file);
     setAvatarPreview(objectUrl);
     setErrorMsg("");
@@ -71,8 +81,10 @@ function EditProfileModal({ onClose }) {
     setAvatarLoading(true);
 
     try {
-      const { ok, error } = await uploadAvatar(file);
+      const { ok, error, url } = await uploadAvatar(file);
       if (ok) {
+        // Replace temp objectUrl with the permanent base64 dataUrl
+        setAvatarPreview(url || user?.avatar_url || "");
         setSuccessMsg("Ảnh đại diện đã được cập nhật!");
         if (reloadProfile) await reloadProfile();
       } else {
@@ -84,7 +96,7 @@ function EditProfileModal({ onClose }) {
       setAvatarPreview(user?.avatar_url || "");
     } finally {
       setAvatarLoading(false);
-      URL.revokeObjectURL(objectUrl);
+      URL.revokeObjectURL(objectUrl); // safe to revoke now — we already switched preview
     }
   };
 
@@ -126,14 +138,27 @@ function EditProfileModal({ onClose }) {
   const currentAvatar = avatarPreview || user?.avatar_url || "";
   const initials = getInitials(user?.username || user?.email?.split("@")[0] || "U");
 
-  return (
-    <div style={{
-      position: "fixed", inset: 0,
-      backgroundColor: "rgba(10,10,26,0.85)",
-      backdropFilter: "blur(12px)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 2000, padding: "16px",
-    }}>
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-profile-title"
+      style={{
+        position: "fixed",
+        top: 0, left: 0, right: 0, bottom: 0,
+        zIndex: 10000,
+        backgroundColor: "rgba(10,10,26,0.85)",
+        backdropFilter: "blur(12px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px 16px",
+        overflowY: "auto",
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div style={{
         background: "rgba(15,23,42,0.95)",
         backdropFilter: "blur(20px)",
@@ -141,9 +166,13 @@ function EditProfileModal({ onClose }) {
         borderRadius: 16, width: "100%", maxWidth: 560,
         padding: "28px 32px", boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 32px rgba(14,165,233,0.15)",
         color: "white",
+        margin: "auto",
+        maxHeight: "min(90vh, 90dvh)",
+        overflowY: "auto",
+        flexShrink: 0,
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#38bdf8" }}> Chỉnh sửa thông tin cá nhân</h3>
+          <h3 id="edit-profile-title" style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#38bdf8" }}>Chỉnh sửa thông tin cá nhân</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 24, cursor: "pointer" }}>&times;</button>
         </div>
 
@@ -260,7 +289,8 @@ function EditProfileModal({ onClose }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 

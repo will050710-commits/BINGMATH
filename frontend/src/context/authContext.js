@@ -229,7 +229,7 @@ export function AuthProvider({ children }) {
     return { ok, error: data.error || null };
   }
 
-  // ── Avatar upload (client-side resize + base64 → backend PATCH) ───────────
+  // ── Avatar upload (client-side resize + base64 → backend PATCH) ────────────────────────────────
   // No Firebase Storage needed — avoids all CORS issues.
   async function uploadAvatar(file) {
     if (!file || !auth.currentUser) return { ok: false, error: "Not logged in" };
@@ -242,9 +242,10 @@ export function AuthProvider({ children }) {
     if (file.size > 5 * 1024 * 1024) return { ok: false, error: "Ảnh phải nhỏ hơn 5MB." };
 
     try {
-      // Resize to max 200×200 and convert to PNG data URL
-      const dataUrl = await resizeImageToDataURL(file, 200);
+      // Resize to max 160×160 and convert to JPEG (much smaller than PNG)
+      const dataUrl = await resizeImageToDataURL(file, 160);
       const { ok, error } = await updateProfile({ avatar_url: dataUrl });
+      // Return the dataUrl so the caller can update the preview immediately
       return { ok, error, url: dataUrl };
     } catch (err) {
       return { ok: false, error: err.message || "Upload thất bại." };
@@ -252,7 +253,7 @@ export function AuthProvider({ children }) {
   }
 
   // ── Helper: resize image file → base64 data URL (max px on longest side) ──
-  function resizeImageToDataURL(file, maxPx = 200) {
+  function resizeImageToDataURL(file, maxPx = 160) {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const objectUrl = URL.createObjectURL(file);
@@ -273,8 +274,8 @@ export function AuthProvider({ children }) {
         canvas.height = height;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, width, height);
-        // Always export as PNG for lossless quality and broad support
-        resolve(canvas.toDataURL("image/png"));
+        // JPEG is ~5× smaller than PNG for photos — keeps base64 under 20KB
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
       };
       img.onerror = () => {
         URL.revokeObjectURL(objectUrl);

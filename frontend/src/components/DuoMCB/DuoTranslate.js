@@ -73,8 +73,25 @@ export default function DuoTranslate({ children }) {
     setLoading(true);
     setResults(null);
     try {
-      
       const parsed = await translateText(text);
+
+      // If backend flagged an error but `raw` is actually valid JSON, try to use it
+      if (parsed?.error && parsed?.raw) {
+        try {
+          // Strip any markdown fences
+          let raw = parsed.raw.trim()
+            .replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "").trim();
+          // Extract first JSON object if there's surrounding text
+          const m = raw.match(/(\{[\s\S]*\})/);
+          if (m) raw = m[1];
+          const recovered = JSON.parse(raw);
+          if (recovered.translation) {
+            setResults(recovered);
+            return;
+          }
+        } catch (_) { /* not parseable — fall through to show error */ }
+      }
+
       setResults(parsed);
     } catch (e) {
       setResults({ error: true, raw: `Unexpected error: ${e?.message || e}\n\nMake sure server.py is running.` });

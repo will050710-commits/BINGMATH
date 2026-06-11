@@ -600,11 +600,19 @@ app = FastAPI(title="DuoMath API v4", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://*.vercel.app", "*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://duomath.onrender.com",
+        "https://duosteam.onrender.com",
+    ],
+    allow_origin_regex=r"https://.*\.(vercel\.app|render\.com|netlify\.app)",
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
     max_age=3600,
 )
+
 
 # ── Shared httpx client ──────────────────────────────────────────────────────
 _http_client: httpx.AsyncClient | None = None
@@ -1188,6 +1196,7 @@ async def translate(request: Request):
         "max_tokens": 400, "temperature": 0.2,
     }
 
+    import re as _re
     client = await get_http_client()
     try:
         resp = await client.post(
@@ -1196,10 +1205,27 @@ async def translate(request: Request):
         )
         resp.raise_for_status()
         raw = resp.json()["choices"][0]["message"]["content"]
-        clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-        return JSONResponse(json.loads(clean))
-    except json.JSONDecodeError:
-        # pyrefly: ignore [unbound-name]
+
+        # Strip markdown fences first
+        clean = raw.strip()
+        clean = _re.sub(r'^```(?:json)?\s*', '', clean)
+        clean = _re.sub(r'\s*```$', '', clean).strip()
+
+        # Try direct parse
+        try:
+            return JSONResponse(json.loads(clean))
+        except json.JSONDecodeError:
+            pass
+
+        # Fallback: extract first {...} block from the raw response
+        m = _re.search(r'(\{[\s\S]*\})', clean)
+        if m:
+            try:
+                return JSONResponse(json.loads(m.group(1)))
+            except json.JSONDecodeError:
+                pass
+
+        # Last resort: return error with the raw text
         return JSONResponse({"error": True, "raw": raw})
     except Exception as e:
         return JSONResponse({"error": True, "raw": str(e)}, status_code=502)

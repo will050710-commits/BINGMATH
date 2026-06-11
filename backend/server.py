@@ -59,18 +59,23 @@ def get_google_public_key(kid):
     global _google_certs, _google_certs_expire
     now = time.time()
     if not _google_certs or now > _google_certs_expire:
-        try:
-            res = req_lib.get("https://www.googleapis.com/robot/v1/metadata/x509/securetoken-system@system.gserviceaccount.com", timeout=5)
-            if res.status_code == 200:
-                _google_certs = res.json()
-                cc = res.headers.get("Cache-Control", "")
-                max_age = 3600
-                for part in cc.split(","):
-                    if "max-age" in part:
-                        max_age = int(part.split("=")[1])
-                _google_certs_expire = now + max_age
-        except Exception as e:
-            print(f"[WARN] Failed to fetch Google public keys: {e}")
+        for url in (
+            "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com",
+            "https://www.googleapis.com/robot/v1/metadata/x509/securetoken-system@system.gserviceaccount.com",
+        ):
+            try:
+                res = req_lib.get(url, timeout=5)
+                if res.status_code == 200:
+                    _google_certs = res.json()
+                    cc = res.headers.get("Cache-Control", "")
+                    max_age = 3600
+                    for part in cc.split(","):
+                        if "max-age" in part:
+                            max_age = int(part.split("=")[1])
+                    _google_certs_expire = now + max_age
+                    break
+            except Exception as e:
+                print(f"[WARN] Failed to fetch Google public keys from {url}: {e}")
     return _google_certs.get(kid)
 
 def verify_firebase_token_manually(id_token):
