@@ -428,10 +428,11 @@ def init_db():
             grade        TEXT    DEFAULT '',
             avatar_url   TEXT    DEFAULT '',
             firebase_uid TEXT    UNIQUE,
+            is_admin     INTEGER DEFAULT 0,
+            banned       INTEGER DEFAULT 0,
+            ban_reason   TEXT    DEFAULT '',
             created_at   TEXT    DEFAULT (datetime('now'))
         );
-        -- Add firebase_uid column if upgrading from old schema
-        CREATE INDEX IF NOT EXISTS idx_firebase_uid ON users(firebase_uid);
         CREATE TABLE IF NOT EXISTS test_results (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id     INTEGER NOT NULL,
@@ -477,31 +478,24 @@ def init_db():
     """)
     conn.commit()
     
-    # Migrations for existing DB
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN firebase_uid TEXT UNIQUE")
-        conn.execute("CREATE INDEX IF NOT EXISTS idx_firebase_uid ON users(firebase_uid)")
-        conn.commit()
-    except Exception:
-        pass
-        
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0")
-        conn.commit()
-    except Exception:
-        pass
-
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0")
-        conn.commit()
-    except Exception:
-        pass
-
-    try:
-        conn.execute("ALTER TABLE users ADD COLUMN ban_reason TEXT")
-        conn.commit()
-    except Exception:
-        pass
+    # ── Migrations: safely add columns that may not exist in older DB versions ──
+    migrations = [
+        ("ALTER TABLE users ADD COLUMN firebase_uid TEXT",           None),
+        ("CREATE UNIQUE INDEX IF NOT EXISTS idx_firebase_uid ON users(firebase_uid)", None),
+        ("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0",  None),
+        ("ALTER TABLE users ADD COLUMN banned INTEGER DEFAULT 0",    None),
+        ("ALTER TABLE users ADD COLUMN ban_reason TEXT DEFAULT ''",  None),
+        ("ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''",       None),
+        ("ALTER TABLE users ADD COLUMN school TEXT DEFAULT ''",      None),
+        ("ALTER TABLE users ADD COLUMN grade TEXT DEFAULT ''",       None),
+        ("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''",  None),
+    ]
+    for sql, _ in migrations:
+        try:
+            conn.execute(sql)
+            conn.commit()
+        except Exception:
+            pass  # Column/index already exists — safe to ignore
 
     # Automatically set will050710@gmail.com as admin
     conn.execute("UPDATE users SET is_admin=1 WHERE email='will050710@gmail.com'")
