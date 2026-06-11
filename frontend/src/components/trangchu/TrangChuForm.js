@@ -603,15 +603,21 @@ export default function TrangChuForm() {
   ];
 
   return (
-    <div style={{ width: "100%", minHeight: "100vh", background: "#050512", position: "relative", overflow: "hidden", color: "white" }}>
+    <div style={{ width: "100%", minHeight: "100vh", background: "linear-gradient(160deg, #020c1b 0%, #0a1628 15%, #0c2340 35%, #0e3158 50%, #0a3d5c 65%, #063d56 80%, #042f46 100%)", position: "relative", overflow: "hidden", color: "white" }}>
       {showEditModal && <EditProfileModal onClose={() => setShowEditModal(false)} />}
 
       {/* ═══════ GEOMETRIC FLOATING SHAPES BACKGROUND ═══════ */}
       <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
-        {/* Ambient glow layers */}
+        {/* Ambient glow layers - enhanced for gradient bg */}
         <div style={{
           position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse 70% 50% at 15% 35%, rgba(6,182,212,0.06) 0%, transparent 65%), radial-gradient(ellipse 60% 60% at 85% 70%, rgba(124,58,237,0.07) 0%, transparent 65%)",
+          background: "radial-gradient(ellipse 80% 55% at 10% 30%, rgba(6,182,212,0.10) 0%, transparent 60%), radial-gradient(ellipse 65% 65% at 85% 65%, rgba(99,102,241,0.09) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 50% 90%, rgba(14,165,233,0.07) 0%, transparent 55%)",
+        }} />
+        {/* Subtle dot grid pattern */}
+        <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: "radial-gradient(circle, rgba(56,189,248,0.04) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
         }} />
         {mathSymbols.map((s) => (
           <div
@@ -622,7 +628,7 @@ export default function TrangChuForm() {
               left: s.left,
               bottom: "-100px",
               fontSize: s.size,
-              color: s.id % 3 === 0 ? "rgba(6,182,212,0.18)" : s.id % 3 === 1 ? "rgba(124,58,237,0.14)" : "rgba(56,189,248,0.12)",
+              color: s.id % 3 === 0 ? "rgba(6,182,212,0.22)" : s.id % 3 === 1 ? "rgba(124,58,237,0.17)" : "rgba(56,189,248,0.15)",
               textShadow: s.id % 3 === 0
                 ? "0 0 18px rgba(6,182,212,0.5), 0 0 6px rgba(6,182,212,0.3)"
                 : s.id % 3 === 1
@@ -637,7 +643,7 @@ export default function TrangChuForm() {
             {s.char}
           </div>
         ))}
-        {/* SVG Geometric shapes - teal/purple palette */}
+        {/* SVG Geometric shapes - original set (triangles, squares, diamonds) */}
         {[
           { w: 160, l: "4%",  t: "10%",  c: "#06b6d4", d: "0s",   dur: "22s", pts: "50,4 96,75 4,75" },
           { w: 100, l: "82%", t: "5%",   c: "#8b5cf6", d: "4s",   dur: "26s", rect: true },
@@ -648,19 +654,118 @@ export default function TrangChuForm() {
           { w: 55,  l: "73%", t: "83%",  c: "#0891b2", d: "3.5s", dur: "20s", pts: "50,4 96,75 4,75" },
           { w: 135, l: "27%", t: "44%",  c: "#7c3aed", d: "6s",   dur: "27s", diamond: true },
         ].map((s, i) => (
-          <svg key={i} viewBox="0 0 100 100" style={{
+          <svg key={`shape-${i}`} viewBox="0 0 100 100" style={{
             position: "absolute", left: s.l, top: s.t,
             width: s.w, height: s.w,
-            opacity: 0.09 + (i % 3) * 0.03,
+            opacity: 0.10 + (i % 3) * 0.03,
             filter: `drop-shadow(0 0 18px ${s.c}99) drop-shadow(0 0 5px ${s.c}55)`,
             animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
           }}>
             {s.rect
-              ? <rect x="12" y="12" width="76" height="76" rx="6" stroke={s.c} strokeWidth="1.5" fill={s.c + "15"} />
+              ? <rect x="12" y="12" width="76" height="76" rx="6" stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
               : s.diamond
-              ? <polygon points="50,4 96,50 50,96 4,50" stroke={s.c} strokeWidth="1.5" fill={s.c + "15"} />
-              : <polygon points={s.pts} stroke={s.c} strokeWidth="1.5" fill={s.c + "15"} />
+              ? <polygon points="50,4 96,50 50,96 4,50" stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
+              : <polygon points={s.pts} stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
             }
+          </svg>
+        ))}
+        {/* ── Additional geometric shapes: circles ── */}
+        {[
+          { w: 90,  l: "7%",  t: "42%", c: "#22d3ee", d: "2s",  dur: "19s" },
+          { w: 70,  l: "50%", t: "8%",  c: "#38bdf8", d: "5s",  dur: "23s" },
+          { w: 55,  l: "78%", t: "72%", c: "#818cf8", d: "8s",  dur: "28s" },
+          { w: 110, l: "35%", t: "78%", c: "#06b6d4", d: "3s",  dur: "21s" },
+          { w: 45,  l: "92%", t: "25%", c: "#a78bfa", d: "11s", dur: "17s" },
+        ].map((s, i) => (
+          <svg key={`circle-${i}`} viewBox="0 0 100 100" style={{
+            position: "absolute", left: s.l, top: s.t,
+            width: s.w, height: s.w,
+            opacity: 0.08 + (i % 3) * 0.025,
+            filter: `drop-shadow(0 0 14px ${s.c}88)`,
+            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
+          }}>
+            <circle cx="50" cy="50" r="42" stroke={s.c} strokeWidth="1.5" fill={s.c + "0a"} />
+          </svg>
+        ))}
+        {/* ── Hexagons ── */}
+        {[
+          { w: 100, l: "18%", t: "25%", c: "#0ea5e9", d: "1s",  dur: "25s" },
+          { w: 75,  l: "68%", t: "40%", c: "#6366f1", d: "4s",  dur: "20s" },
+          { w: 60,  l: "88%", t: "88%", c: "#22d3ee", d: "7s",  dur: "18s" },
+        ].map((s, i) => (
+          <svg key={`hex-${i}`} viewBox="0 0 100 100" style={{
+            position: "absolute", left: s.l, top: s.t,
+            width: s.w, height: s.w,
+            opacity: 0.08 + (i % 2) * 0.03,
+            filter: `drop-shadow(0 0 14px ${s.c}77)`,
+            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate, spinSlow 60s linear infinite`,
+          }}>
+            <polygon points="50,3 93,25 93,75 50,97 7,75 7,25" stroke={s.c} strokeWidth="1.3" fill={s.c + "0a"} />
+          </svg>
+        ))}
+        {/* ── Crosses / Plus signs ── */}
+        {[
+          { w: 50,  l: "30%", t: "12%", c: "#38bdf8", d: "3s",  dur: "16s" },
+          { w: 40,  l: "55%", t: "55%", c: "#a78bfa", d: "6s",  dur: "22s" },
+          { w: 35,  l: "85%", t: "35%", c: "#22d3ee", d: "10s", dur: "19s" },
+          { w: 45,  l: "10%", t: "88%", c: "#818cf8", d: "0s",  dur: "24s" },
+        ].map((s, i) => (
+          <svg key={`cross-${i}`} viewBox="0 0 100 100" style={{
+            position: "absolute", left: s.l, top: s.t,
+            width: s.w, height: s.w,
+            opacity: 0.10 + (i % 2) * 0.04,
+            filter: `drop-shadow(0 0 10px ${s.c}66)`,
+            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
+          }}>
+            <line x1="50" y1="10" x2="50" y2="90" stroke={s.c} strokeWidth="2" strokeLinecap="round" />
+            <line x1="10" y1="50" x2="90" y2="50" stroke={s.c} strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        ))}
+        {/* ── Concentric circles (radar-like) ── */}
+        {[
+          { w: 140, l: "55%", t: "30%", c: "#0ea5e9", d: "2s", dur: "32s" },
+          { w: 100, l: "2%",  t: "58%", c: "#6366f1", d: "5s", dur: "28s" },
+        ].map((s, i) => (
+          <svg key={`conc-${i}`} viewBox="0 0 100 100" style={{
+            position: "absolute", left: s.l, top: s.t,
+            width: s.w, height: s.w,
+            opacity: 0.06,
+            filter: `drop-shadow(0 0 12px ${s.c}55)`,
+            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
+          }}>
+            <circle cx="50" cy="50" r="44" stroke={s.c} strokeWidth="1" fill="none" />
+            <circle cx="50" cy="50" r="30" stroke={s.c} strokeWidth="0.8" fill="none" strokeDasharray="4 3" />
+            <circle cx="50" cy="50" r="16" stroke={s.c} strokeWidth="0.6" fill="none" />
+          </svg>
+        ))}
+        {/* ── Pentagons ── */}
+        {[
+          { w: 70,  l: "40%", t: "68%", c: "#a78bfa", d: "4s", dur: "26s" },
+          { w: 85,  l: "75%", t: "15%", c: "#38bdf8", d: "1s", dur: "22s" },
+        ].map((s, i) => (
+          <svg key={`pent-${i}`} viewBox="0 0 100 100" style={{
+            position: "absolute", left: s.l, top: s.t,
+            width: s.w, height: s.w,
+            opacity: 0.07 + (i * 0.02),
+            filter: `drop-shadow(0 0 12px ${s.c}66)`,
+            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
+          }}>
+            <polygon points="50,5 95,38 77,93 23,93 5,38" stroke={s.c} strokeWidth="1.3" fill={s.c + "08"} />
+          </svg>
+        ))}
+        {/* ── Dashed circles ── */}
+        {[
+          { w: 80,  l: "22%", t: "5%",  c: "#22d3ee", d: "0s",  dur: "35s" },
+          { w: 60,  l: "65%", t: "80%", c: "#8b5cf6", d: "8s",  dur: "30s" },
+        ].map((s, i) => (
+          <svg key={`dash-${i}`} viewBox="0 0 100 100" style={{
+            position: "absolute", left: s.l, top: s.t,
+            width: s.w, height: s.w,
+            opacity: 0.09,
+            filter: `drop-shadow(0 0 8px ${s.c}55)`,
+            animation: `spinSlow 40s linear infinite, floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
+          }}>
+            <circle cx="50" cy="50" r="40" stroke={s.c} strokeWidth="1.5" fill="none" strokeDasharray="8 6" />
           </svg>
         ))}
       </div>
@@ -1133,6 +1238,11 @@ export default function TrangChuForm() {
           .footer-divider {
             display: none !important;
           }
+        }
+        /* Slow spin for hexagons and dashed circles */
+        @keyframes spinSlow {
+          0%   { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
       `}</style>
     </div>
