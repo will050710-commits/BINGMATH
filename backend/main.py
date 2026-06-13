@@ -86,9 +86,16 @@ async def verify_firebase_token(id_token: str) -> dict:
         except Exception as decode_err:
             print(f"[WARN] Pre-decode check failed: {decode_err}")
 
+        from cryptography import x509
+        from cryptography.hazmat.backends import default_backend
+
+        cert_bytes = cert_str.encode("utf-8")
+        cert = x509.load_pem_x509_certificate(cert_bytes, default_backend())
+        public_key = cert.public_key()
+
         payload = pyjwt.decode(
             id_token,
-            cert_str,
+            public_key,
             algorithms=["RS256"],
             audience=project_id,
             issuer=f"https://securetoken.google.com/{project_id}",
