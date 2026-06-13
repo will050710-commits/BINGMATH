@@ -522,6 +522,93 @@ export default function MathMapCreator() {
     reader.readAsDataURL(file);
   };
 
+  const handleImportMap = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const rawData = JSON.parse(event.target.result);
+        if (!rawData.title || !rawData.grade || !Array.isArray(rawData.questions)) {
+          alert("File JSON không hợp lệ. Bản đồ phải có title, grade và questions!");
+          return;
+        }
+
+        // Set metadata
+        setMetadata({
+          title: rawData.title || "",
+          title_en: rawData.title_en || "",
+          grade: rawData.grade || "Lớp 11",
+          bgm: rawData.bgm || "dramatic01",
+          tags: Array.isArray(rawData.tags) ? rawData.tags : [],
+          description: rawData.description || "",
+        });
+
+        // Set questions
+        const mappedQuestions = rawData.questions.map((q, idx) => {
+          let opts = [];
+          if (Array.isArray(q.options)) {
+            opts = q.options.map((opt, i) => {
+              if (typeof opt === 'object' && opt !== null) {
+                return {
+                  id: opt.id || ['a', 'b', 'c', 'd'][i],
+                  text_vi: opt.text_vi || opt.text || "",
+                  text_en: opt.text_en || "",
+                };
+              }
+              return {
+                id: ['a', 'b', 'c', 'd'][i],
+                text_vi: String(opt),
+                text_en: "",
+              };
+            });
+          }
+          if (opts.length < 4 && (q.type || 'multiple_choice') === 'multiple_choice') {
+            while (opts.length < 4) {
+              const letter = ['a', 'b', 'c', 'd'][opts.length];
+              opts.push({ id: letter, text_vi: "", text_en: "" });
+            }
+          }
+
+          let correct = q.correct_answer || 'a';
+          if (typeof q.correct === 'number') {
+            correct = ['a', 'b', 'c', 'd'][q.correct] || 'a';
+          }
+
+          return {
+            id: q.id || `q-${Date.now()}-${idx}`,
+            type: q.type || "multiple_choice",
+            order: q.order || (idx + 1),
+            content_vi: q.content_vi || q.text || "",
+            content_en: q.content_en || "",
+            options: opts,
+            correct_answer: correct,
+            explanation_vi: q.explanation_vi || q.explain || "",
+            points: q.points || 100,
+            time_seconds: q.time_seconds || q.timeLimit || 30,
+          };
+        });
+
+        setQuestions(mappedQuestions);
+        
+        if (rawData.bgm === "custom" && rawData.bgm_url) {
+          setCustomBgmData(rawData.bgm_url);
+          setCustomBgmName(rawData.customBgmName || "custom.mp3");
+        }
+        if (rawData.thumbnail_url) {
+          setCustomBgData(rawData.thumbnail_url);
+          setCustomBgName(rawData.customBgName || "background.jpg");
+        }
+
+        alert(`Đã nhập thành công thông tin & ${mappedQuestions.length} câu hỏi của MathMap: "${rawData.title}"!`);
+      } catch (err) {
+        alert("Lỗi khi đọc file: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const updateMeta = (field, value) => setMetadata(prev => ({ ...prev, [field]: value }));
   const toggleTag = (tag) => {
     setMetadata(prev => ({
@@ -740,9 +827,32 @@ export default function MathMapCreator() {
                 border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 16, padding: 24, display: "flex", flexDirection: "column", gap: 18,
               }}>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: "white", marginBottom: 4 }}>
-                  📋 Thông tin MathMap
-                </h2>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, color: "white" }}>
+                    📋 Thông tin MathMap
+                  </h2>
+                  <div>
+                    <input
+                      type="file"
+                      accept=".json"
+                      id="import-map-file-creator"
+                      onChange={handleImportMap}
+                      style={{ display: "none" }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => document.getElementById("import-map-file-creator").click()}
+                      style={{
+                        padding: "6px 12px", borderRadius: 8, fontSize: 12,
+                        background: "rgba(167,139,250,0.15)",
+                        border: "1px solid rgba(167,139,250,0.3)",
+                        color: "#a78bfa", cursor: "pointer", fontWeight: 700,
+                      }}
+                    >
+                      📥 Nhập từ file JSON
+                    </button>
+                  </div>
+                </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <StyledInput label="Tiêu đề (Tiếng Việt)" value={metadata.title}

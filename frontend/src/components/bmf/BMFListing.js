@@ -3,6 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useMathMapStore } from "@/context/MathMapStore";
+import { MOCK_MATHMAPS as MOCK_MAPS_QUESTIONS } from "@/data/mockMathmaps";
+
 
 // MOCK_MAPS removed — data now comes from MathMapStore (localStorage + seed data)
 
@@ -55,6 +57,52 @@ function Stars({ rating }) {
     </span>
   );
 }
+
+const handleDownloadMap = (map) => {
+  if (!map) return;
+  try {
+    let fullMap = { ...map };
+    if (!fullMap.questions || fullMap.questions.length === 0) {
+      const mockMap = MOCK_MAPS_QUESTIONS[map.id];
+      if (mockMap && mockMap.questions) {
+        fullMap.questions = mockMap.questions.map((q, idx) => {
+          const correctLetter = ['a', 'b', 'c', 'd'][q.correct] || 'a';
+          const mappedOptions = Array.isArray(q.options)
+            ? q.options.map((optStr, i) => ({
+                id: ['a', 'b', 'c', 'd'][i],
+                text_vi: optStr,
+                text_en: ''
+              }))
+            : [];
+          return {
+            id: q.id || `q-${idx}`,
+            type: q.type || 'multiple_choice',
+            content_vi: q.text || '',
+            content_en: '',
+            options: mappedOptions,
+            correct_answer: correctLetter,
+            explanation_vi: q.explain || '',
+            points: q.points || 100,
+            time_seconds: q.timeLimit || 30
+          };
+        });
+      }
+    }
+    
+    const jsonString = JSON.stringify(fullMap, null, 2);
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${map.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_")}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    alert("Lỗi khi tải bản đồ: " + err.message);
+  }
+};
 
 // ── BMF Listing Row (osu! style) ───────────────────────────────────────────
 function BMFMapRow({ map }) {
@@ -143,7 +191,7 @@ function BMFMapRow({ map }) {
         gap: 8, padding: "10px 16px", borderLeft: "1px solid rgba(255,255,255,0.05)", flexShrink: 0,
       }}>
         <button
-          onClick={e => { e.stopPropagation(); }}
+          onClick={e => { e.stopPropagation(); handleDownloadMap(map); }}
           title="Download MathMap"
           style={{
             width: 40, height: 40, borderRadius: 8,

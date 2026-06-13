@@ -95,10 +95,15 @@ def verify_firebase_token_manually(id_token):
             cert_str,
             algorithms=["RS256"],
             audience=project_id,
-            issuer=f"https://securetoken.google.com/{project_id}"
+            issuer=f"https://securetoken.google.com/{project_id}",
+            options={"verify_exp": True, "verify_iat": False, "verify_nbf": False},
+            leeway=3600
         )
         return decoded
     except Exception as e:
+        print(f"[ERROR] verify_firebase_token_manually failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise Exception(f"Manual token verification failed: {e}")
 
 

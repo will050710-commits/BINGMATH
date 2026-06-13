@@ -69,12 +69,16 @@ async def verify_firebase_token(id_token: str) -> dict:
             algorithms=["RS256"],
             audience=project_id,
             issuer=f"https://securetoken.google.com/{project_id}",
-            options={"verify_exp": True},
+            options={"verify_exp": True, "verify_iat": False, "verify_nbf": False},
+            leeway=3600,
         )
         return payload
     except HTTPException:
         raise
     except Exception as e:
+        print(f"[ERROR] verify_firebase_token failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(401, f"Invalid Firebase token: {e}")
 
 

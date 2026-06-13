@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useMathMapStore } from "@/context/MathMapStore";
+import { MOCK_MATHMAPS as MOCK_MAPS_QUESTIONS } from "@/data/mockMathmaps";
+
 
 // ── Mock MathMap data ──────────────────────────────────────────────────────
 const MOCK_MATHMAPS = [
@@ -201,9 +203,8 @@ function MathMapCard({ map, selected, onSelect }) {
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────
 export default function SingleplayerListing() {
-  const { getLeaderboardForMap, getPublicMaps, hydrated } = useMathMapStore();
+  const { getLeaderboardForMap, getPublicMaps, submitMap, hydrated } = useMathMapStore();
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("Tất cả");
   const [statusFilter, setStatusFilter] = useState("Tất cả");
@@ -211,6 +212,81 @@ export default function SingleplayerListing() {
   const [selectedMap, setSelectedMap] = useState("mm001");
   const [lbScope, setLbScope] = useState("Global");
   const [showFilters, setShowFilters] = useState(false);
+
+  const handleDownloadMap = (map) => {
+    if (!map) return;
+    try {
+      let fullMap = { ...map };
+      // If it's a seed map and has no questions, retrieve questions from mock database
+      if (!fullMap.questions || fullMap.questions.length === 0) {
+        const mockMap = MOCK_MAPS_QUESTIONS[map.id];
+        if (mockMap && mockMap.questions) {
+          fullMap.questions = mockMap.questions.map((q, idx) => {
+            const correctLetter = ['a', 'b', 'c', 'd'][q.correct] || 'a';
+            const mappedOptions = Array.isArray(q.options)
+              ? q.options.map((optStr, i) => ({
+                  id: ['a', 'b', 'c', 'd'][i],
+                  text_vi: optStr,
+                  text_en: ''
+                }))
+              : [];
+            return {
+              id: q.id || `q-${idx}`,
+              type: q.type || 'multiple_choice',
+              content_vi: q.text || '',
+              content_en: '',
+              options: mappedOptions,
+              correct_answer: correctLetter,
+              explanation_vi: q.explain || '',
+              points: q.points || 100,
+              time_seconds: q.timeLimit || 30
+            };
+          });
+        }
+      }
+      
+      const jsonString = JSON.stringify(fullMap, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${map.title.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "_")}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert("Lỗi khi tải bản đồ: " + err.message);
+    }
+  };
+
+  const handleImportMap = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const rawData = JSON.parse(event.target.result);
+        if (!rawData.title || !rawData.grade || !Array.isArray(rawData.questions)) {
+          alert("File JSON không hợp lệ. Bản đồ phải có title, grade và questions!");
+          return;
+        }
+
+        const result = submitMap(rawData);
+        if (result.ok) {
+          alert(`Đã nhập thành công MathMap: "${rawData.title}"!`);
+          setSelectedMap(result.id);
+        } else {
+          alert("Lỗi khi nhập bản đồ: " + result.error);
+        }
+      } catch (err) {
+        alert("Lỗi khi đọc file: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
 
   const currentMaps = hydrated ? getPublicMaps() : MOCK_MATHMAPS;
   const selectedMapData = currentMaps.find(m => m.id === selectedMap);
@@ -274,6 +350,28 @@ export default function SingleplayerListing() {
             }}
           />
           <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, opacity: 0.5 }}>🔍</span>
+        </div>
+
+        {/* Import JSON Map */}
+        <div style={{ display: "inline-block" }}>
+          <input
+            type="file"
+            accept=".json"
+            id="import-map-file-listing"
+            onChange={handleImportMap}
+            style={{ display: "none" }}
+          />
+          <button
+            onClick={() => document.getElementById("import-map-file-listing").click()}
+            style={{
+              padding: "8px 16px", borderRadius: 8, fontSize: 13,
+              background: "linear-gradient(135deg, #a78bfa, #8b5cf6)",
+              border: "none", color: "white", cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            📥 Nhập JSON Map
+          </button>
         </div>
 
         <Link href="/" style={{ textDecoration: "none" }}>
@@ -446,14 +544,16 @@ export default function SingleplayerListing() {
                     ▶ Chơi ngay
                   </button>
                   </Link>
-                  <button style={{
-                    padding: "12px 14px",
-                    background: "rgba(34,211,238,0.1)",
-                    border: "1px solid rgba(34,211,238,0.3)",
-                    color: "#22d3ee", borderRadius: 10,
-                    fontSize: 13, fontWeight: 700, cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
+                  <button
+                    onClick={() => handleDownloadMap(selectedMapData)}
+                    style={{
+                      padding: "12px 14px",
+                      background: "rgba(34,211,238,0.1)",
+                      border: "1px solid rgba(34,211,238,0.3)",
+                      color: "#22d3ee", borderRadius: 10,
+                      fontSize: 13, fontWeight: 700, cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
                     title="Download MathMap"
                     onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,211,238,0.2)"; }}
                     onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,211,238,0.1)"; }}
