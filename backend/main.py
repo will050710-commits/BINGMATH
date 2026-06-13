@@ -756,8 +756,10 @@ async def firebase_sync(request: Request):
         firebase_payload = await verify_firebase_token(token)
         firebase_uid = firebase_payload["sub"]
         token_email  = firebase_payload.get("email", "")
-    except HTTPException:
-        raise HTTPException(401, "Could not verify Firebase token")
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(401, f"Could not verify Firebase token: {e}")
     
     d = await request.json()
     email    = (d.get("email")    or token_email or "").strip().lower()
