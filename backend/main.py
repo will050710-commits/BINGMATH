@@ -63,6 +63,29 @@ async def verify_firebase_token(id_token: str) -> dict:
         if not cert_str:
             raise ValueError(f"Public key not found for kid: {kid}")
 
+        # Decode without verification first to check for project_id mismatch
+        try:
+            unverified_payload = pyjwt.decode(id_token, options={"verify_signature": False})
+            token_aud = unverified_payload.get("aud")
+            token_iss = unverified_payload.get("iss")
+            
+            if token_aud != project_id:
+                raise HTTPException(
+                    401,
+                    f"Firebase token verification failed: Audience mismatch. Backend expects project ID '{project_id}' but token belongs to '{token_aud}'. Please update your FIREBASE_PROJECT_ID environment variable on Render."
+                )
+            
+            expected_iss = f"https://securetoken.google.com/{project_id}"
+            if token_iss != expected_iss:
+                raise HTTPException(
+                    401,
+                    f"Firebase token verification failed: Issuer mismatch. Expected '{expected_iss}' but token has '{token_iss}'."
+                )
+        except HTTPException:
+            raise
+        except Exception as decode_err:
+            print(f"[WARN] Pre-decode check failed: {decode_err}")
+
         payload = pyjwt.decode(
             id_token,
             cert_str,

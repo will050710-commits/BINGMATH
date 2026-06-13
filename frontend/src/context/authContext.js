@@ -31,14 +31,24 @@ async function apiFetch(path, opts = {}) {
       // force=true ensures we get a fresh token (avoids 401 from expired tokens)
       const idToken = await currentUser.getIdToken(/* forceRefresh = */ true);
       hdrs["Authorization"] = `Bearer ${idToken}`;
-    } catch (_) {}
+    } catch (tokenErr) {
+      console.error("[apiFetch] Failed to retrieve fresh Firebase ID token. Signing out...", tokenErr);
+      await signOut(auth).catch(() => {});
+    }
   }
 
   const res = await fetch(`${BASE}${path}`, { ...opts, headers: hdrs });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Log for debugging — visible in browser DevTools Console
-    console.error(`[apiFetch] ${opts.method || 'GET'} ${path} → ${res.status}`, data);
+    const errMsg = data.detail || data.error || JSON.stringify(data);
+    console.error(`[apiFetch] ${opts.method || 'GET'} ${path} → ${res.status} | Error: ${errMsg}`, data);
+    
+    // Automatically sign out of Firebase if we get 401 Unauthorized or 403 Forbidden
+    if (res.status === 401 || res.status === 403) {
+      console.warn(`[apiFetch] Received status ${res.status} from backend. Signing out...`);
+      await signOut(auth).catch(() => {});
+    }
   }
   return { ok: res.ok, status: res.status, data };
 }
@@ -87,8 +97,11 @@ export function AuthProvider({ children }) {
         },
       });
       if (res.status === 404 || res.status === 401) {
+        if (res.status === 401) {
+          console.warn("[syncUserToBackend] /api/me returned 401. User token might be invalid/expired.");
+        }
         // User doesn't exist in backend yet — register them
-        await fetch(`${BASE}/api/firebase-sync`, {
+        const syncRes = await fetch(`${BASE}/api/firebase-sync`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -99,8 +112,23 @@ export function AuthProvider({ children }) {
             username: firebaseUser.displayName || firebaseUser.email.split("@")[0],
           }),
         });
+        
+        if (!syncRes.ok) {
+          const syncData = await syncRes.json().catch(() => ({}));
+          const syncError = syncData.detail || syncData.error || JSON.stringify(syncData);
+          console.error(`[syncUserToBackend] /api/firebase-sync failed with status ${syncRes.status}: ${syncError}`);
+          
+          if (syncRes.status === 401 || syncRes.status === 403) {
+            console.warn("[syncUserToBackend] Sync failed with auth error. Signing out...");
+            await signOut(auth).catch(() => {});
+          }
+        } else {
+          console.log("[syncUserToBackend] Successfully synced user with backend.");
+        }
       }
-    } catch (_) {}
+    } catch (err) {
+      console.error("[syncUserToBackend] Error syncing user to backend:", err);
+    }
   }, []);
 
   // ── Sync local test results if any exist and are not saved yet ─────────────
