@@ -19,9 +19,9 @@ function ShapesSVG({ shape, color }) {
 }
 
 const grades = [
-  { label: "Grade 10", href: "/Cacbaitoan10", img: "/images/math10.png" },
-  { label: "Grade 11 (Coming soon)", href: "/Cacbaitoan11", img: "/images/math11.png" },
-  { label: "Grade 12 (Coming soon)", href: "/Cacbaitoan12", img: "/images/math12.png" },
+  { label: "Grade 10", href: "/Cacbaitoan10", img: "/images/math10.webp" },
+  { label: "Grade 11 (Coming soon)", href: "/Cacbaitoan11", img: "/images/math11.webp" },
+  { label: "Grade 12 (Coming soon)", href: "/Cacbaitoan12", img: "/images/math12.webp" },
 ];
 
 export default function CacbailamPage() {

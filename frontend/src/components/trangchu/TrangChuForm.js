@@ -1,15 +1,16 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-/* eslint-disable react-hooks/static-components */
-/* eslint-disable jsx-a11y/alt-text */
-/* eslint-disable @next/next/no-img-element */
-"use client";
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
 import { useMathMapStore } from "@/context/MathMapStore";
+
+// Dynamically import EditProfileModal to reduce initial JS bundle size
+const EditProfileModal = dynamic(() => import("./EditProfileModal"), {
+  ssr: false,
+});
 
 function getInitials(name) {
   const parts = (name || "U").trim().split(/\s+/).filter(Boolean);
@@ -48,296 +49,17 @@ function UserAvatar({ user, size = 34, style = {} }) {
   );
 }
 
-/// ── EditProfileModal (avatar upload + profile edit) ────────────────────
-function EditProfileModal({ onClose }) {
-  const { user, updateProfile, uploadAvatar, reloadProfile } = useAuth();
-  const [mounted, setMounted] = useState(false);
-  const [username, setUsername] = useState(user?.username || "");
-  const [phone, setPhone] = useState(user?.phone || "");
-  const [school, setSchool] = useState(user?.school || "");
-  const [grade, setGrade] = useState(user?.grade || "");
-  const [loading, setLoading] = useState(false);
-  const [avatarLoading, setAvatarLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
-  const [avatarPreview, setAvatarPreview] = useState(user?.avatar_url || "");
-  const fileInputRef = useRef(null);
-
-  useEffect(() => { setMounted(true); }, []);
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
-  }, []);
-
-  const handleAvatarChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file before processing
-    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-    if (!allowed.includes(file.type)) {
-      setErrorMsg("Định dạng file không hỗ trợ. Vui lòng chọn JPG, PNG, GIF hoặc WebP.");
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      setErrorMsg("Ảnh quá lớn (tối đa 5MB). Vui lòng chọn ảnh khác.");
-      return;
-    }
-
-    // Show a temporary local preview while uploading
-    const objectUrl = URL.createObjectURL(file);
-    setAvatarPreview(objectUrl);
-    setErrorMsg("");
-    setSuccessMsg("");
-    setAvatarLoading(true);
-
-    try {
-      const { ok, error, url } = await uploadAvatar(file);
-      if (ok) {
-        // Replace temp objectUrl with the permanent base64 dataUrl
-        setAvatarPreview(url || user?.avatar_url || "");
-        setSuccessMsg("✅ Ảnh đại diện đã được cập nhật!");
-        if (reloadProfile) await reloadProfile();
-      } else {
-        setErrorMsg(error || "❌ Upload ảnh thất bại. Vui lòng thử lại.");
-        setAvatarPreview(user?.avatar_url || "");
-      }
-    } catch (err) {
-      console.error("[handleAvatarChange] error:", err);
-      setErrorMsg("❌ Lỗi xử lý ảnh. Vui lòng thử lại.");
-      setAvatarPreview(user?.avatar_url || "");
-    } finally {
-      setAvatarLoading(false);
-      URL.revokeObjectURL(objectUrl); // safe to revoke now — we already switched preview
-    }
+const STATIC_MATH_SYMBOLS = Array.from({ length: 18 }).map((_, i) => {
+  const symbols = ["π", "Σ", "θ", "∞", "∫", "Δ", "√", "f(x)", "dy/dx", "log", "x²", "y", "z", "a+b", "sin", "cos"];
+  return {
+    id: i,
+    char: symbols[i % symbols.length],
+    size: 14 + (i * 7) % 20, // 14px to 34px
+    left: `${5 + (i * 23) % 90}%`,
+    delay: `${(i * 3) % 20}s`,
+    dur: `${15 + (i * 5) % 18}s`,
   };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMsg("");
-    setSuccessMsg("");
-    
-    if (!username.trim()) { 
-      setErrorMsg("Tên người dùng không được để trống."); 
-      return; 
-    }
-    if (username.trim().length < 2) { 
-      setErrorMsg("Tên người dùng phải có ít nhất 2 ký tự."); 
-      return; 
-    }
-    if (phone.trim() && !/^\d{10,}$/.test(phone.trim().replace(/\D/g, ""))) {
-      setErrorMsg("Số điện thoại không hợp lệ.");
-      return;
-    }
-    
-    setLoading(true);
-    try {
-      // Add timeout for profile update (10 seconds)
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Yêu cầu cập nhật hết thời gian chờ. Vui lòng thử lại.")), 10000)
-      );
-      
-      const { ok, error } = await Promise.race([
-        updateProfile({
-          username: username.trim(),
-          phone: phone.trim(),
-          school: school.trim(),
-          grade: grade.trim(),
-        }),
-        timeoutPromise
-      ]);
-      
-      if (ok) {
-        setSuccessMsg("✅ Đã lưu thông tin thành công!");
-        if (reloadProfile) await reloadProfile();
-        setTimeout(() => onClose(), 1400);
-      } else {
-        setErrorMsg(error || "❌ Đã xảy ra lỗi khi cập nhật thông tin.");
-      }
-    } catch (err) {
-      console.error("[handleSubmit] error:", err);
-      const msg = err?.message || String(err);
-      if (msg.includes("timeout") || msg.includes("hết thời gian")) {
-        setErrorMsg("❌ Kết nối quá lâu. Vui lòng kiểm tra Internet và thử lại.");
-      } else if (msg.includes("Network") || msg.includes("network")) {
-        setErrorMsg("❌ Lỗi kết nối mạng. Vui lòng kiểm tra Internet.");
-      } else {
-        setErrorMsg("❌ Không thể kết nối đến máy chủ. Vui lòng thử lại sau.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const inputStyle = {
-    width: "100%", padding: "10px 12px", borderRadius: 8,
-    background: "rgba(255,255,255,0.05)",
-    border: "1px solid rgba(255,255,255,0.15)",
-    color: "white", fontSize: 14, outline: "none", boxSizing: "border-box",
-  };
-
-  const currentAvatar = avatarPreview || user?.avatar_url || "";
-  const initials = getInitials(user?.username || user?.email?.split("@")[0] || "U");
-
-  if (!mounted) return null;
-
-  return createPortal(
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="edit-profile-title"
-      style={{
-        position: "fixed",
-        top: 0, left: 0, right: 0, bottom: 0,
-        zIndex: 10000,
-        backgroundColor: "rgba(10,10,26,0.85)",
-        backdropFilter: "blur(12px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px 16px",
-        overflowY: "auto",
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{
-        background: "rgba(15,23,42,0.95)",
-        backdropFilter: "blur(20px)",
-        border: "1px solid rgba(255,255,255,0.15)",
-        borderRadius: 16, width: "100%", maxWidth: 560,
-        padding: "28px 32px", boxShadow: "0 24px 64px rgba(0,0,0,0.6), 0 0 32px rgba(14,165,233,0.15)",
-        color: "white",
-        margin: "auto",
-        maxHeight: "min(90vh, 90dvh)",
-        overflowY: "auto",
-        flexShrink: 0,
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-          <h3 id="edit-profile-title" style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#38bdf8" }}>Chỉnh sửa thông tin cá nhân</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 24, cursor: "pointer" }}>&times;</button>
-        </div>
-
-        <div style={{
-          display: "flex", alignItems: "center", gap: 16,
-          padding: "16px", borderRadius: 12, marginBottom: 20,
-          background: "rgba(255,255,255,0.04)",
-          border: "1px solid rgba(255,255,255,0.08)",
-        }}>
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            {currentAvatar ? (
-              <img
-                src={currentAvatar}
-                style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover",
-                  border: "3px solid rgba(14,165,233,0.5)",
-                  boxShadow: "0 0 20px rgba(14,165,233,0.3)",
-                  opacity: avatarLoading ? 0.5 : 1, transition: "opacity 0.3s",
-                }}
-              />
-            ) : (
-              <div style={{
-                width: 72, height: 72, borderRadius: "50%",
-                background: "linear-gradient(135deg,#0ea5e9,#6366f1)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "white", fontWeight: 800, fontSize: 22,
-                border: "3px solid rgba(14,165,233,0.5)",
-                letterSpacing: -1,
-              }}>{initials}</div>
-            )}
-            {avatarLoading && (
-              <div style={{
-                position: "absolute", inset: 0, borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(0,0,0,0.4)", fontSize: 20,
-              }}>⏳</div>
-            )}
-          </div>
-
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "white", marginBottom: 4 }}>
-              Ảnh đại diện
-            </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 10 }}>
-              JPG, PNG, GIF, WebP • Tối đa 5MB • Tự động resize về 200×200
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/gif,image/webp"
-              onChange={handleAvatarChange}
-              style={{ display: "none" }}
-            />
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={avatarLoading}
-              style={{
-                padding: "7px 16px", borderRadius: 7, cursor: avatarLoading ? "not-allowed" : "pointer",
-                background: "rgba(14,165,233,0.15)",
-                border: "1px solid rgba(14,165,233,0.35)",
-                color: "#7dd3fc", fontSize: 12, fontWeight: 600,
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={e => { if (!avatarLoading) e.currentTarget.style.background = "rgba(14,165,233,0.25)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "rgba(14,165,233,0.15)"; }}
-            >
-              {avatarLoading ? "⏳ Đang xử lý..." : "📷 Chọn ảnh"}
-            </button>
-          </div>
-        </div>
-
-        {errorMsg && (
-          <div style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.4)", borderRadius: 8, padding: "12px 14px", fontSize: 13, color: "#fca5a5", marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>⚠️</span>
-            <span>{errorMsg}</span>
-          </div>
-        )}
-        {successMsg && (
-          <div style={{ background: "rgba(74,222,128,0.15)", border: "1px solid rgba(74,222,128,0.4)", borderRadius: 8, padding: "12px 14px", fontSize: 13, color: "#86efac", marginBottom: 14, display: "flex", gap: 8, alignItems: "flex-start" }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>✅</span>
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 16px" }}>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#38bdf8", marginBottom: 6 }}>Tên học sinh *</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} required placeholder="Nhập tên học sinh" style={inputStyle} />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#38bdf8", marginBottom: 6 }}>Số điện thoại</label>
-            <input type="text" value={phone} onChange={e => setPhone(e.target.value)} placeholder="Nhập số điện thoại" style={inputStyle} />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#38bdf8", marginBottom: 6 }}>Trường</label>
-            <input type="text" value={school} onChange={e => setSchool(e.target.value)} placeholder="Nhập tên trường học" style={inputStyle} />
-          </div>
-          <div style={{ gridColumn: "1 / -1" }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#38bdf8", marginBottom: 6 }}>Lớp</label>
-            <select value={grade} onChange={e => setGrade(e.target.value)} style={{ ...inputStyle, background: "rgba(15,23,42,0.95)", cursor: "pointer" }}>
-              <option value="">-- Chọn lớp --</option>
-              <option value="Lớp 10">Lớp 10</option>
-              <option value="Lớp 11">Lớp 11</option>
-              <option value="Lớp 12">Lớp 12</option>
-            </select>
-          </div>
-          <div style={{ display: "flex", gap: 12, marginTop: 6, gridColumn: "1 / -1" }}>
-            <button type="button" onClick={onClose} disabled={loading}
-              style={{ flex: 1, padding: "11px 0", background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer" }}>
-              Hủy
-            </button>
-            <button type="submit" disabled={loading}
-              style={{ flex: 1, padding: "11px 0", background: loading ? "rgba(99,102,241,0.4)" : "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", border: "none", borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", boxShadow: loading ? "none" : "0 4px 12px rgba(99,102,241,0.3)" }}>
-              {loading ? "⏳ Đang lưu..." : "Lưu thay đổi"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>,
-    document.body
-  );
-}
+});
 
 export default function TrangChuForm() {
   const router = useRouter();
@@ -353,21 +75,7 @@ export default function TrangChuForm() {
 
   const [showProfile, setShowProfile] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [mathSymbols, setMathSymbols] = useState([]);
-
-  // Generate unique floating math symbols on mount
-  useEffect(() => {
-    const symbols = ["π", "Σ", "θ", "∞", "∫", "Δ", "√", "f(x)", "dy/dx", "log", "x²", "y", "z", "a+b", "sin", "cos"];
-    const items = Array.from({ length: 18 }).map((_, i) => ({
-      id: i,
-      char: symbols[i % symbols.length],
-      size: Math.floor(Math.random() * 20) + 14, // 14px to 34px
-      left: `${Math.random() * 90 + 5}%`,
-      delay: `${Math.random() * 20}s`,
-      dur: `${Math.random() * 18 + 15}s`, // 15s to 33s
-    }));
-    setMathSymbols(items);
-  }, []);
+  const [mathSymbols] = useState(STATIC_MATH_SYMBOLS);
 
   // Reveal animations on scroll
   useEffect(() => {
@@ -703,7 +411,7 @@ export default function TrangChuForm() {
             position: "absolute", left: s.l, top: s.t,
             width: s.w, height: s.w,
             opacity: 0.10 + (i % 3) * 0.03,
-            filter: `drop-shadow(0 0 18px ${s.c}99) drop-shadow(0 0 5px ${s.c}55)`,
+            filter: `drop-shadow(0 0 8px ${s.c}55)`,
             animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
           }}>
             {s.rect
@@ -726,7 +434,7 @@ export default function TrangChuForm() {
             position: "absolute", left: s.l, top: s.t,
             width: s.w, height: s.w,
             opacity: 0.08 + (i % 3) * 0.025,
-            filter: `drop-shadow(0 0 14px ${s.c}88)`,
+            filter: `drop-shadow(0 0 6px ${s.c}55)`,
             animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
           }}>
             <circle cx="50" cy="50" r="42" stroke={s.c} strokeWidth="1.5" fill={s.c + "0a"} />
@@ -742,7 +450,7 @@ export default function TrangChuForm() {
             position: "absolute", left: s.l, top: s.t,
             width: s.w, height: s.w,
             opacity: 0.08 + (i % 2) * 0.03,
-            filter: `drop-shadow(0 0 14px ${s.c}77)`,
+            filter: `drop-shadow(0 0 6px ${s.c}44)`,
             animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate, spinSlow 60s linear infinite`,
           }}>
             <polygon points="50,3 93,25 93,75 50,97 7,75 7,25" stroke={s.c} strokeWidth="1.3" fill={s.c + "0a"} />
@@ -759,7 +467,7 @@ export default function TrangChuForm() {
             position: "absolute", left: s.l, top: s.t,
             width: s.w, height: s.w,
             opacity: 0.10 + (i % 2) * 0.04,
-            filter: `drop-shadow(0 0 10px ${s.c}66)`,
+            filter: `drop-shadow(0 0 5px ${s.c}44)`,
             animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
           }}>
             <line x1="50" y1="10" x2="50" y2="90" stroke={s.c} strokeWidth="2" strokeLinecap="round" />
@@ -775,7 +483,7 @@ export default function TrangChuForm() {
             position: "absolute", left: s.l, top: s.t,
             width: s.w, height: s.w,
             opacity: 0.06,
-            filter: `drop-shadow(0 0 12px ${s.c}55)`,
+            filter: `drop-shadow(0 0 5px ${s.c}33)`,
             animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
           }}>
             <circle cx="50" cy="50" r="44" stroke={s.c} strokeWidth="1" fill="none" />
@@ -792,7 +500,7 @@ export default function TrangChuForm() {
             position: "absolute", left: s.l, top: s.t,
             width: s.w, height: s.w,
             opacity: 0.07 + (i * 0.02),
-            filter: `drop-shadow(0 0 12px ${s.c}66)`,
+            filter: `drop-shadow(0 0 5px ${s.c}44)`,
             animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
           }}>
             <polygon points="50,5 95,38 77,93 23,93 5,38" stroke={s.c} strokeWidth="1.3" fill={s.c + "08"} />
@@ -807,7 +515,7 @@ export default function TrangChuForm() {
             position: "absolute", left: s.l, top: s.t,
             width: s.w, height: s.w,
             opacity: 0.09,
-            filter: `drop-shadow(0 0 8px ${s.c}55)`,
+            filter: `drop-shadow(0 0 4px ${s.c}33)`,
             animation: `spinSlow 40s linear infinite, floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
           }}>
             <circle cx="50" cy="50" r="40" stroke={s.c} strokeWidth="1.5" fill="none" strokeDasharray="8 6" />
@@ -833,7 +541,7 @@ export default function TrangChuForm() {
           
           {/* Logo & Owl Mascot */}
           <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/images/duosteamicon-removebg-preview.png" alt="DuoMath" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
+            <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
             <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 1.5, background: "linear-gradient(135deg, #38bdf8, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               DUOMATH
             </span>
@@ -916,7 +624,7 @@ export default function TrangChuForm() {
                 alignItems: "center",
                 justifyContent: "center",
               }}>
-                <img src="/images/duosteamicon-removebg-preview.png" alt="DuoMath mascot" style={{ width: "240px", maxWidth: "90%", filter: "drop-shadow(0 8px 30px rgba(99,102,241,0.35))", animation: "floatMascot 6s ease-in-out infinite" }} />
+                <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath mascot" style={{ width: "240px", maxWidth: "90%", filter: "drop-shadow(0 8px 30px rgba(99,102,241,0.35))", animation: "floatMascot 6s ease-in-out infinite" }} />
                 <div style={{ position: "absolute", bottom: "10%", background: "rgba(15,23,42,0.6)", padding: "8px 16px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", fontSize: 13, color: "#a78bfa", fontWeight: 700, letterSpacing: 0.5, boxShadow: "0 4px 15px rgba(0,0,0,0.3)" }}>
                   💡 Fun Math Learn
                 </div>
@@ -1075,10 +783,10 @@ export default function TrangChuForm() {
                 boxShadow: "0 10px 40px rgba(0,0,0,0.3)"
               }}>
               {[
-                { href: "/L10-test1-section1", key: "reading-test-1", label: "Test 1", grade: "Lớp 10", img: "/images/math10.png" },
-                { href: "/L10-test2-section1", key: "reading-test-2", label: "Test 2", grade: "Lớp 10", img: "/images/math10.png" },
-                { href: null, key: null, label: "Test 1", grade: "Lớp 11 (Coming soon)", img: "/images/math11.png", disabled: true },
-                { href: null, key: null, label: "Test 1", grade: "Lớp 12 (Coming soon)", img: "/images/math12.png", disabled: true },
+                { href: "/L10-test1-section1", key: "reading-test-1", label: "Test 1", grade: "Lớp 10", img: "/images/math10.webp" },
+                { href: "/L10-test2-section1", key: "reading-test-2", label: "Test 2", grade: "Lớp 10", img: "/images/math10.webp" },
+                { href: null, key: null, label: "Test 1", grade: "Lớp 11 (Coming soon)", img: "/images/math11.webp", disabled: true },
+                { href: null, key: null, label: "Test 1", grade: "Lớp 12 (Coming soon)", img: "/images/math12.webp", disabled: true },
               ].map((t, i) => {
                 const myScores = t.key ? Object.entries(bestScores).filter(([k]) => k.startsWith(t.key)) : [];
                 const scoreBadge = myScores.length > 0
@@ -1128,7 +836,7 @@ export default function TrangChuForm() {
               {/* Left branding */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 220 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <img src="/images/duosteamicon-removebg-preview.png" alt="DuoMath" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />
+                  <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />
                   <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 0.5 }}>DUOMATH</span>
                 </div>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontStyle: "italic" }}>

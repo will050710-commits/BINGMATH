@@ -227,7 +227,7 @@ export default function CacBaiLamPage() {
                           onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,180,255,0.22)"; e.currentTarget.style.borderColor = "rgba(0,200,255,0.4)"; }}
                           onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.13)"; }}
                         >
-                          <img src="/images/math10.png" alt="Grade 10" style={{ width: "100%", height: 160, objectFit: "cover" }} />
+                          <img src="/images/math10.webp" alt="Grade 10" style={{ width: "100%", height: 160, objectFit: "cover" }} />
                           <div style={{ padding: "16px 20px" }}>
                             <div style={{ fontSize: 18, fontWeight: 600, color: "white" }}>
                               Lesson {idx + 1}
@@ -254,7 +254,7 @@ export default function CacBaiLamPage() {
                           height: "100%",
                         }}
                       >
-                        <img src="/images/math10.png" alt="Grade 10" style={{ width: "100%", height: 160, objectFit: "cover", filter: "grayscale(80%)" }} />
+                        <img src="/images/math10.webp" alt="Grade 10" style={{ width: "100%", height: 160, objectFit: "cover", filter: "grayscale(80%)" }} />
                         <div style={{ padding: "16px 20px" }}>
                           <div style={{ fontSize: 18, fontWeight: 600, color: "#64748b" }}>
                             Lesson {idx + 1}

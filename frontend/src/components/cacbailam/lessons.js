@@ -20,7 +20,7 @@ function ShapesSVG({ shape, color }) {
 
 const gradeData = [
   {
-    grade: "Grade 10", img: "/images/math10.png", comingSoon: false,
+    grade: "Grade 10", img: "/images/math10.webp", comingSoon: false,
     tests: [
       { href: "/L10-test1-section1", key: "reading-test-1" },
       { href: "/L10-test2-section1", key: "reading-test-2" },
@@ -31,7 +31,7 @@ const gradeData = [
     ],
   },
   {
-    grade: "Grade 11", img: "/images/math11.png", comingSoon: false,
+    grade: "Grade 11", img: "/images/math11.webp", comingSoon: false,
     tests: [
       { href: "/L11-test1-section1", key: "reading-test-L11-1" },
       { href: "/L11-test2-section1", key: "reading-test-L11-2" },
@@ -42,7 +42,7 @@ const gradeData = [
     ],
   },
   {
-    grade: "Grade 12", img: "/images/math12.png", comingSoon: true,
+    grade: "Grade 12", img: "/images/math12.webp", comingSoon: true,
     tests: Array.from({ length: 6 }, (_, i) => ({ href: null, key: null })),
   },
 ];

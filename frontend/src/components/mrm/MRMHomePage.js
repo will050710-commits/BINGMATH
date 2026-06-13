@@ -406,7 +406,7 @@ export default function MRMHomePage() {
               </div>
             )}
             <img
-              src="/images/duosteamicon-removebg-preview.png"
+              src="/images/duosteamicon-removebg-preview.webp"
               alt="DuoMath Mascot"
               style={{
                 width: 200,

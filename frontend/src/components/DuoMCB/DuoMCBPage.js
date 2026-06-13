@@ -311,7 +311,7 @@ export default function DuoMCBPage() {
         <div className={styles.chatArea}>
           {isEmpty ? (
             <div className={styles.welcome}>
-              <Image src="/images/duosteamicon-removebg-preview.png" alt="DuoMCB Logo" width={64} height={64} style={{ width: 64, height: "auto" }} />
+              <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB Logo" width={64} height={64} style={{ width: 64, height: "auto" }} />
               <h1 className={styles.welcomeTitle}>Hello, I&apos;m DuoMCB</h1>
               <p className={styles.welcomeSub}>Your bilingual <strong>DUOMATH</strong> chatbot!</p>
               <div className={styles.suggestions}>
@@ -329,7 +329,7 @@ export default function DuoMCBPage() {
                 <div key={m.id} className={`${styles.msgRow} ${m.role === "user" ? styles.userRow : styles.botRow}`}>
                   {m.role === "assistant" && (
                     <div className={styles.avatar}>
-                      <Image src="/images/duosteamicon-removebg-preview.png" alt="DuoMCB" width={32} height={32} />
+                      <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
                     </div>
                   )}
                   <div className={`${styles.bubble} ${m.role === "user" ? styles.userBubble : styles.botBubble}`}>
@@ -365,7 +365,7 @@ export default function DuoMCBPage() {
               {loading && (
                 <div className={`${styles.msgRow} ${styles.botRow}`}>
                   <div className={styles.avatar}>
-                    <Image src="/images/duosteamicon-removebg-preview.png" alt="DuoMCB" width={32} height={32} />
+                    <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
                   </div>
                   <div className={`${styles.bubble} ${styles.botBubble} ${styles.typingBubble}`}>
                     <span className={styles.dot} /><span className={styles.dot} /><span className={styles.dot} />
