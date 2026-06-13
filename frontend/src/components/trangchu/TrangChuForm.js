@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { motion, AnimatePresence } from "framer-motion";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
 import { useMathMapStore } from "@/context/MathMapStore";
@@ -11,6 +12,33 @@ import { useMathMapStore } from "@/context/MathMapStore";
 const EditProfileModal = dynamic(() => import("./EditProfileModal"), {
   ssr: false,
 });
+
+// ─── SPLIT-TEXT FADE-IN TITLE ─────────────────────────────────────────────────
+function FadeInTitle({ text, gradient = "linear-gradient(135deg, #ffffff 60%, #93c5fd 100%)" }) {
+  const words = text.split(" ");
+  const container = {
+    hidden: { opacity: 0 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.09 } },
+  };
+  const child = {
+    hidden: { opacity: 0, y: 22, scale: 0.96 },
+    visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.65, ease: [0.16, 1, 0.3, 1] } },
+  };
+  return (
+    <motion.h1
+      variants={container}
+      initial="hidden"
+      animate="visible"
+      style={{ fontSize: 44, fontWeight: 900, marginBottom: 12, lineHeight: 1.1, background: gradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", display: "flex", flexWrap: "wrap", gap: "0 8px" }}
+    >
+      {words.map((word, idx) => (
+        <motion.span key={idx} variants={child} style={{ display: "inline-block" }}>
+          {word}
+        </motion.span>
+      ))}
+    </motion.h1>
+  );
+}
 
 function getInitials(name) {
   const parts = (name || "U").trim().split(/\s+/).filter(Boolean);
@@ -645,9 +673,9 @@ export default function TrangChuForm() {
                 <div style={{ display: "inline-block", background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)", borderRadius: 30, padding: "4px 14px", fontSize: 12, fontWeight: 800, color: "#38bdf8", letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>
                   Bilingual Math Platform
                 </div>
-                <h1 style={{ fontSize: 44, fontWeight: 900, marginBottom: 12, lineHeight: 1.1, background: "linear-gradient(135deg, #ffffff 60%, #93c5fd 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                  {user ? `Chào bạn, ${user.username}! 👋` : "Chào mừng tới DUOMATH!"}
-                </h1>
+                <FadeInTitle
+                  text={user ? `Chào bạn, ${user.username}! 👋` : "Chào mừng tới DUOMATH!"}
+                />
                 <p style={{ color: "#bae6fd", fontSize: 20, lineHeight: 1.5, fontWeight: 500, marginBottom: 16 }}>
                   Khơi mở tư duy, làm chủ toán học THPT với <strong>giáo trình song ngữ Anh - Việt</strong> tiên tiến!
                 </p>
