@@ -249,7 +249,7 @@ export default function OnTapChuong4() {
   return (
     <><div style={{ width: "100%", background: "#fff", display: "flex", justifyContent: "center" }}>
       <div style={{ width: "1200px", maxWidth: "95%", color: "black", paddingTop: 60, paddingBottom: 80 }}>
-        <div className="reveal" data-reveal style={{ marginBottom: 24 }}><Link href="/cacbailam10" style={{ textDecoration: "none", color: "black", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", padding: "12px 16px", borderRadius: 8, fontSize: 15 }}>← {t("Quay lại", "Back")}</Link></div>
+        <div className="reveal" data-reveal style={{ marginBottom: 24 }}><Link href="/Cacbaitoan10" style={{ textDecoration: "none", color: "black", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", padding: "12px 16px", borderRadius: 8, fontSize: 15 }}>← {t("Quay lại", "Back")}</Link></div>
         <header className="reveal" data-reveal style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0", position: "relative", zIndex: 300 }}>
           <div>
             <div style={{ fontWeight: "bold", fontSize: 22, color: "#0B4F5C" }}>{t("Chương IV · Hệ Thức Lượng Trong Tam Giác", "Chapter IV · Triangle Trigonometry")}</div>

@@ -5,11 +5,11 @@ import { motion } from "framer-motion";
 import MathGraphSVG from "./MathGraphSVG";
 
 // ─── BENTO CARD DATA ─────────────────────────────────────────────────────────
-// Each chapter / section gets a Bento card with a unique graph type and color.
+// Each lesson has a thumbnail (emoji/icon), title, slug, and done status.
 const BENTO_CARDS = [
   {
     id: "ch1",
-    size: "large",      // spans 2 columns
+    size: "large",
     chapter: "Chapter 1",
     title: "Propositions & Sets",
     titleVi: "Mệnh Đề & Tập Hợp",
@@ -18,10 +18,10 @@ const BENTO_CARDS = [
     glowColor: "rgba(34,211,238,0.25)",
     badge: "Set Theory",
     lessons: [
-      { title: "Mathematical Propositions", slug: "Menh-de", done: true },
-      { title: "Sets", slug: "Tap-hop", done: true },
-      { title: "Set Operations", slug: "phep-toan-tap-hop", done: true },
-      { title: "Practice & Review – Ch.1", slug: "OnTapChuong1", done: true },
+      { thumb: "⊢", title: "Mathematical Propositions", titleVi: "Mệnh Đề Toán Học", slug: "Menh-de", done: true },
+      { thumb: "∈", title: "Sets", titleVi: "Tập Hợp", slug: "Tap-hop", done: true },
+      { thumb: "∩", title: "Set Operations", titleVi: "Phép Toán Tập Hợp", slug: "phep-toan-tap-hop", done: true },
+      { thumb: "📝", title: "Practice & Review – Ch.1", titleVi: "Ôn Tập Chương 1", slug: "OnTapChuong1", done: true },
     ],
   },
   {
@@ -35,9 +35,9 @@ const BENTO_CARDS = [
     glowColor: "rgba(16,185,129,0.25)",
     badge: "2-Variable",
     lessons: [
-      { title: "Linear Inequalities in 2 Variables", slug: "Bpt-bac-nhat-2-an", done: true },
-      { title: "Systems of Linear Inequalities", slug: "Lesson5_HeBPTBacNhatHaiAn", done: true },
-      { title: "Practice & Review – Ch.2", slug: "chuong2-10", done: true },
+      { thumb: "≤", title: "Linear Inequalities in 2 Variables", titleVi: "BPT Bậc Nhất Hai Ẩn", slug: "Bpt-bac-nhat-2-an", done: true },
+      { thumb: "⫤", title: "Systems of Linear Inequalities", titleVi: "Hệ BPT Bậc Nhất Hai Ẩn", slug: "Lesson5_HeBPTBacNhatHaiAn", done: true },
+      { thumb: "📝", title: "Practice & Review – Ch.2", titleVi: "Ôn Tập Chương 2", slug: "chuong2-10", done: true },
     ],
   },
   {
@@ -51,14 +51,14 @@ const BENTO_CARDS = [
     glowColor: "rgba(129,140,248,0.25)",
     badge: "y = ax² + bx + c",
     lessons: [
-      { title: "Functions and Graphs", slug: "Ham-so-va-do-thi", done: true },
-      { title: "Quadratic Functions", slug: "Ham-so-bac-hai", done: true },
-      { title: "Practice & Review – Ch.3", slug: "on-tap-chuong-3", done: true },
+      { thumb: "f(x)", title: "Functions and Graphs", titleVi: "Hàm Số và Đồ Thị", slug: "Ham-so-va-do-thi", done: true },
+      { thumb: "∪", title: "Quadratic Functions", titleVi: "Hàm Số Bậc Hai", slug: "Ham-so-bac-hai", done: true },
+      { thumb: "📝", title: "Practice & Review – Ch.3", titleVi: "Ôn Tập Chương 3", slug: "on-tap-chuong-3", done: true },
     ],
   },
   {
     id: "ch4-5",
-    size: "wide",      // spans full row
+    size: "wide",
     chapter: "Chapter 4 – 5",
     title: "Trigonometry & Vectors",
     titleVi: "Hệ Thức Lượng & Vectơ",
@@ -67,16 +67,16 @@ const BENTO_CARDS = [
     glowColor: "rgba(167,139,250,0.25)",
     badge: "Geometry",
     lessons: [
-      { title: "Trigonometric Values (0°–180°)", slug: "gia-tri-luong-giac", done: true },
-      { title: "Law of Cosines", slug: "Lesson10_DinhLiCosin", done: true },
-      { title: "Law of Sines", slug: "Lesson11_DinhLiSin", done: true },
-      { title: "Solving Triangles", slug: "Lesson12_GiaiTamGiac", done: true },
-      { title: "Introduction to Vectors", slug: "Lesson13_KhaiNiemVecto", done: true },
-      { title: "Sum & Difference of Vectors", slug: "Lesson14_TongHieuVecto", done: true },
-      { title: "Scalar Multiplication", slug: "Lesson15_TichSoVecto", done: true },
-      { title: "Dot Product", slug: "Lesson16_TichVoHuong", done: true },
-      { title: "Practice – Ch.4", slug: "OnTapChuong4", done: true },
-      { title: "Practice – Ch.5", slug: "Lesson17_OnTapChuong5", done: true },
+      { thumb: "sin", title: "Trigonometric Values (0°–180°)", titleVi: "Giá Trị Lượng Giác", slug: "gia-tri-luong-giac", done: true },
+      { thumb: "cos²", title: "Law of Cosines", titleVi: "Định Lí Cosin", slug: "Lesson10_DinhLiCosin", done: true },
+      { thumb: "sinA", title: "Law of Sines", titleVi: "Định Lí Sin", slug: "Lesson11_DinhLiSin", done: true },
+      { thumb: "△", title: "Solving Triangles", titleVi: "Giải Tam Giác", slug: "Lesson12_GiaiTamGiac", done: true },
+      { thumb: "→", title: "Introduction to Vectors", titleVi: "Khái Niệm Vectơ", slug: "Lesson13_KhaiNiemVecto", done: true },
+      { thumb: "a+b", title: "Sum & Difference of Vectors", titleVi: "Tổng & Hiệu Vectơ", slug: "Lesson14_TongHieuVecto", done: true },
+      { thumb: "k→", title: "Scalar Multiplication", titleVi: "Tích Số Vectơ", slug: "Lesson15_TichSoVecto", done: true },
+      { thumb: "·", title: "Dot Product", titleVi: "Tích Vô Hướng", slug: "Lesson16_TichVoHuong", done: true },
+      { thumb: "📝", title: "Practice – Ch.4", titleVi: "Ôn Tập Chương 4", slug: "OnTapChuong4", done: true },
+      { thumb: "📝", title: "Practice – Ch.5", titleVi: "Ôn Tập Chương 5", slug: "Lesson17_OnTapChuong5", done: true },
     ],
   },
   {
@@ -90,9 +90,9 @@ const BENTO_CARDS = [
     glowColor: "rgba(56,189,248,0.25)",
     badge: "Measurement",
     lessons: [
-      { title: "Geometric Shapes & Properties", slug: "Lesson18_HinhHocDoLuong1", done: true },
-      { title: "Area and Perimeter", slug: "Lesson19_HinhHocDoLuong2", done: true },
-      { title: "Practice – Ch.6", slug: "Lesson20_OnTapChuong6", done: true },
+      { thumb: "□", title: "Geometric Shapes & Properties", titleVi: "Hình Học & Diện Tích", slug: "Lesson18_HinhHocDoLuong1", done: true },
+      { thumb: "S=", title: "Area and Perimeter", titleVi: "Diện Tích & Chu Vi", slug: "Lesson19_HinhHocDoLuong2", done: true },
+      { thumb: "📝", title: "Practice – Ch.6", titleVi: "Ôn Tập Chương 6", slug: "Lesson20_OnTapChuong6", done: true },
     ],
   },
   {
@@ -106,10 +106,10 @@ const BENTO_CARDS = [
     glowColor: "rgba(251,113,133,0.25)",
     badge: "Δ = b² - 4ac",
     lessons: [
-      { title: "Sign of a Quadratic Trinomial", slug: "Lesson21_DauTamThucBacHai", done: true },
-      { title: "Solving Quadratic Inequalities", slug: "Lesson22_GiaiBPTBacHai", done: true },
-      { title: "Equations Reducible to Quadratic", slug: "Lesson23_PhuongTrinhQuyVeBacHai", done: true },
-      { title: "Practice – Ch.7", slug: "Lesson24_OnTapChuong7", done: true },
+      { thumb: "Δ", title: "Sign of a Quadratic Trinomial", titleVi: "Dấu Tam Thức Bậc Hai", slug: "Lesson21_DauTamThucBacHai", done: true },
+      { thumb: "≥0", title: "Solving Quadratic Inequalities", titleVi: "Giải BPT Bậc Hai", slug: "Lesson22_GiaiBPTBacHai", done: true },
+      { thumb: "⇒", title: "Equations Reducible to Quadratic", titleVi: "PT Quy Về Bậc Hai", slug: "Lesson23_PhuongTrinhQuyVeBacHai", done: true },
+      { thumb: "📝", title: "Practice – Ch.7", titleVi: "Ôn Tập Chương 7", slug: "Lesson24_OnTapChuong7", done: true },
     ],
   },
   {
@@ -123,10 +123,10 @@ const BENTO_CARDS = [
     glowColor: "rgba(251,191,36,0.25)",
     badge: "C(n,k)",
     lessons: [
-      { title: "Addition & Multiplication Principles", slug: "Lesson25_QuyTacCongNhan", done: true },
-      { title: "Permutations, Arrangements & Combinations", slug: "Lesson26_HoanViChinhHopToHop", done: true },
-      { title: "Binomial Theorem", slug: "Lesson27_NhiThucNewton", done: true },
-      { title: "Practice – Ch.8", slug: "Lesson28_OnTapChuong8", done: true },
+      { thumb: "×+", title: "Addition & Multiplication Principles", titleVi: "Quy Tắc Cộng & Nhân", slug: "Lesson25_QuyTacCongNhan", done: true },
+      { thumb: "n!", title: "Permutations, Arrangements & Combinations", titleVi: "Hoán Vị, Chỉnh Hợp & Tổ Hợp", slug: "Lesson26_HoanViChinhHopToHop", done: true },
+      { thumb: "Cₙᵏ", title: "Binomial Theorem", titleVi: "Nhị Thức Newton", slug: "Lesson27_NhiThucNewton", done: true },
+      { thumb: "📝", title: "Practice – Ch.8", titleVi: "Ôn Tập Chương 8", slug: "Lesson28_OnTapChuong8", done: true },
     ],
   },
   {
@@ -140,11 +140,11 @@ const BENTO_CARDS = [
     glowColor: "rgba(99,102,241,0.25)",
     badge: "Analytic Geometry",
     lessons: [
-      { title: "Coordinates of a Vector", slug: "Lesson29_ToaDoVecto", done: true },
-      { title: "Lines in the Coordinate Plane", slug: "Lesson30_DuongThang", done: true },
-      { title: "Circles in the Coordinate Plane", slug: "Lesson31_DuongTron", done: true },
-      { title: "Ellipse (Introduction)", slug: "Lesson32_Elip", done: true },
-      { title: "Practice – Ch.9", slug: "Lesson33_OnTapChuong9", done: true },
+      { thumb: "(x,y)", title: "Coordinates of a Vector", titleVi: "Tọa Độ Vectơ", slug: "Lesson29_ToaDoVecto", done: true },
+      { thumb: "y=mx", title: "Lines in the Coordinate Plane", titleVi: "Đường Thẳng", slug: "Lesson30_DuongThang", done: true },
+      { thumb: "○", title: "Circles in the Coordinate Plane", titleVi: "Đường Tròn", slug: "Lesson31_DuongTron", done: true },
+      { thumb: "⬭", title: "Ellipse (Introduction)", titleVi: "Elip", slug: "Lesson32_Elip", done: true },
+      { thumb: "📝", title: "Practice – Ch.9", titleVi: "Ôn Tập Chương 9", slug: "Lesson33_OnTapChuong9", done: true },
     ],
   },
   {
@@ -158,12 +158,91 @@ const BENTO_CARDS = [
     glowColor: "rgba(52,211,153,0.25)",
     badge: "P(A)",
     lessons: [
-      { title: "Sample Spaces and Events", slug: "Lesson34_KhongGianMau", done: true },
-      { title: "Probability of an Event", slug: "Lesson35_XacSuatBienCo", done: true },
-      { title: "Practice – Ch.10", slug: "Lesson36_OnTapChuong10", done: true },
+      { thumb: "Ω", title: "Sample Spaces and Events", titleVi: "Không Gian Mẫu", slug: "Lesson34_KhongGianMau", done: true },
+      { thumb: "P(A)", title: "Probability of an Event", titleVi: "Xác Suất Biến Cố", slug: "Lesson35_XacSuatBienCo", done: true },
+      { thumb: "📝", title: "Practice – Ch.10", titleVi: "Ôn Tập Chương 10", slug: "Lesson36_OnTapChuong10", done: true },
     ],
   },
 ];
+
+// ─── LESSON PILL COMPONENT ────────────────────────────────────────────────────
+function LessonPill({ lesson, accentColor }) {
+  return (
+    <Link href={`/${lesson.slug}`} onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none" }}>
+      <motion.div
+        whileHover={{ scale: 1.03, y: -2 }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.09)",
+          borderRadius: 10,
+          padding: "7px 10px",
+          cursor: "pointer",
+          transition: "all 0.2s",
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = accentColor + "15";
+          e.currentTarget.style.borderColor = accentColor + "40";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+          e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
+        }}
+      >
+        {/* Thumbnail badge */}
+        <div style={{
+          flexShrink: 0,
+          width: 32,
+          height: 32,
+          borderRadius: 7,
+          background: accentColor + "20",
+          border: `1px solid ${accentColor}35`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: lesson.thumb.length > 2 ? 9 : 13,
+          fontWeight: 800,
+          color: accentColor,
+          fontFamily: "'Courier New', monospace",
+          letterSpacing: -0.5,
+          lineHeight: 1,
+        }}>
+          {lesson.thumb}
+        </div>
+
+        {/* Title stack */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: "rgba(255,255,255,0.82)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            lineHeight: 1.3,
+          }}>
+            {lesson.title}
+          </div>
+          <div style={{
+            fontSize: 10,
+            color: "rgba(255,255,255,0.35)",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            marginTop: 1,
+          }}>
+            {lesson.titleVi}
+          </div>
+        </div>
+
+        {/* Arrow */}
+        <div style={{ color: accentColor, fontSize: 11, opacity: 0.6, flexShrink: 0 }}>›</div>
+      </motion.div>
+    </Link>
+  );
+}
 
 // ─── BENTO CARD COMPONENT ─────────────────────────────────────────────────────
 function BentoCard({ card }) {
@@ -185,7 +264,7 @@ function BentoCard({ card }) {
         display: "flex",
         flexDirection: "column",
         padding: "24px",
-        gap: 12,
+        gap: 14,
         backdropFilter: "blur(12px)",
         transition: "border-color 0.3s ease",
       }}
@@ -212,7 +291,7 @@ function BentoCard({ card }) {
       />
 
       {/* SVG Graph — auto-draws on hover */}
-      <div style={{ position: "relative", zIndex: 1, height: card.size === "wide" ? 80 : 90, flexShrink: 0, display: "flex", alignItems: "center" }}>
+      <div style={{ position: "relative", zIndex: 1, height: card.size === "wide" ? 72 : 80, flexShrink: 0, display: "flex", alignItems: "center" }}>
         <MathGraphSVG type={card.graphType} color={card.accentColor} />
       </div>
 
@@ -240,48 +319,43 @@ function BentoCard({ card }) {
         <h2 style={{ fontSize: card.size === "large" || card.size === "wide" ? 20 : 17, fontWeight: 800, color: "white", marginBottom: 2, lineHeight: 1.2 }}>
           {card.title}
         </h2>
-        <div style={{ fontSize: 12, color: card.accentColor, fontWeight: 600, marginBottom: 12 }}>
+        <div style={{ fontSize: 12, color: card.accentColor, fontWeight: 600, marginBottom: 14 }}>
           {card.titleVi}
         </div>
 
-        {/* Lesson pills */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {/* Lesson pills with thumbnails */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {card.lessons.map((l) =>
             l.done ? (
-              <Link key={l.slug} href={`/${l.slug}`} onClick={(e) => e.stopPropagation()} style={{ textDecoration: "none" }}>
-                <motion.span
-                  whileHover={{ scale: 1.05, backgroundColor: card.accentColor + "33" }}
-                  style={{
-                    display: "inline-block",
-                    fontSize: 11,
-                    fontWeight: 600,
-                    color: "rgba(255,255,255,0.75)",
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: 6,
-                    padding: "4px 9px",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {l.title}
-                </motion.span>
-              </Link>
+              <LessonPill key={l.slug} lesson={l} accentColor={card.accentColor} />
             ) : (
-              <span key={l.slug} style={{
-                display: "inline-block",
-                fontSize: 11,
-                fontWeight: 600,
-                color: "rgba(255,255,255,0.25)",
-                background: "rgba(255,255,255,0.03)",
-                border: "1px solid rgba(255,255,255,0.05)",
-                borderRadius: 6,
-                padding: "4px 9px",
-                whiteSpace: "nowrap",
+              <div key={l.slug} style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                background: "rgba(255,255,255,0.02)",
+                border: "1px solid rgba(255,255,255,0.04)",
+                borderRadius: 10,
+                padding: "7px 10px",
+                opacity: 0.45,
               }}>
-                {l.title} 🔜
-              </span>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 7,
+                  background: "rgba(255,255,255,0.04)",
+                  border: "1px solid rgba(255,255,255,0.06)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 13, color: "rgba(255,255,255,0.3)",
+                }}>
+                  {l.thumb || "🔜"}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "rgba(255,255,255,0.3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {l.title}
+                  </div>
+                  <div style={{ fontSize: 10, color: "rgba(255,255,255,0.18)", marginTop: 1 }}>{l.titleVi}</div>
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", flexShrink: 0 }}>🔜</div>
+              </div>
             )
           )}
         </div>
@@ -310,11 +384,7 @@ function BentoCard({ card }) {
     </motion.div>
   );
 
-  return href ? (
-    <Link href={href} style={{ textDecoration: "none", display: "block", height: "100%" }}>
-      {cardContent}
-    </Link>
-  ) : cardContent;
+  return cardContent;
 }
 
 // ─── PAGE COMPONENT ──────────────────────────────────────────────────────────
@@ -406,8 +476,8 @@ export default function CacBaiLamPage() {
           </h1>
 
           <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 17, maxWidth: 640, lineHeight: 1.7 }}>
-            Chọn chương để bắt đầu học. Mỗi thẻ bên dưới đại diện cho một chương trong chương trình
-            Toán 10 song ngữ Anh - Việt theo chuẩn SAT/IELTS Math.
+            Chọn bài học để bắt đầu. Mỗi thẻ đại diện cho một chương trong chương trình
+            Toán 10 song ngữ Anh–Việt theo chuẩn SAT/IELTS Math.
           </p>
 
           {/* Stats bar */}
@@ -441,7 +511,6 @@ export default function CacBaiLamPage() {
           gap: 20,
         }}>
           {BENTO_CARDS.map((card, i) => {
-            // Determine grid column span based on size
             const colSpanMap = {
               large:  "span 5",
               medium: "span 4",

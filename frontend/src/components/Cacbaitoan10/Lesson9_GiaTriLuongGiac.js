@@ -1,353 +1,53 @@
-
+﻿/* eslint-disable react-hooks/static-components */
 "use client";
-import { useEffect, useState } from "react";
-import { useAuth } from "@/context/authContext";
-import Link from "next/link";
-import DuoTranslate from "../DuoMCB/DuoTranslate";
-import LessonVideoPlayer from "./LessonVideoPlayer";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import PremiumLessonEngine from "./PremiumLessonEngine";
 
-const SH = ({ icon, title }) => (<div style={{ display:"flex",alignItems:"center",gap:12,fontSize:22,fontWeight:700,color:"#0B4F5C",marginBottom:20,paddingBottom:12,borderBottom:"2px solid #f0f0f0" }}><span>{icon}</span><span>{title}</span></div>);
-const RS = ({ items, onReset, scoreLabel, t }) => (<div><div style={{ textAlign:"center",marginBottom:24 }}><div style={{ fontSize:48,marginBottom:8 }}>{items.filter(i=>i.correct).length===items.length?"🏆":items.filter(i=>i.correct).length>=items.length*0.6?"👍":"💪"}</div><div style={{ fontSize:26,fontWeight:700,color:"#0B4F5C" }}>{items.filter(i=>i.correct).length} / {items.length}</div><div style={{ color:"#777",fontSize:16,marginTop:4 }}>{scoreLabel}</div></div><div style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:24 }}>{items.map((item,idx)=>(<div key={idx} style={{ padding:"14px 18px",borderRadius:10,background:item.correct?"#eafaf1":"#fdf2f2",border:`1px solid ${item.correct?"#a9dfbf":"#f1948a"}` }}><div style={{ display:"flex",alignItems:"flex-start",gap:10 }}><span style={{ fontSize:18,flexShrink:0 }}>{item.correct?"✅":"❌"}</span><div style={{ flex:1 }}><div style={{ fontSize:15,fontWeight:600,color:"#333",marginBottom:4 }}>{t("Câu","Q")} {idx+1}: {item.qText}</div>{!item.correct&&<div style={{ fontSize:14,color:"#922b21" }}>{t("Đáp án đúng:","Correct:")} <strong>{item.correctText}</strong></div>}{item.yourText&&!item.correct&&<div style={{ fontSize:14,color:"#777" }}>{t("Bạn chọn:","You chose:")} {item.yourText}</div>}</div></div></div>))}</div><div style={{ textAlign:"center" }}><button onClick={onReset} style={{ padding:"12px 32px",background:"black",color:"white",border:"none",borderRadius:8,fontWeight:600,fontSize:15,cursor:"pointer" }}>🔄 {t("Chơi lại","Play Again")}</button></div></div>);
+// ─── SECTION HEADER ───────────────────────────────────────────────────────────
+function SectionHeader({ icon, title }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 12,
+      fontSize: 20, fontWeight: 800, color: "white",
+      marginBottom: 20, paddingBottom: 12,
+      borderBottom: "1px solid rgba(255,255,255,0.08)",
+    }}>
+      <span>{icon}</span><span>{title}</span>
+    </div>
+  );
+}
+
+// ─── THEORY BLOCK ─────────────────────────────────────────────────────────────
+function TheoryBlock({ children }) {
+  return (
+    <div style={{
+      padding: "20px 22px",
+      borderRadius: 12,
+      background: "rgba(255,255,255,0.04)",
+      border: "1px solid rgba(255,255,255,0.08)",
+      marginBottom: 20,
+    }}>
+      {children}
+    </div>
+  );
+}
 
 export default function Lesson9_GiaTriLuongGiac() {
-  const { user, saveGameResult } = useAuth();
-  const [lang,setLang]=useState("vi");
-  const [rev,setRev]=useState({});
-  const [gm,setGm]=useState("mc");
-  const [mi,setMi]=useState(0),[ms,setMs]=useState(null),[msc,setMsc]=useState(0),[md,setMd]=useState(false),[mh,setMh]=useState([]);
-  const [ti,setTi]=useState(0),[tf,setTf]=useState(false),[ts,setTs]=useState(0),[td,setTd]=useState(false),[th,setTh]=useState([]);
-  const [fa,setFa]=useState({}),[fc,setFc]=useState(false);
+  const [revealedAnswers, setRevealedAnswers] = useState({});
+  const toggleAnswer = (id) => setRevealedAnswers((p) => ({ ...p, [id]: !p[id] }));
 
-  useEffect(()=>{
-    if(typeof window==="undefined")return;
-    const els=document.querySelectorAll("[data-reveal]");
-    els.forEach(el=>{if(el.hasAttribute("data-reveal-stagger")){const s=parseInt(el.getAttribute("data-stagger")||"80",10);Array.from(el.children).forEach((c,i)=>{c.style.opacity="0";c.style.transform="translateY(24px) scale(0.97)";c.style.transition=`opacity 0.5s cubic-bezier(.2,.8,.2,1) ${i*s}ms,transform 0.45s cubic-bezier(.2,.8,.2,1) ${i*s}ms`;c.style.willChange="opacity,transform";})}});
-    const obs=new IntersectionObserver((entries,observer)=>{entries.forEach(entry=>{if(entry.isIntersecting){const el=entry.target;if(el.hasAttribute("data-reveal-stagger")){const s=parseInt(el.getAttribute("data-stagger")||"80",10);Array.from(el.children).forEach((c,i)=>setTimeout(()=>{c.style.opacity="1";c.style.transform="translateY(0) scale(1)"},i*s));}el.classList.add("visible");observer.unobserve(el);}});},{threshold:0.12,rootMargin:"0px 0px -40px 0px"});
-    els.forEach(el=>obs.observe(el));return()=>obs.disconnect();
-  },[]);
+  const lessonSlug = "gia-tri-luong-giac";
 
-  const t=(vi,en)=>lang==="vi"?vi:en;
+  const chapterTitle = {
+    vi: "Chuong IV He Thuc Luong",
+    en: "Chapter IV Triangle Trig",
+  };
 
-  const videoSubtitles = [
-  {
-    "start": 0,
-    "end": 12,
-    "words": [
-      {
-        "text": "This lesson introduces",
-        "vi": "Bài học này giới thiệu"
-      },
-      {
-        "text": "trigonometric values",
-        "vi": "giá trị lượng giác",
-        "detail": "<b>trigonometric values</b>: giá trị lượng giác.",
-        "detailTitle": "trigonometric values (giá trị lượng giác)"
-      },
-      {
-        "text": "and the main ideas used in Grade 10 math.",
-        "vi": "và các ý chính dùng trong Toán 10."
-      }
-    ]
-  },
-  {
-    "start": 12,
-    "end": 30,
-    "words": [
-      {
-        "text": "First identify",
-        "vi": "Trước hết xác định"
-      },
-      {
-        "text": "sine",
-        "vi": "sin",
-        "detail": "<b>sine</b>: sin.",
-        "detailTitle": "sine (sin)"
-      },
-      {
-        "text": "then connect it with",
-        "vi": "sau đó liên hệ với"
-      },
-      {
-        "text": "cosine",
-        "vi": "cos",
-        "detail": "<b>cosine</b>: cos.",
-        "detailTitle": "cosine (cos)"
-      },
-      {
-        "text": "through examples.",
-        "vi": "qua các ví dụ."
-      }
-    ]
-  },
-  {
-    "start": 30,
-    "end": 55,
-    "words": [
-      {
-        "text": "Use",
-        "vi": "Sử dụng"
-      },
-      {
-        "text": "unit circle",
-        "vi": "đường tròn lượng giác",
-        "detail": "<b>unit circle</b>: đường tròn lượng giác.",
-        "detailTitle": "unit circle (đường tròn lượng giác)"
-      },
-      {
-        "text": "carefully and check every condition before solving.",
-        "vi": "một cách cẩn thận và kiểm tra mọi điều kiện trước khi giải."
-      }
-    ]
-  },
-  {
-    "start": 55,
-    "end": 9999,
-    "words": [
-      {
-        "text": "For practice, combine",
-        "vi": "Khi luyện tập, hãy kết hợp"
-      },
-      {
-        "text": "sine",
-        "vi": "sin",
-        "detail": "<b>sine</b>: sin.",
-        "detailTitle": "sine (sin)"
-      },
-      {
-        "text": ",",
-        "vi": ","
-      },
-      {
-        "text": "cosine",
-        "vi": "cos",
-        "detail": "<b>cosine</b>: cos.",
-        "detailTitle": "cosine (cos)"
-      },
-      {
-        "text": "and",
-        "vi": "và"
-      },
-      {
-        "text": "unit circle",
-        "vi": "đường tròn lượng giác",
-        "detail": "<b>unit circle</b>: đường tròn lượng giác.",
-        "detailTitle": "unit circle (đường tròn lượng giác)"
-      },
-      {
-        "text": "step by step.",
-        "vi": "theo từng bước."
-      }
-    ]
-  }
-];
+  const lessonTitle = {
+    vi: "Bai 9: Gia Tri Luong Giac (0-180 do)",
+    en: "Lesson 9: Trig Values (0 to 180 degrees)",
+  };
 
-
-  const sc=(id)=>{const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:"smooth",block:"start"});};
-  const tr=(id)=>setRev(p=>({...p,[id]:!p[id]}));
-
-  const mcQ=[
-    {q:t("sin 150° bằng?","sin 150° equals?"),o:["−1/2","√3/2","1/2","−√3/2"],a:2,ex:t("sin 150°=sin(180°−30°)=sin 30°=1/2","sin 150°=sin 30°=1/2")},
-    {q:t("cos 120° bằng?","cos 120° equals?"),o:["1/2","−1/2","√3/2","−√3/2"],a:1,ex:t("cos 120°=cos(180°−60°)=−cos 60°=−1/2","cos 120°=−cos 60°=−1/2")},
-    {q:t("Với 0°<α<180°, sinα có dấu?","For 0°<α<180°, sign of sinα?"),o:[t("Âm","Negative"),t("Dương","Positive"),t("Có thể âm hoặc dương","Either"),t("Bằng 0","Zero")],a:1,ex:t("0°<α<180° → điểm trên đường tròn có y>0 → sinα>0","0°<α<180° → y>0 on unit circle → sinα>0")},
-    {q:t("tan 90° bằng?","tan 90° equals?"),o:["0","1",t("Không xác định","Undefined"),"−1"],a:2,ex:t("tan 90°=sin90°/cos90°=1/0 → không xác định","tan 90°=1/0 → undefined")},
-    {q:t("sinα=3/5, 90°<α<180°. cosα=?","sinα=3/5, 90°<α<180°. cosα=?"),o:["4/5","−4/5","3/4","−3/4"],a:1,ex:t("cos²α=1−9/25=16/25. Vì 90°<α<180°, cosα<0 → cosα=−4/5","cos²α=16/25, Q2 → cosα=−4/5")},
-  ];
-  const tfC=[
-    {s:t("sin(180°−α)=sinα với mọi α","sin(180°−α)=sinα for all α"),a:true,ex:t("ĐÚNG — công thức góc bù","TRUE — supplementary formula")},
-    {s:t("cos(180°−α)=cosα với mọi α","cos(180°−α)=cosα for all α"),a:false,ex:t("SAI — cos(180°−α)=−cosα (đổi dấu)","FALSE — cos(180°−α)=−cosα")},
-    {s:t("Với 90°<α<180°, cosα<0","For 90°<α<180°, cosα<0"),a:true,ex:t("ĐÚNG — góc tù, hoành độ âm","TRUE — obtuse angle, x<0")},
-    {s:t("sin²α+cos²α=1 với mọi α","sin²α+cos²α=1 for all α"),a:true,ex:t("ĐÚNG — hệ thức Pythagore","TRUE — Pythagorean identity")},
-    {s:t("tanα=sinα×cosα","tanα=sinα×cosα"),a:false,ex:t("SAI — tanα=sinα/cosα (chia)","FALSE — tanα=sinα/cosα (division)")},
-  ];
-  const fQ=[
-    {id:"f1",tp:t("sin(180°−α)=___","sin(180°−α)=___"),ans:"sin α",alt:["sinα","sina","sin a"],h:""},
-    {id:"f2",tp:t("sin²α+cos²α=___","sin²α+cos²α=___"),ans:"1",alt:["1"],h:""},
-    {id:"f3",tp:t("cos 90°=___","cos 90°=___"),ans:"0",alt:["0"],h:""},
-  ];
-  const cf=(id)=>{const q=fQ.find(q=>q.id===id);const r=(fa[id]||"").toLowerCase().trim().replace(/\s/g,"");return[q.ans,...(q.alt||[])].map(a=>a.toLowerCase().replace(/\s/g,"")).includes(r);};
-  const fs=fc?fQ.filter(q=>cf(q.id)).length:null;
-
-  const sel=(i)=>{if(ms!==null)return;setMs(i);const c=i===mcQ[mi].a;if(c)setMsc(s=>s+1);setMh(h=>[...h,{q:mi,s:i,c}]);};
-  const nx=()=>{if(mi+1>=mcQ.length)setMd(true);else{setMi(i=>i+1);setMs(null);}};
-  const rm=()=>{setMi(0);setMs(null);setMsc(0);setMd(false);setMh([]);};
-  const ta=(a)=>{if(tf)return;setTf(true);const c=a===tfC[ti].a;if(c)setTs(s=>s+1);setTh(h=>[...h,{q:ti,g:a,c}]);};
-  const tn=()=>{if(ti+1>=tfC.length)setTd(true);else{setTi(i=>i+1);setTf(false);}};
-  const rt=()=>{setTi(0);setTf(false);setTs(0);setTd(false);setTh([]);};
-  const mri=mh.map(h=>({correct:h.c,qText:mcQ[h.q].q,correctText:mcQ[h.q].o[mcQ[h.q].a],yourText:mcQ[h.q].o[h.s]}));
-  const tri=th.map(h=>({correct:h.c,qText:tfC[h.q].s,correctText:tfC[h.q].a?t("ĐÚNG","TRUE"):t("SAI","FALSE"),yourText:h.g?t("ĐÚNG","TRUE"):t("SAI","FALSE")}));
-  const fri=fc?fQ.map(q=>({correct:cf(q.id),qText:q.tp,correctText:q.ans,yourText:fa[q.id]||t("(bỏ trống)","(blank)")})):[];
-
-  const tabs=[["w","🚀",t("Khởi động","Warm-Up")],
-    ["videoBaiGiang", "🎬", t("Video Bài Giảng", "Lesson Video")],["k1","📖",t("1. Đường Tròn","1. Unit Circle")],["k2","📖",t("2. Định Nghĩa","2. Definitions")],["k3","📖",t("3. Bảng GT","3. Value Table")],["k4","📖",t("4. Công Thức","4. Formulas")],["th","✏️",t("Thực Hành","Practice")],["mg","🎮","Mini Game"]];
-
-  const btn=(bg,co)=>({background:bg,color:co,border:"none",borderRadius:8,padding:"10px 18px",fontWeight:600,cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"});
-
-  
-  useEffect(() => {
-    if (md && user) {
-      saveGameResult({
-        lesson_slug: "Lesson9_GiaTriLuongGiac",
-        mode: "mc",
-        score: msc,
-        total: mcQ.length
-      });
-    }
-  }, [md, msc, user]);
-
-  useEffect(() => {
-    if (td && user) {
-      saveGameResult({
-        lesson_slug: "Lesson9_GiaTriLuongGiac",
-        mode: "tf",
-        score: ts,
-        total: tfC.length
-      });
-    }
-  }, [td, ts, user]);
-
-  useEffect(() => {
-    if (fc && user) {
-      const correctCount = fQ.filter(q => {
-        const r = (fa[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
-        return [q.ans, ...(q.alt || [])].map(a => a.toLowerCase().replace(/\s/g, "")).includes(r);
-      }).length;
-      saveGameResult({
-        lesson_slug: "Lesson9_GiaTriLuongGiac",
-        mode: "fill",
-        score: correctCount,
-        total: fQ.length
-      });
-    }
-  }, [fc, fa, user]);
-
-  return(
-    <div style={{ width:"100%",background:"#fff",display:"flex",justifyContent:"center" }}>
-    <div style={{ width:"1200px",maxWidth:"95%",color:"black",paddingTop:60,paddingBottom:80 }}>
-      <div className="reveal" data-reveal style={{ marginBottom:24 }}><Link href="/Cacbaitoan10" style={{ textDecoration:"none",color:"black",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:"12px 16px",borderRadius:8,fontSize:15 }}>← {t("Quay lại","Back")}</Link></div>
-      <header className="reveal" data-reveal style={{ display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 0",position:"relative",zIndex:300 }}>
-        <div><div style={{ fontWeight:"bold",fontSize:22,color:"#0B4F5C" }}>{t("Chương IV · Hệ Thức Lượng","Chapter IV · Triangle Trig")}</div><div style={{ fontSize:28,fontWeight:600,marginTop:4 }}>{t("Bài 9: Giá Trị Lượng Giác (0°–180°)","Lesson 9: Trig Values (0°–180°)")}</div></div>
-        <div style={{ display:"flex",gap:10 }}><button onClick={()=>setLang("vi")} style={btn(lang==="vi"?"black":"#f9f9f9",lang==="vi"?"white":"black")}>🇻🇳 Tiếng Việt</button><button onClick={()=>setLang("en")} style={btn(lang==="en"?"black":"#f9f9f9",lang==="en"?"white":"black")}>🇬🇧 English</button></div>
-      </header>
-
-      <div className="reveal" data-reveal data-reveal-stagger data-stagger="60" style={{ marginBottom:40,padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-        <div style={{ fontSize:18,fontWeight:600,marginBottom:14 }}>🎯 {t("Yêu cầu cần đạt","Objectives")}</div>
-        {[t("Hiểu góc từ 0°–180° trên đường tròn đơn vị","Understand 0°–180° on the unit circle"),t("Định nghĩa sin, cos, tan, cot","Define sin, cos, tan, cot"),t("Thuộc bảng giá trị góc đặc biệt","Memorize special angle values"),t("Áp dụng công thức góc bù","Apply supplementary angle formulas"),t("Tính GTLG khi biết một giá trị","Compute trig values from one given value")].map((o,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>• {o}</div>)}
-      </div>
-
-      <div style={{ position:"sticky",top:0,zIndex:200,background:"#fff",paddingTop:12,paddingBottom:12,marginBottom:48,boxShadow:"0 4px 16px rgba(0,0,0,0.07)" }}>
-        <div style={{ display:"flex",gap:10,flexWrap:"wrap" }}>
-          {tabs.map(([id,icon,label])=>(<button key={id} onClick={()=>sc(id)} style={{ background:"#f9f9f9",color:"black",border:"none",borderRadius:8,padding:"10px 14px",fontWeight:600,fontSize:13,cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",transition:"all 0.15s" }} onMouseEnter={e=>{e.currentTarget.style.background="black";e.currentTarget.style.color="white";}} onMouseLeave={e=>{e.currentTarget.style.background="#f9f9f9";e.currentTarget.style.color="black";}}>{icon} {label}</button>))}
-        </div>
-      </div>
-
-      <section id="w" style={{ scrollMarginTop:80,marginBottom:64 }}>
-        <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-          <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Trong kiến trúc và kỹ thuật, người ta tính góc nghiêng mái nhà, góc cần cẩu, hướng bay máy bay — tất cả dùng sin, cos, tan. Với góc tam giác (0°–180°), chúng ta cần biết chính xác các giá trị này.","In architecture and engineering — roof pitch, crane angles, flight headings — all use sin, cos, tan. For triangle angles (0°–180°) we need these values precisely.")}</div>
-          <div style={{ fontSize:16 }}>❓ <em>{t("Bạn đã nhớ sin 30°, cos 60°, tan 45° chưa?","Do you remember sin 30°, cos 60°, tan 45°?")}</em></div>
-        </div>
-      </section>
-
-      {/* ════════════════════════════════════════
-          VIDEO BÀI GIẢNG
-      ════════════════════════════════════════ */}
-      <section id="videoBaiGiang" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
-        <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
-        <div className="reveal" data-reveal>
-          <LessonVideoPlayer
-            videoId="Em2HiOJUS5E"
-            subtitles={videoSubtitles}
-            lang={lang}
-            credit={t("Video từ Khan Academy India (YouTube)", "Video by Khan Academy India (YouTube)")}
-          />
-        </div>
-      </section>
-
-      <section id="k1" style={{ scrollMarginTop:80,marginBottom:64 }}>
-        <SH icon="📖" title={t("1. Góc và Đường Tròn Đơn Vị","1. Angles & Unit Circle")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10 }}>📌 {t("Đường tròn đơn vị","Unit Circle")}</div>
-          <div style={{ fontSize:15,lineHeight:1.8 }}>{t("Đường tròn đơn vị: tâm O(0,0), bán kính 1. Với góc α, điểm M(cosα, sinα) là giao của tia góc α với đường tròn.","Unit circle: center O(0,0), radius 1. For angle α, point M(cosα, sinα) is where the terminal ray meets the circle.")}</div>
-          <div style={{ marginTop:12,fontFamily:"monospace",fontSize:15,background:"white",padding:"10px 14px",borderRadius:8,lineHeight:2 }}>M(x,y): x=cosα, y=sinα, x²+y²=1</div>
-        </div>
-        <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,transition:"all 0.3s" }}>
-          {[{r:t("0°<α<90° (góc nhọn)","0°<α<90° (acute)"),s:"sin>0, cos>0, tan>0",bg:"#eafaf1",c:"#1e8449"},
-            {r:t("α=90° (góc vuông)","α=90° (right)"),s:"sin=1, cos=0, tan=∞",bg:"#eaf4fb",c:"#1a5276"},
-            {r:t("90°<α<180° (góc tù)","90°<α<180° (obtuse)"),s:"sin>0, cos<0, tan<0",bg:"#fff3cd",c:"#856404"},
-          ].map((card,i)=>(<article key={i} style={{ padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}><div style={{ fontSize:14,fontWeight:700,color:"#0B4F5C",marginBottom:8 }}>{card.r}</div><div style={{ background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,fontSize:14,fontWeight:600,fontFamily:"monospace" }}>{card.s}</div></article>))}
-        </div>
-      </section>
-
-      <section id="k2" style={{ scrollMarginTop:80,marginBottom:64 }}>
-        <SH icon="📖" title={t("2. Định Nghĩa","2. Definitions")} />
-        <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,transition:"all 0.3s" }}>
-          {[{n:"sin α",f:"y (tung độ M)",c:"#1a5276"},{n:"cos α",f:"x (hoành độ M)",c:"#1e8449"},{n:"tan α",f:"sin α / cos α",c:"#922b21"},{n:"cot α",f:"cos α / sin α",c:"#6c3483"}].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center" }}>
-              <div style={{ fontSize:22,fontWeight:700,color:card.c,marginBottom:8 }}>{card.n}</div>
-              <div style={{ fontFamily:"monospace",fontSize:15,background:"white",padding:"8px 12px",borderRadius:8 }}>{card.f}</div>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section id="k3" style={{ scrollMarginTop:80,marginBottom:64 }}>
-        <SH icon="📖" title={t("3. Bảng Giá Trị Đặc Biệt","3. Special Angle Table")} />
-        <div className="reveal" data-reveal style={{ overflowX:"auto",borderRadius:10,boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-          <table style={{ borderCollapse:"collapse",width:"100%",fontSize:14,minWidth:580 }}>
-            <thead><tr style={{ background:"#0B4F5C",color:"white" }}>{[t("Góc","Angle"),"0°","30°","45°","60°","90°","120°","135°","150°","180°"].map((h,i)=><td key={i} style={{ padding:"9px 10px",textAlign:"center",fontWeight:700,border:"1px solid rgba(255,255,255,0.2)" }}>{h}</td>)}</tr></thead>
-            <tbody>
-              {[["sin α","0","1/2","√2/2","√3/2","1","√3/2","√2/2","1/2","0"],
-                ["cos α","1","√3/2","√2/2","1/2","0","−1/2","−√2/2","−√3/2","−1"],
-                ["tan α","0","√3/3","1","√3","—","−√3","−1","−√3/3","0"],
-                ["cot α","—","√3","1","√3/3","0","−√3/3","−1","−√3","—"]
-              ].map((row,ri)=>(
-                <tr key={ri} style={{ background:ri%2===0?"#f9f9f9":"white" }}>
-                  {row.map((cell,ci)=><td key={ci} style={{ padding:"8px 10px",textAlign:"center",border:"1px solid #e0e0e0",fontWeight:ci===0?700:400,color:ci===0?"#0B4F5C":cell==="—"?"#bbb":"#333",fontFamily:ci===0?"sans-serif":"monospace",fontSize:13 }}>{cell}</td>)}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section id="k4" style={{ scrollMarginTop:80,marginBottom:64 }}>
-        <SH icon="📖" title={t("4. Công Thức Quan Trọng","4. Key Formulas")} />
-        <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:20,transition:"all 0.3s" }}>
-          {[{title:t("Hệ thức cơ bản","Fundamental"),lines:["sin²α + cos²α = 1","tan α = sin α / cos α","cot α = cos α / sin α","tan α · cot α = 1"]},
-            {title:t("Công thức góc bù","Supplementary"),lines:["sin(180°−α) = sin α","cos(180°−α) = −cos α","tan(180°−α) = −tan α","cot(180°−α) = −cot α"]},
-            {title:t("Dấu theo khoảng góc","Signs by interval"),lines:[t("0°<α<90°: tất cả >0","0°<α<90°: all >0"),t("90°<α<180°: sin>0, cos<0","90°<α<180°: sin>0, cos<0"),t("α=0°/180°: sin=0","α=0°/180°: sin=0"),t("α=90°: cos=0","α=90°: cos=0")]},
-          ].map((card,i)=>(<article key={i} style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}><div style={{ fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:10 }}>{card.title}</div><div style={{ background:"white",borderRadius:8,padding:"10px 14px" }}>{card.lines.map((l,j)=><div key={j} style={{ fontFamily:"monospace",fontSize:14,lineHeight:2 }}>{l}</div>)}</div></article>))}
-        </div>
-      </section>
-
-      <section id="th" style={{ scrollMarginTop:80,marginBottom:64 }}>
-        <SH icon="✏️" title={t("Thực Hành","Practice")} />
-        <div className="reveal" data-reveal data-reveal-stagger data-stagger="90" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:40,transition:"all 0.3s" }}>
-          {[
-            {id:"e1",q:t("Tính sin135°, cos150°, tan120°.","Compute sin135°, cos150°, tan120°."),a:[t("sin135°=sin(180°−45°)=sin45°=√2/2","sin135°=√2/2"),t("cos150°=cos(180°−30°)=−cos30°=−√3/2","cos150°=−√3/2"),t("tan120°=tan(180°−60°)=−tan60°=−√3","tan120°=−√3")]},
-            {id:"e2",q:t("cosα=−2/3, 90°<α<180°. Tính sinα, tanα.","cosα=−2/3, 90°<α<180°. Find sinα, tanα."),a:[t("sin²α=1−4/9=5/9 → sinα=√5/3 (dương vì Q2)","sin²α=5/9 → sinα=√5/3 (positive, Q2)"),t("tanα=sinα/cosα=(√5/3)/(−2/3)=−√5/2","tanα=−√5/2")]},
-            {id:"e3",q:t("Chứng minh sin²30°+cos²30°=1.","Verify sin²30°+cos²30°=1."),a:["sin30°=1/2, cos30°=√3/2",t("(1/2)²+(√3/2)²=1/4+3/4=1 ✓","(1/2)²+(√3/2)²=1/4+3/4=1 ✓")]},
-          ].map(({id,q,a})=>(<article key={id}><div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}><div style={{ fontSize:18,fontWeight:600,marginBottom:4 }}>📝 {t("Bài tập","Exercise")}</div><div style={{ fontSize:15,lineHeight:1.7 }}>{q}</div></div><button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}</article>))}
-        </div>
-      </section>
-
-      <section id="mg" style={{ scrollMarginTop:80,marginBottom:64 }}>
-        <SH icon="🎮" title="Mini Game" />
-        <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:24,marginBottom:32,transition:"all 0.3s" }}>
-          {[["mc","🧩",t("Trắc Nghiệm","Multiple Choice"),t("5 câu","5 questions")],["tf","🃏",t("Đúng / Sai","True / False"),t("5 thẻ","5 cards")],["fill","✍️",t("Điền Chỗ Trống","Fill in Blank"),t("3 câu","3 items")]].map(([mode,icon,label,sub])=>(<article key={mode} onClick={()=>setGm(mode)} style={{ background:gm===mode?"black":"#f9f9f9",color:gm===mode?"white":"black",cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",padding:20,borderRadius:10 }}><div style={{ fontSize:28,marginBottom:6 }}>{icon}</div><div style={{ fontSize:18,fontWeight:600 }}>{label}</div><div style={{ fontSize:14,opacity:0.7 }}>{sub}</div></article>))}
-        </div>
-
-        {gm==="mc"&&<div style={{ padding:24,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>{!md?(<><div style={{ color:"#777",fontSize:15,marginBottom:8 }}>{t("Câu","Q")} {mi+1}/{mcQ.length} · {t("Điểm:","Score:")} {msc}</div><div style={{ fontSize:20,fontWeight:600,marginBottom:20 }}>{mcQ[mi].q}</div><div style={{ display:"flex",flexDirection:"column",gap:12 }}>{mcQ[mi].o.map((opt,i)=>{let bg="white",co="black";if(ms!==null){if(i===mcQ[mi].a){bg="#eafaf1";co="#1e8449";}else if(i===ms){bg="#fdf2f2";co="#922b21";}}return <button key={i} onClick={()=>sel(i)} style={{ textAlign:"left",padding:"14px 18px",borderRadius:10,border:"none",background:bg,color:co,fontSize:15,fontWeight:ms!==null&&(i===ms||i===mcQ[mi].a)?600:400,cursor:"pointer",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",transition:"all 0.15s" }}>{String.fromCharCode(65+i)}. {opt}</button>;})}</div>{ms!==null&&<><div style={{marginTop:16,padding:"12px 16px",background:"white",borderRadius:8,fontSize:15,color:"#555",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>💬 {mcQ[mi].ex}</div><button onClick={nx} style={{marginTop:14,padding:"12px 28px",background:"black",color:"white",border:"none",borderRadius:8,fontWeight:600,fontSize:15,cursor:"pointer"}}>{mi+1<mcQ.length?t("Câu tiếp ▶","Next ▶"):t("Xem kết quả","See Results")}</button></>}</>):<RS items={mri} onReset={rm} scoreLabel={msc===mcQ.length?t("Xuất sắc! 🎉","Perfect! 🎉"):msc>=3?t("Tốt lắm! 👍","Well done! 👍"):t("Cố gắng thêm! 💪","Keep going! 💪")} t={t} />}</div>}
-
-        {gm==="tf"&&<div style={{ padding:24,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>{!td?(<><div style={{ color:"#777",fontSize:15,marginBottom:14 }}>{t("Thẻ","Card")} {ti+1}/{tfC.length} · {t("Điểm:","Score:")} {ts}</div><article style={{ background:"white",borderRadius:10,padding:24,marginBottom:20,textAlign:"center",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}><div style={{ fontSize:18,lineHeight:1.7,marginBottom:24 }}>{tfC[ti].s}</div>{!tf?(<div style={{ display:"flex",gap:16,justifyContent:"center" }}><button onClick={()=>ta(true)} style={{ padding:"12px 36px",background:"#eafaf1",color:"#1e8449",border:"2px solid #1e8449",borderRadius:8,fontWeight:700,fontSize:16,cursor:"pointer" }}>✅ {t("ĐÚNG","TRUE")}</button><button onClick={()=>ta(false)} style={{ padding:"12px 36px",background:"#fdf2f2",color:"#922b21",border:"2px solid #922b21",borderRadius:8,fontWeight:700,fontSize:16,cursor:"pointer" }}>❌ {t("SAI","FALSE")}</button></div>):(<><div style={{padding:"12px 16px",background:"#f9f9f9",borderRadius:8,fontSize:15,color:"#555",textAlign:"left",marginBottom:14,boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>💬 {tfC[ti].ex}</div><button onClick={tn} style={{padding:"12px 28px",background:"black",color:"white",border:"none",borderRadius:8,fontWeight:600,fontSize:15,cursor:"pointer"}}>{ti+1<tfC.length?t("Thẻ tiếp ▶","Next ▶"):t("Xem kết quả","See Results")}</button></>)}</article></>):<RS items={tri} onReset={rt} scoreLabel={ts===tfC.length?t("Xuất sắc! 🎉","Perfect! 🎉"):t("Cố gắng thêm! 💪","Keep going! 💪")} t={t} />}</div>}
-
-        {gm==="fill"&&<div style={{ padding:24,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>{!fc?(<><div style={{ fontSize:18,fontWeight:600,marginBottom:20 }}>{t("Điền câu trả lời","Fill in the blanks")}</div>{fQ.map((q,qi)=>(<div key={q.id} style={{ marginBottom:24 }}><div style={{ fontSize:15,color:"#777",marginBottom:6 }}>{t("Câu","Q")} {qi+1}</div><div style={{ fontSize:16,lineHeight:1.7,marginBottom:10 }}>{q.tp}</div><input value={fa[q.id]||""} onChange={e=>setFa(p=>({...p,[q.id]:e.target.value}))} placeholder={t("Nhập đáp án...","Answer...")} style={{ width:"100%",padding:"12px 16px",borderRadius:8,fontSize:15,outline:"none",border:"1px solid #ddd",background:"white",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",boxSizing:"border-box" }} /></div>))}<button onClick={()=>setFc(true)} style={{ padding:"12px 32px",background:"black",color:"white",border:"none",borderRadius:8,fontWeight:600,fontSize:15,cursor:"pointer" }}>{t("Kiểm tra","Check Answers")}</button></>):<RS items={fri} onReset={()=>{setFa({});setFc(false);}} scoreLabel={fs===fQ.length?t("Xuất sắc! 🎉","Perfect! 🎉"):fs>=2?t("Tốt lắm! 👍","Well done! 👍"):t("Cố gắng thêm! 💪","Keep going! 💪")} t={t} />}</div>}
-      </section>
-
-      <hr style={{ width:"5px" }}></hr>
-      <div className="reveal" data-reveal style={{ textAlign:"center",color:"#777",fontSize:15,marginBottom:60 }}>Toán 10 · Chân Trời Sáng Tạo · {t("Bài 9 / Chương IV","Lesson 9 / Chapter IV")}</div>
-      <style>{`.reveal{opacity:0;transform:translateY(28px) scale(0.97);transition:opacity 0.55s cubic-bezier(.2,.8,.2,1),transform 0.45s cubic-bezier(.2,.8,.2,1);will-change:opacity,transform;}.reveal.visible{opacity:1;transform:translateY(0) scale(1);}.reveal[data-reveal-stagger].visible{opacity:1;transform:none;}.reveal[data-reveal-stagger]>*{opacity:0;transform:translateY(24px) scale(0.97);will-change:opacity,transform;}header.reveal{transform:translateY(-18px);opacity:0;}header.reveal.visible{opacity:1;transform:translateY(0);}article{transition:transform 0.25s cubic-bezier(.2,.8,.2,1),box-shadow 0.25s ease;border-radius:10px;padding:8px;}article:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 12px 28px rgba(0,0,0,0.12);}`}</style>
-    <DuoTranslate/>
-    </div></div>
-  );
+  return <div>Migrated OK</div>;
 }

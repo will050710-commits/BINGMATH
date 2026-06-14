@@ -6,6 +6,7 @@ import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
+import MathToolsPanel from "./MathToolsPanel";
 
 // ─── PARTICLE BURST ──────────────────────────────────────────────────────────
 function ParticleBurst({ active }) {
@@ -384,6 +385,11 @@ export default function PremiumLessonEngine({
                 {label}
               </button>
             ))}
+          </div>
+
+          {/* Math Tools floating button */}
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            <MathToolsPanel lang={lang} />
           </div>
         </div>
       </div>
