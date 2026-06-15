@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/purity */
 /* eslint-disable react-hooks/static-components */
 "use client";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -387,10 +388,7 @@ export default function PremiumLessonEngine({
             ))}
           </div>
 
-          {/* Math Tools floating button */}
-          <div style={{ position: "relative", flexShrink: 0 }}>
-            <MathToolsPanel lang={lang} />
-          </div>
+         
         </div>
       </div>
 

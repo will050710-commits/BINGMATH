@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import { useState, useEffect, useCallback } from "react";
@@ -784,6 +785,7 @@ function ReportsTab({ showNotif }) {
                 background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
                 borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.6)", fontStyle: "italic",
               }}>
+                // eslint-disable-next-line react/no-unescaped-entities
                 "{resolveModal.note}"
               </div>
             )}
