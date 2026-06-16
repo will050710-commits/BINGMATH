@@ -233,10 +233,10 @@ export default function Lesson24_OnTapChuong7() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="xdiBjypYFRQ"
+            videoId="8Xw3Z_O_bZ0"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
+            credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
           />
         </div>
       </section>

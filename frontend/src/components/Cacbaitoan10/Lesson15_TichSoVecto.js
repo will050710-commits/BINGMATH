@@ -233,7 +233,7 @@ export default function Lesson15_TichSoVecto() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="fNk_zzaMoSs"
+            videoId="68E6XGZ_E8M"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}

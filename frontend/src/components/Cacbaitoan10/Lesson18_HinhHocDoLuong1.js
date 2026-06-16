@@ -295,10 +295,10 @@ export default function Lesson18_HinhHocDoLuong1() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="VjmFKle7xIw"
+            videoId="5UfCOfG9I1k"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
+            credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
           />
         </div>
       </section>

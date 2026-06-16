@@ -324,10 +324,10 @@ export default function Lesson2_TapHop() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="tyDKR4FG3Yw" 
+              videoId="tyDKR4Yw" 
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ TrevTutor (YouTube)", "Video by TrevTutor (YouTube)")}
+              credit={t("Video từ Don't Memorise (YouTube)", "Video by Don't Memorise (YouTube)")}
             />
           </div>
         </section>

@@ -223,10 +223,10 @@ export default function Lesson35_XacSuatBienCo() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="q0P9xTHbSus"
+            videoId="AY3O_q2139E"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy India (YouTube)", "Video by Khan Academy India (YouTube)")}
+            credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
           />
         </div>
       </section>

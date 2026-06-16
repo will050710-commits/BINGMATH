@@ -395,10 +395,10 @@ export default function Lesson3_PhepToanTapHop() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="4TlCToZZ5gA"
+              videoId="jafz_fX4X04"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ TrevTutor (YouTube)", "Video by TrevTutor (YouTube)")}
+              credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
             />
           </div>
         </section>

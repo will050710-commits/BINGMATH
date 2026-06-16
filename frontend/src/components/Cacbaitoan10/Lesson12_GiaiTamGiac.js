@@ -302,10 +302,10 @@ export default function Lesson12_GiaiTamGiac() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="VjmFKle7xIw"
+            videoId="tIen_7vX-C8"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
           />
         </div>
       </section>

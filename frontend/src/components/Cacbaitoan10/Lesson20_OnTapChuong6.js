@@ -301,10 +301,10 @@ export default function OnTapChuong6() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="LoaBd-sPzkU"
+            videoId="B1HEzNTGeZ4"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
+            credit={t("Video từ Math Antics (YouTube)", "Video by Math Antics (YouTube)")}
           />
         </div>
       </section>

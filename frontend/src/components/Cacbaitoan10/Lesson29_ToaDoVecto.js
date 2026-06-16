@@ -295,10 +295,10 @@ export default function Lesson29_ToaDoVecto() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="hJkKADcQWj0"
+            videoId="ZM4VvCg7mI"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
           />
         </div>
       </section>

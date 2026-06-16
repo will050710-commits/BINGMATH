@@ -294,10 +294,10 @@ export default function Lesson21_DauTamThucBacHai() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="xdiBjypYFRQ"
+            videoId="pYgP8v6DGl4"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            credit={t("Video từ NancyPi (YouTube)", "Video by NancyPi (YouTube)")}
           />
         </div>
       </section>

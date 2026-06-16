@@ -425,10 +425,10 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="5xQqwgS3O4U"
+              videoId="482VpZ7V0A4"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
+              credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
             />
           </div>
         </section>

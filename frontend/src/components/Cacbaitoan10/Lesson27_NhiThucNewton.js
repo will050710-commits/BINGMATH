@@ -225,10 +225,10 @@ export default function Lesson27_NhiThucNewton() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="iPwrDWQ7hPc"
+            videoId="Y7Z6S7OuhIs"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
+            credit={t("Video từ NancyPi (YouTube)", "Video by NancyPi (YouTube)")}
           />
         </div>
       </section>

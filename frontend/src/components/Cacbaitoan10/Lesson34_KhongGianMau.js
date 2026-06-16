@@ -223,10 +223,10 @@ export default function Lesson34_KhongGianMau() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="KFgvOQtH0Z0"
+            videoId="3g83I7unRcs"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy (CC BY-NC-SA)", "Video by Khan Academy (CC BY-NC-SA)")}
+            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
           />
         </div>
       </section>

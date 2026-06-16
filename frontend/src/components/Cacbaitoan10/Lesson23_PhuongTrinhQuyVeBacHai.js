@@ -228,7 +228,7 @@ export default function Lesson23_PhuongTrinhQuyVeBacHai() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="MQtsRYPx3v0"
+            videoId="0_fSIsZHeZk"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}

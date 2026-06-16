@@ -303,7 +303,7 @@ export default function OnTapChuong5() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="LyGKycYT2v0"
+            videoId="Kz_Mre-X0T0"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}

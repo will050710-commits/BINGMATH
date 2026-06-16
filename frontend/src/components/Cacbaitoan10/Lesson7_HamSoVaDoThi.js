@@ -358,7 +358,7 @@ export default function Lesson7_HamSoVaDoThi() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="52tpYl2tTqk"
+      videoId="kvGsIo1TmsM"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

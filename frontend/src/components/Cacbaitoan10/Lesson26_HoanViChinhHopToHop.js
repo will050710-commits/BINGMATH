@@ -223,10 +223,10 @@ export default function Lesson26_HoanViChinhHopToHop() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="HDLBCv4yyIs"
+            videoId="XqQTXW7SKf0"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ Khan Academy India (YouTube)", "Video by Khan Academy India (YouTube)")}
+            credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
           />
         </div>
       </section>

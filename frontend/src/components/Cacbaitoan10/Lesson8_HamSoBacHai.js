@@ -260,7 +260,7 @@ export default function Lesson8_HamSoBacHai() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="MQtsRYPx3v0"
+      videoId="Hq2Up_1Ih5E"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

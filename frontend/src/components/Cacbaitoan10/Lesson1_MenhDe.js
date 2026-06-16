@@ -6,6 +6,7 @@ import { useAuth } from "@/context/authContext";
 import Link from "next/link";
 import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
+import PremiumLessonEngine from "./PremiumLessonEngine";
 
 const SectionHeader = ({ icon, title }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 22, fontWeight: 700, color: "#0B4F5C", marginBottom: 20, paddingBottom: 12, borderBottom: "2px solid #f0f0f0" }}>
@@ -289,7 +290,7 @@ export default function Lesson1_MenhDe() {
         total: mcQuestions.length
       });
     }
-  }, [mcDone, mcScore, user]);
+  }, [mcDone, mcQuestions.length, mcScore, saveGameResult, user]);
 
   useEffect(() => {
     if (tfDone && user) {
@@ -300,7 +301,7 @@ export default function Lesson1_MenhDe() {
         total: tfCards.length
       });
     }
-  }, [tfDone, tfScore, user]);
+  }, [saveGameResult, tfCards.length, tfDone, tfScore, user]);
 
   useEffect(() => {
     if (fillChecked && user) {
@@ -384,10 +385,10 @@ export default function Lesson1_MenhDe() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="sOeldimAvnM"
+              videoId="Vzre276y-R0"
               subtitles={videoSubtitles}
               lang={lang}
-              credit={t("Video từ Adobe Math Lab (YouTube)", "Video by Adobe Math Lab (YouTube)")}
+              credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
             />
           </div>
         </section>

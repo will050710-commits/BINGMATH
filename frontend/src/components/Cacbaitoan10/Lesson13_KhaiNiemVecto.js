@@ -233,10 +233,10 @@ export default function Lesson13_KhaiNiemVecto() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="fNk_zzaMoSs"
+            videoId="pimr9I92GZY"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
+            credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
           />
         </div>
       </section>
