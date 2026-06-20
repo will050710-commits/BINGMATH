@@ -231,7 +231,7 @@ export default function Lesson36_OnTapChuong10() {
             videoId="AY3O_q2139E"
             subtitles={videoSubtitles}
             lang={lang}
-            credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)"))
+            credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
           />
         </div>
       </section>
