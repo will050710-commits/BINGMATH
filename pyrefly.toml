@@ -1,3 +1,12 @@
 [default]
 python_interpreter = ".venv/Scripts/python.exe"
 search_path = [".venv/Lib/site-packages"]
+
+# Chỉ phân tích thư mục backend, bỏ qua virtual inmemory fragments
+project_includes = ["backend"]
+project_excludes = [
+  "frontend",
+  ".venv",
+  ".next",
+  "node_modules",
+]

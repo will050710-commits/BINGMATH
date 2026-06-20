@@ -232,200 +232,309 @@ GROQ_BASE = "https://api.groq.com/openai/v1"
 GROQ_KEY  = os.environ.get("GROQ_API_KEY", "")
 SELF_URL  = os.environ.get("SELF_URL", "")
 
-# ── Cached prompts ───────────────────────────────────────────────────────────
-@lru_cache(maxsize=4)
+# ── MathGPT Socratic System Prompts ──────────────────────────────────────────
+_LATEX_RULES = (
+    "\n\n## QUY TẮC ĐỊNH DẠNG TOÁN HỌC (BẮT BUỘC):\n"
+    "- Dùng $...$ cho công thức inline: $f(x) = ax^2 + bx + c$, $x_1 + x_2 = -b/a$\n"
+    "- Dùng $$...$$ trên dòng riêng cho công thức quan trọng: $$\\Delta = b^2 - 4ac$$\n"
+    "- KHÔNG viết biến số dưới dạng plain text — luôn dùng $x$, $a$, $\\Delta$, không phải x, a, Delta\n"
+    "- Đánh số bước giải: **Bước 1**, **Bước 2**, ...\n"
+)
+
+_SOCRATIC_BASE = """Bạn là **MathGPT** — Trợ lý Toán học AI chuyên biệt của nền tảng **DUOMATH**, hỗ trợ học sinh THPT (lớp 10-12) học Toán song ngữ Anh-Việt.
+
+## NGUYÊN TẮC GIẢNG DẠY — PHƯƠNG PHÁP SOCRATIC
+
+QUY TẮC VÀNG: **KHÔNG BAO GIỜ** đưa ra đáp án hoàn chỉnh ngay lập tức khi học sinh hỏi lần đầu.
+Thay vào đó, dẫn dắt học sinh tự khám phá qua 3 giai đoạn:
+
+**Giai đoạn 1 — NHẬN DIỆN (Identify):**
+Đặt câu hỏi để học sinh xác định dạng bài:
+- "Bài toán này em đã gặp dạng nào tương tự chưa?"
+- "Điều kiện ràng buộc của bài là gì?"
+- "Biến số / đại lượng cần tìm là gì?"
+
+**Giai đoạn 2 — GỢI Ý TỪNG BƯỚC (Step Hints):**
+Format mỗi gợi ý: `💡 Gợi ý {n}: [câu hỏi dẫn dắt hoặc công thức cần áp dụng]`
+Ví dụ:
+- "💡 Gợi ý 1: Tiệm cận đứng xuất hiện tại điểm nào làm mẫu số bằng 0?"
+- "💡 Gợi ý 2: Hãy tính $\\Delta = b^2 - 4ac$ với $a$, $b$, $c$ bạn đã xác định."
+Nếu học sinh vẫn bế tắc sau 2 gợi ý → đưa thêm 1 công thức cụ thể có dạng tổng quát.
+
+**Giai đoạn 3 — CHỈ khi học sinh nói 'xem đáp án' / 'show solution' / 'giải hộ em':**
+Chuyển sang chế độ giải đầy đủ (xem mode=solution bên dưới).
+
+## PHONG CÁCH GIAO TIẾP:
+- Thân thiện, khuyến khích: "Em đang đi đúng hướng rồi! 🎯 Hãy thử thêm bước tiếp theo."
+- Khi sai: KHÔNG dùng "SAI" hay "KHÔNG ĐÚNG" → dùng: "Hướng này chưa chính xác, hãy xem lại..."
+- Kết thúc mỗi câu trả lời bằng câu hỏi kiểm tra hoặc khuyến khích: "Em thử áp dụng vào bài xem sao nhé! 😊"
+- Song ngữ: giải thích bằng tiếng Việt, kèm thuật ngữ tiếng Anh trong ngoặc đơn khi cần.
+
+## CHUYÊN MÔN THPT:
+Đại Số & Giải Tích: Hàm số (Functions), Đạo hàm (Derivatives), Tích phân (Integrals), Giới hạn (Limits), Phương trình (Equations), Tổ hợp & Xác suất (Combinatorics & Probability), Cấp số (Sequences).
+Hình Học: Hình phẳng, Hình không gian (Solid Geometry), Tọa độ Oxyz."""
+
+@lru_cache(maxsize=8)
 def cached_system_prompt(variant: str = "text") -> str:
-    math_formatting_guide = (
-        "\nIMPORTANT MATH FORMATTING RULES:\n"
-        "- Write ALL mathematical formulas, variables, and equations using LaTeX.\n"
-        "- Use double dollar signs '$$ ... $$' for block/display formulas (always on a separate line).\n"
-        "- Use single dollar signs '$ ... $' for inline formulas (e.g., $x = 2$, $y = ax^2$).\n"
-        "- Never use plain text for variables (write $x$ instead of x, $a$ instead of a).\n"
-        "- Keep explanations in brief, bulleted step-by-step format."
-    )
+    """MathGPT system prompt — 4 variants: text (Socratic hint), image (Vision Socratic),
+    solution (full step-by-step + bài phái sinh), translate (JSON-only)."""
+    if variant == "solution":
+        return (
+            _SOCRATIC_BASE
+            + "\n\n## CHẾ ĐỘ HIỆN TẠI: GIẢI ĐẦY ĐỦ (Full Solution Mode)"
+            + "\nHọc sinh đã yêu cầu xem đáp án đầy đủ. Hãy:\n"
+            + "1. Trình bày lời giải HOÀN CHỈNH theo từng bước rõ ràng với LaTeX.\n"
+            + "2. Sau lời giải, LUÔN tạo ra 1 **Bài Tập Phái Sinh** tương tự (thay đổi số liệu hoặc biến thể nhỏ) dưới tiêu đề:\n"
+            + "   ### 📝 Bài Tập Luyện Tập Ngay\n"
+            + "   [Đề bài phái sinh]\n"
+            + "   > 💡 *Em thử giải bài này trước khi hỏi đáp án nhé!*\n"
+            + _LATEX_RULES
+        )
     if variant == "image":
         return (
-            "You are a Vietnamese math tutor for grades 10-12. "
-            "Solve math problems briefly step-by-step."
-            + math_formatting_guide
+            _SOCRATIC_BASE
+            + "\n\n## CHẾ ĐỘ HIỆN TẠI: NHẬN DIỆN ẢNH (Vision Mode)"
+            + "\nBạn đang phân tích một bức ảnh đề toán. Hãy:\n"
+            + "1. Mô tả ngắn gọn bài toán bạn nhận ra từ ảnh.\n"
+            + "2. Xác định dạng toán (loại bài, chương trình lớp mấy).\n"
+            + "3. Áp dụng Giai đoạn 1-2 của Socratic method (KHÔNG giải thẳng).\n"
+            + "Nếu ảnh không rõ hoặc không phải bài toán → thông báo lịch sự và hỏi lại.\n"
+            + _LATEX_RULES
         )
+    # Default: "text" — Socratic hint mode
     return (
-        "You are a concise Vietnamese math tutor for grades 10-12. "
-        "Explain briefly step-by-step."
-        + math_formatting_guide
+        _SOCRATIC_BASE
+        + "\n\n## CHẾ ĐỘ HIỆN TẠI: GỢI Ý SOCRATIC (Hint Mode)"
+        + "\nÁp dụng Giai đoạn 1 và 2. Nếu học sinh hỏi thẳng đáp án, hãy hướng dẫn họ tự tìm ra thay vì đưa kết quả."
+        + _LATEX_RULES
     )
 
 # ── LightRAG-style Mathematical Knowledge Graph & Retriever ────────────────
+import re as _re_rag  # dùng riêng cho entity matching
+
 MATH_CONCEPT_GRAPH = {
     "nodes": {
         "phuong_trinh_bac_hai": {
             "id": "phuong_trinh_bac_hai",
             "name": "Phương trình bậc hai",
             "english_name": "Quadratic Equation",
-            "keywords": ["phương trình bậc 2", "phương trình bậc hai", "quadratic equation", "quadratic"],
-            "definition": "Phương trình có dạng ax^2 + bx + c = 0 (với a khác 0).",
-            "formulas": "ax^2 + bx + c = 0 (a \\neq 0)\nNghiệm: x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}",
-            "examples": "Giải x^2 - 5x + 6 = 0. Ta có a=1, b=-5, c=6. Delta = 25 - 24 = 1 > 0. Nghiệm x1=3, x2=2."
+            "keywords": ["phương trình bậc 2", "phương trình bậc hai", "quadratic equation", "quadratic", "pt bậc 2"],
+            "definition": "Phương trình có dạng $ax^2 + bx + c = 0$ (với $a \\neq 0$).",
+            "formulas": "$$ax^2 + bx + c = 0 \\;(a \\neq 0)$$\nNghiệm: $$x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$$",
+            "examples": "Giải $x^2 - 5x + 6 = 0$. Ta có $a=1, b=-5, c=6$. $\\Delta = 25 - 24 = 1 > 0$. Nghiệm $x_1=3, x_2=2$."
         },
         "biet_thuc_delta": {
             "id": "biet_thuc_delta",
             "name": "Biệt thức Delta",
-            "english_name": "Discriminant Delta",
-            "keywords": ["delta", "biệt thức", "discriminant"],
+            "english_name": "Discriminant",
+            "keywords": ["delta", "biệt thức", "discriminant", "∆", "△"],
             "definition": "Giá trị đại số dùng để xác định số lượng và tính chất nghiệm của phương trình bậc hai.",
-            "formulas": "\\Delta = b^2 - 4ac\n- \\Delta > 0: 2 nghiệm phân biệt.\n- \\Delta = 0: 1 nghiệm kép.\n- \\Delta < 0: vô nghiệm thực.",
-            "examples": "Với x^2 + x + 1 = 0, Delta = 1^2 - 4(1)(1) = -3 < 0 -> Phương trình vô nghiệm."
+            "formulas": "$$\\Delta = b^2 - 4ac$$\n- $\\Delta > 0$: 2 nghiệm phân biệt.\n- $\\Delta = 0$: 1 nghiệm kép.\n- $\\Delta < 0$: vô nghiệm thực.",
+            "examples": "Với $x^2 + x + 1 = 0$, $\\Delta = 1 - 4 = -3 < 0$ → Phương trình vô nghiệm thực."
         },
         "he_thuc_vi_et": {
             "id": "he_thuc_vi_et",
             "name": "Hệ thức Vi-ét",
             "english_name": "Vieta's Formulas",
-            "keywords": ["vi-ét", "viet", "viét", "vieta"],
-            "definition": "Mối quan hệ giữa các nghiệm của phương trình đa thức và các hệ số của nó.",
-            "formulas": "Với phương trình bậc hai ax^2 + bx + c = 0:\n- Tổng nghiệm: S = x_1 + x_2 = -\\frac{b}{a}\n- Tích nghiệm: P = x_1 \\cdot x_2 = \\frac{c}{a}",
-            "examples": "Nhẩm nghiệm x^2 - 7x + 12 = 0. Có S = 7, P = 12. Hai nghiệm là x1=3, x2=4."
+            "keywords": ["vi-ét", "viet", "viét", "vieta", "tổng nghiệm", "tích nghiệm"],
+            "definition": "Mối quan hệ giữa các nghiệm và các hệ số của phương trình bậc hai.",
+            "formulas": "$$S = x_1 + x_2 = -\\frac{b}{a}, \\quad P = x_1 \\cdot x_2 = \\frac{c}{a}$$",
+            "examples": "Nhẩm nghiệm $x^2 - 7x + 12 = 0$: $S = 7, P = 12$ → nghiệm $x_1=3, x_2=4$."
         },
         "dao_ham": {
             "id": "dao_ham",
             "name": "Đạo hàm",
             "english_name": "Derivative",
-            "keywords": ["đạo hàm", "derivative", "tính đạo hàm", "đạo hàm cấp"],
-            "definition": "Tỉ số giữa số gia của hàm số và số gia của đối số tại một điểm khi số gia của đối số tiến dần về 0. Đại diện cho tốc độ biến thiên.",
-            "formulas": "f'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x + \\Delta x) - f(x)}{\\Delta x}\nCông thức cơ bản: (x^n)' = n x^{n-1}, (\\sin x)' = \\cos x, (e^x)' = e^x",
-            "examples": "Đạo hàm của f(x) = 3x^2 - 5x là f'(x) = 6x - 5."
+            "keywords": ["đạo hàm", "derivative", "tính đạo hàm", "vi phân", "f'", "y'"],
+            "definition": "Tỉ số giới hạn của số gia hàm số và số gia đối số — đại diện cho tốc độ biến thiên tức thời.",
+            "formulas": "$$f'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x+\\Delta x) - f(x)}{\\Delta x}$$\nCông thức cơ bản: $(x^n)' = nx^{n-1}$, $(\\sin x)' = \\cos x$, $(e^x)' = e^x$, $(\\ln x)' = \\frac{1}{x}$",
+            "examples": "$f(x) = 3x^2 - 5x \\Rightarrow f'(x) = 6x - 5$."
         },
         "cuc_tri": {
             "id": "cuc_tri",
             "name": "Cực trị hàm số",
             "english_name": "Extrema of Functions",
-            "keywords": ["cực trị", "cực đại", "cực tiểu", "extrema", "local maximum", "local minimum"],
-            "definition": "Các điểm mà tại đó giá trị hàm số lớn nhất hoặc nhỏ nhất trong một khoảng lân cận. Điểm cực trị là nghiệm của f'(x) = 0 hoặc làm f'(x) không xác định và đạo hàm đổi dấu khi qua điểm đó.",
-            "formulas": "Quy tắc 1: Nếu f'(x) đổi dấu từ dương sang âm khi qua x0 -> x0 là điểm cực đại.\nQuy tắc 2: Nếu f'(x0) = 0 và f''(x0) > 0 -> x0 là điểm cực tiểu.",
-            "examples": "Tìm cực trị y = x^2 - 4x. y' = 2x - 4. y' = 0 <=> x = 2. Vì y'' = 2 > 0 nên x = 2 là điểm cực tiểu."
+            "keywords": ["cực trị", "cực đại", "cực tiểu", "extrema", "max", "min", "gtln", "gtnn"],
+            "definition": "Điểm cực đại/cực tiểu là nơi đạo hàm đổi dấu (từ + sang − hoặc ngược lại).",
+            "formulas": "**Quy tắc 1 (xét dấu đạo hàm):** $f'(x_0)=0$ và $f'$ đổi dấu qua $x_0$.\n**Quy tắc 2 (đạo hàm cấp 2):** $f'(x_0)=0$:\n- $f''(x_0)>0$ → Cực tiểu\n- $f''(x_0)<0$ → Cực đại",
+            "examples": "$y = x^2 - 4x$: $y' = 2x-4 = 0 \\Rightarrow x=2$. $y''=2>0$ → Cực tiểu tại $x=2$, $y_{\\min}=-4$."
         },
         "tiem_can": {
             "id": "tiem_can",
             "name": "Đường tiệm cận",
             "english_name": "Asymptote",
             "keywords": ["tiệm cận", "tiệm cận ngang", "tiệm cận đứng", "tiệm cận xiên", "asymptote"],
-            "definition": "Đường thẳng mà đồ thị hàm số tiến gần vô hạn nhưng không bao giờ cắt (hoặc chỉ cắt ở vô cực) khi biến số tiến ra vô cùng hoặc điểm gián đoạn.",
-            "formulas": "- Tiệm cận đứng: x = x0 nếu \\lim_{x \\to x0} f(x) = \\pm\\infty\n- Tiệm cận ngang: y = y0 nếu \\lim_{x \\to \\pm\\infty} f(x) = y0",
-            "examples": "Hàm số y = (2x+1)/(x-1) có tiệm cận đứng x=1 và tiệm cận ngang y=2."
+            "definition": "Đường thẳng mà đồ thị hàm số tiếp cận vô hạn mà không chạm tới.",
+            "formulas": "- **Tiệm cận đứng** $x=x_0$: khi $\\lim_{x\\to x_0} f(x) = \\pm\\infty$\n- **Tiệm cận ngang** $y=L$: khi $\\lim_{x\\to\\pm\\infty} f(x) = L$\n- **Tiệm cận xiên** $y=ax+b$: khi $a = \\lim_{x\\to\\infty}\\frac{f(x)}{x}$",
+            "examples": "$y = \\frac{2x+1}{x-1}$: TCĐ $x=1$, TCN $y=2$."
         },
         "tich_phan": {
             "id": "tich_phan",
             "name": "Tích phân",
             "english_name": "Integral",
-            "keywords": ["tích phân", "nguyên hàm", "integral", "integration", "antiderivative"],
-            "definition": "Phép toán ngược của đạo hàm (nguyên hàm), đại diện cho diện tích hình phẳng giới hạn bởi đồ thị hàm số.",
-            "formulas": "Công thức Newton-Leibniz: \\int_a^b f(x) dx = F(b) - F(a)\nCông thức tích phân từng phần: \\int u dv = uv - \\int v du",
-            "examples": "Tính \\int_0^1 x dx = [x^2 / 2]_0^1 = 1/2."
+            "keywords": ["tích phân", "nguyên hàm", "integral", "antiderivative", "diện tích", "∫"],
+            "definition": "Phép toán ngược của đạo hàm. Tích phân xác định = diện tích hình phẳng dưới đồ thị.",
+            "formulas": "**Newton-Leibniz:** $$\\int_a^b f(x)\\,dx = F(b) - F(a)$$\n**Tích phân từng phần:** $$\\int u\\,dv = uv - \\int v\\,du$$\n**Nguyên hàm cơ bản:** $\\int x^n dx = \\frac{x^{n+1}}{n+1} + C$",
+            "examples": "$\\int_0^1 x^2\\,dx = \\left[\\frac{x^3}{3}\\right]_0^1 = \\frac{1}{3}$."
         },
         "gioi_han": {
             "id": "gioi_han",
             "name": "Giới hạn",
             "english_name": "Limit",
-            "keywords": ["giới hạn", "limit", "lim", "tiến tới"],
-            "definition": "Giá trị mà một hàm số hoặc một dãy số tiến gần đến khi biến số hoặc chỉ số tiến đến một giá trị nào đó.",
-            "formulas": "\\lim_{x \\to x_0} f(x) = L\nMột số giới hạn đặc biệt: \\lim_{x \\to 0} \\frac{\\sin x}{x} = 1, \\lim_{n \\to \\infty} (1 + \\frac{1}{n})^n = e",
-            "examples": "Tính lim (x->2) (x^2 - 4)/(x - 2) = lim (x->2) (x+2) = 4."
-        }
+            "keywords": ["giới hạn", "limit", "lim", "tiến tới", "tiến đến"],
+            "definition": "Giá trị mà hàm số hoặc dãy số tiếp cận khi biến số tiến đến một giá trị xác định.",
+            "formulas": "$$\\lim_{x\\to x_0} f(x) = L$$\nGiới hạn đặc biệt: $\\lim_{x\\to 0}\\frac{\\sin x}{x}=1$, $\\lim_{n\\to\\infty}\\left(1+\\frac{1}{n}\\right)^n = e$",
+            "examples": "$\\lim_{x\\to 2}\\frac{x^2-4}{x-2} = \\lim_{x\\to 2}(x+2) = 4$."
+        },
+        # ── 5 node mới (mở rộng LightRAG) ─────────────────────────────────
+        "xac_suat": {
+            "id": "xac_suat",
+            "name": "Xác suất",
+            "english_name": "Probability",
+            "keywords": ["xác suất", "probability", "biến cố", "không gian mẫu", "p(a)"],
+            "definition": "Số đo mức độ khả năng xảy ra của một biến cố trong một thí nghiệm ngẫu nhiên.",
+            "formulas": "$$P(A) = \\frac{|A|}{|\\Omega|}$$\n**Cộng xác suất:** $P(A\\cup B) = P(A)+P(B)-P(A\\cap B)$\n**Nhân xác suất (độc lập):** $P(A\\cap B) = P(A)\\cdot P(B)$",
+            "examples": "Tung 1 con xúc xắc. $P(\\text{ra số chẵn}) = \\frac{3}{6} = \\frac{1}{2}$."
+        },
+        "to_hop_chinh_hop": {
+            "id": "to_hop_chinh_hop",
+            "name": "Tổ hợp & Chỉnh hợp",
+            "english_name": "Combinations & Permutations",
+            "keywords": ["tổ hợp", "chỉnh hợp", "hoán vị", "combination", "permutation", "c(n,k)", "cnk", "anp"],
+            "definition": "Các phép đếm cách chọn hoặc sắp xếp các phần tử từ một tập hợp.",
+            "formulas": "**Hoán vị:** $P_n = n!$\n**Chỉnh hợp:** $$A_n^k = \\frac{n!}{(n-k)!}$$\n**Tổ hợp:** $$C_n^k = \\binom{n}{k} = \\frac{n!}{k!(n-k)!}$$",
+            "examples": "Chọn 3 người từ 10 người: $C_{10}^3 = \\frac{10!}{3!7!} = 120$ cách."
+        },
+        "ham_so_luong_giac": {
+            "id": "ham_so_luong_giac",
+            "name": "Hàm số lượng giác",
+            "english_name": "Trigonometric Functions",
+            "keywords": ["lượng giác", "sin", "cos", "tan", "cot", "trigonometric", "sinx", "cosx", "tanx"],
+            "definition": "Các hàm tuần hoàn liên quan đến góc và tam giác: sin, cos, tan, cot.",
+            "formulas": "**Công thức cơ bản:** $\\sin^2 x + \\cos^2 x = 1$\n**Nhân đôi:** $\\sin 2x = 2\\sin x\\cos x$, $\\cos 2x = \\cos^2 x - \\sin^2 x$\n**Phương trình:** $\\sin x = a \\Rightarrow x = (-1)^k \\arcsin a + k\\pi$",
+            "examples": "Giải $\\sin x = \\frac{\\sqrt{2}}{2}$: $x = \\frac{\\pi}{4} + 2k\\pi$ hoặc $x = \\pi - \\frac{\\pi}{4} + 2k\\pi$."
+        },
+        "so_phuc": {
+            "id": "so_phuc",
+            "name": "Số phức",
+            "english_name": "Complex Numbers",
+            "keywords": ["số phức", "complex", "số ảo", "phần thực", "phần ảo", "modulus", "|z|"],
+            "definition": "Số có dạng $z = a + bi$ trong đó $a, b \\in \\mathbb{R}$ và $i = \\sqrt{-1}$.",
+            "formulas": "$z = a + bi$, $\\bar{z} = a - bi$ (số phức liên hợp)\n$|z| = \\sqrt{a^2 + b^2}$ (môđun)\n$z_1 \\cdot z_2 = (a_1 a_2 - b_1 b_2) + (a_1 b_2 + a_2 b_1)i$",
+            "examples": "$(3+2i)(1-i) = 3 - 3i + 2i - 2i^2 = 3 - i + 2 = 5 - i$."
+        },
+        "hinh_hoc_khong_gian": {
+            "id": "hinh_hoc_khong_gian",
+            "name": "Hình học không gian",
+            "english_name": "Solid Geometry",
+            "keywords": ["hình hộp", "hình cầu", "hình chóp", "khối lăng trụ", "solid geometry", "thể tích", "diện tích xung quanh", "đường thẳng vuông góc"],
+            "definition": "Nghiên cứu các hình học trong không gian 3 chiều: hình cầu, hình chóp, hình hộp, lăng trụ...",
+            "formulas": "**Hình cầu:** $V = \\frac{4}{3}\\pi R^3$, $S = 4\\pi R^2$\n**Hình chóp:** $V = \\frac{1}{3} S_{\\text{đáy}} \\cdot h$\n**Lăng trụ:** $V = S_{\\text{đáy}} \\cdot h$",
+            "examples": "Hình cầu bán kính $R=3$: $V = \\frac{4}{3}\\pi \\cdot 27 = 36\\pi$."
+        },
     },
     "edges": [
-        {"source": "phuong_trinh_bac_hai", "target": "biet_thuc_delta", "relation": "sử dụng để xác định số lượng và tính chất nghiệm"},
-        {"source": "phuong_trinh_bac_hai", "target": "he_thuc_vi_et", "relation": "áp dụng hệ thức để tìm nhanh tổng và tích hai nghiệm"},
-        {"source": "biet_thuc_delta", "target": "he_thuc_vi_et", "relation": "được kiểm tra trước để đảm bảo phương trình có nghiệm trước khi áp dụng hệ thức"},
-        {"source": "dao_ham", "target": "cuc_tri", "relation": "được lập bảng xét dấu và tìm nghiệm f'(x)=0 để xác định điểm cực trị"},
-        {"source": "dao_ham", "target": "tich_phan", "relation": "tích phân là phép toán ngược của đạo hàm (nguyên hàm)"},
-        {"source": "gioi_han", "target": "tiem_can", "relation": "dùng giới hạn ra vô cực hoặc giới hạn một bên để tìm đường tiệm cận"},
-        {"source": "gioi_han", "target": "dao_ham", "relation": "định nghĩa đạo hàm được xây dựng dựa trên giới hạn tỉ số số gia"}
+        {"source": "phuong_trinh_bac_hai", "target": "biet_thuc_delta",    "relation": "dùng Delta để xác định số nghiệm"},
+        {"source": "phuong_trinh_bac_hai", "target": "he_thuc_vi_et",      "relation": "áp dụng Vi-ét để nhẩm tổng và tích nghiệm"},
+        {"source": "biet_thuc_delta",    "target": "he_thuc_vi_et",      "relation": "kiểm tra Delta > 0 trước khi áp dụng Vi-ét"},
+        {"source": "dao_ham",            "target": "cuc_tri",            "relation": "dùng f'(x)=0 và xét dấu để tìm cực trị"},
+        {"source": "dao_ham",            "target": "tich_phan",          "relation": "tích phân là phép toán ngược của đạo hàm"},
+        {"source": "gioi_han",           "target": "tiem_can",           "relation": "dùng giới hạn vô cực để tìm tiệm cận"},
+        {"source": "gioi_han",           "target": "dao_ham",            "relation": "định nghĩa đạo hàm dựa trên giới hạn tỉ số số gia"},
+        {"source": "to_hop_chinh_hop",   "target": "xac_suat",          "relation": "tổ hợp/chỉnh hợp dùng để đếm không gian mẫu và biến cố"},
+        {"source": "ham_so_luong_giac",  "target": "dao_ham",            "relation": "đạo hàm của sin/cos/tan áp dụng quy tắc đạo hàm"},
+        {"source": "phuong_trinh_bac_hai","target": "so_phuc",          "relation": "khi Delta < 0 thì nghiệm là số phức"},
     ]
 }
 
 def extract_graph_entities(query: str) -> list:
+    """Trích xuất node IDs phù hợp từ query — dùng regex để tránh false match."""
     matched_ids = []
-    query_lower = query.lower()
+    q = query.lower()
     for node_id, node_data in MATH_CONCEPT_GRAPH["nodes"].items():
-        if node_id in query_lower:
+        # Khớp node_id hoặc tên đầy đủ (word-boundary safe)
+        if node_data["name"].lower() in q or node_data["english_name"].lower() in q:
             matched_ids.append(node_id)
             continue
-        if node_data["name"].lower() in query_lower:
-            matched_ids.append(node_id)
-            continue
-        if node_data["english_name"].lower() in query_lower:
-            matched_ids.append(node_id)
-            continue
+        # Khớp keywords — dùng \b chỉ cho từ ASCII, fallback `in` cho tiếng Việt
+        hit = False
         for kw in node_data["keywords"]:
-            if kw in query_lower:
-                matched_ids.append(node_id)
-                break
-    return matched_ids
+            kw_l = kw.lower()
+            # Từ ASCII ngắn (≤4 ký tự, như 'sin', 'lim'): yêu cầu word boundary
+            if kw_l.isascii() and len(kw_l) <= 4:
+                if _re_rag.search(r'\b' + _re_rag.escape(kw_l) + r'\b', q):
+                    hit = True; break
+            else:
+                if kw_l in q:
+                    hit = True; break
+        if hit:
+            matched_ids.append(node_id)
+    return list(dict.fromkeys(matched_ids))  # dedup preserve order
 
+
+@lru_cache(maxsize=128)
 def retrieve_math_context(query: str) -> str:
+    """LightRAG hybrid retriever: Local (node+edge graph) + Global (hướng dẫn chung).
+    Kết quả được cache để tái dùng khi cùng query.
+    """
     matched_ids = extract_graph_entities(query)
-    local_contexts = []
-    seen_neighbors = set()
-    
+    local_contexts: list[str] = []
+    seen_neighbors: set[str] = set()
+
     for node_id in matched_ids:
         node = MATH_CONCEPT_GRAPH["nodes"][node_id]
-        node_ctx = (
-            f"### Khái niệm: {node['name']} ({node['english_name']})\n"
-            f"- Định nghĩa: {node['definition']}\n"
-            f"- Công thức quan trọng:\n{node['formulas']}\n"
-            f"- Ví dụ áp dụng: {node['examples']}\n"
+        local_contexts.append(
+            f"### 📚 {node['name']} ({node['english_name']})\n"
+            f"**Định nghĩa:** {node['definition']}\n"
+            f"**Công thức:**\n{node['formulas']}\n"
+            f"**Ví dụ:** {node['examples']}\n"
         )
-        local_contexts.append(node_ctx)
-        
-        relations = []
+        relations: list[str] = []
         for edge in MATH_CONCEPT_GRAPH["edges"]:
             if edge["source"] == node_id:
-                target_node = MATH_CONCEPT_GRAPH["nodes"][edge["target"]]
-                relations.append(f"  * Có liên quan đến '{target_node['name']}' qua mối quan hệ: {edge['relation']}.")
-                if edge["target"] not in matched_ids and edge["target"] not in seen_neighbors:
-                    seen_neighbors.add(edge["target"])
+                t = MATH_CONCEPT_GRAPH["nodes"].get(edge["target"])
+                if t:
+                    relations.append(f"  ↳ Liên kết tới **{t['name']}**: {edge['relation']}")
+                    if edge["target"] not in matched_ids:
+                        seen_neighbors.add(edge["target"])
             elif edge["target"] == node_id:
-                source_node = MATH_CONCEPT_GRAPH["nodes"][edge["source"]]
-                relations.append(f"  * Được liên kết từ '{source_node['name']}' qua mối quan hệ: {edge['relation']}.")
-                if edge["source"] not in matched_ids and edge["source"] not in seen_neighbors:
-                    seen_neighbors.add(edge["source"])
-                    
+                s = MATH_CONCEPT_GRAPH["nodes"].get(edge["source"])
+                if s:
+                    relations.append(f"  ↳ Liên kết từ **{s['name']}**: {edge['relation']}")
+                    if edge["source"] not in matched_ids:
+                        seen_neighbors.add(edge["source"])
         if relations:
-            local_contexts.append("- Mối quan hệ trong hệ thống:\n" + "\n".join(relations) + "\n")
-            
+            local_contexts.append("**Quan hệ trong Knowledge Graph:**\n" + "\n".join(relations) + "\n")
+
     if seen_neighbors:
-        neighbor_ctxs = []
+        neighbor_lines = []
         for n_id in seen_neighbors:
-            n_node = MATH_CONCEPT_GRAPH["nodes"][n_id]
-            neighbor_ctxs.append(f"  * {n_node['name']}: {n_node['definition']} (Công thức: {n_node['formulas'].splitlines()[0] if n_node['formulas'] else ''})")
-        local_contexts.append("### Khái niệm liên quan lân cận:\n" + "\n".join(neighbor_ctxs) + "\n")
-        
-    global_context = (
-        "### Hướng dẫn gia sư toán bậc trung học (Lớp 10-12):\n"
-        "- Trình bày giải thích toán học ngắn gọn, rõ ràng theo từng bước (Step-by-step).\n"
-        "- BẮT BUỘC sử dụng ký hiệu LaTeX cho các công thức toán:\n"
-        "  * Dùng $$ ... $$ cho phương trình độc lập (block math, ví dụ: $$ax^2 + bx + c = 0$$).\n"
-        "  * Dùng $ ... $ cho biến số, công thức nằm trong dòng (inline math, ví dụ: $x$, $y = ax^2$).\n"
-        "- Luôn đối chiếu kỹ các công thức toán học và biệt thức Delta, hệ thức Vi-ét khi học sinh hỏi về phương trình bậc hai hoặc cực trị.\n"
-        "- Giải thích bằng tiếng Việt một cách tự nhiên và ngắn gọn."
+            n = MATH_CONCEPT_GRAPH["nodes"].get(n_id)
+            if n:
+                first_formula = n["formulas"].splitlines()[0] if n["formulas"] else ""
+                neighbor_lines.append(f"  • **{n['name']}**: {n['definition']} — `{first_formula}`")
+        local_contexts.append("**Khái niệm lân cận liên quan:**\n" + "\n".join(neighbor_lines) + "\n")
+
+    global_ctx = (
+        "**Hướng dẫn hệ thống (Global Context):**\n"
+        "- Giải thích bằng tiếng Việt, kèm thuật ngữ Anh trong ngoặc đơn.\n"
+        "- Luôn dùng LaTeX: $inline$ và $$block$$ cho mọi công thức.\n"
+        "- Áp dụng Socratic method: gợi ý từng bước, không giải thẳng trừ khi được yêu cầu.\n"
     )
-    
+
     if matched_ids:
-        joined_local = "\n".join(local_contexts)
-        hybrid_context = (
-            f"=== BẢN ĐỒ TRI THỨC TOÁN HỌC (Retrieved Concept Graph - Local Mode) ===\n"
-            f"{joined_local}\n"
-            f"=== HƯỚNG DẪN HỆ THỐNG TOÀN CỤC (Global Mode) ===\n"
-            f"{global_context}\n"
-            f"========================================================================\n"
+        return (
+            "=== KNOWLEDGE GRAPH (Local Mode) ===\n"
+            + "\n".join(local_contexts)
+            + "\n=== GLOBAL CONTEXT ===\n"
+            + global_ctx
+            + "=" * 50 + "\n"
         )
-    else:
-        hybrid_context = (
-            f"=== HƯỚNG DẪN HỆ THỐNG TOÀN CỤC (Global Mode) ===\n"
-            f"{global_context}\n"
-            f"========================================================================\n"
-        )
-        
-    return hybrid_context
+    return (
+        "=== GLOBAL CONTEXT ===\n"
+        + global_ctx
+        + "=" * 50 + "\n"
+    )
 
 def extract_text_from_image(image_bytes: bytes) -> str:
     if not _ocr_available or ocr_reader is None:
@@ -509,6 +618,77 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_test_user  ON test_results(user_id, taken_at DESC);
         CREATE INDEX IF NOT EXISTS idx_game_user  ON minigame_results(user_id, played_at DESC);
         CREATE INDEX IF NOT EXISTS idx_session_id ON sessions(session_id);
+
+        -- Gamification: streak, XP, level, league
+        CREATE TABLE IF NOT EXISTS user_gamification (
+            user_id          INTEGER PRIMARY KEY,
+            current_streak   INTEGER DEFAULT 0,
+            longest_streak   INTEGER DEFAULT 0,
+            last_active_date TEXT,
+            freeze_count     INTEGER DEFAULT 2,
+            total_xp         INTEGER DEFAULT 0,
+            level            INTEGER DEFAULT 1,
+            elo_rating       INTEGER DEFAULT 1000,
+            peak_elo         INTEGER DEFAULT 1000,
+            league           TEXT    DEFAULT 'Bronze',
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        -- Daily quests (sinh tự động mỗi ngày)
+        CREATE TABLE IF NOT EXISTS daily_quests (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id        INTEGER NOT NULL,
+            date           TEXT    NOT NULL,
+            quest_type     TEXT    NOT NULL,
+            quest_label_vi TEXT    NOT NULL,
+            quest_label_en TEXT    NOT NULL,
+            target_value   INTEGER NOT NULL,
+            current_value  INTEGER DEFAULT 0,
+            xp_reward      INTEGER NOT NULL,
+            is_completed   INTEGER DEFAULT 0,
+            completed_at   TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, date, quest_type)
+        );
+
+        -- Badges / achievements
+        CREATE TABLE IF NOT EXISTS user_badges (
+            id        INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id   INTEGER NOT NULL,
+            badge_id  TEXT    NOT NULL,
+            earned_at TEXT    DEFAULT (datetime('now')),
+            UNIQUE(user_id, badge_id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        -- Adaptive Learning: log từng câu hỏi
+        CREATE TABLE IF NOT EXISTS quiz_attempts (
+            id             INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id        INTEGER NOT NULL,
+            question_id    TEXT    NOT NULL,
+            topic          TEXT    NOT NULL,
+            difficulty     TEXT    NOT NULL DEFAULT 'NB',
+            is_correct     INTEGER NOT NULL,
+            time_taken_sec INTEGER DEFAULT 0,
+            attempted_at   TEXT    DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        -- Adaptive Learning: tổng hợp mastery theo chủ đề
+        CREATE TABLE IF NOT EXISTS topic_mastery (
+            user_id        INTEGER NOT NULL,
+            topic          TEXT    NOT NULL,
+            total_attempts INTEGER DEFAULT 0,
+            correct_count  INTEGER DEFAULT 0,
+            avg_accuracy   REAL    DEFAULT 0,
+            current_level  TEXT    DEFAULT 'NB',
+            last_practiced TEXT,
+            PRIMARY KEY (user_id, topic),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_quiz_user_topic ON quiz_attempts(user_id, topic, attempted_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_quest_user_date ON daily_quests(user_id, date);
     """)
     conn.commit()
     
@@ -580,8 +760,13 @@ def _fetch_scores(db, uid: int):
     ).fetchall()
     return [test_dict(t) for t in tests], [game_dict(g) for g in games]
 
-def groq_headers():
-    return {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
+_groq_headers_cache: dict | None = None
+def groq_headers() -> dict:
+    """Cache header dict — tránh tạo lại mỗi request."""
+    global _groq_headers_cache
+    if _groq_headers_cache is None:
+        _groq_headers_cache = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
+    return _groq_headers_cache
 
 def ensure_session(sid: str) -> list:
     db = get_db()
@@ -890,16 +1075,20 @@ async def update_me(request: Request):
         db.close()
 
 
-def _calculate_xp(score: int, total: int, accuracy: float) -> int:
+def _calculate_xp(score: int, total: int, accuracy: float, time_spent: int = 0) -> int:
+    """Tính XP từ kết quả bài test. Thêm time_bonus nếu hoàn thành nhanh."""
     base_xp = score * 10
-    bonus = 20 if accuracy >= 80 else (10 if accuracy >= 60 else 0)
-    return base_xp + bonus
+    acc_bonus = 20 if accuracy >= 80 else (10 if accuracy >= 60 else 0)
+    # Bonus tốc độ: hoàn thành <30s/câu và accuracy >=70% → thêm 15 XP
+    avg_time_per_q = (time_spent / total) if total > 0 else 999
+    time_bonus = 15 if (avg_time_per_q < 30 and accuracy >= 70) else 0
+    return base_xp + acc_bonus + time_bonus
 
 def _get_user_xp(db, uid: int) -> int:
     rows = db.execute(
-        "SELECT score, total, accuracy FROM test_results WHERE user_id=?", (uid,)
+        "SELECT score, total, accuracy, time_spent FROM test_results WHERE user_id=?", (uid,)
     ).fetchall()
-    return sum(_calculate_xp(r["score"], r["total"], r["accuracy"] or 0) for r in rows)
+    return sum(_calculate_xp(r["score"], r["total"], r["accuracy"] or 0, r["time_spent"] or 0) for r in rows)
 
 def _get_user_streak(db, uid: int) -> tuple[int, int]:
     rows = db.execute(
@@ -910,6 +1099,13 @@ def _get_user_streak(db, uid: int) -> tuple[int, int]:
         return 0, 0
 
     unique_days = sorted({row["day"] for row in rows}, reverse=True)
+    if len(unique_days) == 1:
+        # Chỉ có 1 ngày duy nhất
+        day = datetime.strptime(unique_days[0], "%Y-%m-%d").date()
+        today = datetime.now().date()
+        current = 1 if day >= today - timedelta(days=1) else 0
+        return current, 1
+
     today = datetime.now().date()
     current_streak = 0
     check_date = today
@@ -922,6 +1118,7 @@ def _get_user_streak(db, uid: int) -> tuple[int, int]:
         else:
             break
 
+    # Tính longest streak
     longest_streak = 1
     streak_count = 1
     for i in range(1, len(unique_days)):
@@ -1104,9 +1301,13 @@ async def chat(request: Request):
     user_message = (d.get("message") or "").strip()
     image_data   = d.get("image")
     use_stream   = d.get("stream", False)
+    # MathGPT mode: "hint" (Socratic default) | "solution" (full answer + bài phái sinh)
+    chat_mode    = d.get("mode", "hint")
 
-    if not user_message:
+    if not user_message and not image_data:
         raise HTTPException(400, "message is required.")
+    if not user_message:
+        user_message = "Hãy giải bài toán trong ảnh này cho em."  # fallback khi chỉ có ảnh
 
     history = ensure_session(session_id)
 
@@ -1125,23 +1326,27 @@ async def chat(request: Request):
             except Exception:
                 extracted_text = ""
 
+        # Chọn prompt variant theo mode (image Socratic hay image full-solution)
+        img_prompt_variant = "solution" if chat_mode == "solution" else "image"
         if extracted_text.strip():
-            user_content = f"OCR TEXT:\n{extracted_text}\n\nQUESTION:\n{user_message}"
+            user_content  = f"📝 **Nội dung nhận diện từ ảnh (OCR):**\n{extracted_text}\n\n**Câu hỏi:** {user_message}"
             model         = "llama-3.1-8b-instant"
-            system_prompt = cached_system_prompt("image")
+            system_prompt = cached_system_prompt(img_prompt_variant)
         else:
             user_content = [
                 {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
                 {"type": "text",      "text": user_message},
             ]
             model         = "meta-llama/llama-4-scout-17b-16e-instruct"
-            system_prompt = cached_system_prompt("image")
+            system_prompt = cached_system_prompt(img_prompt_variant)
 
         history.append({"role": "user", "content": f"[Image] {user_message}"})
     else:
         user_content  = user_message
+        # mode="solution" → giải đầy đủ + bài phái sinh; mặc định → Socratic hint
+        prompt_variant = "solution" if chat_mode == "solution" else "text"
         model         = "llama-3.1-8b-instant"
-        system_prompt = cached_system_prompt("text")
+        system_prompt = cached_system_prompt(prompt_variant)
         history.append({"role": "user", "content": user_message})
 
     # Retrieve mathematical context using LightRAG-style retriever
@@ -1156,9 +1361,11 @@ async def chat(request: Request):
         + [{"role": "user", "content": user_content}]
     )
 
+    # Solution mode cần nhiều token hơn để sinh cả lời giải + bài phái sinh
+    max_tokens = 2000 if chat_mode == "solution" else 1024
     payload = {
         "model": model, "messages": messages,
-        "max_tokens": 1024, "temperature": 0.3,
+        "max_tokens": max_tokens, "temperature": 0.3,
         "stream": use_stream,
     }
 
@@ -1302,13 +1509,17 @@ async def health():
     except Exception:
         db_ms, db_ok = -1, False
     return JSONResponse({
-        "status":        "ok" if db_ok else "degraded",
-        "service":       "DuoMath API v4 (FastAPI)",
-        "db_latency_ms": db_ms,
-        "keep_alive":    bool(SELF_URL),
-        "text_model":    "llama-3.1-8b-instant",
-        "vision_model":  "meta-llama/llama-4-scout-17b-16e-instruct",
-        "ocr_available": _ocr_available,
+        "status":           "ok" if db_ok else "degraded",
+        "service":          "DuoMath API v4 (FastAPI) — MathGPT Edition",
+        "db_latency_ms":    db_ms,
+        "keep_alive":       bool(SELF_URL),
+        "text_model":       "llama-3.1-8b-instant",
+        "vision_model":     "meta-llama/llama-4-scout-17b-16e-instruct",
+        "ocr_available":    _ocr_available,
+        "mathgpt_mode":     "socratic",
+        "lightrag_nodes":   len(MATH_CONCEPT_GRAPH["nodes"]),
+        "lightrag_edges":   len(MATH_CONCEPT_GRAPH["edges"]),
+        "chat_modes":       ["hint", "solution", "image"],
     })
 
 
@@ -1486,9 +1697,606 @@ async def admin_get_stats(request: Request):
         db.close()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  GAMIFICATION — ENGINE & ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+import random as _random
+from datetime import date as _date
+
+# ── Badge Catalog ──────────────────────────────────────────────────────────────
+BADGE_CATALOG: dict[str, dict] = {
+    "streak_3":       {"name_vi": "Nhất Quán",            "name_en": "Consistent",               "icon": "🔥", "tier": "bronze", "math_term": "Liên Tục / Continuity",       "desc_vi": "Duy trì streak 3 ngày liên tiếp"},
+    "streak_7":       {"name_vi": "Đệ Quy Viên",          "name_en": "The Recursionist",         "icon": "🌀", "tier": "silver", "math_term": "Đệ Quy / Recursion",          "desc_vi": "7 ngày không gián đoạn"},
+    "streak_30":      {"name_vi": "Bất Biến",             "name_en": "The Invariant",            "icon": "💎", "tier": "gold",   "math_term": "Bất Biến / Invariant",        "desc_vi": "30 ngày streak không gãy"},
+    "streak_100":     {"name_vi": "Hàm Nhị Phân Sư",      "name_en": "Binary Legend",            "icon": "🌟", "tier": "gold",   "math_term": "Hàm Nhị Phân / Binary",      "desc_vi": "100 ngày streak huyền thoại"},
+    "perfect_score":  {"name_vi": "Hàm Toàn Ánh",         "name_en": "The Surjection",          "icon": "🎯", "tier": "gold",   "math_term": "Toàn Ánh / Surjection",       "desc_vi": "Đạt 100% trong một bài kiểm tra"},
+    "high_accuracy":  {"name_vi": "Tiệm Cận Hoàn Hảo",   "name_en": "Asymptotic Perfection",   "icon": "📈", "tier": "silver", "math_term": "Tiệm Cận / Asymptote",       "desc_vi": ">= 90% accuracy trong 5 bài liên tiếp"},
+    "first_test":     {"name_vi": "Bài Toán Đầu Tiên",    "name_en": "First Equation",          "icon": "✏️", "tier": "bronze", "math_term": "Tập Hợp / Set",              "desc_vi": "Hoàn thành bài test đầu tiên"},
+    "speed_demon":    {"name_vi": "Giới Hạn Tốc Độ",      "name_en": "The Speed Limit",         "icon": "⚡", "tier": "silver", "math_term": "Giới Hạn / Limit",           "desc_vi": "Hoàn thành bài test <2 phút và >=80%"},
+    "calc_master":    {"name_vi": "Vi Phân Sư",           "name_en": "Lord of Derivatives",     "icon": "∂",  "tier": "gold",   "math_term": "Đạo Hàm / Derivative",       "desc_vi": "Accuracy >=85% trong chương Đạo Hàm"},
+    "integral_hunter":{"name_vi": "Thợ Săn Nguyên Hàm",  "name_en": "Antiderivative Hunter",   "icon": "∫",  "tier": "silver", "math_term": "Tích Phân / Integral",        "desc_vi": "50 bài tích phân đúng"},
+    "level_10":       {"name_vi": "Số Nguyên Tố Mười",    "name_en": "Prime 10",                "icon": "🔟", "tier": "silver", "math_term": "Số Nguyên Tố / Prime",       "desc_vi": "Đạt level 10"},
+    "level_25":       {"name_vi": "Cấp Số Nhân Viên",     "name_en": "The Geometric Progressor","icon": "🏆", "tier": "gold",   "math_term": "Cấp Số Nhân / Geometric",   "desc_vi": "Đạt level 25"},
+}
+
+# XP thresholds — level n đạt được khi total_xp >= LEVEL_XP_THRESHOLDS[n-1]
+LEVEL_XP_THRESHOLDS = [
+    0, 100, 250, 450, 700, 1000, 1400, 1900, 2500, 3200,   # 1-10
+    4000, 5000, 6200, 7600, 9200, 11000, 13000, 15500, 18500, 22000,  # 11-20
+    26000, 30500, 35500, 41000, 47000, 54000,               # 21-26
+]
+
+def _xp_to_level(xp: int) -> int:
+    for i, threshold in enumerate(LEVEL_XP_THRESHOLDS):
+        if xp < threshold:
+            return max(1, i)
+    return len(LEVEL_XP_THRESHOLDS)
+
+def _xp_to_league(xp: int) -> str:
+    if xp < 500:   return "Bronze"
+    if xp < 1500:  return "Silver"
+    if xp < 4000:  return "Gold"
+    if xp < 10000: return "Platinum"
+    return "Diamond"
+
+# ── Badge helper ───────────────────────────────────────────────────────────────
+def _award_badge(db, user_id: int, badge_id: str) -> bool:
+    """Trao badge nếu chưa có. Return True nếu vừa được trao."""
+    try:
+        db.execute(
+            "INSERT INTO user_badges (user_id, badge_id) VALUES (?,?)",
+            (user_id, badge_id)
+        )
+        db.commit()
+        return True
+    except Exception:
+        return False  # UNIQUE constraint — đã có rồi
+
+def _add_xp(db, user_id: int, xp: int):
+    """Cộng XP, cập nhật level + league, kiểm tra badge level."""
+    row = db.execute("SELECT total_xp FROM user_gamification WHERE user_id=?", (user_id,)).fetchone()
+    if not row:
+        db.execute(
+            "INSERT INTO user_gamification (user_id, total_xp) VALUES (?,?)",
+            (user_id, max(0, xp))
+        )
+        new_xp = max(0, xp)
+    else:
+        new_xp = max(0, row["total_xp"] + xp)
+        db.execute("UPDATE user_gamification SET total_xp=? WHERE user_id=?", (new_xp, user_id))
+    lvl    = _xp_to_level(new_xp)
+    league = _xp_to_league(new_xp)
+    db.execute(
+        "UPDATE user_gamification SET level=?, league=? WHERE user_id=?",
+        (lvl, league, user_id)
+    )
+    db.commit()
+    if lvl >= 10: _award_badge(db, user_id, "level_10")
+    if lvl >= 25: _award_badge(db, user_id, "level_25")
+
+# ── Streak Engine ──────────────────────────────────────────────────────────────
+_STREAK_XP: dict[int, int] = {3: 50, 7: 150, 14: 400, 30: 1000, 100: 5000}
+
+def _streak_checkin(db, user_id: int) -> dict:
+    """
+    Ghi nhận activity hôm nay — idempotent (gọi nhiều lần/ngày = an toàn).
+    Return dict với streak info và XP bonus.
+    """
+    today     = _date.today().isoformat()
+    yesterday = (_date.today() - timedelta(days=1)).isoformat()
+
+    row = db.execute(
+        "SELECT * FROM user_gamification WHERE user_id=?", (user_id,)
+    ).fetchone()
+
+    if not row:
+        db.execute(
+            "INSERT INTO user_gamification (user_id, current_streak, longest_streak, last_active_date, total_xp) VALUES (?,1,1,?,10)",
+            (user_id, today)
+        )
+        db.commit()
+        _award_badge(db, user_id, "first_test")
+        return {"new_streak": 1, "xp_bonus": 10, "freeze_used": False, "streak_reset": False}
+
+    last      = row["last_active_date"]
+    streak    = row["current_streak"]
+    freezes   = row["freeze_count"]
+
+    # Đã check-in hôm nay → idempotent
+    if last == today:
+        return {"new_streak": streak, "xp_bonus": 0, "freeze_used": False, "streak_reset": False}
+
+    if last == yesterday:
+        # Tiếp tục streak
+        new_streak = streak + 1
+        longest    = max(row["longest_streak"], new_streak)
+        xp_bonus   = _STREAK_XP.get(new_streak, 20)
+        db.execute(
+            "UPDATE user_gamification SET current_streak=?, longest_streak=?, last_active_date=? WHERE user_id=?",
+            (new_streak, longest, today, user_id)
+        )
+        db.commit()
+        _add_xp(db, user_id, xp_bonus)
+        for milestone, bid in [(3,"streak_3"),(7,"streak_7"),(30,"streak_30"),(100,"streak_100")]:
+            if new_streak >= milestone:
+                _award_badge(db, user_id, bid)
+        return {"new_streak": new_streak, "xp_bonus": xp_bonus, "freeze_used": False, "streak_reset": False}
+
+    # Streak bị gãy → thử dùng Freeze
+    gap = (_date.today() - _date.fromisoformat(last)).days if last else 99
+    if freezes > 0 and gap <= 2:
+        db.execute(
+            "UPDATE user_gamification SET freeze_count=freeze_count-1, last_active_date=? WHERE user_id=?",
+            (today, user_id)
+        )
+        db.commit()
+        return {"new_streak": streak, "xp_bonus": 5, "freeze_used": True, "streak_reset": False}
+
+    # Reset streak
+    db.execute(
+        "UPDATE user_gamification SET current_streak=1, last_active_date=? WHERE user_id=?",
+        (today, user_id)
+    )
+    db.commit()
+    _add_xp(db, user_id, 10)
+    return {"new_streak": 1, "xp_bonus": 10, "freeze_used": False, "streak_reset": True}
+
+# ── Daily Quest Engine ─────────────────────────────────────────────────────────
+_QUEST_TEMPLATES = [
+    {"type": "solve_questions", "vi": "Giải {n} câu hỏi hôm nay",          "en": "Solve {n} questions today",            "targets": [5,10,15],  "xp": [30,60,100]},
+    {"type": "accuracy_target",  "vi": "Đạt >={n}% accuracy trong bài test","en": "Achieve >={n}% accuracy in a test",   "targets": [70,80,90], "xp": [40,70,120]},
+    {"type": "study_session",    "vi": "Hoàn thành {n} bài học",           "en": "Complete {n} lessons",                "targets": [1,2,3],    "xp": [25,50,80]},
+    {"type": "topic_focus",      "vi": "Ôn {n} bài về chủ đề yếu nhất",   "en": "Practice {n} problems on weak topic", "targets": [3,5,8],    "xp": [35,65,110]},
+    {"type": "speed_challenge",  "vi": "Giải {n} câu trong vòng 3 phút",  "en": "Solve {n} questions in 3 minutes",    "targets": [5,8,12],   "xp": [45,80,130]},
+]
+
+def _ensure_quests(db, user_id: int, count: int = 3) -> list:
+    """Sinh daily quests nếu chưa có hôm nay. Return list dicts."""
+    today    = _date.today().isoformat()
+    existing = db.execute(
+        "SELECT * FROM daily_quests WHERE user_id=? AND date=? ORDER BY id",
+        (user_id, today)
+    ).fetchall()
+    if existing:
+        return [dict(q) for q in existing]
+
+    for tmpl in _random.sample(_QUEST_TEMPLATES, min(count, len(_QUEST_TEMPLATES))):
+        idx = _random.randint(0, len(tmpl["targets"]) - 1)
+        n   = tmpl["targets"][idx]
+        db.execute(
+            "INSERT OR IGNORE INTO daily_quests "
+            "(user_id, date, quest_type, quest_label_vi, quest_label_en, target_value, xp_reward) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (user_id, today, tmpl["type"],
+             tmpl["vi"].format(n=n), tmpl["en"].format(n=n),
+             n, tmpl["xp"][idx])
+        )
+    db.commit()
+    rows = db.execute(
+        "SELECT * FROM daily_quests WHERE user_id=? AND date=? ORDER BY id",
+        (user_id, today)
+    ).fetchall()
+    return [dict(q) for q in rows]
+
+
+# ── Gamification Endpoints ─────────────────────────────────────────────────────
+@app.post("/api/streak/checkin")
+async def api_streak_checkin(request: Request):
+    """
+    Gọi sau khi user hoàn thành bài test / minigame.
+    Cập nhật streak, tính XP bonus, kiểm tra badges tự động.
+    """
+    uid = await resolve_user_id(request)
+    db  = get_db()
+    try:
+        result = _streak_checkin(db, uid)
+        gami   = db.execute("SELECT * FROM user_gamification WHERE user_id=?", (uid,)).fetchone()
+        recent_badges = db.execute(
+            "SELECT badge_id, earned_at FROM user_badges WHERE user_id=? ORDER BY earned_at DESC LIMIT 3",
+            (uid,)
+        ).fetchall()
+        return JSONResponse({
+            **result,
+            "gamification": {
+                "current_streak": gami["current_streak"]  if gami else 1,
+                "longest_streak": gami["longest_streak"]  if gami else 1,
+                "freeze_count":   gami["freeze_count"]    if gami else 2,
+                "total_xp":       gami["total_xp"]        if gami else 10,
+                "level":          gami["level"]           if gami else 1,
+                "elo_rating":     gami["elo_rating"]      if gami else 1000,
+                "league":         gami["league"]          if gami else "Bronze",
+            },
+            "recent_badges": [
+                {"id": b["badge_id"], "earned_at": b["earned_at"],
+                 **BADGE_CATALOG.get(b["badge_id"], {})}
+                for b in recent_badges
+            ],
+        })
+    finally:
+        db.close()
+
+
+@app.get("/api/quests/today")
+async def api_get_quests(request: Request):
+    """Lấy (và tự sinh nếu chưa có) daily quests của hôm nay."""
+    uid = await resolve_user_id(request)
+    db  = get_db()
+    try:
+        quests = _ensure_quests(db, uid)
+        return JSONResponse({
+            "date":   _date.today().isoformat(),
+            "quests": quests,
+            "completed": sum(1 for q in quests if q.get("is_completed")),
+            "total":  len(quests),
+        })
+    finally:
+        db.close()
+
+
+@app.post("/api/quests/{quest_id}/progress")
+async def api_quest_progress(quest_id: int, request: Request):
+    """
+    Cập nhật tiến độ quest (+delta units), tự đánh dấu hoàn thành và phát XP.
+    Body: { "delta": 1 }
+    """
+    uid   = await resolve_user_id(request)
+    body  = await request.json()
+    delta = max(1, int(body.get("delta", 1)))
+    db    = get_db()
+    try:
+        quest = db.execute(
+            "SELECT * FROM daily_quests WHERE id=? AND user_id=?",
+            (quest_id, uid)
+        ).fetchone()
+        if not quest:
+            raise HTTPException(404, "Quest không tồn tại hoặc không thuộc về bạn.")
+        if quest["is_completed"]:
+            return JSONResponse({"already_completed": True, "quest_id": quest_id})
+
+        new_val   = min(quest["current_value"] + delta, quest["target_value"])
+        completed = new_val >= quest["target_value"]
+        db.execute(
+            "UPDATE daily_quests SET current_value=?, is_completed=?, completed_at=? WHERE id=?",
+            (new_val, 1 if completed else 0,
+             datetime.now(timezone.utc).isoformat() if completed else None,
+             quest_id)
+        )
+        db.commit()
+        xp_gained = 0
+        if completed:
+            xp_gained = quest["xp_reward"]
+            _add_xp(db, uid, xp_gained)
+        return JSONResponse({
+            "quest_id":  quest_id,
+            "new_value": new_val,
+            "target":    quest["target_value"],
+            "completed": completed,
+            "xp_gained": xp_gained,
+        })
+    finally:
+        db.close()
+
+
+@app.get("/api/badges")
+async def api_get_badges(request: Request):
+    """Trả về tất cả badges (đã đạt + chưa đạt) kèm catalog metadata."""
+    uid = await resolve_user_id(request)
+    db  = get_db()
+    try:
+        earned_rows = db.execute(
+            "SELECT badge_id, earned_at FROM user_badges WHERE user_id=? ORDER BY earned_at DESC",
+            (uid,)
+        ).fetchall()
+        earned_map = {r["badge_id"]: r["earned_at"] for r in earned_rows}
+        badges_out = []
+        for bid, bdata in BADGE_CATALOG.items():
+            badges_out.append({
+                **bdata,
+                "id":        bid,
+                "earned":    bid in earned_map,
+                "earned_at": earned_map.get(bid),
+            })
+        return JSONResponse({
+            "earned_count": len(earned_map),
+            "total_count":  len(BADGE_CATALOG),
+            "badges":       badges_out,
+        })
+    finally:
+        db.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  ADAPTIVE LEARNING — ENGINE & ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+_DIFFICULTY_LEVELS = ["NB", "TH", "VD", "VDC"]
+_ACC_UP   = 0.80   # >= 80% → tăng độ khó
+_ACC_DOWN = 0.50   # < 50%  → giảm độ khó
+_WINDOW   = 10     # xét 10 câu gần nhất
+
+def _next_difficulty(db, user_id: int, topic: str) -> str:
+    """Phân tích lịch sử làm bài → trả về mức độ khó tiếp theo."""
+    recent = db.execute(
+        "SELECT is_correct, difficulty FROM quiz_attempts "
+        "WHERE user_id=? AND topic=? ORDER BY attempted_at DESC LIMIT ?",
+        (user_id, topic, _WINDOW)
+    ).fetchall()
+    if not recent:
+        return "NB"
+    avg_acc   = sum(r["is_correct"] for r in recent) / len(recent)
+    cur_level = recent[0]["difficulty"]
+    if cur_level not in _DIFFICULTY_LEVELS:
+        cur_level = "NB"
+    idx = _DIFFICULTY_LEVELS.index(cur_level)
+    if avg_acc >= _ACC_UP:
+        return _DIFFICULTY_LEVELS[min(idx + 1, len(_DIFFICULTY_LEVELS) - 1)]
+    if avg_acc < _ACC_DOWN:
+        return _DIFFICULTY_LEVELS[max(idx - 1, 0)]
+    return cur_level
+
+def _refresh_mastery(db, user_id: int, topic: str):
+    """Tái tính và upsert bảng topic_mastery sau mỗi quiz attempt."""
+    stats = db.execute(
+        "SELECT COUNT(*) as total, SUM(is_correct) as correct "
+        "FROM quiz_attempts WHERE user_id=? AND topic=?",
+        (user_id, topic)
+    ).fetchone()
+    total   = stats["total"]   or 0
+    correct = stats["correct"] or 0
+    avg_acc = (correct / total) if total > 0 else 0.0
+    nxt_lvl = _next_difficulty(db, user_id, topic)
+    db.execute(
+        """INSERT INTO topic_mastery
+               (user_id, topic, total_attempts, correct_count, avg_accuracy, current_level, last_practiced)
+           VALUES (?,?,?,?,?,?,datetime('now'))
+           ON CONFLICT(user_id, topic) DO UPDATE SET
+               total_attempts=excluded.total_attempts,
+               correct_count=excluded.correct_count,
+               avg_accuracy=excluded.avg_accuracy,
+               current_level=excluded.current_level,
+               last_practiced=excluded.last_practiced""",
+        (user_id, topic, total, correct, avg_acc, nxt_lvl)
+    )
+    db.commit()
+
+
+@app.post("/api/quiz/attempt")
+async def api_log_attempt(request: Request):
+    """
+    Ghi nhận kết quả từng câu hỏi cho Adaptive Learning.
+    Body: { question_id, topic, difficulty, is_correct, time_taken_sec }
+    Tự động: cập nhật topic_mastery + streak check-in + cộng 5 XP nếu đúng.
+    """
+    uid  = await resolve_user_id(request)
+    body = await request.json()
+
+    q_id       = str(body.get("question_id", "")).strip() or "unknown"
+    topic      = str(body.get("topic", "general")).strip()
+    difficulty = str(body.get("difficulty", "NB")).strip().upper()
+    is_correct = bool(body.get("is_correct", False))
+    time_taken = max(0, int(body.get("time_taken_sec", 0)))
+
+    if difficulty not in _DIFFICULTY_LEVELS:
+        difficulty = "NB"
+
+    db = get_db()
+    try:
+        db.execute(
+            "INSERT INTO quiz_attempts (user_id, question_id, topic, difficulty, is_correct, time_taken_sec) "
+            "VALUES (?,?,?,?,?,?)",
+            (uid, q_id, topic, difficulty, 1 if is_correct else 0, time_taken)
+        )
+        db.commit()
+
+        _refresh_mastery(db, uid, topic)
+        streak_info    = _streak_checkin(db, uid)
+        if is_correct:
+            _add_xp(db, uid, 5)
+        next_diff = _next_difficulty(db, uid, topic)
+
+        # Kiểm tra badge perfect score nếu accuracy bài test = 100%
+        accuracy_param = float(body.get("session_accuracy", 0))
+        if accuracy_param >= 100:
+            _award_badge(db, uid, "perfect_score")
+
+        return JSONResponse({
+            "logged":          True,
+            "is_correct":      is_correct,
+            "next_difficulty": next_diff,
+            "xp_gained":       5 if is_correct else 0,
+            "streak":          streak_info,
+        }, status_code=201)
+    finally:
+        db.close()
+
+
+@app.get("/api/adaptive/next-difficulty")
+async def api_next_difficulty(request: Request):
+    """Trả về mức độ khó nên gọi tiếp theo cho một topic cụ thể."""
+    uid   = await resolve_user_id(request)
+    topic = request.query_params.get("topic", "general")
+    db    = get_db()
+    try:
+        lvl     = _next_difficulty(db, uid, topic)
+        mastery = db.execute(
+            "SELECT * FROM topic_mastery WHERE user_id=? AND topic=?",
+            (uid, topic)
+        ).fetchone()
+        return JSONResponse({
+            "topic":          topic,
+            "next_level":     lvl,
+            "avg_accuracy":   round((mastery["avg_accuracy"] * 100) if mastery else 0.0, 1),
+            "total_attempts": mastery["total_attempts"] if mastery else 0,
+            "current_level":  mastery["current_level"]  if mastery else "NB",
+        })
+    finally:
+        db.close()
+
+
+@app.get("/api/adaptive/weak-topics")
+async def api_weak_topics(request: Request):
+    """Danh sách chủ đề yếu (accuracy < 60%, >=3 lần thử) để nhắc ôn tập."""
+    uid = await resolve_user_id(request)
+    db  = get_db()
+    try:
+        rows = db.execute(
+            """SELECT topic, ROUND(avg_accuracy*100,1) as pct,
+                      current_level, total_attempts
+               FROM topic_mastery
+               WHERE user_id=? AND total_attempts >= 3 AND avg_accuracy < 0.60
+               ORDER BY avg_accuracy ASC LIMIT 5""",
+            (uid,)
+        ).fetchall()
+        return JSONResponse({
+            "weak_topics": [
+                {"topic": r["topic"], "accuracy_pct": r["pct"],
+                 "level": r["current_level"], "attempts": r["total_attempts"]}
+                for r in rows
+            ]
+        })
+    finally:
+        db.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  USER STATISTICS — Trang phân tích số liệu toàn diện (kiểu osu! profile)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/stats")
+async def api_user_stats(request: Request):
+    """
+    Tổng hợp toàn bộ số liệu của user để render trang Statistics.
+    Bao gồm: gamification, test history 30d, topic mastery, badges, quests, hexagon chart.
+    """
+    uid = await resolve_user_id(request)
+    db  = get_db()
+    try:
+        user = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        if not user:
+            raise HTTPException(404, "User not found.")
+
+        # Gamification
+        gami         = db.execute("SELECT * FROM user_gamification WHERE user_id=?", (uid,)).fetchone()
+        total_xp     = _get_user_xp(db, uid)
+        cur_streak, longest = _get_user_streak(db, uid)
+
+        # Test history 30 ngày
+        test_hist = db.execute(
+            """SELECT DATE(taken_at) as day,
+                      ROUND(AVG(accuracy), 1)  as avg_acc,
+                      COUNT(*)                 as cnt
+               FROM test_results
+               WHERE user_id=? AND taken_at >= datetime('now', '-30 days')
+               GROUP BY DATE(taken_at)
+               ORDER BY day ASC""",
+            (uid,)
+        ).fetchall()
+
+        # Topic mastery
+        topic_rows = db.execute(
+            "SELECT topic, ROUND(avg_accuracy*100,1) as acc_pct, current_level, total_attempts "
+            "FROM topic_mastery WHERE user_id=? ORDER BY avg_accuracy DESC",
+            (uid,)
+        ).fetchall()
+
+        # Chủ đề yếu
+        weak = db.execute(
+            "SELECT topic, ROUND(avg_accuracy*100,1) as pct "
+            "FROM topic_mastery WHERE user_id=? AND total_attempts>=3 AND avg_accuracy<0.60 "
+            "ORDER BY avg_accuracy ASC LIMIT 5",
+            (uid,)
+        ).fetchall()
+
+        # Test tổng kết
+        t_sum = db.execute(
+            "SELECT COUNT(*) as total, ROUND(AVG(accuracy),1) as avg_acc, MAX(accuracy) as best "
+            "FROM test_results WHERE user_id=?",
+            (uid,)
+        ).fetchone()
+
+        # Game tổng kết
+        g_sum = db.execute(
+            "SELECT COUNT(*) as total, ROUND(AVG(CAST(score AS REAL)/total*100),1) as avg_pct "
+            "FROM minigame_results WHERE user_id=? AND total>0",
+            (uid,)
+        ).fetchone()
+
+        # Badges
+        badge_rows = db.execute(
+            "SELECT badge_id, earned_at FROM user_badges WHERE user_id=? ORDER BY earned_at DESC",
+            (uid,)
+        ).fetchall()
+
+        # Daily quests
+        quests      = _ensure_quests(db, uid)
+        quests_done = sum(1 for q in quests if q.get("is_completed"))
+
+        # Hexagon chart (6 chiều, 0-100)
+        overall_acc   = t_sum["avg_acc"] or 0.0
+        avg_game_pct  = g_sum["avg_pct"] or 0.0
+        elo_val       = gami["elo_rating"] if gami else 1000
+        topic_count   = len(topic_rows)
+        good_topics   = sum(1 for t in topic_rows if t["acc_pct"] >= 70)
+        hexagon = [
+            {"subject": "Chính Xác",  "value": min(100, round(overall_acc))},
+            {"subject": "Bền Bỉ",     "value": min(100, cur_streak * 3)},
+            {"subject": "Tốc Độ",     "value": min(100, round(avg_game_pct))},
+            {"subject": "Hiểu Biết",  "value": min(100, round(good_topics / max(1, topic_count) * 100))},
+            {"subject": "Thành Tích", "value": min(100, len(badge_rows) * 8)},
+            {"subject": "Elo",        "value": min(100, max(0, round((elo_val - 800) / 12)))},
+        ]
+
+        return JSONResponse({
+            "user": user_dict(user),
+            "gamification": {
+                "current_streak": cur_streak,
+                "longest_streak": longest,
+                "freeze_count":   gami["freeze_count"] if gami else 2,
+                "total_xp":       total_xp,
+                "level":          _xp_to_level(total_xp),
+                "league":         _xp_to_league(total_xp),
+                "elo_rating":     gami["elo_rating"] if gami else 1000,
+                "peak_elo":       gami["peak_elo"]   if gami else 1000,
+            },
+            "test_history_30d": [
+                {"date": r["day"], "accuracy": r["avg_acc"], "count": r["cnt"]}
+                for r in test_hist
+            ],
+            "topic_mastery": [
+                {"topic": r["topic"], "accuracy": r["acc_pct"],
+                 "level": r["current_level"], "attempts": r["total_attempts"]}
+                for r in topic_rows
+            ],
+            "weak_topics": [{"topic": r["topic"], "accuracy": r["pct"]} for r in weak],
+            "test_summary": {
+                "total_tests": t_sum["total"] or 0,
+                "overall_acc": overall_acc,
+                "best_acc":    t_sum["best"] or 0,
+            },
+            "game_summary": {
+                "total_games":   g_sum["total"] or 0,
+                "avg_score_pct": avg_game_pct,
+            },
+            "badges": [
+                {"id": b["badge_id"], "earned_at": b["earned_at"],
+                 **BADGE_CATALOG.get(b["badge_id"], {"name_vi": b["badge_id"], "icon": "🏅"})}
+                for b in badge_rows
+            ],
+            "daily_quests": {
+                "quests":    quests,
+                "completed": quests_done,
+                "total":     len(quests),
+            },
+            "hexagon_stats": hexagon,
+        })
+    finally:
+        db.close()
+
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn # pyright: ignore[reportMissingImports]
     port = int(os.environ.get("PORT", 5000))
-    print(f"DuoMath API v4 (FastAPI) -> http://localhost:{port}")
+    print(f"DuoMath API v4 (FastAPI + MathGPT) -> http://localhost:{port}")
     uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info")

@@ -6,6 +6,8 @@ import { useAuth } from "@/context/authContext";
 import { resetTimer, getTimeSpent, formatTime } from "../../utils/testTimer";
 import { clearAllAnswers } from "../../utils/answerStorage";
 import { SKILL_DEFS } from "../../utils/questionSkills";
+import GamificationHUD from "@/components/GamificationHUD";
+import { logQuizAttempt } from "@/lib/api";
 
 const SHAPES = [
   { size: 120, left: "5%",  top: "10%", delay: "0s",   dur: "18s", shape: "pyramid",  color: "#00c8ff" },
@@ -35,6 +37,7 @@ export default function PageKetQua() {
   const [feedback, setFeedback] = useState("");
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
+  const [showHUD, setShowHUD] = useState(false);
 
   // ================= LOAD RESULT =================
   useEffect(() => {
@@ -97,6 +100,30 @@ export default function PageKetQua() {
         const updatedResult = { ...result, isSaved: true };
         setResult(updatedResult);
         localStorage.setItem("readingTest_result", JSON.stringify(updatedResult));
+
+        // ── Adaptive Learning: log từng câu hỏi ─────────────────────────
+        const allQs = result.questions || [];
+        const totalQs = allQs.length;
+        const correctQs = allQs.filter(q => q.isCorrect).length;
+        const sessionAccuracy = totalQs > 0 ? (correctQs / totalQs) * 100 : 0;
+        const perQTime = savedTime > 0 && totalQs > 0 ? Math.round(savedTime / totalQs) : 0;
+
+        // Gửi batch attempt (không chặn UI, fire-and-forget)
+        Promise.allSettled(
+          allQs.map((q, idx) =>
+            logQuizAttempt({
+              questionId:       q.key || `${exam}_q${idx}`,
+              topic:            q.section || "general",
+              difficulty:       q.difficulty || "NB",
+              isCorrect:        Boolean(q.isCorrect),
+              timeTakenSec:     perQTime,
+              sessionAccuracy:  sessionAccuracy,
+            })
+          )
+        );
+
+        // ── Hiển thị Gamification HUD ───────────────────────────────────
+        setShowHUD(true);
       }
     };
 
@@ -187,6 +214,14 @@ export default function PageKetQua() {
 
   return (
     <div style={{ width: "100%", background: "#0a0a1a", display: "flex", justifyContent: "center", minHeight: "100vh", position: "relative", overflow: "hidden" }}>
+
+      {/* Gamification HUD — hiện sau khi save thành công */}
+      {showHUD && (
+        <GamificationHUD
+          onClose={() => setShowHUD(false)}
+          autoCloseMs={10000}
+        />
+      )}
 
       {/* Floating shapes */}
       <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
