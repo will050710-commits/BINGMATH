@@ -44,7 +44,7 @@ export default function DuoMCBSidebar() {
       if (data.error) throw new Error("server-offline");
       setMessages((p) => [...p, { role: "assistant", content: data.reply, id: Date.now() + 1 }]);
     } catch {
-      setMessages((p) => [...p, { role: "assistant", content: "⚠️ Server offline. Run `python server.py`.", id: Date.now() + 1 }]);
+      setMessages((p) => [...p, { role: "assistant", content: "⚠️ Không thể kết nối với máy chủ DuoMCB. Vui lòng thử lại sau.", id: Date.now() + 1 }]);
     } finally { setLoading(false); }
   }
 

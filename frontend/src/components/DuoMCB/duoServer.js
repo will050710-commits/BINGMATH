@@ -16,11 +16,12 @@ export async function createSession() {
 }
 
 export async function chat(sessionId, message, options = {}) {
-  const { image = null, stream = false } = options;
+  const { image = null, stream = false, mode = "hint" } = options;
   const body = {
     session_id: sessionId,
     message,
     stream,
+    mode,
     ...(image ? { image } : {}),
   };
   try {

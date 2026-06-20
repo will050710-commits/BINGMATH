@@ -9,7 +9,7 @@ import { createSession, translateText } from "./duoServer";
  * Wrap any lesson page.jsx (must have "use client") with this component:
  *   <DuoTranslate><YourLesson /></DuoTranslate>
  *
- * Requires server.py running at http://localhost:5000
+ * Requires main.py running at http://localhost:5000
  */
 export default function DuoTranslate({ children }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -94,7 +94,7 @@ export default function DuoTranslate({ children }) {
 
       setResults(parsed);
     } catch (e) {
-      setResults({ error: true, raw: `Unexpected error: ${e?.message || e}\n\nMake sure server.py is running.` });
+      setResults({ error: true, raw: `Unexpected error: ${e?.message || e}\n\nMake sure main.py is running.` });
     } finally {
       setLoading(false);
     }

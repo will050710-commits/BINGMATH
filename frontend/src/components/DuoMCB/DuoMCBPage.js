@@ -200,11 +200,11 @@ export default function DuoMCBPage() {
     const sid = await ensureSession();
 
     try {
-      const data = await chat(sid, modeText, { image: imageBase64 });
+      const data = await chat(sid, modeText, { image: imageBase64, mode: mode === "hint" ? "hint" : "solution" });
       if (data.error) throw new Error("bad response");
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply || data.error, id: Date.now() + 1 }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Không thể xử lý ảnh. Kiểm tra server.py đang chạy.", id: Date.now() + 1 }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Không thể xử lý ảnh. Vui lòng thử lại sau.", id: Date.now() + 1 }]);
     } finally {
       setLoading(false);
       setImagePreview(null);
@@ -213,7 +213,7 @@ export default function DuoMCBPage() {
   }
 
   // ── Send text message ──
-  async function sendMessage(text) {
+  async function sendMessage(text, mode = "hint") {
     const msg = text || input.trim();
     if (!msg || loading) return;
     setInput("");
@@ -221,11 +221,11 @@ export default function DuoMCBPage() {
     setMessages((prev) => [...prev, { role: "user", content: msg, id: Date.now() }]);
     setLoading(true);
     try {
-      const data = await chat(sid, msg);
+      const data = await chat(sid, msg, { mode: mode === "hint" ? "hint" : "solution" });
       if (data.error) throw new Error("bad response");
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply, id: Date.now() + 1 }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Could not connect to DuoMCB server.", id: Date.now() + 1 }]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Không thể kết nối với máy chủ DuoMCB. Vui lòng thử lại sau.", id: Date.now() + 1 }]);
     } finally {
       setLoading(false);
     }
@@ -387,18 +387,50 @@ export default function DuoMCBPage() {
             <textarea
               ref={inputRef}
               className={styles.input}
-              placeholder="Ask me anything..."
+              placeholder="Hỏi DuoMCB... hoặc tải ảnh đề bài lên"
               value={input}
               rows={1}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
             />
             <button
               className={`${styles.sendBtn} ${input.trim() && !loading ? styles.sendActive : ""}`}
-              onClick={() => sendMessage()}
+              onClick={() => sendMessage(null, "hint")}
               disabled={!input.trim() || loading}
+              title="Gửi gợi ý (Hint)"
             >➤</button>
           </div>
+
+          {/* Action Buttons for Hint vs Full Solution */}
+          <div style={{ display: "flex", gap: 10, maxWidth: 820, margin: "8px auto 0", width: "100%" }}>
+            <button
+              onClick={() => sendMessage(null, "hint")}
+              disabled={!input.trim() || loading}
+              style={{
+                flex: 1, padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                background: "#1e1e26", border: "1px solid #6366f1", color: "#a5b4fc",
+                cursor: input.trim() && !loading ? "pointer" : "not-allowed",
+                opacity: input.trim() && !loading ? 1 : 0.4,
+                transition: "all 0.2s"
+              }}
+            >
+              💡 Xin Gợi Ý (Socratic Hint)
+            </button>
+            <button
+              onClick={() => sendMessage(null, "solution")}
+              disabled={!input.trim() || loading}
+              style={{
+                flex: 1, padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
+                background: "linear-gradient(135deg, #00d8fe, #13b0ff)", border: "none", color: "white",
+                cursor: input.trim() && !loading ? "pointer" : "not-allowed",
+                opacity: input.trim() && !loading ? 1 : 0.4,
+                transition: "all 0.2s"
+              }}
+            >
+              📖 Xem Đáp Án Đầy Đủ (Full Solution)
+            </button>
+          </div>
+
           <p className={styles.disclaimer}>DuoMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
         </div>
       </main>
