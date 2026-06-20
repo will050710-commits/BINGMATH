@@ -4,14 +4,20 @@ import styles from "./DuoMCBPage.module.css";
 import Image from "next/image";
 import { createSession, chat } from "./duoServer";
 import Link from "next/link";
-import TrangChuForm from "../trangchu/TrangChuForm";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+
 const SUGGESTED = [
   { icon: "📐", text: "Solve x² - 5x + 6 = 0 step by step" },
   { icon: "📊", text: "Explain mean, median and standard deviation" },
   { icon: "📝", text: "Give me bilingual exercises on trigonometry" },
   { icon: "🧪", text: "What is Newton's second law of motion?" },
+];
+
+const TOOLS = [
+  { id: "hint",     icon: "💡", label: "Gợi Ý Socratic",     desc: "Hướng dẫn từng bước nhỏ" },
+  { id: "solution", icon: "📖", label: "Giải Đầy Đủ",        desc: "Lời giải chi tiết hoàn chỉnh" },
+  { id: "video",    icon: "🎬", label: "Tạo Video Giải",      desc: "Video hoạt hình giải bài" },
 ];
 
 // ── LaTeX & Markdown Parser Helper Functions ────────────────────────────────
@@ -136,6 +142,231 @@ function renderTextWithMarkdown(text, key, styles) {
   );
 }
 
+// ── Video Player Modal ────────────────────────────────────────────────────
+function VideoModal({ question, onClose }) {
+  const canvasRef = useRef(null);
+  const animRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [progress, setProgress] = useState(0);
+  const [shared, setShared] = useState(false);
+  const frameRef = useRef(0);
+  const totalFrames = 300; // ~10 seconds at 30fps
+
+  const mathLines = [
+    question ? question.substring(0, 60) : "Solving the math problem...",
+    "Step 1: Identify the equation",
+    "Step 2: Apply the formula",
+    "\\Delta = b^2 - 4ac",
+    "Step 3: Calculate the roots",
+    "x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}",
+    "Step 4: Verify the solution ✓",
+  ];
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    canvas.width = 640;
+    canvas.height = 360;
+
+    function drawFrame(frame) {
+      ctx.fillStyle = "#0a0a0f";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Subtle grid background
+      ctx.strokeStyle = "rgba(99,102,241,0.07)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < canvas.width; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+      }
+
+      // Animated circle (decorative)
+      const t = frame / totalFrames;
+      ctx.strokeStyle = "rgba(0,216,254,0.3)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(canvas.width - 80, 80, 50 + Math.sin(t * Math.PI * 4) * 8, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // Draw math lines progressively
+      const linesPerFrame = totalFrames / mathLines.length;
+      const visibleLines = Math.floor(frame / linesPerFrame);
+
+      mathLines.forEach((line, i) => {
+        if (i > visibleLines) return;
+        const y = 80 + i * 40;
+        const lineProgress = i < visibleLines ? 1 : (frame % linesPerFrame) / linesPerFrame;
+        const isFormula = line.startsWith("\\");
+
+        ctx.save();
+        ctx.globalAlpha = Math.min(1, lineProgress * 2);
+
+        if (isFormula) {
+          ctx.font = "bold 22px 'Courier New', monospace";
+          ctx.fillStyle = "#00d8fe";
+          ctx.textAlign = "center";
+          // Simulate formula rendering with colored text
+          ctx.fillText(line.replace(/\\/g, ""), canvas.width / 2, y);
+        } else {
+          ctx.font = `${i === 0 ? "16px" : "18px"} 'Sora', sans-serif`;
+          ctx.fillStyle = i === 0 ? "#9ca3af" : "#e5e7eb";
+          ctx.textAlign = "center";
+          const chars = Math.floor(line.length * lineProgress);
+          ctx.fillText(line.substring(0, chars), canvas.width / 2, y);
+        }
+
+        // Underline active line
+        if (i === visibleLines) {
+          ctx.fillStyle = "#6366f1";
+          ctx.fillRect(canvas.width / 2 - 30, y + 6, 60 * lineProgress, 2);
+        }
+
+        ctx.restore();
+      });
+
+      // DuoMath watermark
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      ctx.font = "12px 'Sora', sans-serif";
+      ctx.fillStyle = "#00d8fe";
+      ctx.textAlign = "left";
+      ctx.fillText("DuoMath AI Video", 12, canvas.height - 12);
+      ctx.restore();
+    }
+
+    function animate() {
+      if (!isPlaying) return;
+      frameRef.current = (frameRef.current + 1) % totalFrames;
+      drawFrame(frameRef.current);
+      setProgress((frameRef.current / totalFrames) * 100);
+      animRef.current = requestAnimationFrame(animate);
+    }
+
+    drawFrame(frameRef.current);
+    if (isPlaying) {
+      animRef.current = requestAnimationFrame(animate);
+    }
+
+    return () => {
+      if (animRef.current) cancelAnimationFrame(animRef.current);
+    };
+  }, [isPlaying, question]);
+
+  function togglePlay() {
+    setIsPlaying(p => !p);
+  }
+
+  function handleShare() {
+    setShared(true);
+    setTimeout(() => setShared(false), 2000);
+    navigator.clipboard?.writeText(window.location.href).catch(() => {});
+  }
+
+  return (
+    <div className={styles.modalOverlay} onClick={onClose}>
+      <div className={styles.videoModal} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className={styles.videoModalHeader}>
+          <div className={styles.videoModalTitle}>
+            <span className={styles.videoModalIcon}>🎬</span>
+            <span>DuoMath Video Giải</span>
+            <span className={styles.videoBadge}>AI Generated</span>
+          </div>
+          <button className={styles.modalClose} onClick={onClose}>✕</button>
+        </div>
+
+        {/* Canvas player */}
+        <div className={styles.videoWrapper}>
+          <canvas ref={canvasRef} className={styles.videoCanvas} />
+          {/* Progress bar */}
+          <div className={styles.videoProgressBar}>
+            <div className={styles.videoProgressFill} style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+
+        {/* Controls */}
+        <div className={styles.videoControls}>
+          <div className={styles.videoControlsLeft}>
+            <button className={styles.videoCtrlBtn} onClick={togglePlay} title={isPlaying ? "Pause" : "Play"}>
+              {isPlaying ? "⏸" : "▶"}
+            </button>
+            <button className={styles.videoCtrlBtn} onClick={() => { frameRef.current = 0; setProgress(0); }} title="Replay">
+              🔄
+            </button>
+            <span className={styles.videoDuration}>
+              {Math.floor((progress / 100) * 10)}s / 10s
+            </span>
+          </div>
+          <button
+            className={`${styles.shareBtn} ${shared ? styles.shareBtnSuccess : ""}`}
+            onClick={handleShare}
+          >
+            {shared ? "✓ Đã sao chép!" : "🔗 Chia sẻ Video"}
+          </button>
+        </div>
+
+        {/* Problem label */}
+        {question && (
+          <div className={styles.videoProblemLabel}>
+            <span className={styles.videoProblemIcon}>📝</span>
+            <span className={styles.videoProblemText}>{question}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Tools Dropdown ─────────────────────────────────────────────────────────
+function ToolsDropdown({ onSelect, disabled }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className={styles.toolsDropdownWrapper} ref={ref}>
+      <button
+        className={styles.toolsBtn}
+        onClick={() => !disabled && setOpen(o => !o)}
+        disabled={disabled}
+        title="Công cụ AI"
+      >
+        <span>⚙️</span>
+        <span>Tools</span>
+        <span className={`${styles.toolsChevron} ${open ? styles.toolsChevronOpen : ""}`}>▾</span>
+      </button>
+      {open && (
+        <div className={styles.toolsMenu}>
+          <div className={styles.toolsMenuHeader}>Chọn công cụ AI</div>
+          {TOOLS.map(t => (
+            <button
+              key={t.id}
+              className={styles.toolsMenuItem}
+              onClick={() => { setOpen(false); onSelect(t.id); }}
+            >
+              <span className={styles.toolsMenuIcon}>{t.icon}</span>
+              <div className={styles.toolsMenuText}>
+                <span className={styles.toolsMenuLabel}>{t.label}</span>
+                <span className={styles.toolsMenuDesc}>{t.desc}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DuoMCBPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -145,6 +376,8 @@ export default function DuoMCBPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
+  const [videoQuestion, setVideoQuestion] = useState(null);
+  const [showVideo, setShowVideo] = useState(false);
   const [chatHistory] = useState([
     { id: 1, title: "Quadratic equations help", date: "Today" },
     { id: 2, title: "Statistics exercises", date: "Today" },
@@ -189,6 +422,11 @@ export default function DuoMCBPage() {
   // ── Send image with chosen mode ──
   async function sendImageMessage(mode) {
     setShowImageModal(false);
+    if (mode === "video") {
+      setVideoQuestion(input.trim() || "Bài toán từ ảnh");
+      setShowVideo(true);
+      return;
+    }
     const modeText = mode === "hint"
       ? "Provide A FEW HINTS to solve this problem without giving the answer"
       : "Look at the problem in this image and solve it STEP BY STEP for me.";
@@ -216,6 +454,14 @@ export default function DuoMCBPage() {
   async function sendMessage(text, mode = "hint") {
     const msg = text || input.trim();
     if (!msg || loading) return;
+
+    if (mode === "video") {
+      setVideoQuestion(msg);
+      setShowVideo(true);
+      setInput("");
+      return;
+    }
+
     setInput("");
     const sid = await ensureSession();
     setMessages((prev) => [...prev, { role: "user", content: msg, id: Date.now() }]);
@@ -231,6 +477,12 @@ export default function DuoMCBPage() {
     }
   }
 
+  function handleToolSelect(toolId) {
+    const msg = input.trim();
+    if (!msg && toolId !== "video") return;
+    sendMessage(msg || null, toolId);
+  }
+
   function newChat() {
     setMessages([]);
     initSession();
@@ -241,6 +493,14 @@ export default function DuoMCBPage() {
 
   return (
     <div className={styles.root}>
+
+      {/* ── VIDEO MODAL ── */}
+      {showVideo && (
+        <VideoModal
+          question={videoQuestion}
+          onClose={() => setShowVideo(false)}
+        />
+      )}
 
       {/* ── IMAGE MODAL ── */}
       {showImageModal && (
@@ -255,10 +515,13 @@ export default function DuoMCBPage() {
             <p className={styles.modalQuestion}>Bạn muốn DuoMCB làm gì với bài toán này?</p>
             <div className={styles.modalActions}>
               <button className={styles.hintBtn} onClick={() => sendImageMessage("hint")}>
-                💡 Cho tôi Gợi ý
+                💡 Gợi ý
               </button>
               <button className={styles.answerBtn} onClick={() => sendImageMessage("answer")}>
-                ✅ Giải đầy đủ
+                📖 Giải đầy đủ
+              </button>
+              <button className={styles.videoModalBtn} onClick={() => sendImageMessage("video")}>
+                🎬 Video Giải
               </button>
             </div>
           </div>
@@ -377,7 +640,7 @@ export default function DuoMCBPage() {
           )}
         </div>
 
-        {/* Input bar */}
+        {/* ── Input bar ── */}
         <div className={styles.inputBar}>
           <div className={styles.inputWrapper}>
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageSelect} />
@@ -393,44 +656,15 @@ export default function DuoMCBPage() {
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
             />
+            {/* Tools dropdown */}
+            <ToolsDropdown onSelect={handleToolSelect} disabled={loading} />
             <button
               className={`${styles.sendBtn} ${input.trim() && !loading ? styles.sendActive : ""}`}
               onClick={() => sendMessage(null, "hint")}
               disabled={!input.trim() || loading}
-              title="Gửi gợi ý (Hint)"
+              title="Gửi (Hint mặc định)"
             >➤</button>
           </div>
-
-          {/* Action Buttons for Hint vs Full Solution */}
-          <div style={{ display: "flex", gap: 10, maxWidth: 820, margin: "8px auto 0", width: "100%" }}>
-            <button
-              onClick={() => sendMessage(null, "hint")}
-              disabled={!input.trim() || loading}
-              style={{
-                flex: 1, padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                background: "#1e1e26", border: "1px solid #6366f1", color: "#a5b4fc",
-                cursor: input.trim() && !loading ? "pointer" : "not-allowed",
-                opacity: input.trim() && !loading ? 1 : 0.4,
-                transition: "all 0.2s"
-              }}
-            >
-              💡 Xin Gợi Ý (Socratic Hint)
-            </button>
-            <button
-              onClick={() => sendMessage(null, "solution")}
-              disabled={!input.trim() || loading}
-              style={{
-                flex: 1, padding: "8px 16px", borderRadius: 10, fontSize: 13, fontWeight: 600,
-                background: "linear-gradient(135deg, #00d8fe, #13b0ff)", border: "none", color: "white",
-                cursor: input.trim() && !loading ? "pointer" : "not-allowed",
-                opacity: input.trim() && !loading ? 1 : 0.4,
-                transition: "all 0.2s"
-              }}
-            >
-              📖 Xem Đáp Án Đầy Đủ (Full Solution)
-            </button>
-          </div>
-
           <p className={styles.disclaimer}>DuoMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
         </div>
       </main>
