@@ -273,6 +273,26 @@ export default function TrangChuForm() {
           </div>
         </div>
 
+        {/* Stats Button */}
+        <div style={{ padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <Link href="/stats" onClick={() => setShowProfile(false)} style={{ textDecoration: "none" }}>
+            <div style={{
+              width: "100%", padding: "9px 0",
+              background: "rgba(56,189,248,0.08)",
+              color: "#38bdf8",
+              border: "1px solid rgba(56,189,248,0.2)",
+              borderRadius: 8, textAlign: "center", fontWeight: 700, fontSize: 13,
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+              transition: "all 0.2s"
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.16)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.4)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(56,189,248,0.08)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.2)"; }}
+            >
+              📊 Thống Kê & Thành Tích
+            </div>
+          </Link>
+        </div>
+
         {isUserAdmin && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
             <Link href="/admin" onClick={() => setShowProfile(false)} style={{ textDecoration: "none" }}>
@@ -575,20 +595,25 @@ export default function TrangChuForm() {
             </span>
           </Link>
 
-          <nav style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 14.5 }}>
+          <nav style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14.5 }}>
             <Link href="/Cacbaitoan" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
               className="nav-link-item">
-              Bài học
+              📖 Bài học
             </Link>
 
             <Link href="/DuoMCB" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
               className="nav-link-item">
-              AI Chatbot
+              🤖 AI Chat
+            </Link>
+
+            <Link href="/Cacbaitoan10" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
+              className="nav-link-item">
+              🎮 Mini Games
             </Link>
 
             <Link href="/cacbailam" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
               className="nav-link-item">
-              Đề thi thử
+              📝 Đề thi
             </Link>
 
             <Link href="/mrm" style={{ textDecoration: "none" }}>
@@ -601,7 +626,7 @@ export default function TrangChuForm() {
                 gap: 6, transition: "all 0.25s",
                 boxShadow: "0 0 15px rgba(99,102,241,0.3)"
               }}>
-                🎮 MRM Đấu Hạng
+                ⚔️ MRM Đấu Hạng
               </button>
             </Link>
 

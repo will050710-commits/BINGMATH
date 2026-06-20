@@ -4,6 +4,352 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import MathGraphSVG from "./MathGraphSVG";
 
+// ─── LESSON SVG ICONS ─────────────────────────────────────────────────────────
+// Each returns a small 28x28 SVG icon specific to the math topic.
+function IconProposition({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <rect x="3" y="6" width="22" height="3" rx="1.5" fill={color} opacity="0.9"/>
+      <rect x="3" y="13" width="16" height="3" rx="1.5" fill={color} opacity="0.6"/>
+      <rect x="3" y="20" width="19" height="3" rx="1.5" fill={color} opacity="0.4"/>
+      <path d="M21 21 L25 14 L21 7" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+function IconSets({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <circle cx="10" cy="14" r="7" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.12"/>
+      <circle cx="18" cy="14" r="7" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.12"/>
+      <path d="M14 8 Q16 11 16 14 Q16 17 14 20 Q12 17 12 14 Q12 11 14 8Z" fill={color} fillOpacity="0.35"/>
+    </svg>
+  );
+}
+function IconSetOps({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <circle cx="9" cy="12" r="6" stroke={color} strokeWidth="1.4" fill={color} fillOpacity="0.08"/>
+      <circle cx="17" cy="12" r="6" stroke={color} strokeWidth="1.4" fill={color} fillOpacity="0.08"/>
+      <path d="M13 7 Q18 9.5 18 12 Q18 14.5 13 17 Q8 14.5 8 12 Q8 9.5 13 7Z" fill={color} fillOpacity="0.4"/>
+      <line x1="6" y1="23" x2="22" y2="23" stroke={color} strokeWidth="1" opacity="0.4"/>
+      <text x="14" y="26" textAnchor="middle" fill={color} fontSize="4" fontWeight="bold">∩ ∪ ∖</text>
+    </svg>
+  );
+}
+function IconReview({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <circle cx="14" cy="14" r="10" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.08"/>
+      <path d="M14 8 L14 14 L18 17" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <circle cx="14" cy="14" r="1.5" fill={color}/>
+    </svg>
+  );
+}
+function IconInequality({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="4" y1="14" x2="24" y2="14" stroke={color} strokeWidth="1.2" opacity="0.4"/>
+      <line x1="4" y1="24" x2="24" y2="4" stroke={color} strokeWidth="1.5" strokeDasharray="2 2"/>
+      <polygon points="4,24 4,14 14,14" fill={color} fillOpacity="0.22"/>
+      <text x="20" y="10" fill={color} fontSize="7" fontWeight="bold">≤</text>
+    </svg>
+  );
+}
+function IconSystem({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <path d="M4 8 L24 20" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      <path d="M4 20 L24 8" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.6"/>
+      <circle cx="14" cy="14" r="2.5" fill={color}/>
+      <text x="2" y="7" fill={color} fontSize="5" fontWeight="bold">⫤</text>
+    </svg>
+  );
+}
+function IconFunction({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <path d="M3 24 Q5 20 8 16 Q11 12 14 14 Q17 16 20 12 Q23 8 25 4" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <line x1="3" y1="24" x2="25" y2="24" stroke={color} strokeWidth="1" opacity="0.4"/>
+      <line x1="3" y1="3" x2="3" y2="24" stroke={color} strokeWidth="1" opacity="0.4"/>
+    </svg>
+  );
+}
+function IconParabola({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <path d="M3 23 Q14 2 25 23" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <line x1="3" y1="23" x2="25" y2="23" stroke={color} strokeWidth="1" opacity="0.4"/>
+      <line x1="14" y1="3" x2="14" y2="23" stroke={color} strokeWidth="1" strokeDasharray="2 2" opacity="0.5"/>
+    </svg>
+  );
+}
+function IconTrigValue({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <path d="M2 14 Q7 3 14 14 Q21 25 26 14" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <line x1="2" y1="14" x2="26" y2="14" stroke={color} strokeWidth="1" opacity="0.4"/>
+    </svg>
+  );
+}
+function IconCosineRule({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <polygon points="3,24 25,24 14,5" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.12"/>
+      <path d="M8 24 A5 5 0 0 1 3 24" stroke={color} strokeWidth="1.5" fill="none"/>
+      <text x="12" y="12" fill={color} fontSize="4.5" fontWeight="bold">c²</text>
+    </svg>
+  );
+}
+function IconSineRule({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <polygon points="3,24 25,24 10,5" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.12"/>
+      <text x="4" y="21" fill={color} fontSize="4" fontWeight="bold">a</text>
+      <text x="22" y="15" fill={color} fontSize="4" fontWeight="bold">b</text>
+      <text x="14" y="27" fill={color} fontSize="4" fontWeight="bold">c</text>
+      <text x="8" y="13" fill={color} fontSize="5" fontWeight="bold">sin</text>
+    </svg>
+  );
+}
+function IconTriangle({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <polygon points="4,24 24,24 14,4" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.15"/>
+      <line x1="14" y1="4" x2="14" y2="24" stroke={color} strokeWidth="1" strokeDasharray="2 2" opacity="0.5"/>
+      <circle cx="4" cy="24" r="2" fill={color} opacity="0.7"/>
+      <circle cx="24" cy="24" r="2" fill={color} opacity="0.7"/>
+      <circle cx="14" cy="4" r="2" fill={color} opacity="0.7"/>
+    </svg>
+  );
+}
+function IconVector({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="4" y1="24" x2="22" y2="8" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <polygon points="22,8 16,10 18,16" fill={color}/>
+      <circle cx="4" cy="24" r="2" fill={color} fillOpacity="0.5"/>
+    </svg>
+  );
+}
+function IconVectorSum({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="3" y1="20" x2="13" y2="8" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      <polygon points="13,8 9,10 10,14" fill={color}/>
+      <line x1="13" y1="8" x2="23" y2="20" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+      <polygon points="23,20 19,16 17,21" fill={color} opacity="0.7"/>
+      <line x1="3" y1="20" x2="23" y2="20" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeDasharray="2 2"/>
+    </svg>
+  );
+}
+function IconScalar({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="4" y1="20" x2="14" y2="8" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.5"/>
+      <polygon points="14,8 11,12 14,14" fill={color} fillOpacity="0.5"/>
+      <line x1="4" y1="24" x2="24" y2="4" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <polygon points="24,4 19,7 21,12" fill={color}/>
+      <text x="2" y="27" fill={color} fontSize="5.5" fontWeight="bold">k→</text>
+    </svg>
+  );
+}
+function IconDotProduct({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="3" y1="14" x2="25" y2="8" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      <polygon points="25,8 20,8 22,12" fill={color}/>
+      <line x1="3" y1="14" x2="20" y2="24" stroke={color} strokeWidth="1.5" strokeLinecap="round" opacity="0.7"/>
+      <polygon points="20,24 17,19 21,19" fill={color} opacity="0.7"/>
+      <circle cx="3" cy="14" r="2.5" fill={color}/>
+      <text x="12" y="18" fill={color} fontSize="7" fontWeight="bold">·</text>
+    </svg>
+  );
+}
+function IconGeometry({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <rect x="5" y="8" width="18" height="13" rx="1" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.1"/>
+      <line x1="5" y1="14" x2="23" y2="14" stroke={color} strokeWidth="1" strokeDasharray="2 2" opacity="0.5"/>
+      <line x1="14" y1="8" x2="14" y2="21" stroke={color} strokeWidth="1" strokeDasharray="2 2" opacity="0.5"/>
+      <text x="14" y="26" textAnchor="middle" fill={color} fontSize="4.5" fontWeight="bold">S = l × w</text>
+    </svg>
+  );
+}
+function IconArea({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <polygon points="4,22 14,4 24,22" fill={color} fillOpacity="0.18" stroke={color} strokeWidth="1.5"/>
+      <line x1="14" y1="4" x2="14" y2="22" stroke={color} strokeWidth="1" strokeDasharray="2 2" opacity="0.6"/>
+      <line x1="10" y1="22" x2="10" y2="18" stroke={color} strokeWidth="1.5"/>
+      <line x1="9" y1="18" x2="11" y2="18" stroke={color} strokeWidth="1.5"/>
+      <text x="14" y="27" textAnchor="middle" fill={color} fontSize="4" fontWeight="bold">S = ½bh</text>
+    </svg>
+  );
+}
+function IconDiscriminant({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <path d="M3 24 Q14 2 25 24" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <line x1="3" y1="24" x2="25" y2="24" stroke={color} strokeWidth="1" opacity="0.4"/>
+      <text x="11" y="17" fill={color} fontSize="8" fontWeight="bold">Δ</text>
+    </svg>
+  );
+}
+function IconQuadIneq({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <path d="M3 20 Q14 3 25 20" stroke={color} strokeWidth="2" strokeLinecap="round" fill={color} fillOpacity="0.12"/>
+      <line x1="3" y1="20" x2="25" y2="20" stroke={color} strokeWidth="1.5" opacity="0.5"/>
+      <text x="5" y="26" fill={color} fontSize="5" fontWeight="bold">≥ 0</text>
+    </svg>
+  );
+}
+function IconQuadEq({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <path d="M3 22 Q9 4 14 8 Q19 12 25 4" stroke={color} strokeWidth="2" strokeLinecap="round" fill="none"/>
+      <circle cx="11" cy="15" r="2" fill={color} fillOpacity="0.6"/>
+      <circle cx="20" cy="11" r="2" fill={color} fillOpacity="0.6"/>
+      <text x="3" y="27" fill={color} fontSize="4" fontWeight="bold">ax²+bx+c</text>
+    </svg>
+  );
+}
+function IconCounting({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <circle cx="8" cy="10" r="3" fill={color} fillOpacity="0.25" stroke={color} strokeWidth="1"/>
+      <circle cx="20" cy="10" r="3" fill={color} fillOpacity="0.25" stroke={color} strokeWidth="1"/>
+      <circle cx="14" cy="20" r="3" fill={color} fillOpacity="0.25" stroke={color} strokeWidth="1"/>
+      <line x1="8" y1="10" x2="20" y2="10" stroke={color} strokeWidth="1" opacity="0.5"/>
+      <line x1="8" y1="10" x2="14" y2="20" stroke={color} strokeWidth="1" opacity="0.5"/>
+      <line x1="20" y1="10" x2="14" y2="20" stroke={color} strokeWidth="1" opacity="0.5"/>
+    </svg>
+  );
+}
+function IconPermutation({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <text x="3" y="16" fill={color} fontSize="9" fontWeight="900">n!</text>
+      <text x="3" y="26" fill={color} fontSize="5.5" fontWeight="bold">C(n,k)</text>
+    </svg>
+  );
+}
+function IconBinomial({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      {[0,1,2,3,4].map((v,i) => (
+        <rect key={i} x={3+i*4.5} y={26-v*5} width={3.5} height={v*5} fill={color} fillOpacity={0.3+i*0.1} rx="0.5"/>
+      ))}
+      <text x="3" y="10" fill={color} fontSize="5.5" fontWeight="bold">(a+b)ⁿ</text>
+    </svg>
+  );
+}
+function IconCoords({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="3" y1="14" x2="25" y2="14" stroke={color} strokeWidth="1.2" opacity="0.6"/>
+      <line x1="14" y1="3" x2="14" y2="25" stroke={color} strokeWidth="1.2" opacity="0.6"/>
+      <polygon points="25,14 22,12 22,16" fill={color}/>
+      <polygon points="14,3 12,6 16,6" fill={color}/>
+      <circle cx="19" cy="9" r="2.5" fill={color} fillOpacity="0.6"/>
+      <text x="20" y="9" fill={color} fontSize="4.5">(x,y)</text>
+    </svg>
+  );
+}
+function IconLine({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="3" y1="14" x2="25" y2="14" stroke={color} strokeWidth="1" opacity="0.4"/>
+      <line x1="14" y1="3" x2="14" y2="25" stroke={color} strokeWidth="1" opacity="0.4"/>
+      <line x1="3" y1="22" x2="25" y2="6" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+      <text x="16" y="24" fill={color} fontSize="4.5" fontWeight="bold">y=mx+b</text>
+    </svg>
+  );
+}
+function IconCircle({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="3" y1="14" x2="25" y2="14" stroke={color} strokeWidth="1" opacity="0.35"/>
+      <line x1="14" y1="3" x2="14" y2="25" stroke={color} strokeWidth="1" opacity="0.35"/>
+      <circle cx="14" cy="14" r="9" stroke={color} strokeWidth="1.8" fill={color} fillOpacity="0.1"/>
+      <line x1="14" y1="14" x2="21" y2="10" stroke={color} strokeWidth="1.5" strokeLinecap="round"/>
+      <circle cx="14" cy="14" r="1.5" fill={color}/>
+    </svg>
+  );
+}
+function IconEllipse({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <line x1="3" y1="14" x2="25" y2="14" stroke={color} strokeWidth="1" opacity="0.35"/>
+      <line x1="14" y1="3" x2="14" y2="25" stroke={color} strokeWidth="1" opacity="0.35"/>
+      <ellipse cx="14" cy="14" rx="10" ry="6" stroke={color} strokeWidth="1.8" fill={color} fillOpacity="0.1"/>
+      <circle cx="9" cy="14" r="1.5" fill={color} fillOpacity="0.7"/>
+      <circle cx="19" cy="14" r="1.5" fill={color} fillOpacity="0.7"/>
+    </svg>
+  );
+}
+function IconSampleSpace({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <rect x="3" y="3" width="22" height="22" rx="3" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.06"/>
+      <circle cx="14" cy="14" r="7" stroke={color} strokeWidth="1.5" fill={color} fillOpacity="0.18"/>
+      <text x="10" y="17" fill={color} fontSize="7" fontWeight="bold">Ω</text>
+    </svg>
+  );
+}
+function IconProbability({ color }) {
+  return (
+    <svg viewBox="0 0 28 28" width="18" height="18" fill="none">
+      <path d="M14 4 L14 24 M4 14 L24 14" stroke={color} strokeWidth="1" opacity="0.35"/>
+      <path d="M4 24 L14 4 L24 24 Z" fill={color} fillOpacity="0.18" stroke={color} strokeWidth="1.2"/>
+      <text x="9" y="23" fill={color} fontSize="5" fontWeight="bold">P(A)</text>
+    </svg>
+  );
+}
+
+// Map slug → icon component
+const LESSON_ICONS = {
+  "Menh-de": IconProposition,
+  "Tap-hop": IconSets,
+  "phep-toan-tap-hop": IconSetOps,
+  "OnTapChuong1": IconReview,
+  "Bpt-bac-nhat-2-an": IconInequality,
+  "Lesson5_HeBPTBacNhatHaiAn": IconSystem,
+  "chuong2-10": IconReview,
+  "Ham-so-va-do-thi": IconFunction,
+  "Ham-so-bac-hai": IconParabola,
+  "on-tap-chuong-3": IconReview,
+  "gia-tri-luong-giac": IconTrigValue,
+  "Lesson10_DinhLiCosin": IconCosineRule,
+  "Lesson11_DinhLiSin": IconSineRule,
+  "Lesson12_GiaiTamGiac": IconTriangle,
+  "Lesson13_KhaiNiemVecto": IconVector,
+  "Lesson14_TongHieuVecto": IconVectorSum,
+  "Lesson15_TichSoVecto": IconScalar,
+  "Lesson16_TichVoHuong": IconDotProduct,
+  "OnTapChuong4": IconReview,
+  "Lesson17_OnTapChuong5": IconReview,
+  "Lesson18_HinhHocDoLuong1": IconGeometry,
+  "Lesson19_HinhHocDoLuong2": IconArea,
+  "Lesson20_OnTapChuong6": IconReview,
+  "Lesson21_DauTamThucBacHai": IconDiscriminant,
+  "Lesson22_GiaiBPTBacHai": IconQuadIneq,
+  "Lesson23_PhuongTrinhQuyVeBacHai": IconQuadEq,
+  "Lesson24_OnTapChuong7": IconReview,
+  "Lesson25_QuyTacCongNhan": IconCounting,
+  "Lesson26_HoanViChinhHopToHop": IconPermutation,
+  "Lesson27_NhiThucNewton": IconBinomial,
+  "Lesson28_OnTapChuong8": IconReview,
+  "Lesson29_ToaDoVecto": IconCoords,
+  "Lesson30_DuongThang": IconLine,
+  "Lesson31_DuongTron": IconCircle,
+  "Lesson32_Elip": IconEllipse,
+  "Lesson33_OnTapChuong9": IconReview,
+  "Lesson34_KhongGianMau": IconSampleSpace,
+  "Lesson35_XacSuatBienCo": IconProbability,
+  "Lesson36_OnTapChuong10": IconReview,
+};
+
 // ─── BENTO CARD DATA ─────────────────────────────────────────────────────────
 // Each lesson has a thumbnail (emoji/icon), title, slug, and done status.
 const BENTO_CARDS = [
@@ -191,26 +537,29 @@ function LessonPill({ lesson, accentColor }) {
           e.currentTarget.style.borderColor = "rgba(255,255,255,0.09)";
         }}
       >
-        {/* Thumbnail badge */}
-        <div style={{
-          flexShrink: 0,
-          width: 32,
-          height: 32,
-          borderRadius: 7,
-          background: accentColor + "20",
-          border: `1px solid ${accentColor}35`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: lesson.thumb.length > 2 ? 9 : 13,
-          fontWeight: 800,
-          color: accentColor,
-          fontFamily: "'Courier New', monospace",
-          letterSpacing: -0.5,
-          lineHeight: 1,
-        }}>
-          {lesson.thumb}
-        </div>
+        {/* SVG Icon badge */}
+        {(() => {
+          const IconComp = LESSON_ICONS[lesson.slug];
+          return (
+            <div style={{
+              flexShrink: 0,
+              width: 34,
+              height: 34,
+              borderRadius: 8,
+              background: accentColor + "18",
+              border: `1px solid ${accentColor}35`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "all 0.2s",
+            }}>
+              {IconComp
+                ? <IconComp color={accentColor} />
+                : <span style={{ fontSize: lesson.thumb?.length > 2 ? 9 : 13, fontWeight: 800, color: accentColor, fontFamily: "'Courier New', monospace", letterSpacing: -0.5 }}>{lesson.thumb}</span>
+              }
+            </div>
+          );
+        })()}
 
         {/* Title stack */}
         <div style={{ flex: 1, minWidth: 0 }}>
