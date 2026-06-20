@@ -119,7 +119,7 @@ export default function TrangChuForm() {
         });
       }
     });
-    
+
     const obs = new IntersectionObserver((entries, obs) => {
       entries.forEach((entry) => {
         if (!entry.isIntersecting) return;
@@ -433,8 +433,8 @@ export default function TrangChuForm() {
               textShadow: s.id % 3 === 0
                 ? "0 0 18px rgba(6,182,212,0.5), 0 0 6px rgba(6,182,212,0.3)"
                 : s.id % 3 === 1
-                ? "0 0 18px rgba(124,58,237,0.5), 0 0 6px rgba(124,58,237,0.3)"
-                : "0 0 14px rgba(56,189,248,0.4)",
+                  ? "0 0 18px rgba(124,58,237,0.5), 0 0 6px rgba(124,58,237,0.3)"
+                  : "0 0 14px rgba(56,189,248,0.4)",
               animationDelay: s.delay,
               animationDuration: s.dur,
               fontFamily: "'Courier New', Courier, monospace",
@@ -446,14 +446,14 @@ export default function TrangChuForm() {
         ))}
         {/* SVG Geometric shapes - original set (triangles, squares, diamonds) */}
         {[
-          { w: 160, l: "4%",  t: "10%",  c: "#06b6d4", d: "0s",   dur: "22s", pts: "50,4 96,75 4,75" },
-          { w: 100, l: "82%", t: "5%",   c: "#8b5cf6", d: "4s",   dur: "26s", rect: true },
-          { w: 80,  l: "60%", t: "63%",  c: "#38bdf8", d: "2s",   dur: "18s", diamond: true },
-          { w: 120, l: "14%", t: "73%",  c: "#a78bfa", d: "7s",   dur: "24s", pts: "50,4 96,75 4,75" },
-          { w: 65,  l: "90%", t: "50%",  c: "#22d3ee", d: "1s",   dur: "15s", rect: true },
-          { w: 95,  l: "44%", t: "19%",  c: "#c4b5fd", d: "9s",   dur: "30s", diamond: true },
-          { w: 55,  l: "73%", t: "83%",  c: "#0891b2", d: "3.5s", dur: "20s", pts: "50,4 96,75 4,75" },
-          { w: 135, l: "27%", t: "44%",  c: "#7c3aed", d: "6s",   dur: "27s", diamond: true },
+          { w: 160, l: "4%", t: "10%", c: "#06b6d4", d: "0s", dur: "22s", pts: "50,4 96,75 4,75" },
+          { w: 100, l: "82%", t: "5%", c: "#8b5cf6", d: "4s", dur: "26s", rect: true },
+          { w: 80, l: "60%", t: "63%", c: "#38bdf8", d: "2s", dur: "18s", diamond: true },
+          { w: 120, l: "14%", t: "73%", c: "#a78bfa", d: "7s", dur: "24s", pts: "50,4 96,75 4,75" },
+          { w: 65, l: "90%", t: "50%", c: "#22d3ee", d: "1s", dur: "15s", rect: true },
+          { w: 95, l: "44%", t: "19%", c: "#c4b5fd", d: "9s", dur: "30s", diamond: true },
+          { w: 55, l: "73%", t: "83%", c: "#0891b2", d: "3.5s", dur: "20s", pts: "50,4 96,75 4,75" },
+          { w: 135, l: "27%", t: "44%", c: "#7c3aed", d: "6s", dur: "27s", diamond: true },
         ].map((s, i) => (
           <svg key={`shape-${i}`} viewBox="0 0 100 100" style={{
             position: "absolute", left: s.l, top: s.t,
@@ -465,18 +465,18 @@ export default function TrangChuForm() {
             {s.rect
               ? <rect x="12" y="12" width="76" height="76" rx="6" stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
               : s.diamond
-              ? <polygon points="50,4 96,50 50,96 4,50" stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
-              : <polygon points={s.pts} stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
+                ? <polygon points="50,4 96,50 50,96 4,50" stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
+                : <polygon points={s.pts} stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
             }
           </svg>
         ))}
         {/* ── Additional geometric shapes: circles ── */}
         {[
-          { w: 90,  l: "7%",  t: "42%", c: "#22d3ee", d: "2s",  dur: "19s" },
-          { w: 70,  l: "50%", t: "8%",  c: "#38bdf8", d: "5s",  dur: "23s" },
-          { w: 55,  l: "78%", t: "72%", c: "#818cf8", d: "8s",  dur: "28s" },
-          { w: 110, l: "35%", t: "78%", c: "#06b6d4", d: "3s",  dur: "21s" },
-          { w: 45,  l: "92%", t: "25%", c: "#a78bfa", d: "11s", dur: "17s" },
+          { w: 90, l: "7%", t: "42%", c: "#22d3ee", d: "2s", dur: "19s" },
+          { w: 70, l: "50%", t: "8%", c: "#38bdf8", d: "5s", dur: "23s" },
+          { w: 55, l: "78%", t: "72%", c: "#818cf8", d: "8s", dur: "28s" },
+          { w: 110, l: "35%", t: "78%", c: "#06b6d4", d: "3s", dur: "21s" },
+          { w: 45, l: "92%", t: "25%", c: "#a78bfa", d: "11s", dur: "17s" },
         ].map((s, i) => (
           <svg key={`circle-${i}`} viewBox="0 0 100 100" style={{
             position: "absolute", left: s.l, top: s.t,
@@ -490,9 +490,9 @@ export default function TrangChuForm() {
         ))}
         {/* ── Hexagons ── */}
         {[
-          { w: 100, l: "18%", t: "25%", c: "#0ea5e9", d: "1s",  dur: "25s" },
-          { w: 75,  l: "68%", t: "40%", c: "#6366f1", d: "4s",  dur: "20s" },
-          { w: 60,  l: "88%", t: "88%", c: "#22d3ee", d: "7s",  dur: "18s" },
+          { w: 100, l: "18%", t: "25%", c: "#0ea5e9", d: "1s", dur: "25s" },
+          { w: 75, l: "68%", t: "40%", c: "#6366f1", d: "4s", dur: "20s" },
+          { w: 60, l: "88%", t: "88%", c: "#22d3ee", d: "7s", dur: "18s" },
         ].map((s, i) => (
           <svg key={`hex-${i}`} viewBox="0 0 100 100" style={{
             position: "absolute", left: s.l, top: s.t,
@@ -506,10 +506,10 @@ export default function TrangChuForm() {
         ))}
         {/* ── Crosses / Plus signs ── */}
         {[
-          { w: 50,  l: "30%", t: "12%", c: "#38bdf8", d: "3s",  dur: "16s" },
-          { w: 40,  l: "55%", t: "55%", c: "#a78bfa", d: "6s",  dur: "22s" },
-          { w: 35,  l: "85%", t: "35%", c: "#22d3ee", d: "10s", dur: "19s" },
-          { w: 45,  l: "10%", t: "88%", c: "#818cf8", d: "0s",  dur: "24s" },
+          { w: 50, l: "30%", t: "12%", c: "#38bdf8", d: "3s", dur: "16s" },
+          { w: 40, l: "55%", t: "55%", c: "#a78bfa", d: "6s", dur: "22s" },
+          { w: 35, l: "85%", t: "35%", c: "#22d3ee", d: "10s", dur: "19s" },
+          { w: 45, l: "10%", t: "88%", c: "#818cf8", d: "0s", dur: "24s" },
         ].map((s, i) => (
           <svg key={`cross-${i}`} viewBox="0 0 100 100" style={{
             position: "absolute", left: s.l, top: s.t,
@@ -525,7 +525,7 @@ export default function TrangChuForm() {
         {/* ── Concentric circles (radar-like) ── */}
         {[
           { w: 140, l: "55%", t: "30%", c: "#0ea5e9", d: "2s", dur: "32s" },
-          { w: 100, l: "2%",  t: "58%", c: "#6366f1", d: "5s", dur: "28s" },
+          { w: 100, l: "2%", t: "58%", c: "#6366f1", d: "5s", dur: "28s" },
         ].map((s, i) => (
           <svg key={`conc-${i}`} viewBox="0 0 100 100" style={{
             position: "absolute", left: s.l, top: s.t,
@@ -541,8 +541,8 @@ export default function TrangChuForm() {
         ))}
         {/* ── Pentagons ── */}
         {[
-          { w: 70,  l: "40%", t: "68%", c: "#a78bfa", d: "4s", dur: "26s" },
-          { w: 85,  l: "75%", t: "15%", c: "#38bdf8", d: "1s", dur: "22s" },
+          { w: 70, l: "40%", t: "68%", c: "#a78bfa", d: "4s", dur: "26s" },
+          { w: 85, l: "75%", t: "15%", c: "#38bdf8", d: "1s", dur: "22s" },
         ].map((s, i) => (
           <svg key={`pent-${i}`} viewBox="0 0 100 100" style={{
             position: "absolute", left: s.l, top: s.t,
@@ -556,8 +556,8 @@ export default function TrangChuForm() {
         ))}
         {/* ── Dashed circles ── */}
         {[
-          { w: 80,  l: "22%", t: "5%",  c: "#22d3ee", d: "0s",  dur: "35s" },
-          { w: 60,  l: "65%", t: "80%", c: "#8b5cf6", d: "8s",  dur: "30s" },
+          { w: 80, l: "22%", t: "5%", c: "#22d3ee", d: "0s", dur: "35s" },
+          { w: 60, l: "65%", t: "80%", c: "#8b5cf6", d: "8s", dur: "30s" },
         ].map((s, i) => (
           <svg key={`dash-${i}`} viewBox="0 0 100 100" style={{
             position: "absolute", left: s.l, top: s.t,
@@ -586,7 +586,7 @@ export default function TrangChuForm() {
           boxShadow: "0 4px 30px rgba(0, 0, 0, 0.3)"
         }}>
         <div style={{ width: "1200px", maxWidth: "95%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0" }}>
-          
+
           {/* Logo & Owl Mascot */}
           <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
             <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
@@ -604,11 +604,6 @@ export default function TrangChuForm() {
             <Link href="/DuoMCB" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
               className="nav-link-item">
               🤖 AI Chat
-            </Link>
-
-            <Link href="/Cacbaitoan10" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
-              className="nav-link-item">
-              🎮 Mini Games
             </Link>
 
             <Link href="/cacbailam" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
@@ -665,7 +660,7 @@ export default function TrangChuForm() {
           {/* ═══════ HERO SECTION ═══════ */}
           <div className="reveal" data-reveal
             style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 40, paddingTop: 40, paddingBottom: 50, flexWrap: "wrap" }}>
-            
+
             {/* Mascot Animation Block */}
             <div style={{ flex: "1 1 420px", display: "flex", justifyContent: "center", position: "relative" }}>
               <div className="mascot-container" style={{
@@ -707,7 +702,7 @@ export default function TrangChuForm() {
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 15.5, lineHeight: 1.65, marginBottom: 26 }}>
                   Chúng tôi tin rằng tương lai của <strong>STEM</strong> gắn liền với <strong>năng lực song ngữ</strong>. DuoMath mang tới trải nghiệm học tập đỉnh cao kết hợp bài học chuẩn hóa, AI chatbot thông minh và đấu hạng thời gian thực.
                 </p>
-                
+
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <Link href="/Cacbaitoan" style={{ textDecoration: "none" }}>
                     <button className="primary-hero-btn" style={{ padding: "14px 28px", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", borderRadius: 10, border: "none", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(99,102,241,0.35)", transition: "all 0.25s" }}>
@@ -914,8 +909,8 @@ export default function TrangChuForm() {
                     <span style={{ fontWeight: 700, fontSize: 13.5, color: "#38bdf8", width: 68, flexShrink: 0 }}>{label}</span>
                     {href
                       ? <a href={href} style={{ fontSize: 13.5, color: "rgba(255,255,255,0.75)", textDecoration: "none", transition: "color 0.2s" }}
-                          onMouseEnter={e => e.currentTarget.style.color = "#38bdf8"}
-                          onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.75)"}>{value}</a>
+                        onMouseEnter={e => e.currentTarget.style.color = "#38bdf8"}
+                        onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.75)"}>{value}</a>
                       : <span style={{ fontSize: 13.5, color: "rgba(255,255,255,0.75)" }}>{value}</span>
                     }
                   </div>

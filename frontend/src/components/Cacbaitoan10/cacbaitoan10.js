@@ -615,14 +615,20 @@ function BentoCard({ card }) {
         padding: "24px",
         gap: 14,
         backdropFilter: "blur(12px)",
-        transition: "border-color 0.3s ease",
       }}
-      whileHover={{
-        borderColor: card.accentColor + "50",
-        boxShadow: `0 20px 50px rgba(0,0,0,0.5), 0 0 30px ${card.glowColor}`,
-        y: -5,
-        transition: { duration: 0.3 },
+      variants={{
+        initial: {
+          borderColor: "rgba(255,255,255,0.07)",
+          boxShadow: "0 0px 0px rgba(0,0,0,0)",
+          y: 0,
+        },
+        hover: {
+          borderColor: card.accentColor + "50",
+          boxShadow: `0 20px 50px rgba(0,0,0,0.5), 0 0 30px ${card.glowColor}`,
+          y: -5,
+        }
       }}
+      transition={{ duration: 0.3 }}
     >
       {/* Ambient glow overlay revealed on hover */}
       <motion.div
@@ -638,11 +644,6 @@ function BentoCard({ card }) {
           zIndex: 0,
         }}
       />
-
-      {/* SVG Graph — auto-draws on hover */}
-      <div style={{ position: "relative", zIndex: 1, height: card.size === "wide" ? 72 : 80, flexShrink: 0, display: "flex", alignItems: "center" }}>
-        <MathGraphSVG type={card.graphType} color={card.accentColor} />
-      </div>
 
       {/* Card Info */}
       <div style={{ position: "relative", zIndex: 1, flex: 1 }}>
@@ -882,15 +883,7 @@ export default function CacBaiLamPage() {
           })}
         </div>
 
-        {/* ── Bottom tip ── */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          style={{ marginTop: 48, textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: 13 }}
-        >
-          💡 Di chuột vào mỗi thẻ để xem đồ thị toán học tự vẽ · Hover a card to see the math graph animate
-        </motion.div>
+
       </div>
 
       <style jsx global>{`
