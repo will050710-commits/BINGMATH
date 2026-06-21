@@ -641,6 +641,47 @@
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes bounce { 0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; } 40% { transform: scale(1); opacity: 1; } }
 
+/* ── Language tabs (EN / VI switcher) ── */
+.langTabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+.langTab {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid #2a2a3f;
+  color: #6b7280;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s;
+  letter-spacing: 0.3px;
+}
+.langTab:hover {
+  background: rgba(99,102,241,0.1);
+  border-color: rgba(99,102,241,0.35);
+  color: #a5b4fc;
+}
+.langTabActive {
+  flex: 1;
+  background: linear-gradient(135deg, rgba(99,102,241,0.22), rgba(139,92,246,0.15));
+  border: 1px solid rgba(99,102,241,0.55);
+  color: #c7d2fe;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.18s;
+  letter-spacing: 0.3px;
+  box-shadow: 0 0 8px rgba(99,102,241,0.2);
+}
+
 /* ── Responsiveness for Inline Video Player ── */
 @media (max-width: 768px) {
   .inlineVideoBody {

@@ -726,6 +726,7 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   //    on every setProgress() call which was causing the erratic bar.
   const isPlayingRef = useRef(false);
   const [isPlaying, setIsPlayingState] = useState(false);
+  const [lang, setLang] = useState("vi"); // "vi" | "en"
   const [progress, setProgress] = useState(0);
   const [loadingSteps, setLoadingSteps] = useState(true);
   const [videoData, setVideoData] = useState(null);
@@ -746,27 +747,43 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
       try {
         const { chat: chatFn } = await import("./duoServer");
 
-        // Stage 1: Solution steps with LaTeX
-        const solutionPrompt = imageBase64
-          ? `You are a math tutor. Analyze the math problem in the provided image and give a clear, step-by-step solution in Vietnamese or English (match the problem language).
-Always use LaTeX math notation (surrounded by $ for inline, e.g. $x^2 - 5x + 6 = 0$ or $\\frac{1}{4}$) for all equations, formulas, variables, and mathematical expressions.
-Format your response as a numbered list of concise steps (max 6 steps, each under 125 characters). End with "✓ Đáp án: [final answer]".
+        // ── Stage 1: Fetch EN and VI solutions in PARALLEL ─────────────────
+        const makeStepPrompt = (lang) => {
+          const langInstr = lang === "en"
+            ? "Respond ONLY in English."
+            : "Trả lời HOÀN TOÀN bằng tiếng Việt.";
+          const endLine = lang === "en"
+            ? 'End with "✓ Answer: [final answer]".'
+            : 'Kết thúc bằng "✓ Đáp án: [kết quả cuối]"."';
+          const base = imageBase64
+            ? `You are a math tutor. Analyze the math problem in the provided image and give a COMPLETE, detailed step-by-step solution. ${langInstr}
+Use LaTeX for ALL math expressions: inline $like this$, block $$like this$$.
+Format as a numbered list (up to 10 steps). ${endLine}
 ONLY output the solution steps. No preamble, no JSON, no code blocks.`
-          : `You are a math tutor. Solve this math problem step-by-step: "${question}"
-Always use LaTeX math notation (surrounded by $ for inline, e.g. $x^2 - 5x + 6 = 0$ or $\\frac{1}{4}$) for all equations, formulas, variables, and mathematical expressions.
-Format your response as a numbered list of concise steps (max 6 steps, each under 125 characters). End with "✓ Đáp án: [final answer]".
+            : `You are a math tutor. Solve this math problem COMPLETELY step-by-step: "${question}"
+${langInstr}
+Use LaTeX for ALL math expressions: inline $like this$, block $$like this$$.
+Format as a numbered list (up to 10 steps). ${endLine}
 ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
+          return base;
+        };
 
-        const solutionData = await chatFn(sessionId, solutionPrompt, {
-          image: imageBase64 || null,
-          mode: "solution",
-        });
-        const solutionReply = solutionData?.reply || "";
-        const rawSteps = solutionReply
-          .split("\n")
-          .map(l => l.replace(/^\d+[.)]\s*/, "").trim())
-          .filter(l => l.length > 2)
-          .slice(0, 7);
+        const [solutionDataEN, solutionDataVI] = await Promise.all([
+          chatFn(sessionId, makeStepPrompt("en"), { image: imageBase64 || null, mode: "solution" }),
+          chatFn(sessionId, makeStepPrompt("vi"), { image: imageBase64 || null, mode: "solution" }),
+        ]);
+
+        const parseSteps = (reply) =>
+          (reply || "")
+            .split("\n")
+            .map(l => l.replace(/^\d+[.)\s]+/, "").trim())
+            .filter(l => l.length > 2)
+            .slice(0, 10);
+
+        const rawStepsEN = parseSteps(solutionDataEN?.reply);
+        const rawStepsVI = parseSteps(solutionDataVI?.reply);
+        // Use the English steps for viz-context classification
+        const solutionReply = solutionDataEN?.reply || solutionDataVI?.reply || "";
 
         // Stage 2: Visualization JSON
         // We also pass rawSteps as context to help the AI classify the viz type
@@ -869,16 +886,20 @@ Output ONLY the JSON. No markdown, no extra text.`;
         }
 
         const problemTitle = vizParsed.title || (question ? question.substring(0, 60) : "Bài toán");
-        const steps = rawSteps.length > 0
-          ? [problemTitle, ...rawSteps]
+        const stepsEN = rawStepsEN.length > 0
+          ? [problemTitle, ...rawStepsEN]
+          : [problemTitle, "Step 1: Analyze the problem", "Step 2: Apply the method", "✓ See full solution"];
+        const stepsVI = rawStepsVI.length > 0
+          ? [problemTitle, ...rawStepsVI]
           : [problemTitle, "Bước 1: Phân tích đề bài", "Bước 2: Áp dụng công thức", "✓ Xem lời giải đầy đủ"];
 
-        setVideoData({ ...vizParsed, steps });
+        setVideoData({ ...vizParsed, stepsEN, stepsVI });
       } catch {
         setVideoData({
           type: "other",
           title: question || "Math Problem",
-          steps: ["Bước 1: Đọc và hiểu đề bài", "Bước 2: Xác định phương pháp", "Bước 3: Tính toán", "✓ Kiểm tra kết quả"],
+          stepsEN: ["Step 1: Read and understand", "Step 2: Identify the method", "Step 3: Calculate", "✓ Check the answer"],
+          stepsVI: ["Bước 1: Đọc và hiểu đề bài", "Bước 2: Xác định phương pháp", "Bước 3: Tính toán", "✓ Kiểm tra kết quả"],
           viz: {}
         });
       } finally {
@@ -972,47 +993,74 @@ Output ONLY the JSON. No markdown, no extra text.`;
 
         {/* RIGHT: HTML solution panel — KaTeX renders LaTeX properly */}
         <div className={styles.inlineSolutionPanel}>
-          <div className={styles.solutionLabel}>▶ SOLUTION</div>
+          {/* Language toggle tabs */}
+          <div className={styles.langTabs}>
+            <button
+              className={lang === "vi" ? styles.langTabActive : styles.langTab}
+              onClick={() => setLang("vi")}
+            >
+              🇻🇳 Tiếng Việt
+            </button>
+            <button
+              className={lang === "en" ? styles.langTabActive : styles.langTab}
+              onClick={() => setLang("en")}
+            >
+              🇬🇧 English
+            </button>
+          </div>
+
           {loadingSteps ? (
-            <p className={styles.solutionLoading}>Đang tải lời giải...</p>
+            <p className={styles.solutionLoading}>
+              {lang === "vi" ? "Đang tải lời giải..." : "Loading solution..."}
+            </p>
           ) : (
             <div className={styles.solutionSteps}>
-              {(videoData?.steps || []).map((step, i) => {
-                const totalSteps = (videoData?.steps || []).length;
-                const stepThreshold = (i / totalSteps) * 82;
-                const isVisible = progress >= stepThreshold;
-                if (!isVisible) return null;
-                const isAnswer = step.startsWith("✓") || step.toLowerCase().includes("đáp án");
-                const isTitle = i === 0;
-                return (
-                  <div
-                    key={i}
-                    className={`${styles.solutionStep} ${isAnswer ? styles.solutionAnswer : ""} ${isTitle ? styles.solutionTitle : ""}`}
-                  >
-                    {!isTitle && (
-                      <span className={styles.solutionBullet} style={{ background: isAnswer ? "#4ade80" : "#6366f1" }} />
-                    )}
-                    <span className={styles.solutionText}>
-                      {parseMathAndText(step).map((token, idx) => {
-                        if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
-                        try {
-                          return (
-                            <span
-                              key={idx}
-                              dangerouslySetInnerHTML={{
-                                __html: katex.renderToString(token.content.trim(), {
-                                  displayMode: token.isBlock, throwOnError: false
-                                })
-                              }}
-                              style={token.isBlock ? { display: "block", margin: "0.3em 0" } : {}}
-                            />
-                          );
-                        } catch { return <code key={idx}>{token.content}</code>; }
-                      })}
-                    </span>
-                  </div>
-                );
-              })}
+              {(() => {
+                // Pick the right step list based on selected language
+                const steps = lang === "en"
+                  ? (videoData?.stepsEN || videoData?.steps || [])
+                  : (videoData?.stepsVI || videoData?.steps || []);
+                return steps.map((step, i) => {
+                  const totalSteps = steps.length;
+                  // Steps appear progressively: title at 0%, last step at 75%
+                  // (reduced from 82% so ALL steps are visible well before video ends)
+                  const stepThreshold = i === 0 ? 0 : (i / totalSteps) * 75;
+                  const isVisible = progress >= stepThreshold;
+                  if (!isVisible) return null;
+                  const isAnswer = step.startsWith("✓") ||
+                    step.toLowerCase().includes("đáp án") ||
+                    step.toLowerCase().includes("answer:");
+                  const isTitle = i === 0;
+                  return (
+                    <div
+                      key={`${lang}-${i}`}
+                      className={`${styles.solutionStep} ${isAnswer ? styles.solutionAnswer : ""} ${isTitle ? styles.solutionTitle : ""}`}
+                    >
+                      {!isTitle && (
+                        <span className={styles.solutionBullet} style={{ background: isAnswer ? "#4ade80" : "#6366f1" }} />
+                      )}
+                      <span className={styles.solutionText}>
+                        {parseMathAndText(step).map((token, idx) => {
+                          if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
+                          try {
+                            return (
+                              <span
+                                key={idx}
+                                dangerouslySetInnerHTML={{
+                                  __html: katex.renderToString(token.content.trim(), {
+                                    displayMode: token.isBlock, throwOnError: false
+                                  })
+                                }}
+                                style={token.isBlock ? { display: "block", margin: "0.3em 0" } : {}}
+                              />
+                            );
+                          } catch { return <code key={idx}>{token.content}</code>; }
+                        })}
+                      </span>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           )}
         </div>
