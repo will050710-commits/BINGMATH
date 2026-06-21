@@ -1,8 +1,9 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import GalaxyCanvas from "./GalaxyCanvas";
 import { motion, AnimatePresence } from "framer-motion";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
@@ -89,7 +90,247 @@ const STATIC_MATH_SYMBOLS = Array.from({ length: 18 }).map((_, i) => {
   };
 });
 
+// ─── FEATURE SWIPE CAROUSEL ──────────────────────────────────────────────────
+function FeatureSwipeCarousel({ features, router }) {
+  const trackRef   = useRef(null);
+  const [active, setActive]   = useState(0);
+  const [offset, setOffset]   = useState(0);    // px drag offset
+  const [dragging, setDragging] = useState(false);
+  const dragStart  = useRef(null);
+  const dragOffset = useRef(0);
+  const CARD_W     = useRef(380);
+  const GAP        = 20;
+
+  // Update card width on resize
+  useEffect(() => {
+    const updateW = () => {
+      const vw = window.innerWidth;
+      CARD_W.current = Math.min(380, vw * 0.82);
+    };
+    updateW();
+    window.addEventListener("resize", updateW);
+    return () => window.removeEventListener("resize", updateW);
+  }, []);
+
+  const goTo = useCallback((idx) => {
+    const clamped = Math.max(0, Math.min(features.length - 1, idx));
+    setActive(clamped);
+    setOffset(0);
+    dragOffset.current = 0;
+  }, [features.length]);
+
+  // ── Mouse drag ──────────────────────────────────────────────────
+  const onMouseDown = (e) => {
+    setDragging(true);
+    dragStart.current = e.clientX;
+  };
+  const onMouseMove = useCallback((e) => {
+    if (!dragging || dragStart.current === null) return;
+    const d = e.clientX - dragStart.current;
+    dragOffset.current = d;
+    setOffset(d);
+  }, [dragging]);
+  const onMouseUp = useCallback(() => {
+    if (!dragging) return;
+    setDragging(false);
+    const threshold = CARD_W.current * 0.3;
+    if (dragOffset.current < -threshold) goTo(active + 1);
+    else if (dragOffset.current > threshold) goTo(active - 1);
+    else goTo(active);
+    dragStart.current = null;
+  }, [dragging, active, goTo]);
+
+  // ── Touch ────────────────────────────────────────────────────────
+  const onTouchStart = (e) => {
+    dragStart.current = e.touches[0].clientX;
+  };
+  const onTouchMove = (e) => {
+    if (dragStart.current === null) return;
+    const d = e.touches[0].clientX - dragStart.current;
+    dragOffset.current = d;
+    setOffset(d);
+  };
+  const onTouchEnd = () => {
+    const threshold = CARD_W.current * 0.3;
+    if (dragOffset.current < -threshold) goTo(active + 1);
+    else if (dragOffset.current > threshold) goTo(active - 1);
+    else goTo(active);
+    dragStart.current = null;
+  };
+
+  useEffect(() => {
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup",   onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup",   onMouseUp);
+    };
+  }, [onMouseMove, onMouseUp]);
+
+  const slideX = (i) => {
+    const cw = CARD_W.current + GAP;
+    return (i - active) * cw + offset;
+  };
+
+  return (
+    <div className="reveal" data-reveal style={{ marginTop: 80, marginBottom: 60 }}>
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 44 }}>
+        <h2 style={{ fontSize: 32, fontWeight: 900, marginBottom: 8, letterSpacing: 0.5 }}>
+          Các Tính Năng Cốt Lõi
+        </h2>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, maxWidth: 600, margin: "0 auto" }}>
+          Khám phá hệ sinh thái học tập toàn diện — kéo để xem thêm
+        </p>
+      </div>
+
+      {/* Carousel viewport */}
+      <div style={{ position: "relative", overflow: "hidden", width: "100%", cursor: dragging ? "grabbing" : "grab" }}
+        onMouseDown={onMouseDown}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+      >
+        <div ref={trackRef} style={{ display: "flex", justifyContent: "center", height: 420, position: "relative" }}>
+          {features.map((f, i) => {
+            const tx = slideX(i);
+            const dist = Math.abs(i - active);
+            const isActive = i === active;
+            const scale = isActive ? 1 : Math.max(0.88, 1 - dist * 0.06);
+            const opacity = isActive ? 1 : Math.max(0.4, 1 - dist * 0.35);
+            return (
+              <div
+                key={i}
+                onClick={() => { if (!dragging && Math.abs(offset) < 8) router.push(f.link); }}
+                style={{
+                  position:  "absolute",
+                  left: "50%",
+                  top: 0,
+                  width: CARD_W.current,
+                  height: 400,
+                  transform: `translateX(calc(-50% + ${tx}px)) scale(${scale})`,
+                  opacity,
+                  transition: dragging ? "none" : "transform 0.45s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.3s ease",
+                  background: "rgba(8, 18, 42, 0.75)",
+                  border: isActive ? "1px solid rgba(0,210,255,0.35)" : "1px solid rgba(255,255,255,0.06)",
+                  borderRadius: 20,
+                  padding: 28,
+                  backdropFilter: "blur(16px)",
+                  boxShadow: isActive
+                    ? "0 20px 50px rgba(0,0,0,0.5), 0 0 30px rgba(0,180,255,0.1), inset 0 1px 0 rgba(255,255,255,0.08)"
+                    : "0 8px 24px rgba(0,0,0,0.3)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  cursor: "pointer",
+                  userSelect: "none",
+                  zIndex: isActive ? 2 : 1,
+                }}
+              >
+                {/* Card glow overlay */}
+                <div style={{
+                  position: "absolute", inset: 0, borderRadius: 20, pointerEvents: "none",
+                  background: `radial-gradient(circle at 15% 15%, ${f.glowColor} 0%, transparent 65%)`,
+                  opacity: isActive ? 0.3 : 0,
+                  transition: "opacity 0.4s",
+                }} />
+
+                <div>
+                  {/* Top row */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                    <div style={{
+                      fontSize: 28, width: 54, height: 54, borderRadius: 14,
+                      background: f.color, display: "flex", alignItems: "center", justifyContent: "center",
+                      border: "1px solid rgba(255,255,255,0.07)",
+                      boxShadow: isActive ? `0 0 20px ${f.glowColor}` : "none",
+                    }}>
+                      {f.icon}
+                    </div>
+                    <span style={{
+                      fontSize: 9.5, fontWeight: 800, color: "#38bdf8",
+                      background: "rgba(0,200,255,0.1)", border: "1px solid rgba(0,200,255,0.25)",
+                      borderRadius: 20, padding: "4px 11px", letterSpacing: 0.8, textTransform: "uppercase",
+                    }}>
+                      {f.badge}
+                    </span>
+                  </div>
+
+                  <h3 style={{ fontSize: 21, fontWeight: 800, color: "white", marginBottom: 4, lineHeight: 1.2 }}>
+                    {f.title}
+                  </h3>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: "#38bdf8", marginBottom: 12, letterSpacing: 0.3 }}>
+                    {f.titleVi}
+                  </div>
+                  <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.6)", lineHeight: 1.65 }}>
+                    {f.desc}
+                  </p>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: "#38bdf8" }}>
+                    {f.cta} →
+                  </span>
+                  {/* Card number indicator */}
+                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", fontVariantNumeric: "tabular-nums" }}>
+                    {String(i + 1).padStart(2,"0")} / {String(features.length).padStart(2,"0")}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Dot indicators */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 24 }}>
+        {features.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            style={{
+              width: i === active ? 28 : 8,
+              height: 8,
+              borderRadius: 4,
+              border: "none",
+              cursor: "pointer",
+              background: i === active ? "#00d4ff" : "rgba(255,255,255,0.2)",
+              transition: "all 0.35s cubic-bezier(0.25,0.46,0.45,0.94)",
+              boxShadow: i === active ? "0 0 12px rgba(0,212,255,0.6)" : "none",
+              padding: 0,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Arrow nav buttons */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 16 }}>
+        {[
+          { label: "‹", dir: -1 },
+          { label: "›", dir: +1 },
+        ].map(({ label, dir }) => (
+          <button
+            key={label}
+            onClick={() => goTo(active + dir)}
+            disabled={dir === -1 ? active === 0 : active === features.length - 1}
+            style={{
+              width: 42, height: 42, borderRadius: "50%",
+              background: "rgba(0,200,255,0.08)", border: "1px solid rgba(0,200,255,0.25)",
+              color: "rgba(255,255,255,0.7)", fontSize: 22, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "all 0.2s",
+              opacity: (dir === -1 ? active === 0 : active === features.length - 1) ? 0.3 : 1,
+            }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function TrangChuForm() {
+
   const router = useRouter();
   const {
     user, ready,
@@ -404,172 +645,11 @@ export default function TrangChuForm() {
   ];
 
   return (
-    <div style={{ width: "100%", minHeight: "100vh", background: "linear-gradient(160deg, #020c1b 0%, #0a1628 15%, #0c2340 35%, #0e3158 50%, #0a3d5c 65%, #063d56 80%, #042f46 100%)", position: "relative", overflow: "hidden", color: "white" }}>
+    <div style={{ width: "100%", minHeight: "100vh", background: "linear-gradient(160deg, #020c1b 0%, #030d1e 20%, #041226 50%, #03152d 80%, #020c1b 100%)", position: "relative", overflow: "hidden", color: "white" }}>
       {showEditModal && <EditProfileModal onClose={() => setShowEditModal(false)} />}
 
-      {/* ═══════ GEOMETRIC FLOATING SHAPES BACKGROUND ═══════ */}
-      <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
-        {/* Ambient glow layers - enhanced for gradient bg */}
-        <div style={{
-          position: "absolute", inset: 0,
-          background: "radial-gradient(ellipse 80% 55% at 10% 30%, rgba(6,182,212,0.10) 0%, transparent 60%), radial-gradient(ellipse 65% 65% at 85% 65%, rgba(99,102,241,0.09) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 50% 90%, rgba(14,165,233,0.07) 0%, transparent 55%)",
-        }} />
-        {/* Subtle dot grid pattern */}
-        <div style={{
-          position: "absolute", inset: 0,
-          backgroundImage: "radial-gradient(circle, rgba(56,189,248,0.04) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }} />
-        {mathSymbols.map((s) => (
-          <div
-            key={s.id}
-            className="floating-math-symbol"
-            style={{
-              position: "absolute",
-              left: s.left,
-              bottom: "-100px",
-              fontSize: s.size,
-              color: s.id % 3 === 0 ? "rgba(6,182,212,0.22)" : s.id % 3 === 1 ? "rgba(124,58,237,0.17)" : "rgba(56,189,248,0.15)",
-              textShadow: s.id % 3 === 0
-                ? "0 0 18px rgba(6,182,212,0.5), 0 0 6px rgba(6,182,212,0.3)"
-                : s.id % 3 === 1
-                  ? "0 0 18px rgba(124,58,237,0.5), 0 0 6px rgba(124,58,237,0.3)"
-                  : "0 0 14px rgba(56,189,248,0.4)",
-              animationDelay: s.delay,
-              animationDuration: s.dur,
-              fontFamily: "'Courier New', Courier, monospace",
-              fontWeight: "bold",
-            }}
-          >
-            {s.char}
-          </div>
-        ))}
-        {/* SVG Geometric shapes - original set (triangles, squares, diamonds) */}
-        {[
-          { w: 160, l: "4%", t: "10%", c: "#06b6d4", d: "0s", dur: "22s", pts: "50,4 96,75 4,75" },
-          { w: 100, l: "82%", t: "5%", c: "#8b5cf6", d: "4s", dur: "26s", rect: true },
-          { w: 80, l: "60%", t: "63%", c: "#38bdf8", d: "2s", dur: "18s", diamond: true },
-          { w: 120, l: "14%", t: "73%", c: "#a78bfa", d: "7s", dur: "24s", pts: "50,4 96,75 4,75" },
-          { w: 65, l: "90%", t: "50%", c: "#22d3ee", d: "1s", dur: "15s", rect: true },
-          { w: 95, l: "44%", t: "19%", c: "#c4b5fd", d: "9s", dur: "30s", diamond: true },
-          { w: 55, l: "73%", t: "83%", c: "#0891b2", d: "3.5s", dur: "20s", pts: "50,4 96,75 4,75" },
-          { w: 135, l: "27%", t: "44%", c: "#7c3aed", d: "6s", dur: "27s", diamond: true },
-        ].map((s, i) => (
-          <svg key={`shape-${i}`} viewBox="0 0 100 100" style={{
-            position: "absolute", left: s.l, top: s.t,
-            width: s.w, height: s.w,
-            opacity: 0.10 + (i % 3) * 0.03,
-            filter: `drop-shadow(0 0 8px ${s.c}55)`,
-            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
-          }}>
-            {s.rect
-              ? <rect x="12" y="12" width="76" height="76" rx="6" stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
-              : s.diamond
-                ? <polygon points="50,4 96,50 50,96 4,50" stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
-                : <polygon points={s.pts} stroke={s.c} strokeWidth="1.5" fill={s.c + "12"} />
-            }
-          </svg>
-        ))}
-        {/* ── Additional geometric shapes: circles ── */}
-        {[
-          { w: 90, l: "7%", t: "42%", c: "#22d3ee", d: "2s", dur: "19s" },
-          { w: 70, l: "50%", t: "8%", c: "#38bdf8", d: "5s", dur: "23s" },
-          { w: 55, l: "78%", t: "72%", c: "#818cf8", d: "8s", dur: "28s" },
-          { w: 110, l: "35%", t: "78%", c: "#06b6d4", d: "3s", dur: "21s" },
-          { w: 45, l: "92%", t: "25%", c: "#a78bfa", d: "11s", dur: "17s" },
-        ].map((s, i) => (
-          <svg key={`circle-${i}`} viewBox="0 0 100 100" style={{
-            position: "absolute", left: s.l, top: s.t,
-            width: s.w, height: s.w,
-            opacity: 0.08 + (i % 3) * 0.025,
-            filter: `drop-shadow(0 0 6px ${s.c}55)`,
-            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
-          }}>
-            <circle cx="50" cy="50" r="42" stroke={s.c} strokeWidth="1.5" fill={s.c + "0a"} />
-          </svg>
-        ))}
-        {/* ── Hexagons ── */}
-        {[
-          { w: 100, l: "18%", t: "25%", c: "#0ea5e9", d: "1s", dur: "25s" },
-          { w: 75, l: "68%", t: "40%", c: "#6366f1", d: "4s", dur: "20s" },
-          { w: 60, l: "88%", t: "88%", c: "#22d3ee", d: "7s", dur: "18s" },
-        ].map((s, i) => (
-          <svg key={`hex-${i}`} viewBox="0 0 100 100" style={{
-            position: "absolute", left: s.l, top: s.t,
-            width: s.w, height: s.w,
-            opacity: 0.08 + (i % 2) * 0.03,
-            filter: `drop-shadow(0 0 6px ${s.c}44)`,
-            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate, spinSlow 60s linear infinite`,
-          }}>
-            <polygon points="50,3 93,25 93,75 50,97 7,75 7,25" stroke={s.c} strokeWidth="1.3" fill={s.c + "0a"} />
-          </svg>
-        ))}
-        {/* ── Crosses / Plus signs ── */}
-        {[
-          { w: 50, l: "30%", t: "12%", c: "#38bdf8", d: "3s", dur: "16s" },
-          { w: 40, l: "55%", t: "55%", c: "#a78bfa", d: "6s", dur: "22s" },
-          { w: 35, l: "85%", t: "35%", c: "#22d3ee", d: "10s", dur: "19s" },
-          { w: 45, l: "10%", t: "88%", c: "#818cf8", d: "0s", dur: "24s" },
-        ].map((s, i) => (
-          <svg key={`cross-${i}`} viewBox="0 0 100 100" style={{
-            position: "absolute", left: s.l, top: s.t,
-            width: s.w, height: s.w,
-            opacity: 0.10 + (i % 2) * 0.04,
-            filter: `drop-shadow(0 0 5px ${s.c}44)`,
-            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
-          }}>
-            <line x1="50" y1="10" x2="50" y2="90" stroke={s.c} strokeWidth="2" strokeLinecap="round" />
-            <line x1="10" y1="50" x2="90" y2="50" stroke={s.c} strokeWidth="2" strokeLinecap="round" />
-          </svg>
-        ))}
-        {/* ── Concentric circles (radar-like) ── */}
-        {[
-          { w: 140, l: "55%", t: "30%", c: "#0ea5e9", d: "2s", dur: "32s" },
-          { w: 100, l: "2%", t: "58%", c: "#6366f1", d: "5s", dur: "28s" },
-        ].map((s, i) => (
-          <svg key={`conc-${i}`} viewBox="0 0 100 100" style={{
-            position: "absolute", left: s.l, top: s.t,
-            width: s.w, height: s.w,
-            opacity: 0.06,
-            filter: `drop-shadow(0 0 5px ${s.c}33)`,
-            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
-          }}>
-            <circle cx="50" cy="50" r="44" stroke={s.c} strokeWidth="1" fill="none" />
-            <circle cx="50" cy="50" r="30" stroke={s.c} strokeWidth="0.8" fill="none" strokeDasharray="4 3" />
-            <circle cx="50" cy="50" r="16" stroke={s.c} strokeWidth="0.6" fill="none" />
-          </svg>
-        ))}
-        {/* ── Pentagons ── */}
-        {[
-          { w: 70, l: "40%", t: "68%", c: "#a78bfa", d: "4s", dur: "26s" },
-          { w: 85, l: "75%", t: "15%", c: "#38bdf8", d: "1s", dur: "22s" },
-        ].map((s, i) => (
-          <svg key={`pent-${i}`} viewBox="0 0 100 100" style={{
-            position: "absolute", left: s.l, top: s.t,
-            width: s.w, height: s.w,
-            opacity: 0.07 + (i * 0.02),
-            filter: `drop-shadow(0 0 5px ${s.c}44)`,
-            animation: `floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
-          }}>
-            <polygon points="50,5 95,38 77,93 23,93 5,38" stroke={s.c} strokeWidth="1.3" fill={s.c + "08"} />
-          </svg>
-        ))}
-        {/* ── Dashed circles ── */}
-        {[
-          { w: 80, l: "22%", t: "5%", c: "#22d3ee", d: "0s", dur: "35s" },
-          { w: 60, l: "65%", t: "80%", c: "#8b5cf6", d: "8s", dur: "30s" },
-        ].map((s, i) => (
-          <svg key={`dash-${i}`} viewBox="0 0 100 100" style={{
-            position: "absolute", left: s.l, top: s.t,
-            width: s.w, height: s.w,
-            opacity: 0.09,
-            filter: `drop-shadow(0 0 4px ${s.c}33)`,
-            animation: `spinSlow 40s linear infinite, floatShape ${s.dur} ${s.d} ease-in-out infinite alternate`,
-          }}>
-            <circle cx="50" cy="50" r="40" stroke={s.c} strokeWidth="1.5" fill="none" strokeDasharray="8 6" />
-          </svg>
-        ))}
-      </div>
+      {/* ═══════ FULLSCREEN HUD GALAXY BACKGROUND ═══════ */}
+      <GalaxyCanvas />
 
       {/* ═══════ HEADER / NAVBAR ═══════ */}
       <header className="reveal" data-reveal
@@ -665,16 +745,15 @@ export default function TrangChuForm() {
             <div style={{ flex: "1 1 420px", display: "flex", justifyContent: "center", position: "relative" }}>
               <div className="mascot-container" style={{
                 position: "relative",
-                width: "380px",
-                height: "380px",
-                background: "transparent",
+                width: "360px",
+                height: "360px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}>
-                <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath mascot" style={{ width: "240px", maxWidth: "90%", filter: "drop-shadow(0 8px 30px rgba(99,102,241,0.35))", animation: "floatMascot 6s ease-in-out infinite" }} />
-                <div style={{ position: "absolute", bottom: "10%", background: "rgba(15,23,42,0.6)", padding: "8px 16px", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", backdropFilter: "blur(8px)", fontSize: 13, color: "#a78bfa", fontWeight: 700, letterSpacing: 0.5, boxShadow: "0 4px 15px rgba(0,0,0,0.3)" }}>
-                  💡 Fun Math Learn
+                <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath mascot" style={{ width: "220px", maxWidth: "90%", filter: "drop-shadow(0 0 30px rgba(0,200,255,0.5)) drop-shadow(0 8px 30px rgba(0,100,200,0.4))", animation: "floatMascot 6s ease-in-out infinite" }} />
+                <div style={{ position: "absolute", bottom: "10%", background: "rgba(4,18,48,0.75)", padding: "8px 18px", borderRadius: 20, border: "1px solid rgba(0,210,255,0.35)", backdropFilter: "blur(12px)", fontSize: 12, color: "#38bdf8", fontWeight: 700, letterSpacing: 0.8, boxShadow: "0 4px 20px rgba(0,150,255,0.2), 0 0 0 1px rgba(0,200,255,0.1)", animation: "badgeFloat 5s ease-in-out infinite" }}>
+                  🌌 Explore the Universe of Math
                 </div>
               </div>
             </div>
@@ -723,87 +802,8 @@ export default function TrangChuForm() {
             </div>
           </div>
 
-          {/* ═══════ FEATURE GRID (Google Antigravity style) ═══════ */}
-          <div className="reveal" data-reveal style={{ marginTop: 80, marginBottom: 60 }}>
-            <div style={{ textAlign: "center", marginBottom: 44 }}>
-              <h2 style={{ fontSize: 32, fontWeight: 900, marginBottom: 8, letterSpacing: 0.5 }}>
-                Các Tính Năng Cốt Lõi
-              </h2>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, maxWidth: 600, margin: "0 auto" }}>
-                Khám phá hệ sinh thái học tập toàn diện giúp cải thiện kỹ năng giải toán tiếng Anh lẫn tiếng Việt
-              </p>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24 }}>
-              {features.map((f, i) => (
-                <div
-                  key={i}
-                  className="feature-card"
-                  style={{
-                    background: "rgba(15, 23, 42, 0.4)",
-                    border: "1px solid rgba(255, 255, 255, 0.06)",
-                    borderRadius: 16,
-                    padding: 28,
-                    position: "relative",
-                    overflow: "hidden",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: "space-between",
-                    transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => router.push(f.link)}
-                >
-                  {/* Subtle card glow overlay */}
-                  <div className="card-glow" style={{
-                    position: "absolute",
-                    inset: 0,
-                    opacity: 0,
-                    background: `radial-gradient(circle at 10% 10%, ${f.glowColor} 0%, rgba(0,0,0,0) 60%)`,
-                    transition: "opacity 0.3s ease",
-                    pointerEvents: "none",
-                  }} />
-
-                  <div>
-                    {/* Top Row: Icon and Badge */}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                      <div style={{
-                        fontSize: 28,
-                        width: 54,
-                        height: 54,
-                        borderRadius: 12,
-                        background: f.color,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        border: "1px solid rgba(255,255,255,0.05)",
-                      }}>
-                        {f.icon}
-                      </div>
-                      <span style={{ fontSize: 10, fontWeight: 800, color: "#a78bfa", background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.2)", borderRadius: 20, padding: "3px 10px", letterSpacing: 0.5, textTransform: "uppercase" }}>
-                        {f.badge}
-                      </span>
-                    </div>
-
-                    <h3 style={{ fontSize: 20, fontWeight: 800, color: "white", marginBottom: 4 }}>
-                      {f.title}
-                    </h3>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "#38bdf8", marginBottom: 10 }}>
-                      {f.titleVi}
-                    </div>
-                    <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", lineHeight: 1.6, marginBottom: 24 }}>
-                      {f.desc}
-                    </p>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 13.5, color: "#38bdf8" }}>
-                    <span>{f.cta}</span>
-                    <span style={{ transition: "transform 0.2s" }} className="arrow-icon">→</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+          {/* ═══════ FEATURE SWIPE CAROUSEL ═══════ */}
+          <FeatureSwipeCarousel features={features} router={router} />
 
           {/* ═══════ TESTS SECTION ═══════ */}
           <div className="reveal" data-reveal style={{ marginTop: 80 }}>
@@ -1044,6 +1044,35 @@ export default function TrangChuForm() {
         @keyframes spinSlow {
           0%   { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+
+        /* Galaxy ring pulse */
+        @keyframes ringPulse {
+          0%, 100% { opacity: 0.5; transform: scale(1); }
+          50%       { opacity: 1;   transform: scale(1.03); }
+        }
+
+        /* Galaxy container gentle breath */
+        @keyframes galaxyBreath {
+          0%, 100% { transform: scale(1); filter: brightness(1); }
+          50%       { transform: scale(1.025); filter: brightness(1.08); }
+        }
+
+        /* Floating badge bob */
+        @keyframes badgeFloat {
+          0%, 100% { transform: translateY(0px); }
+          50%       { transform: translateY(-6px); }
+        }
+
+        /* Mobile: shrink galaxy container */
+        @media (max-width: 768px) {
+          .mascot-container {
+            width: 300px !important;
+            height: 300px !important;
+          }
+          .mascot-container img {
+            width: 120px !important;
+          }
         }
       `}</style>
     </div>
