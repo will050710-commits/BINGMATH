@@ -143,31 +143,79 @@ function renderTextWithMarkdown(text, key, styles) {
 }
 
 // ── Video Player Modal ────────────────────────────────────────────────────
-function VideoModal({ question, onClose }) {
+function VideoModal({ question, imageBase64, sessionId, onClose }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [shared, setShared] = useState(false);
+  const [loadingSteps, setLoadingSteps] = useState(true);
+  const [videoSteps, setVideoSteps] = useState([]);
   const frameRef = useRef(0);
-  const totalFrames = 300; // ~10 seconds at 30fps
+  const totalFrames = 360; // ~12 seconds at 30fps
 
-  const mathLines = [
-    question ? question.substring(0, 60) : "Solving the math problem...",
-    "Step 1: Identify the equation",
-    "Step 2: Apply the formula",
-    "\\Delta = b^2 - 4ac",
-    "Step 3: Calculate the roots",
-    "x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}",
-    "Step 4: Verify the solution ✓",
-  ];
+  // Fetch real solution from backend
+  useEffect(() => {
+    async function fetchSteps() {
+      setLoadingSteps(true);
+      try {
+        const prompt = imageBase64
+          ? "Solve this math problem step by step. List each step on a new line starting with 'Step N:'. Be concise, max 6 steps."
+          : `Solve this math problem step by step. List each step on a new line starting with 'Step N:'. Be concise, max 6 steps.\nProblem: ${question}`;
+
+        const { chat: chatFn } = await import("./duoServer");
+        const data = await chatFn(sessionId, prompt, {
+          image: imageBase64 || null,
+          mode: "solution",
+        });
+
+        const reply = data?.reply || "";
+        // Parse steps: lines that start with Step N: or are meaningful content
+        const rawLines = reply.split("\n").map(l => l.trim()).filter(Boolean);
+        const steps = [];
+        // First line: the problem/question label
+        steps.push(question ? question.substring(0, 55) : "Giải bài toán...");
+        // Parse AI reply for step lines
+        for (const line of rawLines) {
+          const cleanLine = line
+            .replace(/^#+\s*/, "")      // remove markdown headers
+            .replace(/^\*\*(.+)\*\*$/, "$1") // remove bold wrappers
+            .trim();
+          if (cleanLine.length > 3) {
+            steps.push(cleanLine.substring(0, 70));
+          }
+          if (steps.length >= 8) break; // cap at 8 lines for readability
+        }
+        if (steps.length < 2) {
+          // fallback if AI returned nothing useful
+          steps.push("Bước 1: Phân tích đề bài", "Bước 2: Áp dụng công thức", "Bước 3: Tính toán kết quả", "✓ Hoàn thành");
+        }
+        setVideoSteps(steps);
+      } catch {
+        setVideoSteps([
+          question ? question.substring(0, 55) : "Giải bài toán...",
+          "Bước 1: Đọc và hiểu đề bài",
+          "Bước 2: Xác định phương pháp giải",
+          "Bước 3: Thực hiện tính toán",
+          "✓ Kiểm tra lại kết quả",
+        ]);
+      } finally {
+        setLoadingSteps(false);
+        setIsPlaying(true);
+      }
+    }
+    fetchSteps();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || loadingSteps || videoSteps.length === 0) return;
     const ctx = canvas.getContext("2d");
     canvas.width = 640;
     canvas.height = 360;
+
+    const mathLines = videoSteps;
 
     function drawFrame(frame) {
       ctx.fillStyle = "#0a0a0f";
@@ -191,28 +239,28 @@ function VideoModal({ question, onClose }) {
       ctx.arc(canvas.width - 80, 80, 50 + Math.sin(t * Math.PI * 4) * 8, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Draw math lines progressively
+      // Draw steps progressively
       const linesPerFrame = totalFrames / mathLines.length;
       const visibleLines = Math.floor(frame / linesPerFrame);
 
       mathLines.forEach((line, i) => {
         if (i > visibleLines) return;
-        const y = 80 + i * 40;
+        const y = 60 + i * (canvas.height - 80) / Math.max(mathLines.length, 1);
         const lineProgress = i < visibleLines ? 1 : (frame % linesPerFrame) / linesPerFrame;
-        const isFormula = line.startsWith("\\");
+        const isFormula = /[\\^_{}]/.test(line) && !line.startsWith("Step") && !line.startsWith("Bước");
 
         ctx.save();
         ctx.globalAlpha = Math.min(1, lineProgress * 2);
 
         if (isFormula) {
-          ctx.font = "bold 22px 'Courier New', monospace";
+          ctx.font = "bold 20px 'Courier New', monospace";
           ctx.fillStyle = "#00d8fe";
           ctx.textAlign = "center";
-          // Simulate formula rendering with colored text
           ctx.fillText(line.replace(/\\/g, ""), canvas.width / 2, y);
         } else {
-          ctx.font = `${i === 0 ? "16px" : "18px"} 'Sora', sans-serif`;
-          ctx.fillStyle = i === 0 ? "#9ca3af" : "#e5e7eb";
+          const fontSize = i === 0 ? 14 : 17;
+          ctx.font = `${fontSize}px 'Sora', sans-serif`;
+          ctx.fillStyle = i === 0 ? "#9ca3af" : (line.startsWith("✓") ? "#4ade80" : "#e5e7eb");
           ctx.textAlign = "center";
           const chars = Math.floor(line.length * lineProgress);
           ctx.fillText(line.substring(0, chars), canvas.width / 2, y);
@@ -253,7 +301,7 @@ function VideoModal({ question, onClose }) {
     return () => {
       if (animRef.current) cancelAnimationFrame(animRef.current);
     };
-  }, [isPlaying, question]);
+  }, [isPlaying, loadingSteps, videoSteps]);
 
   function togglePlay() {
     setIsPlaying(p => !p);
@@ -280,7 +328,14 @@ function VideoModal({ question, onClose }) {
 
         {/* Canvas player */}
         <div className={styles.videoWrapper}>
-          <canvas ref={canvasRef} className={styles.videoCanvas} />
+          {loadingSteps ? (
+            <div className={styles.videoLoadingOverlay}>
+              <div className={styles.videoLoadingSpinner} />
+              <p className={styles.videoLoadingText}>AI đang phân tích đề bài...</p>
+            </div>
+          ) : (
+            <canvas ref={canvasRef} className={styles.videoCanvas} />
+          )}
           {/* Progress bar */}
           <div className={styles.videoProgressBar}>
             <div className={styles.videoProgressFill} style={{ width: `${progress}%` }} />
@@ -290,14 +345,14 @@ function VideoModal({ question, onClose }) {
         {/* Controls */}
         <div className={styles.videoControls}>
           <div className={styles.videoControlsLeft}>
-            <button className={styles.videoCtrlBtn} onClick={togglePlay} title={isPlaying ? "Pause" : "Play"}>
+            <button className={styles.videoCtrlBtn} onClick={togglePlay} title={isPlaying ? "Pause" : "Play"} disabled={loadingSteps}>
               {isPlaying ? "⏸" : "▶"}
             </button>
-            <button className={styles.videoCtrlBtn} onClick={() => { frameRef.current = 0; setProgress(0); }} title="Replay">
+            <button className={styles.videoCtrlBtn} onClick={() => { frameRef.current = 0; setProgress(0); }} title="Replay" disabled={loadingSteps}>
               🔄
             </button>
             <span className={styles.videoDuration}>
-              {Math.floor((progress / 100) * 10)}s / 10s
+              {Math.floor((progress / 100) * 12)}s / 12s
             </span>
           </div>
           <button
@@ -377,6 +432,7 @@ export default function DuoMCBPage() {
   const [imageBase64, setImageBase64] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
   const [videoQuestion, setVideoQuestion] = useState(null);
+  const [videoImage, setVideoImage] = useState(null);
   const [showVideo, setShowVideo] = useState(false);
   const [chatHistory] = useState([
     { id: 1, title: "Quadratic equations help", date: "Today" },
@@ -424,6 +480,7 @@ export default function DuoMCBPage() {
     setShowImageModal(false);
     if (mode === "video") {
       setVideoQuestion(input.trim() || "Bài toán từ ảnh");
+      setVideoImage(imageBase64); // pass the image so VideoModal can analyze it
       setShowVideo(true);
       return;
     }
@@ -457,6 +514,7 @@ export default function DuoMCBPage() {
 
     if (mode === "video") {
       setVideoQuestion(msg);
+      setVideoImage(null); // text-only, no image
       setShowVideo(true);
       setInput("");
       return;
@@ -498,7 +556,9 @@ export default function DuoMCBPage() {
       {showVideo && (
         <VideoModal
           question={videoQuestion}
-          onClose={() => setShowVideo(false)}
+          imageBase64={videoImage}
+          sessionId={sessionId}
+          onClose={() => { setShowVideo(false); setVideoImage(null); }}
         />
       )}
 
