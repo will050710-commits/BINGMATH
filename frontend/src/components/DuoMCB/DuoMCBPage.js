@@ -8,19 +8,19 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 
 const SUGGESTED = [
-  { icon: "ðŸ“", text: "Solve xÂ² - 5x + 6 = 0 step by step" },
-  { icon: "ðŸ“Š", text: "Explain mean, median and standard deviation" },
-  { icon: "ðŸ“", text: "Give me bilingual exercises on trigonometry" },
-  { icon: "ðŸ§ª", text: "What is Newton's second law of motion?" },
+  { icon: "📝", text: "Solve x² - 5x + 6 = 0 step by step" },
+  { icon: "📊", text: "Explain mean, median and standard deviation" },
+  { icon: "📐", text: "Give me bilingual exercises on trigonometry" },
+  { icon: "🧪", text: "What is Newton's second law of motion?" },
 ];
 
 const TOOLS = [
-  { id: "hint",     icon: "ðŸ’¡", label: "Gá»£i Ã Socratic",     desc: "HÆ°á»›ng dáº«n tá»«ng bÆ°á»›c nhá»" },
-  { id: "solution", icon: "ðŸ“–", label: "Giáº£i Äáº§y Äá»§",        desc: "Lá»i giáº£i chi tiáº¿t hoÃ n chá»‰nh" },
-  { id: "video",    icon: "ðŸŽ¬", label: "Táº¡o Video Giáº£i",      desc: "Video hoáº¡t hÃ¬nh giáº£i bÃ i" },
+  { id: "hint",     icon: "💡", label: "Gợi Ý Socratic",     desc: "Hướng dẫn từng bước nhỏ" },
+  { id: "solution", icon: "📖", label: "Giải Đầy Đủ",        desc: "Lời giải chi tiết hoàn chỉnh" },
+  { id: "video",    icon: "🎬", label: "Tạo Video Giải",      desc: "Video hoạt hình giải bài" },
 ];
 
-// â”€â”€ LaTeX & Markdown Parser Helper Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── LaTeX & Markdown Parser Helper Functions ──────────────────────────────
 function parseMathAndText(text) {
   if (!text) return [];
   const tokens = [];
@@ -142,7 +142,7 @@ function renderTextWithMarkdown(text, key, styles) {
   );
 }
 
-// ── Label Collision Avoidance System ──
+// ── Label Collision Avoidance System ──────────────────────────────────────
 let labelBoxes = [];
 
 function resetLabelBoxes() {
@@ -158,7 +158,7 @@ function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sa
   ctx.font = font;
   const metrics = ctx.measureText(text);
   const w = metrics.width + 10;
-  const h = 15; // standard approximate line height
+  const h = 15;
   
   const candidates = [
     { ox: 10, oy: -8, align: "left", baseline: "middle" },
@@ -169,8 +169,7 @@ function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sa
     { ox: -10, oy: 8, align: "right", baseline: "middle" },
   ];
   
-  let best = candidates[0];
-  let foundSafe = false;
+  let best = null;
   
   for (const c of candidates) {
     const tx = px + c.ox;
@@ -195,20 +194,19 @@ function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sa
     
     if (!overlap) {
       best = { tx, ty, align: c.align, baseline: c.baseline, bx, by };
-      foundSafe = true;
       break;
     }
   }
   
-  if (!foundSafe) {
+  if (!best) {
     const tx = px + 10;
     const ty = py - 8 + labelBoxes.length * 4;
-    best = { tx, ty, align: "left", baseline: "middle", bx: tx, by: ty - h/2 };
+    best = { tx, ty, align: "left", baseline: "middle", bx: tx, by: ty - h / 2 };
   }
   
   labelBoxes.push({ x: best.bx, y: best.by, w, h });
   
-  ctx.fillStyle = "rgba(10, 10, 15, 0.78)";
+  ctx.fillStyle = "rgba(10, 10, 15, 0.82)";
   ctx.beginPath();
   ctx.rect(best.bx - 2, best.by - 2, w + 4, h + 4);
   ctx.fill();
@@ -221,7 +219,6 @@ function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sa
 }
 
 // ── Math Visualization Helpers (pure canvas drawing) ──────────────────────
-
 
 function mkToCanvas(xRange, yRange, pad, plotW, plotH) {
   return {
@@ -291,6 +288,119 @@ function drawAxes(ctx, xRange, yRange, pad, plotW, plotH, alpha) {
   ctx.restore();
 }
 
+// Draw the correct parabola-petal tile:
+// 4 petals occupying each quadrant, each bounded by 2 parabolas with vertex at center.
+// Petal in Q1: region where y <= (1/half)x² AND x <= (1/half)y²  (concave toward corner)
+// This creates the correct dark-petal-in-each-quadrant shape matching the math problem.
+function drawPetalTile(ctx, cx2, cy2, size, t, squareSide) {
+  const half = size / 2;
+  const ht = Math.min(1, t / 0.25);
+
+  // White/light square background
+  ctx.save();
+  ctx.globalAlpha = ht;
+  ctx.fillStyle = "#f8f8f8";
+  ctx.fillRect(cx2 - half, cy2 - half, size, size);
+  // Square border
+  ctx.strokeStyle = "#374151";
+  ctx.lineWidth = 2;
+  ctx.strokeRect(cx2 - half, cy2 - half, size, size);
+  ctx.restore();
+
+  // Draw the 4 dark petals. Each petal sits in one quadrant.
+  // The petal in a quadrant is the region between two parabolas opening from center toward the corner.
+  // For quadrant with corner at (±half, ±half):
+  //   The two bounding parabolas in Q1 (corner top-right):
+  //     Parabola A opens rightward: x = half - (y²/half)  →  passes through (half,0) and (0,half)
+  //     Parabola B opens upward:    y = half - (x²/half)  →  passes through (0,half) and (half,0)
+  //   The petal region in Q1 is: x >= half - y²/half  AND  y >= half - x²/half
+  //   i.e. it's the lens between the two "inward" parabola arcs.
+
+  const petalColor = "#2a2a2a"; // dark like the problem image
+
+  const quadrants = [
+    { sx: 1,  sy: 1  },  // top-right (Q1)
+    { sx: -1, sy: 1  },  // top-left (Q2)
+    { sx: -1, sy: -1 },  // bottom-left (Q3)
+    { sx: 1,  sy: -1 },  // bottom-right (Q4)
+  ];
+
+  const steps = 60;
+
+  quadrants.forEach(({ sx, sy }, idx) => {
+    const petalT = Math.min(1, Math.max(0, (t - 0.2 - idx * 0.08) / 0.5));
+    if (petalT <= 0) return;
+
+    // Build the petal path:
+    // Arc A: from (sx*half, 0) to (0, sy*half) along x = sx*(half - y²/half)
+    // Arc B: from (0, sy*half) back to (sx*half, 0) along y = sy*(half - x²/half)
+    const ptsA = [];
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps; // 0→1
+      const y = sy * u * half;
+      const x = sx * (half - (y * y) / half);
+      ptsA.push([cx2 + x, cy2 - y]); // note: canvas y-axis is inverted
+    }
+
+    const ptsB = [];
+    for (let i = steps; i >= 0; i--) {
+      const u = i / steps;
+      const x = sx * u * half;
+      const y = sy * (half - (x * x) / half);
+      ptsB.push([cx2 + x, cy2 - y]);
+    }
+
+    const allPts = [...ptsA, ...ptsB];
+
+    ctx.save();
+    ctx.globalAlpha = petalT;
+
+    // Fill the petal
+    ctx.fillStyle = petalColor;
+    ctx.beginPath();
+    ctx.moveTo(allPts[0][0], allPts[0][1]);
+    for (let i = 1; i < allPts.length; i++) {
+      ctx.lineTo(allPts[i][0], allPts[i][1]);
+    }
+    ctx.closePath();
+    ctx.fill();
+
+    // Stroke outline with slight glow
+    ctx.strokeStyle = "#1a1a1a";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.restore();
+  });
+
+  // Labels
+  if (t > 0.85) {
+    const labelT = Math.min(1, (t - 0.85) / 0.15);
+    ctx.save();
+    ctx.globalAlpha = labelT;
+
+    // Bottom dimension
+    ctx.font = "bold 12px 'Sora',sans-serif";
+    ctx.fillStyle = "#374151";
+    ctx.textAlign = "center";
+    ctx.fillText(`${squareSide} dm`, cx2, cy2 + half + 18);
+
+    // Right dimension
+    ctx.textAlign = "left";
+    ctx.fillText(`${squareSide} dm`, cx2 + half + 8, cy2);
+
+    // Cost labels
+    ctx.font = "bold 10px 'Sora',sans-serif";
+    ctx.fillStyle = "#374151";
+    ctx.textAlign = "center";
+    ctx.fillText("Cánh hoa (đen): 400k/m²", cx2, cy2 - half - 10);
+    ctx.fillStyle = "#6b7280";
+    ctx.fillText("Phần trống (trắng): 300k/m²", cx2, cy2 + half + 30);
+
+    ctx.restore();
+  }
+}
+
 function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
   const type = data.type || "other";
   const viz = data.viz || {};
@@ -298,26 +408,21 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
   const plotW = panelW - pad.left - pad.right;
   const plotH = panelH - pad.top - pad.bottom;
 
-  // Reset collision avoidance system at the start of drawing
   resetLabelBoxes();
-
   ctx.save();
 
   if (type === "quadratic" || type === "calculus") {
     const xRange = viz.xRange || [-4, 6];
     const yRange = viz.yRange || [-3, 8];
     const { cx, cy } = mkToCanvas(xRange, yRange, pad, plotW, plotH);
-    const axesT = Math.min(1, t / 0.25);
-    drawAxes(ctx, xRange, yRange, pad, plotW, plotH, axesT);
+    drawAxes(ctx, xRange, yRange, pad, plotW, plotH, Math.min(1, t / 0.25));
 
     const { a = 1, b = 0, c = 0 } = viz;
 
-    // Draw parabola / curve
     const curveT = Math.min(1, Math.max(0, (t - 0.2) / 0.5));
     if (curveT > 0) {
       const totalPts = 120;
       const drawPts = Math.floor(totalPts * curveT);
-      // ── Universal plot-area clip: curve never bleeds outside the axes box ──
       ctx.save();
       ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
       ctx.strokeStyle = "#00d8fe"; ctx.lineWidth = 2.5;
@@ -332,7 +437,6 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       ctx.stroke();
       ctx.restore();
 
-      // Shade area for calculus
       if (type === "calculus" && viz.from != null && viz.to != null && curveT > 0.8) {
         const areaT = Math.min(1, (t - 0.7) / 0.25);
         const from = viz.from; const to = viz.to;
@@ -350,14 +454,12 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         ctx.beginPath(); ctx.moveTo(cx(to), cy(0)); ctx.lineTo(cx(to), cy(a * to * to + b * to + c)); ctx.stroke();
         ctx.setLineDash([]);
         ctx.restore();
-
         if (viz.area != null) {
           drawAvoidanceText(ctx, `S ≈ ${viz.area}`, cx((from + to) / 2), cy(0), "#c4b5fd", "bold 12px 'Sora',sans-serif");
         }
       }
     }
 
-    // Roots
     const rootT = Math.min(1, Math.max(0, (t - 0.72) / 0.18));
     if (rootT > 0 && viz.roots && viz.roots.length) {
       for (const root of viz.roots) {
@@ -366,14 +468,12 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         ctx.fillStyle = "#f59e0b"; ctx.shadowColor = "#f59e0b"; ctx.shadowBlur = 12;
         ctx.beginPath(); ctx.arc(cx(root), cy(0), 5.5, 0, Math.PI * 2); ctx.fill();
         ctx.restore();
-        
         const fmtRoot = Number.isInteger(root) ? root : root.toFixed(2);
         registerAvoidanceBox(cx(root) - 6, cy(0) - 6, 12, 12);
         drawAvoidanceText(ctx, `x=${fmtRoot}`, cx(root), cy(0), "#fbbf24", "bold 12px 'Sora',sans-serif");
       }
     }
 
-    // Vertex
     const vtxT = Math.min(1, Math.max(0, (t - 0.82) / 0.18));
     if (vtxT > 0 && viz.vertex) {
       const [vx, vy] = viz.vertex;
@@ -381,7 +481,6 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       ctx.fillStyle = "#a78bfa"; ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = 12;
       ctx.beginPath(); ctx.arc(cx(vx), cy(vy), 5.5, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
-
       const fvx = Number.isInteger(vx) ? vx : vx.toFixed(2);
       const fvy = Number.isInteger(vy) ? vy : vy.toFixed(2);
       registerAvoidanceBox(cx(vx) - 6, cy(vy) - 6, 12, 12);
@@ -397,7 +496,6 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
     const lineColors = ["#00d8fe", "#f59e0b", "#a78bfa", "#4ade80"];
     const lines = viz.lines || [];
 
-    // â”€â”€ Clip all line strokes to plot area â€” no lines bleed outside axes â”€â”€
     ctx.save();
     ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
     lines.forEach((line, idx) => {
@@ -415,9 +513,8 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       }
       ctx.stroke(); ctx.restore();
     });
-    ctx.restore(); // end line clip
+    ctx.restore();
 
-    // Labels & intersection drawn outside clip so text can overflow axes
     lines.forEach((line, idx) => {
       const lT = Math.min(1, Math.max(0, (t - 0.2 - idx * 0.18) / 0.45));
       if (lT <= 0.75 || !line.label) return;
@@ -430,13 +527,11 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
     });
 
     if (viz.intersection && t > 0.78) {
-      const iT = Math.min(1, (t - 0.78) / 0.18);
       const { x: ix, y: iy } = viz.intersection;
-      ctx.save(); ctx.globalAlpha = iT;
+      ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.78) / 0.18);
       ctx.fillStyle = "#4ade80"; ctx.shadowColor = "#4ade80"; ctx.shadowBlur = 14;
       ctx.beginPath(); ctx.arc(cx(ix), cy(iy), 7, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
-
       const fix = Number.isInteger(ix) ? ix : ix.toFixed(2);
       const fiy = Number.isInteger(iy) ? iy : iy.toFixed(2);
       registerAvoidanceBox(cx(ix) - 8, cy(iy) - 8, 16, 16);
@@ -470,11 +565,10 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       }
       ctx.stroke(); ctx.restore();
 
-      // Pi labels on x axis
       if (curveT > 0.7 && yRange[0] <= 0 && yRange[1] >= 0) {
         ctx.save(); ctx.globalAlpha = Math.min(1, (curveT - 0.7) / 0.3);
         ctx.font = "10px monospace"; ctx.fillStyle = "#6b7280"; ctx.textAlign = "center";
-        const piVals = [["Ï€/2", Math.PI / 2], ["Ï€", Math.PI], ["3Ï€/2", 3 * Math.PI / 2], ["2Ï€", 2 * Math.PI]];
+        const piVals = [["π/2", Math.PI / 2], ["π", Math.PI], ["3π/2", 3 * Math.PI / 2], ["2π", 2 * Math.PI]];
         for (const [lbl, val] of piVals) {
           if (val >= xRange[0] && val <= xRange[1]) ctx.fillText(lbl, cx(val), cy(0) + 13);
         }
@@ -484,154 +578,24 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
 
   } else if (type === "geometry") {
     const shapes = viz.shapes || [];
-
-    // Special case: draw a decorative parabola-tile (square with 4 petal arcs)
-    // triggered when the problem title contains keywords about tiles/petals
     const titleLower = (data.title || "").toLowerCase();
     const isPetalTile = titleLower.includes("viên gạch") || titleLower.includes("cánh hoa") ||
-      titleLower.includes("parabol") || titleLower.includes("petal") || titleLower.includes("tile");
+      titleLower.includes("parabol") || titleLower.includes("petal") || titleLower.includes("tile") ||
+      titleLower.includes("gạch") || titleLower.includes("hoa");
 
-    // Find if there's a rect shape to use as the base square
     const rectShape = shapes.find(s => s.t === "rect");
     const squareSide = rectShape ? Math.max(rectShape.w, rectShape.h) : 4;
 
-    if (isPetalTile || (shapes.length === 0)) {
-      const cx2 = panelW / 2; const cy2 = panelH / 2;
-      const size = Math.min(panelW, panelH) * 0.55;
-      const ht = Math.min(1, t / 0.25);
-      const half = size / 2;
-
-      // Outer square
-      ctx.save();
-      ctx.globalAlpha = ht;
-      ctx.strokeStyle = "#4b5563"; ctx.lineWidth = 2;
-      ctx.strokeRect(cx2 - half, cy2 - half, size, size);
-
-      // Draw grid lines inside the square for the quadrants
-      ctx.strokeStyle = "rgba(75, 85, 99, 0.3)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      ctx.moveTo(cx2 - half, cy2); ctx.lineTo(cx2 + half, cy2);
-      ctx.moveTo(cx2, cy2 - half); ctx.lineTo(cx2, cy2 + half);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-
-      // Dimension labels - register avoidance boxes for outer dimensions
-      registerAvoidanceBox(cx2 - half - 10, cy2 - half - 10, size + 20, size + 20); // main block area
-      drawAvoidanceText(ctx, `${squareSide} dm`, cx2, cy2 + half + 8, "#9ca3af", "bold 12px 'Sora',sans-serif");
-      drawAvoidanceText(ctx, `${squareSide} dm`, cx2 + half + 10, cy2, "#9ca3af", "bold 12px 'Sora',sans-serif");
-
-      // Draw the 4 closed-loop petals sequentially
-      const petalDirs = ["top-right", "bottom-right", "bottom-left", "top-left"];
-      const petalColors = ["#00d8fe", "#6366f1", "#a78bfa", "#f59e0b"];
-
-      petalDirs.forEach((dir, idx) => {
-        const petalT = Math.min(1, Math.max(0, (t - 0.22 - idx * 0.1) / 0.4));
-        if (petalT <= 0) return;
-
-        const steps2 = 30;
-        const pts = [];
-        
-        // Define paths relative to center (0, 0)
-        if (dir === "top-right") {
-          for (let i = 0; i <= steps2; i++) {
-            const x = (i / steps2) * half;
-            const y = -half + (x * x) / half;
-            pts.push([x, y]);
-          }
-          for (let i = 0; i <= steps2; i++) {
-            const y = -(i / steps2) * half;
-            const x = half - (y * y) / half;
-            pts.push([x, y]);
-          }
-        } else if (dir === "bottom-right") {
-          for (let i = 0; i <= steps2; i++) {
-            const y = (i / steps2) * half;
-            const x = half - (y * y) / half;
-            pts.push([x, y]);
-          }
-          for (let i = 0; i <= steps2; i++) {
-            const x = (i / steps2) * half;
-            const y = half - (x * x) / half;
-            pts.push([x, y]);
-          }
-        } else if (dir === "bottom-left") {
-          for (let i = 0; i <= steps2; i++) {
-            const x = -(i / steps2) * half;
-            const y = half - (x * x) / half;
-            pts.push([x, y]);
-          }
-          for (let i = 0; i <= steps2; i++) {
-            const y = (i / steps2) * half;
-            const x = -half + (y * y) / half;
-            pts.push([x, y]);
-          }
-        } else if (dir === "top-left") {
-          for (let i = 0; i <= steps2; i++) {
-            const y = -(i / steps2) * half;
-            const x = -half + (y * y) / half;
-            pts.push([x, y]);
-          }
-          for (let i = 0; i <= steps2; i++) {
-            const x = -(i / steps2) * half;
-            const y = -half + (x * x) / half;
-            pts.push([x, y]);
-          }
-        }
-
-        const drawCount = Math.floor(pts.length * petalT);
-        if (drawCount < 2) return;
-
-        ctx.save();
-        ctx.translate(cx2, cy2);
-
-        // Fill background first
-        ctx.beginPath();
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-        ctx.closePath();
-        ctx.globalAlpha = petalT * 0.18;
-        ctx.fillStyle = petalColors[idx];
-        ctx.fill();
-
-        // Stroke outline progressively
-        ctx.beginPath();
-        ctx.moveTo(pts[0][0], pts[0][1]);
-        for (let i = 1; i < drawCount && i < pts.length; i++) {
-          ctx.lineTo(pts[i][0], pts[i][1]);
-        }
-        ctx.globalAlpha = 0.9;
-        ctx.strokeStyle = petalColors[idx];
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = petalColors[idx];
-        ctx.shadowBlur = 8;
-        ctx.stroke();
-
-        ctx.restore();
-      });
-
-      // Cost labels
-      if (t > 0.78) {
-        drawAvoidanceText(ctx, "Cánh hoa: 400k/m²", cx2, cy2 - half - 16, "#00d8fe", "bold 11px 'Sora',sans-serif");
-        drawAvoidanceText(ctx, "Phần trống: 300k/m²", cx2, cy2 + half + 26, "#9ca3af", "bold 11px 'Sora',sans-serif");
-      }
-
-      // Visualization label
-      if (t > 0.05) {
-        ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.05) / 0.15) * 0.5;
-        ctx.font = "10px 'Sora',sans-serif"; ctx.fillStyle = "#6366f1"; ctx.textAlign = "left";
-        ctx.fillText("▶ VISUALIZATION", pad.left, 16);
-        ctx.restore();
-      }
+    if (isPetalTile || shapes.length === 0) {
+      const cx2 = panelW / 2;
+      const cy2 = panelH / 2;
+      const size = Math.min(panelW - 80, panelH - 80);
+      drawPetalTile(ctx, cx2, cy2, size, t, squareSide);
       ctx.restore();
       return;
     }
 
-    if (shapes.length === 0) { drawGenericViz(ctx, data, panelW, panelH, t); ctx.restore(); return; }
-
-    // Fit all shapes into viewport
+    // Generic geometry shapes
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (const s of shapes) {
       if (s.t === "circle") { minX = Math.min(minX, s.cx - s.r); maxX = Math.max(maxX, s.cx + s.r); minY = Math.min(minY, s.cy - s.r); maxY = Math.max(maxY, s.cy + s.r); }
@@ -644,7 +608,6 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
     const { cx, cy } = mkToCanvas(xRange, yRange, pad, plotW, plotH);
     const shapeColors = ["#00d8fe", "#f59e0b", "#a78bfa", "#4ade80", "#f87171"];
 
-    // ── Clip all shapes to the plot area ──
     ctx.save();
     ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
     shapes.forEach((s, idx) => {
@@ -655,24 +618,16 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       ctx.shadowColor = color; ctx.shadowBlur = 12;
 
       if (s.t === "circle") {
-        // Draw circle arc progressively
         const endAngle = Math.PI * 2 * sT;
         ctx.beginPath(); ctx.arc(cx(s.cx), cy(s.cy), Math.abs(cx(s.cx + s.r) - cx(s.cx)), 0, endAngle); ctx.stroke();
         ctx.restore();
-
         if (sT > 0.8) {
           ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
           ctx.beginPath(); ctx.moveTo(cx(s.cx), cy(s.cy)); ctx.lineTo(cx(s.cx + s.r), cy(s.cy)); ctx.stroke();
           ctx.restore();
-
-          // Register dots so labels don't cover them
-          registerAvoidanceBox(cx(s.cx) - 4, cy(s.cy) - 4, 8, 8); // center
-          registerAvoidanceBox(cx(s.cx + s.r) - 4, cy(s.cy) - 4, 8, 8); // radius end
-          
+          registerAvoidanceBox(cx(s.cx) - 4, cy(s.cy) - 4, 8, 8);
           const fmtR = Number.isInteger(s.r) ? s.r : s.r.toFixed(2);
           drawAvoidanceText(ctx, `r=${fmtR}`, cx(s.cx + s.r / 2), cy(s.cy), color);
-
-          // Center dot
           ctx.save(); ctx.fillStyle = color;
           ctx.beginPath(); ctx.arc(cx(s.cx), cy(s.cy), 3.5, 0, Math.PI * 2); ctx.fill();
           ctx.restore();
@@ -682,24 +637,14 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         ctx.beginPath(); ctx.moveTo(cx(s.pts[0][0]), cy(s.pts[0][1]));
         for (let i = 1; i <= numSides; i++) ctx.lineTo(cx(s.pts[i % 3][0]), cy(s.pts[i % 3][1]));
         if (sT >= 1) ctx.closePath();
-        ctx.stroke();
-        ctx.restore();
-
+        ctx.stroke(); ctx.restore();
         if (sT > 0.9) {
-          ctx.save(); ctx.globalAlpha = sT * 0.18; ctx.fillStyle = color;
-          ctx.beginPath(); ctx.moveTo(cx(s.pts[0][0]), cy(s.pts[0][1]));
-          ctx.lineTo(cx(s.pts[1][0]), cy(s.pts[1][1]));
-          ctx.lineTo(cx(s.pts[2][0]), cy(s.pts[2][1]));
-          ctx.closePath(); ctx.fill();
-          ctx.restore();
-
           const labels = s.labels || ["A", "B", "C"];
           for (let i = 0; i < 3; i++) {
             const [px, py] = s.pts[i];
             registerAvoidanceBox(cx(px) - 6, cy(py) - 6, 12, 12);
             drawAvoidanceText(ctx, labels[i], cx(px), cy(py), color, "bold 13px 'Sora',sans-serif");
           }
-          // Side lengths
           if (s.sides) {
             for (let i = 0; i < Math.min(s.sides.length, 3); i++) {
               const p1 = s.pts[i], p2 = s.pts[(i + 1) % 3];
@@ -713,15 +658,10 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         const rx = cx(s.x); const ry = cy(s.y + s.h);
         ctx.beginPath(); ctx.rect(rx, ry, rw * sT, rh); ctx.stroke();
         ctx.restore();
-
         if (sT > 0.85) {
           ctx.save(); ctx.globalAlpha = sT * 0.15; ctx.fillStyle = color;
-          ctx.fillRect(rx, ry, rw, rh);
-          ctx.restore();
-
-          // Avoid drawing dimensions over rect boundaries
+          ctx.fillRect(rx, ry, rw, rh); ctx.restore();
           registerAvoidanceBox(rx - 4, ry - 4, rw + 8, rh + 8);
-          
           const fw = Number.isInteger(s.w) ? s.w : s.w.toFixed(1);
           const fh = Number.isInteger(s.h) ? s.h : s.h.toFixed(1);
           drawAvoidanceText(ctx, fw, rx + rw / 2, ry + rh, "#9ca3af", "11px 'Sora',sans-serif");
@@ -731,9 +671,8 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         ctx.restore();
       }
     });
-    ctx.restore(); // end shapes clip
+    ctx.restore();
 
-    // Extra labels drawn outside clip
     if (viz.labels && t > 0.7) {
       for (const lbl of viz.labels) {
         drawAvoidanceText(ctx, lbl.text, cx(lbl.x), cy(lbl.y), "#9ca3af", "12px 'Sora',sans-serif");
@@ -744,11 +683,11 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
     drawGenericViz(ctx, data, panelW, panelH, t);
   }
 
-  // "Visualization" label
+  // "VISUALIZATION" label
   if (t > 0.05) {
     ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.05) / 0.15) * 0.5;
     ctx.font = "10px 'Sora',sans-serif"; ctx.fillStyle = "#6366f1"; ctx.textAlign = "left";
-    ctx.fillText("â–¶ VISUALIZATION", pad.left, 16);
+    ctx.fillText("▶ VISUALIZATION", pad.left, 16);
     ctx.restore();
   }
 
@@ -757,7 +696,6 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
 
 function drawGenericViz(ctx, data, panelW, panelH, t) {
   const cx = panelW / 2; const cy = panelH / 2;
-  // Animated rings
   const ringCount = 3;
   for (let i = 0; i < ringCount; i++) {
     const ringT = Math.min(1, Math.max(0, (t - i * 0.08) / 0.3));
@@ -768,20 +706,18 @@ function drawGenericViz(ctx, data, panelW, panelH, t) {
     ctx.beginPath(); ctx.arc(cx, cy, 40 + i * 30, 0, Math.PI * 2 * ringT); ctx.stroke();
     ctx.restore();
   }
-  // Pulsing center
   const pulse = 1 + 0.06 * Math.sin(t * Math.PI * 8);
   ctx.save(); ctx.globalAlpha = Math.min(1, t / 0.2);
   ctx.fillStyle = "#00d8fe"; ctx.shadowColor = "#00d8fe"; ctx.shadowBlur = 20;
   ctx.beginPath(); ctx.arc(cx, cy, 12 * pulse, 0, Math.PI * 2); ctx.fill();
   ctx.restore();
-  // Label
   ctx.save(); ctx.globalAlpha = Math.min(1, Math.max(0, (t - 0.4) / 0.2));
   ctx.font = "bold 13px 'Sora',sans-serif"; ctx.fillStyle = "#6b7280"; ctx.textAlign = "center";
   ctx.fillText(data?.title || "DuoMCB Visualizing...", cx, cy + 50);
   ctx.restore();
 }
 
-// â”€â”€ Inline Video Player (renders in chat message, not a modal overlay) â”€â”€â”€â”€
+// ── Inline Video Player (renders in chat message, not a modal overlay) ──
 function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
@@ -792,22 +728,21 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   const frameRef = useRef(0);
   const totalFrames = 480;
 
-  // Fetch structured visualization data from AI
   useEffect(() => {
     async function fetchData() {
       setLoadingSteps(true);
       try {
         const { chat: chatFn } = await import("./duoServer");
 
-        // ──── Stage 1: Get the solution steps (plain text) ─────────────────
+        // Stage 1: Solution steps with LaTeX
         const solutionPrompt = imageBase64
-          ? `You are a math tutor. Analyze the math problem in the provided image and give a clear, step-by-step solution in Vietnamese or English (match the problem language). 
+          ? `You are a math tutor. Analyze the math problem in the provided image and give a clear, step-by-step solution in Vietnamese or English (match the problem language).
 Always use LaTeX math notation (surrounded by $ for inline, e.g. $x^2 - 5x + 6 = 0$ or $\\frac{1}{4}$) for all equations, formulas, variables, and mathematical expressions.
-Format your response as a numbered list of concise steps (max 6 steps, each under 125 characters including LaTeX). End with "✓ Đáp án: [final answer]".
+Format your response as a numbered list of concise steps (max 6 steps, each under 125 characters). End with "✓ Đáp án: [final answer]".
 ONLY output the solution steps. No preamble, no JSON, no code blocks.`
           : `You are a math tutor. Solve this math problem step-by-step: "${question}"
 Always use LaTeX math notation (surrounded by $ for inline, e.g. $x^2 - 5x + 6 = 0$ or $\\frac{1}{4}$) for all equations, formulas, variables, and mathematical expressions.
-Format your response as a numbered list of concise steps (max 6 steps, each under 125 characters including LaTeX). End with "✓ Đáp án: [final answer]".
+Format your response as a numbered list of concise steps (max 6 steps, each under 125 characters). End with "✓ Đáp án: [final answer]".
 ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
 
         const solutionData = await chatFn(sessionId, solutionPrompt, {
@@ -821,25 +756,9 @@ ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
           .filter(l => l.length > 2)
           .slice(0, 7);
 
-        // â”€â”€ Stage 2: Get visualization JSON (no steps needed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        // Stage 2: Visualization JSON
         const vizPrompt = imageBase64
-          ? `Analyze the math problem in the image. Return ONLY a single valid JSON object â€” no markdown, no explanation, no extra text.
-Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
-
-TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
-VIZ_OBJECT rules by type:
-- quadratic: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
-- linear: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"xRange":[min,max],"yRange":[min,max]}
-- system: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"},{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"intersection":{"x":NUMBER,"y":NUMBER},"xRange":[min,max],"yRange":[min,max]}
-- geometry (squares/circles/parabola tiles): {"shapes":[{"t":"rect","x":NUMBER,"y":NUMBER,"w":NUMBER,"h":NUMBER},{"t":"circle","cx":NUMBER,"cy":NUMBER,"r":NUMBER}]}
-- trigonometry: {"fn":"sin|cos|tan","amplitude":NUMBER,"period":NUMBER,"phase":NUMBER,"xRange":[min,max],"yRange":[min,max]}
-- calculus: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"from":NUMBER,"to":NUMBER,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
-- other: {}
-
-IMPORTANT: For geometry problems involving squares with parabola-petal shapes (like a 4dm tile with 4 parabola petals), use type "geometry" with a rect shape for the square plus a note shape.
-Output ONLY the JSON object, nothing else.`
-          : `Given this math problem: "${question}"
-Return ONLY a single valid JSON object â€” no markdown, no explanation, no extra text.
+          ? `Analyze the math problem in the image. Return ONLY a single valid JSON object – no markdown, no explanation, no extra text.
 Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
 
 TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
@@ -851,6 +770,24 @@ VIZ_OBJECT rules by type:
 - trigonometry: {"fn":"sin|cos|tan","amplitude":NUMBER,"period":NUMBER,"phase":NUMBER,"xRange":[min,max],"yRange":[min,max]}
 - calculus: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"from":NUMBER,"to":NUMBER,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
 - other: {}
+
+IMPORTANT: For geometry problems about tiles/flower petals/parabola tiles (gạch hoa, viên gạch, cánh hoa, parabol), use type "geometry" with title containing the word "gạch" or "hoa" so the correct petal visualization is triggered.
+Output ONLY the JSON object, nothing else.`
+          : `Given this math problem: "${question}"
+Return ONLY a single valid JSON object – no markdown, no explanation, no extra text.
+Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
+
+TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
+VIZ_OBJECT rules by type:
+- quadratic: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
+- linear: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"xRange":[min,max],"yRange":[min,max]}
+- system: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"},{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"intersection":{"x":NUMBER,"y":NUMBER},"xRange":[min,max],"yRange":[min,max]}
+- geometry: {"shapes":[{"t":"rect","x":NUMBER,"y":NUMBER,"w":NUMBER,"h":NUMBER},{"t":"circle","cx":NUMBER,"cy":NUMBER,"r":NUMBER}]}
+- trigonometry: {"fn":"sin|cos|tan","amplitude":NUMBER,"period":NUMBER,"phase":NUMBER,"xRange":[min,max],"yRange":[min,max]}
+- calculus: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"from":NUMBER,"to":NUMBER,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
+- other: {}
+
+IMPORTANT: For geometry problems about tiles/flower petals/parabola tiles (gạch hoa, viên gạch, cánh hoa, parabol), use type "geometry" with title containing "hoa" or "gạch".
 Output ONLY the JSON object, nothing else.`;
 
         const vizData = await chatFn(sessionId, vizPrompt, {
@@ -861,7 +798,6 @@ Output ONLY the JSON object, nothing else.`;
 
         let vizParsed = { type: "other", title: question || "Math Problem", viz: {} };
         try {
-          // Aggressively extract JSON: strip markdown fences, find first { ... }
           const cleaned = vizReply
             .replace(/```json\s*/gi, "")
             .replace(/```\s*/g, "")
@@ -876,21 +812,20 @@ Output ONLY the JSON object, nothing else.`;
             };
           }
         } catch {
-          // JSON parse failed â€” stick with generic viz
+          // JSON parse failed — stick with generic viz
         }
 
-        // Merge: real solution steps + visualization data
-        const problemTitle = vizParsed.title || (question ? question.substring(0, 60) : "BÃ i toÃ¡n");
+        const problemTitle = vizParsed.title || (question ? question.substring(0, 60) : "Bài toán");
         const steps = rawSteps.length > 0
           ? [problemTitle, ...rawSteps]
-          : [problemTitle, "BÆ°á»›c 1: PhÃ¢n tÃ­ch Ä‘á» bÃ i", "BÆ°á»›c 2: Ãp dá»¥ng cÃ´ng thá»©c", "âœ“ Xem lá»i giáº£i Ä‘áº§y Ä‘á»§"];
+          : [problemTitle, "Bước 1: Phân tích đề bài", "Bước 2: Áp dụng công thức", "✓ Xem lời giải đầy đủ"];
 
         setVideoData({ ...vizParsed, steps });
       } catch {
         setVideoData({
           type: "other",
           title: question || "Math Problem",
-          steps: ["BÆ°á»›c 1: Äá»c vÃ  hiá»ƒu Ä‘á» bÃ i", "BÆ°á»›c 2: XÃ¡c Ä‘á»‹nh phÆ°Æ¡ng phÃ¡p", "BÆ°á»›c 3: TÃ­nh toÃ¡n", "âœ“ Kiá»ƒm tra káº¿t quáº£"],
+          steps: ["Bước 1: Đọc và hiểu đề bài", "Bước 2: Xác định phương pháp", "Bước 3: Tính toán", "✓ Kiểm tra kết quả"],
           viz: {}
         });
       } finally {
@@ -902,7 +837,7 @@ Output ONLY the JSON object, nothing else.`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Canvas animation â€” viz-only (no right panel on canvas; solution rendered as HTML)
+  // Canvas animation
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || loadingSteps || !videoData) return;
@@ -946,8 +881,8 @@ Output ONLY the JSON object, nothing else.`;
       {/* Header */}
       <div className={styles.inlineVideoHeader}>
         <div className={styles.videoModalTitle}>
-          <span>ðŸŽ¬</span>
-          <span>DuoMath Video Giáº£i</span>
+          <span>🎬</span>
+          <span>DuoMath Video Giải</span>
           <span className={styles.videoBadge}>AI Generated</span>
           {videoData?.type && videoData.type !== "other" && (
             <span className={styles.videoTypeBadge}>{videoData.type.toUpperCase()}</span>
@@ -957,23 +892,23 @@ Output ONLY the JSON object, nothing else.`;
 
       {/* Body: canvas (left) + HTML KaTeX solution panel (right) */}
       <div className={styles.inlineVideoBody}>
-        {/* LEFT: visualization canvas only */}
+        {/* LEFT: visualization canvas */}
         <div className={styles.inlineVizPanel}>
           {loadingSteps ? (
             <div className={styles.videoLoadingOverlay}>
               <div className={styles.videoLoadingSpinner} />
-              <p className={styles.videoLoadingText}>AI Ä‘ang phÃ¢n tÃ­ch...</p>
+              <p className={styles.videoLoadingText}>AI đang phân tích...</p>
             </div>
           ) : (
             <canvas ref={canvasRef} className={styles.inlineCanvas} />
           )}
         </div>
 
-        {/* RIGHT: HTML solution panel â€” KaTeX renders LaTeX properly */}
+        {/* RIGHT: HTML solution panel — KaTeX renders LaTeX properly */}
         <div className={styles.inlineSolutionPanel}>
-          <div className={styles.solutionLabel}>â–¶ SOLUTION</div>
+          <div className={styles.solutionLabel}>▶ SOLUTION</div>
           {loadingSteps ? (
-            <p className={styles.solutionLoading}>Äang táº£i lá»i giáº£i...</p>
+            <p className={styles.solutionLoading}>Đang tải lời giải...</p>
           ) : (
             <div className={styles.solutionSteps}>
               {(videoData?.steps || []).map((step, i) => {
@@ -981,7 +916,7 @@ Output ONLY the JSON object, nothing else.`;
                 const stepThreshold = (i / totalSteps) * 82;
                 const isVisible = progress >= stepThreshold;
                 if (!isVisible) return null;
-                const isAnswer = step.startsWith("âœ“") || step.toLowerCase().includes("Ä‘Ã¡p Ã¡n");
+                const isAnswer = step.startsWith("✓") || step.toLowerCase().includes("đáp án");
                 const isTitle = i === 0;
                 return (
                   <div
@@ -1026,16 +961,16 @@ Output ONLY the JSON object, nothing else.`;
       <div className={styles.videoControls}>
         <div className={styles.videoControlsLeft}>
           <button className={styles.videoCtrlBtn} onClick={() => setIsPlaying(p => !p)} disabled={loadingSteps}>
-            {isPlaying ? "â¸" : "â–¶"}
+            {isPlaying ? "⏸" : "▶"}
           </button>
           <button className={styles.videoCtrlBtn} onClick={() => { frameRef.current = 0; setProgress(0); setIsPlaying(true); }} disabled={loadingSteps}>
-            ðŸ”„
+            🔄
           </button>
           <span className={styles.videoDuration}>{Math.floor((progress / 100) * totalSec)}s / {totalSec}s</span>
         </div>
         {question && (
           <span className={styles.videoProblemText}>
-            ðŸ“ {question.length > 55 ? question.substring(0, 55) + "â€¦" : question}
+            📋 {question.length > 55 ? question.substring(0, 55) + "…" : question}
           </span>
         )}
       </div>
@@ -1044,7 +979,7 @@ Output ONLY the JSON object, nothing else.`;
 }
 
 
-// â”€â”€ Tools Dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Tools Dropdown ────────────────────────────────────────────────────────
 function ToolsDropdown({ onSelect, disabled }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -1063,15 +998,15 @@ function ToolsDropdown({ onSelect, disabled }) {
         className={styles.toolsBtn}
         onClick={() => !disabled && setOpen(o => !o)}
         disabled={disabled}
-        title="CÃ´ng cá»¥ AI"
+        title="Công cụ AI"
       >
-        <span>âš™ï¸</span>
+        <span>⚙️</span>
         <span>Tools</span>
-        <span className={`${styles.toolsChevron} ${open ? styles.toolsChevronOpen : ""}`}>â–¾</span>
+        <span className={`${styles.toolsChevron} ${open ? styles.toolsChevronOpen : ""}`}>▾</span>
       </button>
       {open && (
         <div className={styles.toolsMenu}>
-          <div className={styles.toolsMenuHeader}>Chá»n cÃ´ng cá»¥ AI</div>
+          <div className={styles.toolsMenuHeader}>Chọn công cụ AI</div>
           {TOOLS.map(t => (
             <button
               key={t.id}
@@ -1127,7 +1062,7 @@ export default function DuoMCBPage() {
   }
 
   function pushToHistory(firstMsg) {
-    const title = firstMsg.substring(0, 44) + (firstMsg.length > 44 ? "â€¦" : "");
+    const title = firstMsg.substring(0, 44) + (firstMsg.length > 44 ? "…" : "");
     const entry = { id: Date.now(), title, date: new Date().toLocaleDateString("vi-VN") };
     const updated = [entry, ...savedHistory].slice(0, 20);
     setSavedHistory(updated);
@@ -1137,11 +1072,11 @@ export default function DuoMCBPage() {
   function saveConversation() {
     if (messages.length === 0) return;
     const lines = messages.map(m => {
-      const role = m.role === "user" ? "[Báº¡n]" : "[DuoMCB]";
-      const content = m.type === "video" ? `[ðŸŽ¬ Video Giáº£i: ${m.question || ""}]` : (m.content || "");
+      const role = m.role === "user" ? "[Bạn]" : "[DuoMCB]";
+      const content = m.type === "video" ? `[🎬 Video Giải: ${m.question || ""}]` : (m.content || "");
       return `${role}: ${content}`;
     });
-    const text = `DuoMCB â€” Cuá»™c trÃ² chuyá»‡n\n${"â”€".repeat(40)}\n${lines.join("\n\n")}\n${"â”€".repeat(40)}\nXuáº¥t lÃºc: ${new Date().toLocaleString("vi-VN")}`;
+    const text = `DuoMCB – Cuộc trò chuyện\n${"─".repeat(40)}\n${lines.join("\n\n")}\n${"─".repeat(40)}\nXuất lúc: ${new Date().toLocaleString("vi-VN")}`;
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1168,11 +1103,11 @@ export default function DuoMCBPage() {
       const sid = await ensureSession();
       const videoMsg = {
         id: Date.now(), role: "assistant", type: "video",
-        question: input.trim() || "BÃ i toÃ¡n tá»« áº£nh",
+        question: input.trim() || "Bài toán từ ảnh",
         imageBase64: imageBase64,
         sessionId: sid,
       };
-      if (messages.length === 0) pushToHistory("BÃ i toÃ¡n tá»« áº£nh");
+      if (messages.length === 0) pushToHistory("Bài toán từ ảnh");
       setMessages(prev => [...prev, videoMsg]);
       setImagePreview(null); setImageBase64(null);
       return;
@@ -1190,7 +1125,7 @@ export default function DuoMCBPage() {
       if (data.error) throw new Error();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply || "", id: Date.now() + 1 }]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "âš ï¸ KhÃ´ng thá»ƒ xá»­ lÃ½ áº£nh. Vui lÃ²ng thá»­ láº¡i.", id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Không thể xử lý ảnh. Vui lòng thử lại.", id: Date.now() + 1 }]);
     } finally {
       setLoading(false); setImagePreview(null); setImageBase64(null);
     }
@@ -1221,7 +1156,7 @@ export default function DuoMCBPage() {
       if (data.error) throw new Error();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply, id: Date.now() + 1 }]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "âš ï¸ KhÃ´ng thá»ƒ káº¿t ná»‘i. Vui lÃ²ng thá»­ láº¡i.", id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Không thể kết nối. Vui lòng thử lại.", id: Date.now() + 1 }]);
     } finally {
       setLoading(false);
     }
@@ -1241,27 +1176,27 @@ export default function DuoMCBPage() {
 
   return (
     <div className={styles.root}>
-      {/* â”€â”€ IMAGE MODAL â”€â”€ */}
+      {/* ── IMAGE MODAL ── */}
       {showImageModal && (
         <div className={styles.modalOverlay} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>
           <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <span>ðŸ–¼ï¸ áº¢nh Ä‘Ã£ táº£i lÃªn</span>
-              <button className={styles.modalClose} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>âœ•</button>
+              <span>🖼️ Ảnh đã tải lên</span>
+              <button className={styles.modalClose} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>✕</button>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imagePreview} alt="Preview" className={styles.modalPreview} />
-            <p className={styles.modalQuestion}>Báº¡n muá»‘n DuoMCB lÃ m gÃ¬ vá»›i bÃ i toÃ¡n nÃ y?</p>
+            <p className={styles.modalQuestion}>Bạn muốn DuoMCB làm gì với bài toán này?</p>
             <div className={styles.modalActions}>
-              <button className={styles.hintBtn} onClick={() => sendImageMessage("hint")}>ðŸ’¡ Gá»£i Ã½</button>
-              <button className={styles.answerBtn} onClick={() => sendImageMessage("answer")}>ðŸ“– Giáº£i Ä‘áº§y Ä‘á»§</button>
-              <button className={styles.videoModalBtn} onClick={() => sendImageMessage("video")}>ðŸŽ¬ Video Giáº£i</button>
+              <button className={styles.hintBtn} onClick={() => sendImageMessage("hint")}>💡 Gợi ý</button>
+              <button className={styles.answerBtn} onClick={() => sendImageMessage("answer")}>📖 Giải đầy đủ</button>
+              <button className={styles.videoModalBtn} onClick={() => sendImageMessage("video")}>🎬 Video Giải</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* â”€â”€ SIDEBAR â”€â”€ */}
+      {/* ── SIDEBAR ── */}
       <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
         <div className={styles.sidebarTop}>
           <div className={styles.logo}>
@@ -1269,21 +1204,21 @@ export default function DuoMCBPage() {
             {sidebarOpen && <span className={styles.logoText}>DuoMCB</span>}
           </div>
           <button className={styles.toggleBtn} onClick={() => setSidebarOpen(!sidebarOpen)}>
-            {sidebarOpen ? "â—€" : "â–¶"}
+            {sidebarOpen ? "◀" : "▶"}
           </button>
         </div>
         {sidebarOpen && (
           <>
             <button className={styles.newChatBtn} onClick={newChat}>
-              <span>âœï¸</span> New Chat
+              <span>✏️</span> New Chat
             </button>
             <div className={styles.historySection}>
               <p className={styles.historyLabel}>Recent</p>
               {savedHistory.length === 0 ? (
-                <p style={{ fontSize: "12px", color: "#4b5563", padding: "4px 10px" }}>ChÆ°a cÃ³ cuá»™c trÃ² chuyá»‡n</p>
+                <p style={{ fontSize: "12px", color: "#4b5563", padding: "4px 10px" }}>Chưa có cuộc trò chuyện</p>
               ) : savedHistory.map(h => (
                 <button key={h.id} className={styles.historyItem} onClick={newChat}>
-                  <span className={styles.historyIcon}>ðŸ’¬</span>
+                  <span className={styles.historyIcon}>💬</span>
                   <span className={styles.historyTitle}>{h.title}</span>
                 </button>
               ))}
@@ -1298,15 +1233,15 @@ export default function DuoMCBPage() {
         )}
       </aside>
 
-      {/* â”€â”€ MAIN â”€â”€ */}
+      {/* ── MAIN ── */}
       <main className={styles.main}>
         <header className={styles.header}>
           <span className={styles.headerTitle}>DuoMCB</span>
           <span className={styles.headerSub}>Bilingual AI Tutor</span>
           <div className={styles.headerActions}>
             {messages.length > 0 && (
-              <button className={styles.saveBtn} onClick={saveConversation} title="LÆ°u cuá»™c trÃ² chuyá»‡n">
-                ðŸ’¾ LÆ°u
+              <button className={styles.saveBtn} onClick={saveConversation} title="Lưu cuộc trò chuyện">
+                💾 Lưu
               </button>
             )}
             <Link href="/">Go back</Link>
@@ -1331,7 +1266,6 @@ export default function DuoMCBPage() {
           ) : (
             <div className={styles.messages}>
               {messages.map(m => {
-                // Inline video player rendered directly in the chat thread
                 if (m.type === "video") {
                   return (
                     <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`}>
@@ -1371,7 +1305,7 @@ export default function DuoMCBPage() {
                         } catch { return <code key={idx}>{token.content}</code>; }
                       })}
                     </div>
-                    {m.role === "user" && <div className={styles.userAvatar}>ðŸ‘¤</div>}
+                    {m.role === "user" && <div className={styles.userAvatar}>👤</div>}
                   </div>
                 );
               })}
@@ -1390,15 +1324,15 @@ export default function DuoMCBPage() {
           )}
         </div>
 
-        {/* â”€â”€ Input bar â”€â”€ */}
+        {/* ── Input bar ── */}
         <div className={styles.inputBar}>
           <div className={styles.inputWrapper}>
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageSelect} />
-            <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Táº£i áº£nh lÃªn" disabled={loading}>+</button>
+            <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Tải ảnh lên" disabled={loading}>+</button>
             <textarea
               ref={inputRef}
               className={styles.input}
-              placeholder="Há»i DuoMCB... hoáº·c táº£i áº£nh Ä‘á» bÃ i lÃªn"
+              placeholder="Hỏi DuoMCB... hoặc tải ảnh đề bài lên"
               value={input}
               rows={1}
               onChange={e => setInput(e.target.value)}
@@ -1409,9 +1343,9 @@ export default function DuoMCBPage() {
               className={`${styles.sendBtn} ${input.trim() && !loading ? styles.sendActive : ""}`}
               onClick={() => sendMessage(null, "hint")}
               disabled={!input.trim() || loading}
-            >âž¤</button>
+            >➤</button>
           </div>
-          <p className={styles.disclaimer}>DuoMCB cÃ³ thá»ƒ máº¯c lá»—i. HÃ£y kiá»ƒm tra láº¡i cÃ¡c Ä‘Ã¡p Ã¡n quan trá»ng.</p>
+          <p className={styles.disclaimer}>DuoMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
         </div>
       </main>
     </div>
