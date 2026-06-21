@@ -8,19 +8,19 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 
 const SUGGESTED = [
-  { icon: "📐", text: "Solve x² - 5x + 6 = 0 step by step" },
-  { icon: "📊", text: "Explain mean, median and standard deviation" },
-  { icon: "📝", text: "Give me bilingual exercises on trigonometry" },
-  { icon: "🧪", text: "What is Newton's second law of motion?" },
+  { icon: "ðŸ“", text: "Solve xÂ² - 5x + 6 = 0 step by step" },
+  { icon: "ðŸ“Š", text: "Explain mean, median and standard deviation" },
+  { icon: "ðŸ“", text: "Give me bilingual exercises on trigonometry" },
+  { icon: "ðŸ§ª", text: "What is Newton's second law of motion?" },
 ];
 
 const TOOLS = [
-  { id: "hint",     icon: "💡", label: "Gợi Ý Socratic",     desc: "Hướng dẫn từng bước nhỏ" },
-  { id: "solution", icon: "📖", label: "Giải Đầy Đủ",        desc: "Lời giải chi tiết hoàn chỉnh" },
-  { id: "video",    icon: "🎬", label: "Tạo Video Giải",      desc: "Video hoạt hình giải bài" },
+  { id: "hint",     icon: "ðŸ’¡", label: "Gá»£i Ã Socratic",     desc: "HÆ°á»›ng dáº«n tá»«ng bÆ°á»›c nhá»" },
+  { id: "solution", icon: "ðŸ“–", label: "Giáº£i Äáº§y Äá»§",        desc: "Lá»i giáº£i chi tiáº¿t hoÃ n chá»‰nh" },
+  { id: "video",    icon: "ðŸŽ¬", label: "Táº¡o Video Giáº£i",      desc: "Video hoáº¡t hÃ¬nh giáº£i bÃ i" },
 ];
 
-// ── LaTeX & Markdown Parser Helper Functions ────────────────────────────────
+// â”€â”€ LaTeX & Markdown Parser Helper Functions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function parseMathAndText(text) {
   if (!text) return [];
   const tokens = [];
@@ -142,7 +142,86 @@ function renderTextWithMarkdown(text, key, styles) {
   );
 }
 
-// ── Math Visualization Helpers (pure canvas drawing) ─────────────────────
+// ── Label Collision Avoidance System ──
+let labelBoxes = [];
+
+function resetLabelBoxes() {
+  labelBoxes = [];
+}
+
+function registerAvoidanceBox(bx, by, bw, bh) {
+  labelBoxes.push({ x: bx, y: by, w: bw, h: bh });
+}
+
+function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sans-serif") {
+  ctx.save();
+  ctx.font = font;
+  const metrics = ctx.measureText(text);
+  const w = metrics.width + 10;
+  const h = 15; // standard approximate line height
+  
+  const candidates = [
+    { ox: 10, oy: -8, align: "left", baseline: "middle" },
+    { ox: -10, oy: -8, align: "right", baseline: "middle" },
+    { ox: 0, oy: -14, align: "center", baseline: "bottom" },
+    { ox: 0, oy: 14, align: "center", baseline: "top" },
+    { ox: 10, oy: 8, align: "left", baseline: "middle" },
+    { ox: -10, oy: 8, align: "right", baseline: "middle" },
+  ];
+  
+  let best = candidates[0];
+  let foundSafe = false;
+  
+  for (const c of candidates) {
+    const tx = px + c.ox;
+    const ty = py + c.oy;
+    
+    let bx = tx;
+    if (c.align === "center") bx = tx - w / 2;
+    else if (c.align === "right") bx = tx - w;
+    
+    let by = ty;
+    if (c.baseline === "bottom") by = ty - h;
+    else if (c.baseline === "top") by = ty;
+    else by = ty - h / 2;
+    
+    let overlap = false;
+    for (const box of labelBoxes) {
+      if (bx < box.x + box.w && bx + w > box.x && by < box.y + box.h && by + h > box.y) {
+        overlap = true;
+        break;
+      }
+    }
+    
+    if (!overlap) {
+      best = { tx, ty, align: c.align, baseline: c.baseline, bx, by };
+      foundSafe = true;
+      break;
+    }
+  }
+  
+  if (!foundSafe) {
+    const tx = px + 10;
+    const ty = py - 8 + labelBoxes.length * 4;
+    best = { tx, ty, align: "left", baseline: "middle", bx: tx, by: ty - h/2 };
+  }
+  
+  labelBoxes.push({ x: best.bx, y: best.by, w, h });
+  
+  ctx.fillStyle = "rgba(10, 10, 15, 0.78)";
+  ctx.beginPath();
+  ctx.rect(best.bx - 2, best.by - 2, w + 4, h + 4);
+  ctx.fill();
+
+  ctx.fillStyle = color;
+  ctx.textAlign = best.align;
+  ctx.textBaseline = best.baseline;
+  ctx.fillText(text, best.tx, best.ty);
+  ctx.restore();
+}
+
+// ── Math Visualization Helpers (pure canvas drawing) ──────────────────────
+
 
 function mkToCanvas(xRange, yRange, pad, plotW, plotH) {
   return {
@@ -219,6 +298,9 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
   const plotW = panelW - pad.left - pad.right;
   const plotH = panelH - pad.top - pad.bottom;
 
+  // Reset collision avoidance system at the start of drawing
+  resetLabelBoxes();
+
   ctx.save();
 
   if (type === "quadratic" || type === "calculus") {
@@ -228,13 +310,16 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
     const axesT = Math.min(1, t / 0.25);
     drawAxes(ctx, xRange, yRange, pad, plotW, plotH, axesT);
 
+    const { a = 1, b = 0, c = 0 } = viz;
+
     // Draw parabola / curve
     const curveT = Math.min(1, Math.max(0, (t - 0.2) / 0.5));
     if (curveT > 0) {
-      const { a = 1, b = 0, c = 0 } = viz;
       const totalPts = 120;
       const drawPts = Math.floor(totalPts * curveT);
+      // ── Universal plot-area clip: curve never bleeds outside the axes box ──
       ctx.save();
+      ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
       ctx.strokeStyle = "#00d8fe"; ctx.lineWidth = 2.5;
       ctx.shadowColor = "#00d8fe"; ctx.shadowBlur = 10;
       ctx.beginPath();
@@ -242,7 +327,6 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       for (let i = 0; i <= drawPts; i++) {
         const mx = xRange[0] + (i / totalPts) * (xRange[1] - xRange[0]);
         const my = a * mx * mx + b * mx + c;
-        if (my < yRange[0] - 2 || my > yRange[1] + 2) { ctx.stroke(); ctx.beginPath(); started = false; continue; }
         if (!started) { ctx.moveTo(cx(mx), cy(my)); started = true; } else ctx.lineTo(cx(mx), cy(my));
       }
       ctx.stroke();
@@ -265,27 +349,28 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         ctx.beginPath(); ctx.moveTo(cx(from), cy(0)); ctx.lineTo(cx(from), cy(a * from * from + b * from + c)); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(cx(to), cy(0)); ctx.lineTo(cx(to), cy(a * to * to + b * to + c)); ctx.stroke();
         ctx.setLineDash([]);
-        if (viz.area != null) {
-          ctx.font = "bold 12px 'Sora',sans-serif"; ctx.fillStyle = "#c4b5fd"; ctx.textAlign = "center";
-          ctx.fillText(`S ≈ ${viz.area}`, cx((from + to) / 2), cy(0) - 10);
-        }
         ctx.restore();
+
+        if (viz.area != null) {
+          drawAvoidanceText(ctx, `S ≈ ${viz.area}`, cx((from + to) / 2), cy(0), "#c4b5fd", "bold 12px 'Sora',sans-serif");
+        }
       }
     }
 
     // Roots
     const rootT = Math.min(1, Math.max(0, (t - 0.72) / 0.18));
     if (rootT > 0 && viz.roots && viz.roots.length) {
-      ctx.save(); ctx.globalAlpha = rootT;
       for (const root of viz.roots) {
         if (root < xRange[0] || root > xRange[1]) continue;
+        ctx.save(); ctx.globalAlpha = rootT;
         ctx.fillStyle = "#f59e0b"; ctx.shadowColor = "#f59e0b"; ctx.shadowBlur = 12;
         ctx.beginPath(); ctx.arc(cx(root), cy(0), 5.5, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0; ctx.font = "bold 12px 'Sora',sans-serif"; ctx.fillStyle = "#fbbf24"; ctx.textAlign = "center";
+        ctx.restore();
+        
         const fmtRoot = Number.isInteger(root) ? root : root.toFixed(2);
-        ctx.fillText(`x=${fmtRoot}`, cx(root), cy(0) - 14);
+        registerAvoidanceBox(cx(root) - 6, cy(0) - 6, 12, 12);
+        drawAvoidanceText(ctx, `x=${fmtRoot}`, cx(root), cy(0), "#fbbf24", "bold 12px 'Sora',sans-serif");
       }
-      ctx.restore();
     }
 
     // Vertex
@@ -295,11 +380,12 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       ctx.save(); ctx.globalAlpha = vtxT;
       ctx.fillStyle = "#a78bfa"; ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = 12;
       ctx.beginPath(); ctx.arc(cx(vx), cy(vy), 5.5, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.font = "bold 11px 'Sora',sans-serif"; ctx.fillStyle = "#c4b5fd"; ctx.textAlign = "center";
+      ctx.restore();
+
       const fvx = Number.isInteger(vx) ? vx : vx.toFixed(2);
       const fvy = Number.isInteger(vy) ? vy : vy.toFixed(2);
-      ctx.fillText(`(${fvx},${fvy})`, cx(vx), cy(vy) + 17);
-      ctx.restore();
+      registerAvoidanceBox(cx(vx) - 6, cy(vy) - 6, 12, 12);
+      drawAvoidanceText(ctx, `(${fvx},${fvy})`, cx(vx), cy(vy), "#c4b5fd", "bold 11px 'Sora',sans-serif");
     }
 
   } else if (type === "linear" || type === "system") {
@@ -310,6 +396,10 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
 
     const lineColors = ["#00d8fe", "#f59e0b", "#a78bfa", "#4ade80"];
     const lines = viz.lines || [];
+
+    // â”€â”€ Clip all line strokes to plot area â€” no lines bleed outside axes â”€â”€
+    ctx.save();
+    ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
     lines.forEach((line, idx) => {
       const lT = Math.min(1, Math.max(0, (t - 0.2 - idx * 0.18) / 0.45));
       if (lT <= 0) return;
@@ -321,19 +411,22 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       for (let i = 0; i <= drawPts; i++) {
         const mx = xRange[0] + (i / totalPts) * (xRange[1] - xRange[0]);
         const my = line.m * mx + line.b;
-        if (my < yRange[0] - 1 || my > yRange[1] + 1) { ctx.stroke(); ctx.beginPath(); s2 = false; continue; }
         if (!s2) { ctx.moveTo(cx(mx), cy(my)); s2 = true; } else ctx.lineTo(cx(mx), cy(my));
       }
-      ctx.stroke();
-      if (line.label && lT > 0.75) {
-        const midMx = (xRange[0] + xRange[1]) / 2;
-        const midMy = line.m * midMx + line.b;
-        if (midMy >= yRange[0] && midMy <= yRange[1]) {
-          ctx.shadowBlur = 0; ctx.font = "bold 12px 'Sora',sans-serif"; ctx.fillStyle = color; ctx.textAlign = "left";
-          ctx.fillText(line.label, cx(midMx) + 8, cy(midMy) - 8);
-        }
+      ctx.stroke(); ctx.restore();
+    });
+    ctx.restore(); // end line clip
+
+    // Labels & intersection drawn outside clip so text can overflow axes
+    lines.forEach((line, idx) => {
+      const lT = Math.min(1, Math.max(0, (t - 0.2 - idx * 0.18) / 0.45));
+      if (lT <= 0.75 || !line.label) return;
+      const color = lineColors[idx % lineColors.length];
+      const midMx = (xRange[0] + xRange[1]) / 2;
+      const midMy = line.m * midMx + line.b;
+      if (midMy >= yRange[0] && midMy <= yRange[1]) {
+        drawAvoidanceText(ctx, line.label, cx(midMx), cy(midMy), color, "bold 11px 'Sora',sans-serif");
       }
-      ctx.restore();
     });
 
     if (viz.intersection && t > 0.78) {
@@ -342,11 +435,12 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       ctx.save(); ctx.globalAlpha = iT;
       ctx.fillStyle = "#4ade80"; ctx.shadowColor = "#4ade80"; ctx.shadowBlur = 14;
       ctx.beginPath(); ctx.arc(cx(ix), cy(iy), 7, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0; ctx.font = "bold 12px 'Sora',sans-serif"; ctx.fillStyle = "#4ade80"; ctx.textAlign = "left";
+      ctx.restore();
+
       const fix = Number.isInteger(ix) ? ix : ix.toFixed(2);
       const fiy = Number.isInteger(iy) ? iy : iy.toFixed(2);
-      ctx.fillText(`(${fix}, ${fiy})`, cx(ix) + 10, cy(iy) - 8);
-      ctx.restore();
+      registerAvoidanceBox(cx(ix) - 8, cy(iy) - 8, 16, 16);
+      drawAvoidanceText(ctx, `(${fix}, ${fiy})`, cx(ix), cy(iy), "#4ade80", "bold 12px 'Sora',sans-serif");
     }
 
   } else if (type === "trigonometry") {
@@ -380,7 +474,7 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       if (curveT > 0.7 && yRange[0] <= 0 && yRange[1] >= 0) {
         ctx.save(); ctx.globalAlpha = Math.min(1, (curveT - 0.7) / 0.3);
         ctx.font = "10px monospace"; ctx.fillStyle = "#6b7280"; ctx.textAlign = "center";
-        const piVals = [["π/2", Math.PI / 2], ["π", Math.PI], ["3π/2", 3 * Math.PI / 2], ["2π", 2 * Math.PI]];
+        const piVals = [["Ï€/2", Math.PI / 2], ["Ï€", Math.PI], ["3Ï€/2", 3 * Math.PI / 2], ["2Ï€", 2 * Math.PI]];
         for (const [lbl, val] of piVals) {
           if (val >= xRange[0] && val <= xRange[1]) ctx.fillText(lbl, cx(val), cy(0) + 13);
         }
@@ -402,95 +496,129 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
     const squareSide = rectShape ? Math.max(rectShape.w, rectShape.h) : 4;
 
     if (isPetalTile || (shapes.length === 0)) {
-      // Draw a decorative square-with-parabola-petals visualization
       const cx2 = panelW / 2; const cy2 = panelH / 2;
       const size = Math.min(panelW, panelH) * 0.55;
       const ht = Math.min(1, t / 0.25);
+      const half = size / 2;
+
       // Outer square
       ctx.save();
       ctx.globalAlpha = ht;
-      ctx.strokeStyle = "#6b7280"; ctx.lineWidth = 2;
-      ctx.strokeRect(cx2 - size / 2, cy2 - size / 2, size, size);
-      // Dimension label
-      ctx.font = "bold 12px 'Sora',sans-serif"; ctx.fillStyle = "#9ca3af"; ctx.textAlign = "center";
-      ctx.fillText(`${squareSide} dm`, cx2, cy2 + size / 2 + 18);
-      ctx.fillText(`${squareSide} dm`, cx2 + size / 2 + 20, cy2);
+      ctx.strokeStyle = "#4b5563"; ctx.lineWidth = 2;
+      ctx.strokeRect(cx2 - half, cy2 - half, size, size);
+
+      // Draw grid lines inside the square for the quadrants
+      ctx.strokeStyle = "rgba(75, 85, 99, 0.3)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(cx2 - half, cy2); ctx.lineTo(cx2 + half, cy2);
+      ctx.moveTo(cx2, cy2 - half); ctx.lineTo(cx2, cy2 + half);
+      ctx.stroke();
+      ctx.setLineDash([]);
       ctx.restore();
 
-      // Draw 4 parabola petals (black-shaded arcs)
+      // Dimension labels - register avoidance boxes for outer dimensions
+      registerAvoidanceBox(cx2 - half - 10, cy2 - half - 10, size + 20, size + 20); // main block area
+      drawAvoidanceText(ctx, `${squareSide} dm`, cx2, cy2 + half + 8, "#9ca3af", "bold 12px 'Sora',sans-serif");
+      drawAvoidanceText(ctx, `${squareSide} dm`, cx2 + half + 10, cy2, "#9ca3af", "bold 12px 'Sora',sans-serif");
+
+      // Draw the 4 closed-loop petals sequentially
+      const petalDirs = ["top-right", "bottom-right", "bottom-left", "top-left"];
       const petalColors = ["#00d8fe", "#6366f1", "#a78bfa", "#f59e0b"];
-      const petals = [
-        { dir: "top",    color: petalColors[0] },
-        { dir: "right",  color: petalColors[1] },
-        { dir: "bottom", color: petalColors[2] },
-        { dir: "left",   color: petalColors[3] },
-      ];
-      petals.forEach((petal, idx) => {
-        const petalT = Math.min(1, Math.max(0, (t - 0.2 - idx * 0.12) / 0.4));
+
+      petalDirs.forEach((dir, idx) => {
+        const petalT = Math.min(1, Math.max(0, (t - 0.22 - idx * 0.1) / 0.4));
         if (petalT <= 0) return;
-        ctx.save();
-        ctx.globalAlpha = petalT * 0.55;
-        ctx.fillStyle = petal.color;
-        ctx.strokeStyle = petal.color;
-        ctx.lineWidth = 2;
-        ctx.shadowColor = petal.color; ctx.shadowBlur = 10;
-        ctx.beginPath();
-        const half = size / 2;
-        const steps2 = 50;
-        // Each petal is a parabola arc from one corner to the adjacent corner, opening inward
-        if (petal.dir === "top") {
-          ctx.moveTo(cx2 - half, cy2 - half);
-          for (let i = 0; i <= steps2 * petalT; i++) {
-            const u = (i / steps2) * 2 - 1; // -1..1
-            const px = cx2 + u * half;
-            const py = cy2 - half + half * u * u; // parabola opens downward from top edge
-            ctx.lineTo(px, py);
+
+        const steps2 = 30;
+        const pts = [];
+        
+        // Define paths relative to center (0, 0)
+        if (dir === "top-right") {
+          for (let i = 0; i <= steps2; i++) {
+            const x = (i / steps2) * half;
+            const y = -half + (x * x) / half;
+            pts.push([x, y]);
           }
-        } else if (petal.dir === "right") {
-          ctx.moveTo(cx2 + half, cy2 - half);
-          for (let i = 0; i <= steps2 * petalT; i++) {
-            const u = (i / steps2) * 2 - 1;
-            const py = cy2 + u * half;
-            const px = cx2 + half - half * u * u;
-            ctx.lineTo(px, py);
+          for (let i = 0; i <= steps2; i++) {
+            const y = -(i / steps2) * half;
+            const x = half - (y * y) / half;
+            pts.push([x, y]);
           }
-        } else if (petal.dir === "bottom") {
-          ctx.moveTo(cx2 + half, cy2 + half);
-          for (let i = 0; i <= steps2 * petalT; i++) {
-            const u = (i / steps2) * 2 - 1;
-            const px = cx2 - u * half;
-            const py = cy2 + half - half * u * u;
-            ctx.lineTo(px, py);
+        } else if (dir === "bottom-right") {
+          for (let i = 0; i <= steps2; i++) {
+            const y = (i / steps2) * half;
+            const x = half - (y * y) / half;
+            pts.push([x, y]);
           }
-        } else {
-          ctx.moveTo(cx2 - half, cy2 + half);
-          for (let i = 0; i <= steps2 * petalT; i++) {
-            const u = (i / steps2) * 2 - 1;
-            const py = cy2 - u * half;
-            const px = cx2 - half + half * u * u;
-            ctx.lineTo(px, py);
+          for (let i = 0; i <= steps2; i++) {
+            const x = (i / steps2) * half;
+            const y = half - (x * x) / half;
+            pts.push([x, y]);
+          }
+        } else if (dir === "bottom-left") {
+          for (let i = 0; i <= steps2; i++) {
+            const x = -(i / steps2) * half;
+            const y = half - (x * x) / half;
+            pts.push([x, y]);
+          }
+          for (let i = 0; i <= steps2; i++) {
+            const y = (i / steps2) * half;
+            const x = -half + (y * y) / half;
+            pts.push([x, y]);
+          }
+        } else if (dir === "top-left") {
+          for (let i = 0; i <= steps2; i++) {
+            const y = -(i / steps2) * half;
+            const x = -half + (y * y) / half;
+            pts.push([x, y]);
+          }
+          for (let i = 0; i <= steps2; i++) {
+            const x = -(i / steps2) * half;
+            const y = -half + (x * x) / half;
+            pts.push([x, y]);
           }
         }
-        ctx.stroke();
-        ctx.globalAlpha = petalT * 0.18;
+
+        const drawCount = Math.floor(pts.length * petalT);
+        if (drawCount < 2) return;
+
+        ctx.save();
+        ctx.translate(cx2, cy2);
+
+        // Fill background first
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
         ctx.closePath();
+        ctx.globalAlpha = petalT * 0.18;
+        ctx.fillStyle = petalColors[idx];
         ctx.fill();
+
+        // Stroke outline progressively
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < drawCount && i < pts.length; i++) {
+          ctx.lineTo(pts[i][0], pts[i][1]);
+        }
+        ctx.globalAlpha = 0.9;
+        ctx.strokeStyle = petalColors[idx];
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = petalColors[idx];
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+
         ctx.restore();
       });
 
-      // Area cost labels
-      if (t > 0.75) {
-        const labelT = Math.min(1, (t - 0.75) / 0.2);
-        ctx.save(); ctx.globalAlpha = labelT;
-        ctx.font = "bold 11px 'Sora',sans-serif"; ctx.textAlign = "center";
-        ctx.fillStyle = "#00d8fe";
-        ctx.fillText("Cánh hoa (đen): 400k/m²", cx2, cy2 - size / 2 - 8);
-        ctx.fillStyle = "#9ca3af";
-        ctx.fillText("Phần trắng: 300k/m²", cx2, cy2 + size / 2 + 34);
-        ctx.restore();
+      // Cost labels
+      if (t > 0.78) {
+        drawAvoidanceText(ctx, "Cánh hoa: 400k/m²", cx2, cy2 - half - 16, "#00d8fe", "bold 11px 'Sora',sans-serif");
+        drawAvoidanceText(ctx, "Phần trống: 300k/m²", cx2, cy2 + half + 26, "#9ca3af", "bold 11px 'Sora',sans-serif");
       }
 
-      // "Visualization" label
+      // Visualization label
       if (t > 0.05) {
         ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.05) / 0.15) * 0.5;
         ctx.font = "10px 'Sora',sans-serif"; ctx.fillStyle = "#6366f1"; ctx.textAlign = "left";
@@ -516,6 +644,9 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
     const { cx, cy } = mkToCanvas(xRange, yRange, pad, plotW, plotH);
     const shapeColors = ["#00d8fe", "#f59e0b", "#a78bfa", "#4ade80", "#f87171"];
 
+    // ── Clip all shapes to the plot area ──
+    ctx.save();
+    ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
     shapes.forEach((s, idx) => {
       const sT = Math.min(1, Math.max(0, (t - 0.15 - idx * 0.12) / 0.45));
       if (sT <= 0) return;
@@ -527,16 +658,24 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         // Draw circle arc progressively
         const endAngle = Math.PI * 2 * sT;
         ctx.beginPath(); ctx.arc(cx(s.cx), cy(s.cy), Math.abs(cx(s.cx + s.r) - cx(s.cx)), 0, endAngle); ctx.stroke();
+        ctx.restore();
+
         if (sT > 0.8) {
-          ctx.shadowBlur = 0; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5; ctx.strokeStyle = color;
+          ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
           ctx.beginPath(); ctx.moveTo(cx(s.cx), cy(s.cy)); ctx.lineTo(cx(s.cx + s.r), cy(s.cy)); ctx.stroke();
-          ctx.setLineDash([]);
-          ctx.font = "bold 12px 'Sora',sans-serif"; ctx.fillStyle = color; ctx.textAlign = "left";
+          ctx.restore();
+
+          // Register dots so labels don't cover them
+          registerAvoidanceBox(cx(s.cx) - 4, cy(s.cy) - 4, 8, 8); // center
+          registerAvoidanceBox(cx(s.cx + s.r) - 4, cy(s.cy) - 4, 8, 8); // radius end
+          
           const fmtR = Number.isInteger(s.r) ? s.r : s.r.toFixed(2);
-          ctx.fillText(`r=${fmtR}`, cx(s.cx + s.r / 2) + 4, cy(s.cy) - 8);
+          drawAvoidanceText(ctx, `r=${fmtR}`, cx(s.cx + s.r / 2), cy(s.cy), color);
+
           // Center dot
-          ctx.fillStyle = color; ctx.shadowBlur = 0;
+          ctx.save(); ctx.fillStyle = color;
           ctx.beginPath(); ctx.arc(cx(s.cx), cy(s.cy), 3.5, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
         }
       } else if (s.t === "triangle" && s.pts && s.pts.length === 3) {
         const numSides = Math.floor(3 * sT);
@@ -544,24 +683,27 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         for (let i = 1; i <= numSides; i++) ctx.lineTo(cx(s.pts[i % 3][0]), cy(s.pts[i % 3][1]));
         if (sT >= 1) ctx.closePath();
         ctx.stroke();
+        ctx.restore();
+
         if (sT > 0.9) {
-          ctx.shadowBlur = 0; ctx.globalAlpha = sT * 0.18; ctx.fillStyle = color; ctx.fill();
-          ctx.globalAlpha = sT;
+          ctx.save(); ctx.globalAlpha = sT * 0.18; ctx.fillStyle = color;
+          ctx.beginPath(); ctx.moveTo(cx(s.pts[0][0]), cy(s.pts[0][1]));
+          ctx.lineTo(cx(s.pts[1][0]), cy(s.pts[1][1]));
+          ctx.lineTo(cx(s.pts[2][0]), cy(s.pts[2][1]));
+          ctx.closePath(); ctx.fill();
+          ctx.restore();
+
           const labels = s.labels || ["A", "B", "C"];
-          ctx.font = "bold 13px 'Sora',sans-serif"; ctx.fillStyle = color;
           for (let i = 0; i < 3; i++) {
             const [px, py] = s.pts[i];
-            const offX = px < (minX + maxX) / 2 ? -18 : 10;
-            const offY = py < (minY + maxY) / 2 ? 15 : -8;
-            ctx.textAlign = "left"; ctx.fillText(labels[i], cx(px) + offX, cy(py) + offY);
+            registerAvoidanceBox(cx(px) - 6, cy(py) - 6, 12, 12);
+            drawAvoidanceText(ctx, labels[i], cx(px), cy(py), color, "bold 13px 'Sora',sans-serif");
           }
           // Side lengths
           if (s.sides) {
-            ctx.font = "11px 'Sora',sans-serif"; ctx.fillStyle = "#9ca3af";
             for (let i = 0; i < Math.min(s.sides.length, 3); i++) {
               const p1 = s.pts[i], p2 = s.pts[(i + 1) % 3];
-              ctx.textAlign = "center";
-              ctx.fillText(s.sides[i], cx((p1[0] + p2[0]) / 2), cy((p1[1] + p2[1]) / 2) - 8);
+              drawAvoidanceText(ctx, s.sides[i], cx((p1[0] + p2[0]) / 2), cy((p1[1] + p2[1]) / 2), "#9ca3af", "11px 'Sora',sans-serif");
             }
           }
         }
@@ -569,28 +711,33 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
         const rw = Math.abs(cx(s.x + s.w) - cx(s.x));
         const rh = Math.abs(cy(s.y) - cy(s.y + s.h));
         const rx = cx(s.x); const ry = cy(s.y + s.h);
-        // Animate drawing by clipping width progressively
         ctx.beginPath(); ctx.rect(rx, ry, rw * sT, rh); ctx.stroke();
+        ctx.restore();
+
         if (sT > 0.85) {
-          ctx.shadowBlur = 0; ctx.globalAlpha = sT * 0.15; ctx.fillStyle = color;
+          ctx.save(); ctx.globalAlpha = sT * 0.15; ctx.fillStyle = color;
           ctx.fillRect(rx, ry, rw, rh);
-          ctx.globalAlpha = sT;
-          ctx.font = "11px 'Sora',sans-serif"; ctx.fillStyle = "#9ca3af"; ctx.textAlign = "center";
+          ctx.restore();
+
+          // Avoid drawing dimensions over rect boundaries
+          registerAvoidanceBox(rx - 4, ry - 4, rw + 8, rh + 8);
+          
           const fw = Number.isInteger(s.w) ? s.w : s.w.toFixed(1);
           const fh = Number.isInteger(s.h) ? s.h : s.h.toFixed(1);
-          ctx.fillText(fw, rx + rw / 2, ry + rh + 14);
-          ctx.fillText(fh, rx - 16, ry + rh / 2);
+          drawAvoidanceText(ctx, fw, rx + rw / 2, ry + rh, "#9ca3af", "11px 'Sora',sans-serif");
+          drawAvoidanceText(ctx, fh, rx, ry + rh / 2, "#9ca3af", "11px 'Sora',sans-serif");
         }
+      } else {
+        ctx.restore();
       }
-      ctx.restore();
     });
+    ctx.restore(); // end shapes clip
 
-    // Extra labels
+    // Extra labels drawn outside clip
     if (viz.labels && t > 0.7) {
-      ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.7) / 0.2);
-      ctx.font = "12px 'Sora',sans-serif"; ctx.fillStyle = "#9ca3af"; ctx.textAlign = "center";
-      for (const lbl of viz.labels) ctx.fillText(lbl.text, cx(lbl.x), cy(lbl.y));
-      ctx.restore();
+      for (const lbl of viz.labels) {
+        drawAvoidanceText(ctx, lbl.text, cx(lbl.x), cy(lbl.y), "#9ca3af", "12px 'Sora',sans-serif");
+      }
     }
 
   } else {
@@ -601,7 +748,7 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
   if (t > 0.05) {
     ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.05) / 0.15) * 0.5;
     ctx.font = "10px 'Sora',sans-serif"; ctx.fillStyle = "#6366f1"; ctx.textAlign = "left";
-    ctx.fillText("▶ VISUALIZATION", pad.left, 16);
+    ctx.fillText("â–¶ VISUALIZATION", pad.left, 16);
     ctx.restore();
   }
 
@@ -630,95 +777,20 @@ function drawGenericViz(ctx, data, panelW, panelH, t) {
   // Label
   ctx.save(); ctx.globalAlpha = Math.min(1, Math.max(0, (t - 0.4) / 0.2));
   ctx.font = "bold 13px 'Sora',sans-serif"; ctx.fillStyle = "#6b7280"; ctx.textAlign = "center";
-  ctx.fillText(data.title || "Giải bài toán", cx, cy + 60);
+  ctx.fillText(data?.title || "DuoMCB Visualizing...", cx, cy + 50);
   ctx.restore();
 }
 
-function drawStepsPanel(ctx, steps, startX, panelW, panelH, t) {
-  if (!steps || steps.length === 0) return;
-  const lineH = Math.min(34, (panelH - 40) / steps.length);
-  const startY = 28;
-
-  // Panel label
-  ctx.save(); ctx.globalAlpha = Math.min(1, t / 0.15) * 0.55;
-  ctx.font = "10px 'Sora',sans-serif"; ctx.fillStyle = "#6366f1"; ctx.textAlign = "left";
-  ctx.fillText("▶ SOLUTION", startX, 16);
-  ctx.restore();
-
-  steps.forEach((step, i) => {
-    const stepStart = i / steps.length;
-    const stepEnd = (i + 0.5) / steps.length;
-    const sT = Math.min(1, Math.max(0, (t - stepStart * 0.85) / ((stepEnd - stepStart) * 0.85 + 0.12)));
-    if (sT <= 0) return;
-
-    const y = startY + i * lineH + lineH * 0.6;
-    const isAnswer = step.startsWith("✓") || step.toLowerCase().includes("answer") || step.toLowerCase().includes("kết quả");
-    const isTitle = i === 0;
-    const color = isAnswer ? "#4ade80" : isTitle ? "#9ca3af" : "#e5e7eb";
-    const fontSize = isTitle ? 11 : isAnswer ? 13 : 12;
-
-    // Active step underline
-    if (sT < 1 && !isTitle) {
-      ctx.save(); ctx.globalAlpha = sT * 0.6;
-      ctx.fillStyle = "#6366f1";
-      ctx.fillRect(startX, y + 5, panelW * 0.9 * sT, 1.5);
-      ctx.restore();
-    }
-
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, sT * 2.5);
-
-    // Bullet dot for non-title steps
-    if (!isTitle) {
-      ctx.fillStyle = isAnswer ? "#4ade80" : "#6366f1";
-      ctx.shadowColor = isAnswer ? "#4ade80" : "#6366f1";
-      ctx.shadowBlur = isAnswer ? 8 : 4;
-      ctx.beginPath(); ctx.arc(startX + 5, y - 3, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.shadowBlur = 0;
-    }
-
-    ctx.font = `${isAnswer ? "bold " : ""}${fontSize}px 'Sora',sans-serif`;
-    ctx.fillStyle = color;
-    ctx.textAlign = "left";
-
-    // Typewriter reveal for current step
-    const textX = isTitle ? startX : startX + 14;
-    const maxW = panelW - (isTitle ? 4 : 18);
-    const chars = isTitle ? step.length : Math.floor(step.length * Math.min(1, sT * 1.8));
-    const displayText = step.substring(0, chars);
-
-    // Word wrap naively in canvas
-    wrapText(ctx, displayText, textX, y, maxW, fontSize + 4);
-    ctx.restore();
-  });
-}
-
-function wrapText(ctx, text, x, y, maxW, lineH) {
-  const words = text.split(" ");
-  let line = "";
-  let curY = y;
-  for (const word of words) {
-    const test = line ? line + " " + word : word;
-    if (ctx.measureText(test).width > maxW && line) {
-      ctx.fillText(line, x, curY);
-      line = word; curY += lineH;
-      if (curY > y + lineH * 2) { ctx.fillText(line + "…", x, curY); return; }
-    } else line = test;
-  }
-  if (line) ctx.fillText(line, x, curY);
-}
-
-// ── Video Player Modal ────────────────────────────────────────────────────
-function VideoModal({ question, imageBase64, sessionId, onClose }) {
+// â”€â”€ Inline Video Player (renders in chat message, not a modal overlay) â”€â”€â”€â”€
+function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [shared, setShared] = useState(false);
   const [loadingSteps, setLoadingSteps] = useState(true);
   const [videoData, setVideoData] = useState(null);
   const frameRef = useRef(0);
-  const totalFrames = 480; // ~16 seconds at 30fps
+  const totalFrames = 480;
 
   // Fetch structured visualization data from AI
   useEffect(() => {
@@ -727,13 +799,15 @@ function VideoModal({ question, imageBase64, sessionId, onClose }) {
       try {
         const { chat: chatFn } = await import("./duoServer");
 
-        // ── Stage 1: Get the solution steps (plain text) ─────────────────
+        // ──── Stage 1: Get the solution steps (plain text) ─────────────────
         const solutionPrompt = imageBase64
           ? `You are a math tutor. Analyze the math problem in the provided image and give a clear, step-by-step solution in Vietnamese or English (match the problem language). 
-Format your response as a numbered list of concise steps (max 6 steps, each under 80 characters). End with "✓ Đáp án: [final answer]".
+Always use LaTeX math notation (surrounded by $ for inline, e.g. $x^2 - 5x + 6 = 0$ or $\\frac{1}{4}$) for all equations, formulas, variables, and mathematical expressions.
+Format your response as a numbered list of concise steps (max 6 steps, each under 125 characters including LaTeX). End with "✓ Đáp án: [final answer]".
 ONLY output the solution steps. No preamble, no JSON, no code blocks.`
           : `You are a math tutor. Solve this math problem step-by-step: "${question}"
-Format your response as a numbered list of concise steps (max 6 steps, each under 80 characters). End with "✓ Đáp án: [final answer]".
+Always use LaTeX math notation (surrounded by $ for inline, e.g. $x^2 - 5x + 6 = 0$ or $\\frac{1}{4}$) for all equations, formulas, variables, and mathematical expressions.
+Format your response as a numbered list of concise steps (max 6 steps, each under 125 characters including LaTeX). End with "✓ Đáp án: [final answer]".
 ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
 
         const solutionData = await chatFn(sessionId, solutionPrompt, {
@@ -747,9 +821,9 @@ ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
           .filter(l => l.length > 2)
           .slice(0, 7);
 
-        // ── Stage 2: Get visualization JSON (no steps needed) ────────────
+        // â”€â”€ Stage 2: Get visualization JSON (no steps needed) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         const vizPrompt = imageBase64
-          ? `Analyze the math problem in the image. Return ONLY a single valid JSON object — no markdown, no explanation, no extra text.
+          ? `Analyze the math problem in the image. Return ONLY a single valid JSON object â€” no markdown, no explanation, no extra text.
 Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
 
 TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
@@ -765,7 +839,7 @@ VIZ_OBJECT rules by type:
 IMPORTANT: For geometry problems involving squares with parabola-petal shapes (like a 4dm tile with 4 parabola petals), use type "geometry" with a rect shape for the square plus a note shape.
 Output ONLY the JSON object, nothing else.`
           : `Given this math problem: "${question}"
-Return ONLY a single valid JSON object — no markdown, no explanation, no extra text.
+Return ONLY a single valid JSON object â€” no markdown, no explanation, no extra text.
 Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
 
 TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
@@ -802,21 +876,21 @@ Output ONLY the JSON object, nothing else.`;
             };
           }
         } catch {
-          // JSON parse failed — stick with generic viz
+          // JSON parse failed â€” stick with generic viz
         }
 
         // Merge: real solution steps + visualization data
-        const problemTitle = vizParsed.title || (question ? question.substring(0, 60) : "Bài toán");
+        const problemTitle = vizParsed.title || (question ? question.substring(0, 60) : "BÃ i toÃ¡n");
         const steps = rawSteps.length > 0
           ? [problemTitle, ...rawSteps]
-          : [problemTitle, "Bước 1: Phân tích đề bài", "Bước 2: Áp dụng công thức", "✓ Xem lời giải đầy đủ"];
+          : [problemTitle, "BÆ°á»›c 1: PhÃ¢n tÃ­ch Ä‘á» bÃ i", "BÆ°á»›c 2: Ãp dá»¥ng cÃ´ng thá»©c", "âœ“ Xem lá»i giáº£i Ä‘áº§y Ä‘á»§"];
 
         setVideoData({ ...vizParsed, steps });
       } catch {
         setVideoData({
           type: "other",
           title: question || "Math Problem",
-          steps: ["Bước 1: Đọc và hiểu đề bài", "Bước 2: Xác định phương pháp", "Bước 3: Tính toán", "✓ Kiểm tra kết quả"],
+          steps: ["BÆ°á»›c 1: Äá»c vÃ  hiá»ƒu Ä‘á» bÃ i", "BÆ°á»›c 2: XÃ¡c Ä‘á»‹nh phÆ°Æ¡ng phÃ¡p", "BÆ°á»›c 3: TÃ­nh toÃ¡n", "âœ“ Kiá»ƒm tra káº¿t quáº£"],
           viz: {}
         });
       } finally {
@@ -828,65 +902,27 @@ Output ONLY the JSON object, nothing else.`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Canvas animation — split panel: left = visualization, right = steps
+  // Canvas animation â€” viz-only (no right panel on canvas; solution rendered as HTML)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || loadingSteps || !videoData) return;
     const ctx = canvas.getContext("2d");
-    const W = 800; const H = 450;
+    const W = 400; const H = 380;
     canvas.width = W; canvas.height = H;
-    const vizW = Math.floor(W * 0.54); // left panel width
-    const divX = vizW + 12;
-    const stepsX = divX + 16;
-    const stepsPanelW = W - stepsX - 12;
 
     function drawFrame(frame) {
       const t = frame / totalFrames;
-
-      // Background
       ctx.fillStyle = "#0a0a0f";
       ctx.fillRect(0, 0, W, H);
-
-      // Subtle dot grid
       ctx.fillStyle = "rgba(99,102,241,0.06)";
-      for (let gx = 20; gx < W; gx += 40) {
+      for (let gx = 20; gx < W; gx += 40)
         for (let gy = 20; gy < H; gy += 40) {
           ctx.beginPath(); ctx.arc(gx, gy, 1, 0, Math.PI * 2); ctx.fill();
         }
-      }
-
-      // Panel divider (glowing vertical line)
-      const divAlpha = Math.min(1, t / 0.12);
-      ctx.save();
-      ctx.globalAlpha = divAlpha * 0.35;
-      const grad = ctx.createLinearGradient(divX, 0, divX, H);
-      grad.addColorStop(0, "transparent");
-      grad.addColorStop(0.3, "#6366f1");
-      grad.addColorStop(0.7, "#6366f1");
-      grad.addColorStop(1, "transparent");
-      ctx.strokeStyle = grad; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(divX, 0); ctx.lineTo(divX, H); ctx.stroke();
-      ctx.restore();
-
-      // ── Left: math visualization ──
-      ctx.save();
-      ctx.beginPath(); ctx.rect(0, 0, vizW, H); ctx.clip();
-      drawVisualizationPanel(ctx, videoData, vizW, H, t);
-      ctx.restore();
-
-      // ── Right: solution steps ──
-      ctx.save();
-      ctx.beginPath(); ctx.rect(stepsX, 0, stepsPanelW, H); ctx.clip();
-      ctx.translate(stepsX, 0);
-      drawStepsPanel(ctx, videoData.steps || [], 0, stepsPanelW, H, t);
-      ctx.restore();
-
-      // Watermark
-      ctx.save();
-      ctx.globalAlpha = 0.2;
-      ctx.font = "10px 'Sora',sans-serif";
-      ctx.fillStyle = "#00d8fe"; ctx.textAlign = "left";
-      ctx.fillText("DuoMath AI Video", 10, H - 8);
+      drawVisualizationPanel(ctx, videoData, W, H, t);
+      ctx.save(); ctx.globalAlpha = 0.15;
+      ctx.font = "8px 'Sora',sans-serif"; ctx.fillStyle = "#00d8fe"; ctx.textAlign = "left";
+      ctx.fillText("DuoMath AI", 8, H - 5);
       ctx.restore();
     }
 
@@ -903,74 +939,104 @@ Output ONLY the JSON object, nothing else.`;
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   }, [isPlaying, loadingSteps, videoData]);
 
-  function togglePlay() { setIsPlaying(p => !p); }
-  function handleShare() {
-    setShared(true);
-    setTimeout(() => setShared(false), 2000);
-    navigator.clipboard?.writeText(window.location.href).catch(() => {});
-  }
-
   const totalSec = Math.round(totalFrames / 30);
 
   return (
-    <div className={styles.modalOverlay} onClick={onClose}>
-      <div className={styles.videoModal} onClick={e => e.stopPropagation()}>
-        {/* Header */}
-        <div className={styles.videoModalHeader}>
-          <div className={styles.videoModalTitle}>
-            <span className={styles.videoModalIcon}>🎬</span>
-            <span>DuoMath Video Giải</span>
-            <span className={styles.videoBadge}>AI Generated</span>
-            {videoData && videoData.type !== "other" && (
-              <span className={styles.videoTypeBadge}>{videoData.type}</span>
-            )}
-          </div>
-          <button className={styles.modalClose} onClick={onClose}>✕</button>
+    <div className={styles.inlineVideoContainer}>
+      {/* Header */}
+      <div className={styles.inlineVideoHeader}>
+        <div className={styles.videoModalTitle}>
+          <span>ðŸŽ¬</span>
+          <span>DuoMath Video Giáº£i</span>
+          <span className={styles.videoBadge}>AI Generated</span>
+          {videoData?.type && videoData.type !== "other" && (
+            <span className={styles.videoTypeBadge}>{videoData.type.toUpperCase()}</span>
+          )}
         </div>
+      </div>
 
-        {/* Canvas player */}
-        <div className={styles.videoWrapper}>
+      {/* Body: canvas (left) + HTML KaTeX solution panel (right) */}
+      <div className={styles.inlineVideoBody}>
+        {/* LEFT: visualization canvas only */}
+        <div className={styles.inlineVizPanel}>
           {loadingSteps ? (
             <div className={styles.videoLoadingOverlay}>
               <div className={styles.videoLoadingSpinner} />
-              <p className={styles.videoLoadingText}>AI đang phân tích và tạo visualization...</p>
+              <p className={styles.videoLoadingText}>AI Ä‘ang phÃ¢n tÃ­ch...</p>
             </div>
           ) : (
-            <canvas ref={canvasRef} className={styles.videoCanvas} />
+            <canvas ref={canvasRef} className={styles.inlineCanvas} />
           )}
-          {/* Progress bar */}
-          <div className={styles.videoProgressBar}>
-            <div className={styles.videoProgressFill} style={{ width: `${progress}%` }} />
-          </div>
         </div>
 
-        {/* Controls */}
-        <div className={styles.videoControls}>
-          <div className={styles.videoControlsLeft}>
-            <button className={styles.videoCtrlBtn} onClick={togglePlay} title={isPlaying ? "Pause" : "Play"} disabled={loadingSteps}>
-              {isPlaying ? "⏸" : "▶"}
-            </button>
-            <button className={styles.videoCtrlBtn} onClick={() => { frameRef.current = 0; setProgress(0); }} title="Replay" disabled={loadingSteps}>
-              🔄
-            </button>
-            <span className={styles.videoDuration}>
-              {Math.floor((progress / 100) * totalSec)}s / {totalSec}s
-            </span>
-          </div>
-          <button
-            className={`${styles.shareBtn} ${shared ? styles.shareBtnSuccess : ""}`}
-            onClick={handleShare}
-          >
-            {shared ? "✓ Đã sao chép!" : "🔗 Chia sẻ Video"}
+        {/* RIGHT: HTML solution panel â€” KaTeX renders LaTeX properly */}
+        <div className={styles.inlineSolutionPanel}>
+          <div className={styles.solutionLabel}>â–¶ SOLUTION</div>
+          {loadingSteps ? (
+            <p className={styles.solutionLoading}>Äang táº£i lá»i giáº£i...</p>
+          ) : (
+            <div className={styles.solutionSteps}>
+              {(videoData?.steps || []).map((step, i) => {
+                const totalSteps = (videoData?.steps || []).length;
+                const stepThreshold = (i / totalSteps) * 82;
+                const isVisible = progress >= stepThreshold;
+                if (!isVisible) return null;
+                const isAnswer = step.startsWith("âœ“") || step.toLowerCase().includes("Ä‘Ã¡p Ã¡n");
+                const isTitle = i === 0;
+                return (
+                  <div
+                    key={i}
+                    className={`${styles.solutionStep} ${isAnswer ? styles.solutionAnswer : ""} ${isTitle ? styles.solutionTitle : ""}`}
+                  >
+                    {!isTitle && (
+                      <span className={styles.solutionBullet} style={{ background: isAnswer ? "#4ade80" : "#6366f1" }} />
+                    )}
+                    <span className={styles.solutionText}>
+                      {parseMathAndText(step).map((token, idx) => {
+                        if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
+                        try {
+                          return (
+                            <span
+                              key={idx}
+                              dangerouslySetInnerHTML={{
+                                __html: katex.renderToString(token.content.trim(), {
+                                  displayMode: token.isBlock, throwOnError: false
+                                })
+                              }}
+                              style={token.isBlock ? { display: "block", margin: "0.3em 0" } : {}}
+                            />
+                          );
+                        } catch { return <code key={idx}>{token.content}</code>; }
+                      })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div className={styles.videoProgressBar}>
+        <div className={styles.videoProgressFill} style={{ width: `${progress}%` }} />
+      </div>
+
+      {/* Controls */}
+      <div className={styles.videoControls}>
+        <div className={styles.videoControlsLeft}>
+          <button className={styles.videoCtrlBtn} onClick={() => setIsPlaying(p => !p)} disabled={loadingSteps}>
+            {isPlaying ? "â¸" : "â–¶"}
           </button>
+          <button className={styles.videoCtrlBtn} onClick={() => { frameRef.current = 0; setProgress(0); setIsPlaying(true); }} disabled={loadingSteps}>
+            ðŸ”„
+          </button>
+          <span className={styles.videoDuration}>{Math.floor((progress / 100) * totalSec)}s / {totalSec}s</span>
         </div>
-
-        {/* Problem label */}
         {question && (
-          <div className={styles.videoProblemLabel}>
-            <span className={styles.videoProblemIcon}>📝</span>
-            <span className={styles.videoProblemText}>{question}</span>
-          </div>
+          <span className={styles.videoProblemText}>
+            ðŸ“ {question.length > 55 ? question.substring(0, 55) + "â€¦" : question}
+          </span>
         )}
       </div>
     </div>
@@ -978,7 +1044,7 @@ Output ONLY the JSON object, nothing else.`;
 }
 
 
-// ── Tools Dropdown ─────────────────────────────────────────────────────────
+// â”€â”€ Tools Dropdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ToolsDropdown({ onSelect, disabled }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -997,15 +1063,15 @@ function ToolsDropdown({ onSelect, disabled }) {
         className={styles.toolsBtn}
         onClick={() => !disabled && setOpen(o => !o)}
         disabled={disabled}
-        title="Công cụ AI"
+        title="CÃ´ng cá»¥ AI"
       >
-        <span>⚙️</span>
+        <span>âš™ï¸</span>
         <span>Tools</span>
-        <span className={`${styles.toolsChevron} ${open ? styles.toolsChevronOpen : ""}`}>▾</span>
+        <span className={`${styles.toolsChevron} ${open ? styles.toolsChevronOpen : ""}`}>â–¾</span>
       </button>
       {open && (
         <div className={styles.toolsMenu}>
-          <div className={styles.toolsMenuHeader}>Chọn công cụ AI</div>
+          <div className={styles.toolsMenuHeader}>Chá»n cÃ´ng cá»¥ AI</div>
           {TOOLS.map(t => (
             <button
               key={t.id}
@@ -1034,14 +1100,10 @@ export default function DuoMCBPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [videoQuestion, setVideoQuestion] = useState(null);
-  const [videoImage, setVideoImage] = useState(null);
-  const [showVideo, setShowVideo] = useState(false);
-  const [chatHistory] = useState([
-    { id: 1, title: "Quadratic equations help", date: "Today" },
-    { id: 2, title: "Statistics exercises", date: "Today" },
-    { id: 3, title: "Newton's laws review", date: "Yesterday" },
-  ]);
+  const [savedHistory, setSavedHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("duomcb_history") || "[]"); }
+    catch { return []; }
+  });
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -1064,7 +1126,29 @@ export default function DuoMCBPage() {
     return sid;
   }
 
-  // ── Image file selection ──
+  function pushToHistory(firstMsg) {
+    const title = firstMsg.substring(0, 44) + (firstMsg.length > 44 ? "â€¦" : "");
+    const entry = { id: Date.now(), title, date: new Date().toLocaleDateString("vi-VN") };
+    const updated = [entry, ...savedHistory].slice(0, 20);
+    setSavedHistory(updated);
+    try { localStorage.setItem("duomcb_history", JSON.stringify(updated)); } catch {}
+  }
+
+  function saveConversation() {
+    if (messages.length === 0) return;
+    const lines = messages.map(m => {
+      const role = m.role === "user" ? "[Báº¡n]" : "[DuoMCB]";
+      const content = m.type === "video" ? `[ðŸŽ¬ Video Giáº£i: ${m.question || ""}]` : (m.content || "");
+      return `${role}: ${content}`;
+    });
+    const text = `DuoMCB â€” Cuá»™c trÃ² chuyá»‡n\n${"â”€".repeat(40)}\n${lines.join("\n\n")}\n${"â”€".repeat(40)}\nXuáº¥t lÃºc: ${new Date().toLocaleString("vi-VN")}`;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `duomcb-${Date.now()}.txt`;
+    a.click(); URL.revokeObjectURL(url);
+  }
+
   function handleImageSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1078,61 +1162,66 @@ export default function DuoMCBPage() {
     e.target.value = "";
   }
 
-  // ── Send image with chosen mode ──
   async function sendImageMessage(mode) {
     setShowImageModal(false);
     if (mode === "video") {
-      setVideoQuestion(input.trim() || "Bài toán từ ảnh");
-      setVideoImage(imageBase64); // pass the image so VideoModal can analyze it
-      setShowVideo(true);
+      const sid = await ensureSession();
+      const videoMsg = {
+        id: Date.now(), role: "assistant", type: "video",
+        question: input.trim() || "BÃ i toÃ¡n tá»« áº£nh",
+        imageBase64: imageBase64,
+        sessionId: sid,
+      };
+      if (messages.length === 0) pushToHistory("BÃ i toÃ¡n tá»« áº£nh");
+      setMessages(prev => [...prev, videoMsg]);
+      setImagePreview(null); setImageBase64(null);
       return;
     }
     const modeText = mode === "hint"
       ? "Provide A FEW HINTS to solve this problem without giving the answer"
       : "Look at the problem in this image and solve it STEP BY STEP for me.";
-
     const userMsg = { role: "user", content: modeText, image: imagePreview, id: Date.now() };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMsg]);
+    if (messages.length === 0) pushToHistory(modeText);
     setLoading(true);
-
     const sid = await ensureSession();
-
     try {
       const data = await chat(sid, modeText, { image: imageBase64, mode: mode === "hint" ? "hint" : "solution" });
-      if (data.error) throw new Error("bad response");
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply || data.error, id: Date.now() + 1 }]);
+      if (data.error) throw new Error();
+      setMessages(prev => [...prev, { role: "assistant", content: data.reply || "", id: Date.now() + 1 }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Không thể xử lý ảnh. Vui lòng thử lại sau.", id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "âš ï¸ KhÃ´ng thá»ƒ xá»­ lÃ½ áº£nh. Vui lÃ²ng thá»­ láº¡i.", id: Date.now() + 1 }]);
     } finally {
-      setLoading(false);
-      setImagePreview(null);
-      setImageBase64(null);
+      setLoading(false); setImagePreview(null); setImageBase64(null);
     }
   }
 
-  // ── Send text message ──
   async function sendMessage(text, mode = "hint") {
     const msg = text || input.trim();
     if (!msg || loading) return;
 
     if (mode === "video") {
-      setVideoQuestion(msg);
-      setVideoImage(null); // text-only, no image
-      setShowVideo(true);
+      const sid = await ensureSession();
+      if (messages.length === 0) pushToHistory(msg);
+      setMessages(prev => [...prev, {
+        id: Date.now(), role: "assistant", type: "video",
+        question: msg, imageBase64: null, sessionId: sid,
+      }]);
       setInput("");
       return;
     }
 
     setInput("");
+    if (messages.length === 0) pushToHistory(msg);
     const sid = await ensureSession();
-    setMessages((prev) => [...prev, { role: "user", content: msg, id: Date.now() }]);
+    setMessages(prev => [...prev, { role: "user", content: msg, id: Date.now() }]);
     setLoading(true);
     try {
       const data = await chat(sid, msg, { mode: mode === "hint" ? "hint" : "solution" });
-      if (data.error) throw new Error("bad response");
-      setMessages((prev) => [...prev, { role: "assistant", content: data.reply, id: Date.now() + 1 }]);
+      if (data.error) throw new Error();
+      setMessages(prev => [...prev, { role: "assistant", content: data.reply, id: Date.now() + 1 }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "⚠️ Không thể kết nối với máy chủ DuoMCB. Vui lòng thử lại sau.", id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "âš ï¸ KhÃ´ng thá»ƒ káº¿t ná»‘i. Vui lÃ²ng thá»­ láº¡i.", id: Date.now() + 1 }]);
     } finally {
       setLoading(false);
     }
@@ -1145,53 +1234,34 @@ export default function DuoMCBPage() {
   }
 
   function newChat() {
-    setMessages([]);
-    initSession();
-    inputRef.current?.focus();
+    setMessages([]); initSession(); inputRef.current?.focus();
   }
 
   const isEmpty = messages.length === 0;
 
   return (
     <div className={styles.root}>
-
-      {/* ── VIDEO MODAL ── */}
-      {showVideo && (
-        <VideoModal
-          question={videoQuestion}
-          imageBase64={videoImage}
-          sessionId={sessionId}
-          onClose={() => { setShowVideo(false); setVideoImage(null); }}
-        />
-      )}
-
-      {/* ── IMAGE MODAL ── */}
+      {/* â”€â”€ IMAGE MODAL â”€â”€ */}
       {showImageModal && (
         <div className={styles.modalOverlay} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <span>🖼️ Ảnh đã tải lên</span>
-              <button className={styles.modalClose} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>✕</button>
+              <span>ðŸ–¼ï¸ áº¢nh Ä‘Ã£ táº£i lÃªn</span>
+              <button className={styles.modalClose} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>âœ•</button>
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imagePreview} alt="Preview" className={styles.modalPreview} />
-            <p className={styles.modalQuestion}>Bạn muốn DuoMCB làm gì với bài toán này?</p>
+            <p className={styles.modalQuestion}>Báº¡n muá»‘n DuoMCB lÃ m gÃ¬ vá»›i bÃ i toÃ¡n nÃ y?</p>
             <div className={styles.modalActions}>
-              <button className={styles.hintBtn} onClick={() => sendImageMessage("hint")}>
-                💡 Gợi ý
-              </button>
-              <button className={styles.answerBtn} onClick={() => sendImageMessage("answer")}>
-                📖 Giải đầy đủ
-              </button>
-              <button className={styles.videoModalBtn} onClick={() => sendImageMessage("video")}>
-                🎬 Video Giải
-              </button>
+              <button className={styles.hintBtn} onClick={() => sendImageMessage("hint")}>ðŸ’¡ Gá»£i Ã½</button>
+              <button className={styles.answerBtn} onClick={() => sendImageMessage("answer")}>ðŸ“– Giáº£i Ä‘áº§y Ä‘á»§</button>
+              <button className={styles.videoModalBtn} onClick={() => sendImageMessage("video")}>ðŸŽ¬ Video Giáº£i</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── SIDEBAR ── */}
+      {/* â”€â”€ SIDEBAR â”€â”€ */}
       <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
         <div className={styles.sidebarTop}>
           <div className={styles.logo}>
@@ -1199,19 +1269,21 @@ export default function DuoMCBPage() {
             {sidebarOpen && <span className={styles.logoText}>DuoMCB</span>}
           </div>
           <button className={styles.toggleBtn} onClick={() => setSidebarOpen(!sidebarOpen)}>
-            {sidebarOpen ? "◀" : "▶"}
+            {sidebarOpen ? "â—€" : "â–¶"}
           </button>
         </div>
         {sidebarOpen && (
           <>
             <button className={styles.newChatBtn} onClick={newChat}>
-              <span>✏️</span> New Chat
+              <span>âœï¸</span> New Chat
             </button>
             <div className={styles.historySection}>
               <p className={styles.historyLabel}>Recent</p>
-              {chatHistory.map((h) => (
-                <button key={h.id} className={styles.historyItem}>
-                  <span className={styles.historyIcon}>💬</span>
+              {savedHistory.length === 0 ? (
+                <p style={{ fontSize: "12px", color: "#4b5563", padding: "4px 10px" }}>ChÆ°a cÃ³ cuá»™c trÃ² chuyá»‡n</p>
+              ) : savedHistory.map(h => (
+                <button key={h.id} className={styles.historyItem} onClick={newChat}>
+                  <span className={styles.historyIcon}>ðŸ’¬</span>
                   <span className={styles.historyTitle}>{h.title}</span>
                 </button>
               ))}
@@ -1226,12 +1298,19 @@ export default function DuoMCBPage() {
         )}
       </aside>
 
-      {/* ── MAIN ── */}
+      {/* â”€â”€ MAIN â”€â”€ */}
       <main className={styles.main}>
         <header className={styles.header}>
           <span className={styles.headerTitle}>DuoMCB</span>
           <span className={styles.headerSub}>Bilingual AI Tutor</span>
-          <div className={styles.headerActions}> <Link href="/">Go back</Link></div>
+          <div className={styles.headerActions}>
+            {messages.length > 0 && (
+              <button className={styles.saveBtn} onClick={saveConversation} title="LÆ°u cuá»™c trÃ² chuyá»‡n">
+                ðŸ’¾ LÆ°u
+              </button>
+            )}
+            <Link href="/">Go back</Link>
+          </div>
         </header>
 
         <div className={styles.chatArea}>
@@ -1251,43 +1330,51 @@ export default function DuoMCBPage() {
             </div>
           ) : (
             <div className={styles.messages}>
-              {messages.map((m) => (
-                <div key={m.id} className={`${styles.msgRow} ${m.role === "user" ? styles.userRow : styles.botRow}`}>
-                  {m.role === "assistant" && (
-                    <div className={styles.avatar}>
-                      <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
+              {messages.map(m => {
+                // Inline video player rendered directly in the chat thread
+                if (m.type === "video") {
+                  return (
+                    <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`}>
+                      <div className={styles.avatar}>
+                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
+                      </div>
+                      <div className={styles.inlineVideoWrapper}>
+                        <InlineVideoPlayer
+                          question={m.question}
+                          imageBase64={m.imageBase64}
+                          sessionId={m.sessionId}
+                        />
+                      </div>
                     </div>
-                  )}
-                  <div className={`${styles.bubble} ${m.role === "user" ? styles.userBubble : styles.botBubble}`}>
-                    {m.image && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={m.image} alt="Uploaded" className={styles.bubbleImage} />
+                  );
+                }
+                return (
+                  <div key={m.id} className={`${styles.msgRow} ${m.role === "user" ? styles.userRow : styles.botRow}`}>
+                    {m.role === "assistant" && (
+                      <div className={styles.avatar}>
+                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
+                      </div>
                     )}
-                    {parseMathAndText(m.content || "").map((token, idx) => {
-                      if (token.type === "text") {
-                        return renderTextWithMarkdown(token.content, idx, styles);
-                      } else {
+                    <div className={`${styles.bubble} ${m.role === "user" ? styles.userBubble : styles.botBubble}`}>
+                      {m.image && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={m.image} alt="Uploaded" className={styles.bubbleImage} />
+                      )}
+                      {parseMathAndText(m.content || "").map((token, idx) => {
+                        if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
                         try {
-                          const html = katex.renderToString(token.content.trim(), {
-                            displayMode: token.isBlock,
-                            throwOnError: false
-                          });
+                          const html = katex.renderToString(token.content.trim(), { displayMode: token.isBlock, throwOnError: false });
                           return (
-                            <span 
-                              key={idx} 
-                              dangerouslySetInnerHTML={{ __html: html }} 
-                              style={token.isBlock ? { display: "block", margin: "0.5em 0" } : {}}
-                            />
+                            <span key={idx} dangerouslySetInnerHTML={{ __html: html }}
+                              style={token.isBlock ? { display: "block", margin: "0.5em 0" } : {}} />
                           );
-                        } catch (err) {
-                          return <code key={idx}>{token.content}</code>;
-                        }
-                      }
-                    })}
+                        } catch { return <code key={idx}>{token.content}</code>; }
+                      })}
+                    </div>
+                    {m.role === "user" && <div className={styles.userAvatar}>ðŸ‘¤</div>}
                   </div>
-                  {m.role === "user" && <div className={styles.userAvatar}>👤</div>}
-                </div>
-              ))}
+                );
+              })}
               {loading && (
                 <div className={`${styles.msgRow} ${styles.botRow}`}>
                   <div className={styles.avatar}>
@@ -1303,32 +1390,28 @@ export default function DuoMCBPage() {
           )}
         </div>
 
-        {/* ── Input bar ── */}
+        {/* â”€â”€ Input bar â”€â”€ */}
         <div className={styles.inputBar}>
           <div className={styles.inputWrapper}>
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageSelect} />
-            <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Tải ảnh lên" disabled={loading}>
-              +
-            </button>
+            <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Táº£i áº£nh lÃªn" disabled={loading}>+</button>
             <textarea
               ref={inputRef}
               className={styles.input}
-              placeholder="Hỏi DuoMCB... hoặc tải ảnh đề bài lên"
+              placeholder="Há»i DuoMCB... hoáº·c táº£i áº£nh Ä‘á» bÃ i lÃªn"
               value={input}
               rows={1}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
             />
-            {/* Tools dropdown */}
             <ToolsDropdown onSelect={handleToolSelect} disabled={loading} />
             <button
               className={`${styles.sendBtn} ${input.trim() && !loading ? styles.sendActive : ""}`}
               onClick={() => sendMessage(null, "hint")}
               disabled={!input.trim() || loading}
-              title="Gửi (Hint mặc định)"
-            >➤</button>
+            >âž¤</button>
           </div>
-          <p className={styles.disclaimer}>DuoMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
+          <p className={styles.disclaimer}>DuoMCB cÃ³ thá»ƒ máº¯c lá»—i. HÃ£y kiá»ƒm tra láº¡i cÃ¡c Ä‘Ã¡p Ã¡n quan trá»ng.</p>
         </div>
       </main>
     </div>
