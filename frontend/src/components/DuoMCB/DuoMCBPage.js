@@ -390,6 +390,117 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
 
   } else if (type === "geometry") {
     const shapes = viz.shapes || [];
+
+    // Special case: draw a decorative parabola-tile (square with 4 petal arcs)
+    // triggered when the problem title contains keywords about tiles/petals
+    const titleLower = (data.title || "").toLowerCase();
+    const isPetalTile = titleLower.includes("viên gạch") || titleLower.includes("cánh hoa") ||
+      titleLower.includes("parabol") || titleLower.includes("petal") || titleLower.includes("tile");
+
+    // Find if there's a rect shape to use as the base square
+    const rectShape = shapes.find(s => s.t === "rect");
+    const squareSide = rectShape ? Math.max(rectShape.w, rectShape.h) : 4;
+
+    if (isPetalTile || (shapes.length === 0)) {
+      // Draw a decorative square-with-parabola-petals visualization
+      const cx2 = panelW / 2; const cy2 = panelH / 2;
+      const size = Math.min(panelW, panelH) * 0.55;
+      const ht = Math.min(1, t / 0.25);
+      // Outer square
+      ctx.save();
+      ctx.globalAlpha = ht;
+      ctx.strokeStyle = "#6b7280"; ctx.lineWidth = 2;
+      ctx.strokeRect(cx2 - size / 2, cy2 - size / 2, size, size);
+      // Dimension label
+      ctx.font = "bold 12px 'Sora',sans-serif"; ctx.fillStyle = "#9ca3af"; ctx.textAlign = "center";
+      ctx.fillText(`${squareSide} dm`, cx2, cy2 + size / 2 + 18);
+      ctx.fillText(`${squareSide} dm`, cx2 + size / 2 + 20, cy2);
+      ctx.restore();
+
+      // Draw 4 parabola petals (black-shaded arcs)
+      const petalColors = ["#00d8fe", "#6366f1", "#a78bfa", "#f59e0b"];
+      const petals = [
+        { dir: "top",    color: petalColors[0] },
+        { dir: "right",  color: petalColors[1] },
+        { dir: "bottom", color: petalColors[2] },
+        { dir: "left",   color: petalColors[3] },
+      ];
+      petals.forEach((petal, idx) => {
+        const petalT = Math.min(1, Math.max(0, (t - 0.2 - idx * 0.12) / 0.4));
+        if (petalT <= 0) return;
+        ctx.save();
+        ctx.globalAlpha = petalT * 0.55;
+        ctx.fillStyle = petal.color;
+        ctx.strokeStyle = petal.color;
+        ctx.lineWidth = 2;
+        ctx.shadowColor = petal.color; ctx.shadowBlur = 10;
+        ctx.beginPath();
+        const half = size / 2;
+        const steps2 = 50;
+        // Each petal is a parabola arc from one corner to the adjacent corner, opening inward
+        if (petal.dir === "top") {
+          ctx.moveTo(cx2 - half, cy2 - half);
+          for (let i = 0; i <= steps2 * petalT; i++) {
+            const u = (i / steps2) * 2 - 1; // -1..1
+            const px = cx2 + u * half;
+            const py = cy2 - half + half * u * u; // parabola opens downward from top edge
+            ctx.lineTo(px, py);
+          }
+        } else if (petal.dir === "right") {
+          ctx.moveTo(cx2 + half, cy2 - half);
+          for (let i = 0; i <= steps2 * petalT; i++) {
+            const u = (i / steps2) * 2 - 1;
+            const py = cy2 + u * half;
+            const px = cx2 + half - half * u * u;
+            ctx.lineTo(px, py);
+          }
+        } else if (petal.dir === "bottom") {
+          ctx.moveTo(cx2 + half, cy2 + half);
+          for (let i = 0; i <= steps2 * petalT; i++) {
+            const u = (i / steps2) * 2 - 1;
+            const px = cx2 - u * half;
+            const py = cy2 + half - half * u * u;
+            ctx.lineTo(px, py);
+          }
+        } else {
+          ctx.moveTo(cx2 - half, cy2 + half);
+          for (let i = 0; i <= steps2 * petalT; i++) {
+            const u = (i / steps2) * 2 - 1;
+            const py = cy2 - u * half;
+            const px = cx2 - half + half * u * u;
+            ctx.lineTo(px, py);
+          }
+        }
+        ctx.stroke();
+        ctx.globalAlpha = petalT * 0.18;
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Area cost labels
+      if (t > 0.75) {
+        const labelT = Math.min(1, (t - 0.75) / 0.2);
+        ctx.save(); ctx.globalAlpha = labelT;
+        ctx.font = "bold 11px 'Sora',sans-serif"; ctx.textAlign = "center";
+        ctx.fillStyle = "#00d8fe";
+        ctx.fillText("Cánh hoa (đen): 400k/m²", cx2, cy2 - size / 2 - 8);
+        ctx.fillStyle = "#9ca3af";
+        ctx.fillText("Phần trắng: 300k/m²", cx2, cy2 + size / 2 + 34);
+        ctx.restore();
+      }
+
+      // "Visualization" label
+      if (t > 0.05) {
+        ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.05) / 0.15) * 0.5;
+        ctx.font = "10px 'Sora',sans-serif"; ctx.fillStyle = "#6366f1"; ctx.textAlign = "left";
+        ctx.fillText("▶ VISUALIZATION", pad.left, 16);
+        ctx.restore();
+      }
+      ctx.restore();
+      return;
+    }
+
     if (shapes.length === 0) { drawGenericViz(ctx, data, panelW, panelH, t); ctx.restore(); return; }
 
     // Fit all shapes into viewport
@@ -614,58 +725,93 @@ function VideoModal({ question, imageBase64, sessionId, onClose }) {
     async function fetchData() {
       setLoadingSteps(true);
       try {
-        const vizPrompt = imageBase64
-          ? `Analyze the math problem in this image. Return ONLY valid JSON (no markdown, no explanation, no code blocks). Use this schema:
-{"type":"quadratic|linear|system|geometry|trigonometry|calculus|other","title":"short title","steps":["Step 1: ...","Step 2: ...","✓ Answer: ..."],"viz":{}}
-For viz based on type:
-- quadratic: {"a":1,"b":-5,"c":6,"roots":[2,3],"vertex":[2.5,-0.25],"xRange":[-1,6],"yRange":[-2,5]}
-- linear: {"lines":[{"m":2,"b":1,"label":"y=2x+1"}],"xRange":[-3,5],"yRange":[-4,8]}
-- system: {"lines":[{"m":2,"b":1,"label":"L1"},{"m":-1,"b":4,"label":"L2"}],"intersection":{"x":1,"y":3},"xRange":[-2,5],"yRange":[-2,7]}
-- geometry: {"shapes":[{"t":"circle","cx":0,"cy":0,"r":5}]}  or  {"shapes":[{"t":"triangle","pts":[[0,0],[4,0],[2,3]],"labels":["A","B","C"],"sides":["4","3","5"]}]}  or  {"shapes":[{"t":"rect","x":0,"y":0,"w":4,"h":3}]}
-- trigonometry: {"fn":"sin","amplitude":1,"period":6.283,"phase":0,"xRange":[0,6.28],"yRange":[-1.6,1.6]}
-- calculus: {"a":1,"b":-4,"c":0,"from":0,"to":4,"area":"10.67","xRange":[-1,5],"yRange":[-3,5]}
-- other: {}`
-          : `Analyze this math problem: "${question}"
-Return ONLY valid JSON (no markdown, no explanation). Schema:
-{"type":"quadratic|linear|system|geometry|trigonometry|calculus|other","title":"short title","steps":["Step 1: ...","Step 2: ...","✓ Answer: ..."],"viz":{}}
-For viz based on type:
-- quadratic: {"a":1,"b":-5,"c":6,"roots":[2,3],"vertex":[2.5,-0.25],"xRange":[-1,6],"yRange":[-2,5]}
-- linear: {"lines":[{"m":2,"b":1,"label":"y=2x+1"}],"xRange":[-3,5],"yRange":[-4,8]}
-- system: {"lines":[{"m":2,"b":1,"label":"L1"},{"m":-1,"b":4,"label":"L2"}],"intersection":{"x":1,"y":3},"xRange":[-2,5],"yRange":[-2,7]}
-- geometry: {"shapes":[{"t":"circle","cx":0,"cy":0,"r":5}]}  or  {"shapes":[{"t":"triangle","pts":[[0,0],[4,0],[2,3]],"labels":["A","B","C"],"sides":["4","3","5"]}]}  or  {"shapes":[{"t":"rect","x":0,"y":0,"w":4,"h":3}]}
-- trigonometry: {"fn":"sin","amplitude":1,"period":6.283,"phase":0,"xRange":[0,6.28],"yRange":[-1.6,1.6]}
-- calculus: {"a":1,"b":-4,"c":0,"from":0,"to":4,"area":"10.67","xRange":[-1,5],"yRange":[-3,5]}
-- other: {}`;
-
         const { chat: chatFn } = await import("./duoServer");
-        const data = await chatFn(sessionId, vizPrompt, {
+
+        // ── Stage 1: Get the solution steps (plain text) ─────────────────
+        const solutionPrompt = imageBase64
+          ? `You are a math tutor. Analyze the math problem in the provided image and give a clear, step-by-step solution in Vietnamese or English (match the problem language). 
+Format your response as a numbered list of concise steps (max 6 steps, each under 80 characters). End with "✓ Đáp án: [final answer]".
+ONLY output the solution steps. No preamble, no JSON, no code blocks.`
+          : `You are a math tutor. Solve this math problem step-by-step: "${question}"
+Format your response as a numbered list of concise steps (max 6 steps, each under 80 characters). End with "✓ Đáp án: [final answer]".
+ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
+
+        const solutionData = await chatFn(sessionId, solutionPrompt, {
           image: imageBase64 || null,
           mode: "solution",
         });
+        const solutionReply = solutionData?.reply || "";
+        const rawSteps = solutionReply
+          .split("\n")
+          .map(l => l.replace(/^\d+[.)]\s*/, "").trim())
+          .filter(l => l.length > 2)
+          .slice(0, 7);
 
-        const reply = data?.reply || "";
-        let parsed = null;
+        // ── Stage 2: Get visualization JSON (no steps needed) ────────────
+        const vizPrompt = imageBase64
+          ? `Analyze the math problem in the image. Return ONLY a single valid JSON object — no markdown, no explanation, no extra text.
+Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
+
+TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
+VIZ_OBJECT rules by type:
+- quadratic: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
+- linear: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"xRange":[min,max],"yRange":[min,max]}
+- system: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"},{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"intersection":{"x":NUMBER,"y":NUMBER},"xRange":[min,max],"yRange":[min,max]}
+- geometry (squares/circles/parabola tiles): {"shapes":[{"t":"rect","x":NUMBER,"y":NUMBER,"w":NUMBER,"h":NUMBER},{"t":"circle","cx":NUMBER,"cy":NUMBER,"r":NUMBER}]}
+- trigonometry: {"fn":"sin|cos|tan","amplitude":NUMBER,"period":NUMBER,"phase":NUMBER,"xRange":[min,max],"yRange":[min,max]}
+- calculus: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"from":NUMBER,"to":NUMBER,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
+- other: {}
+
+IMPORTANT: For geometry problems involving squares with parabola-petal shapes (like a 4dm tile with 4 parabola petals), use type "geometry" with a rect shape for the square plus a note shape.
+Output ONLY the JSON object, nothing else.`
+          : `Given this math problem: "${question}"
+Return ONLY a single valid JSON object — no markdown, no explanation, no extra text.
+Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
+
+TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
+VIZ_OBJECT rules by type:
+- quadratic: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
+- linear: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"xRange":[min,max],"yRange":[min,max]}
+- system: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"},{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"intersection":{"x":NUMBER,"y":NUMBER},"xRange":[min,max],"yRange":[min,max]}
+- geometry: {"shapes":[{"t":"rect","x":NUMBER,"y":NUMBER,"w":NUMBER,"h":NUMBER},{"t":"circle","cx":NUMBER,"cy":NUMBER,"r":NUMBER}]}
+- trigonometry: {"fn":"sin|cos|tan","amplitude":NUMBER,"period":NUMBER,"phase":NUMBER,"xRange":[min,max],"yRange":[min,max]}
+- calculus: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"from":NUMBER,"to":NUMBER,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
+- other: {}
+Output ONLY the JSON object, nothing else.`;
+
+        const vizData = await chatFn(sessionId, vizPrompt, {
+          image: imageBase64 || null,
+          mode: "solution",
+        });
+        const vizReply = vizData?.reply || "";
+
+        let vizParsed = { type: "other", title: question || "Math Problem", viz: {} };
         try {
-          // Extract JSON from response (handles markdown code blocks too)
-          const jsonMatch = reply.match(/```(?:json)?\s*([\s\S]*?)```/) || reply.match(/(\{[\s\S]*\})/);
-          const jsonStr = jsonMatch ? jsonMatch[1].trim() : reply.trim();
-          parsed = JSON.parse(jsonStr);
-          // Ensure steps array exists and has content
-          if (!parsed.steps || parsed.steps.length === 0) {
-            parsed.steps = ["Giải bài toán", "Bước 1: Phân tích đề bài", "Bước 2: Áp dụng công thức", "✓ Hoàn thành"];
+          // Aggressively extract JSON: strip markdown fences, find first { ... }
+          const cleaned = vizReply
+            .replace(/```json\s*/gi, "")
+            .replace(/```\s*/g, "")
+            .trim();
+          const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            const obj = JSON.parse(jsonMatch[0]);
+            vizParsed = {
+              type: obj.type || "other",
+              title: obj.title || question || "Math Problem",
+              viz: obj.viz || {},
+            };
           }
         } catch {
-          // AI didn't return valid JSON — parse as plain text steps
-          const rawLines = reply.split("\n").map(l => l.trim()).filter(Boolean);
-          const steps = [question ? question.substring(0, 50) : "Giải bài toán..."];
-          for (const line of rawLines) {
-            const clean = line.replace(/^#+\s*/, "").replace(/^\*\*(.+)\*\*$/, "$1").trim();
-            if (clean.length > 3) steps.push(clean.substring(0, 72));
-            if (steps.length >= 7) break;
-          }
-          parsed = { type: "other", title: question || "Math Problem", steps, viz: {} };
+          // JSON parse failed — stick with generic viz
         }
-        setVideoData(parsed);
+
+        // Merge: real solution steps + visualization data
+        const problemTitle = vizParsed.title || (question ? question.substring(0, 60) : "Bài toán");
+        const steps = rawSteps.length > 0
+          ? [problemTitle, ...rawSteps]
+          : [problemTitle, "Bước 1: Phân tích đề bài", "Bước 2: Áp dụng công thức", "✓ Xem lời giải đầy đủ"];
+
+        setVideoData({ ...vizParsed, steps });
       } catch {
         setVideoData({
           type: "other",
