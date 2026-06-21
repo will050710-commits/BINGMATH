@@ -150,6 +150,20 @@ def cached_system_prompt(variant: str = "text") -> str:
             "You are a Vietnamese math tutor for grades 10-12. "
             "Solve math problems briefly step-by-step."
         )
+    if variant == "solution":
+        return (
+            "You are a comprehensive Vietnamese math tutor for grades 10-12. "
+            "Provide a complete, detailed step-by-step solution with LaTeX."
+        )
+    if variant == "raw_solution":
+        return (
+            "You are a professional math tutor.\n"
+            "Analyze the problem and provide a highly accurate, step-by-step solution.\n"
+            "Each step must be concise, logical, and clear.\n"
+            "Use LaTeX for all math expressions (inline: $...$, block: $$...$$).\n"
+            "Write the response in the language specified by the user's prompt (English or Vietnamese).\n"
+            "Do NOT include any introduction, explanations, markdown code blocks, or extra text. Output ONLY the numbered steps (e.g., '1. ...', '2. ...')."
+        )
     return (
         "You are a concise Vietnamese math tutor for grades 10-12. "
         "Explain briefly step-by-step."
@@ -938,8 +952,10 @@ def chat():
     image_data   = d.get("image")
     use_stream   = d.get("stream", False)
 
-    if not user_message:
-        return jsonify({"error": "message is required."}), 400
+    chat_mode    = d.get("mode", "hint")
+
+    if not user_message and not image_data:
+        return jsonify({"error": "message or image is required."}), 400
 
     history = ensure_session(session_id)
 
@@ -953,15 +969,17 @@ def chat():
         # Send directly to vision model (OCR removed — exceeds 512 MB free tier RAM)
         user_content = [
             {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
-            {"type": "text",      "text": user_message},
+            {"type": "text",      "text": user_message or "Hãy giải bài toán trong ảnh này cho em."},
         ]
         model         = "meta-llama/llama-4-scout-17b-16e-instruct"
-        system_prompt = cached_system_prompt("image")
-        history.append({"role": "user", "content": f"[Image] {user_message}"})
+        img_prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "image"
+        system_prompt = cached_system_prompt(img_prompt_variant)
+        history.append({"role": "user", "content": f"[Image] {user_message or 'Giải bài toán từ ảnh'}"})
     else:
         user_content  = user_message
         model         = "llama-3.1-8b-instant"
-        system_prompt = cached_system_prompt("text")
+        prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "text"
+        system_prompt = cached_system_prompt(prompt_variant)
         history.append({"role": "user", "content": user_message})
 
     context_history = history[-5:-1]
@@ -971,10 +989,11 @@ def chat():
         + [{"role": "user", "content": user_content}]
     )
 
+    max_tokens = 2000 if chat_mode in ("solution", "raw_solution") else 1024
     payload = {
         "model":       model,
         "messages":    messages,
-        "max_tokens":  1024,
+        "max_tokens":  max_tokens,
         "temperature": 0.3,
         "stream":      use_stream,
     }

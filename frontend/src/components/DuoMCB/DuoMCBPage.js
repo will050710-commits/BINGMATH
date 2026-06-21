@@ -292,7 +292,7 @@ function drawAxes(ctx, xRange, yRange, pad, plotW, plotH, alpha) {
 // 4 petals occupying each quadrant, each bounded by 2 parabolas with vertex at center.
 // Petal in Q1: region where y <= (1/half)x² AND x <= (1/half)y²  (concave toward corner)
 // This creates the correct dark-petal-in-each-quadrant shape matching the math problem.
-function drawPetalTile(ctx, cx2, cy2, size, t, squareSide) {
+function drawPetalTile(ctx, cx2, cy2, size, t, squareSide, lang = "vi") {
   const half = size / 2;
   const ht = Math.min(1, t / 0.25);
 
@@ -332,21 +332,21 @@ function drawPetalTile(ctx, cx2, cy2, size, t, squareSide) {
     if (petalT <= 0) return;
 
     // Build the petal path:
-    // Arc A: from (sx*half, 0) to (0, sy*half) along x = sx*(half - y²/half)
-    // Arc B: from (0, sy*half) back to (sx*half, 0) along y = sy*(half - x²/half)
+    // Arc A: from (0, 0) to (sx*half, sy*half) along y = sy * (x/sx)^2 / half
+    // Arc B: from (sx*half, sy*half) back to (0, 0) along x = sx * (y/sy)^2 / half
     const ptsA = [];
     for (let i = 0; i <= steps; i++) {
       const u = i / steps; // 0→1
-      const y = sy * u * half;
-      const x = sx * (half - (y * y) / half);
+      const x = sx * u * half;
+      const y = sy * u * u * half;
       ptsA.push([cx2 + x, cy2 - y]); // note: canvas y-axis is inverted
     }
 
     const ptsB = [];
     for (let i = steps; i >= 0; i--) {
-      const u = i / steps;
-      const x = sx * u * half;
-      const y = sy * (half - (x * x) / half);
+      const u = i / steps; // 1→0
+      const x = sx * u * u * half;
+      const y = sy * u * half;
       ptsB.push([cx2 + x, cy2 - y]);
     }
 
@@ -393,15 +393,21 @@ function drawPetalTile(ctx, cx2, cy2, size, t, squareSide) {
     ctx.font = "bold 10px 'Sora',sans-serif";
     ctx.fillStyle = "#374151";
     ctx.textAlign = "center";
-    ctx.fillText("Cánh hoa (đen): 400k/m²", cx2, cy2 - half - 10);
-    ctx.fillStyle = "#6b7280";
-    ctx.fillText("Phần trống (trắng): 300k/m²", cx2, cy2 + half + 30);
+    if (lang === "en") {
+      ctx.fillText("Petals (black): 400k/m²", cx2, cy2 - half - 10);
+      ctx.fillStyle = "#6b7280";
+      ctx.fillText("Empty area (white): 300k/m²", cx2, cy2 + half + 30);
+    } else {
+      ctx.fillText("Cánh hoa (đen): 400k/m²", cx2, cy2 - half - 10);
+      ctx.fillStyle = "#6b7280";
+      ctx.fillText("Phần trống (trắng): 300k/m²", cx2, cy2 + half + 30);
+    }
 
     ctx.restore();
   }
 }
 
-function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
+function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
   const type = data.type || "other";
   const viz = data.viz || {};
   const pad = { top: 44, bottom: 36, left: 42, right: 14 };
@@ -590,7 +596,7 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
       const cx2 = panelW / 2;
       const cy2 = panelH / 2;
       const size = Math.min(panelW - 80, panelH - 80);
-      drawPetalTile(ctx, cx2, cy2, size, t, squareSide);
+      drawPetalTile(ctx, cx2, cy2, size, t, squareSide, lang);
       ctx.restore();
       return;
     }
@@ -680,21 +686,21 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t) {
     }
 
   } else {
-    drawGenericViz(ctx, data, panelW, panelH, t);
+    drawGenericViz(ctx, data, panelW, panelH, t, lang);
   }
 
   // "VISUALIZATION" label
   if (t > 0.05) {
     ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.05) / 0.15) * 0.5;
     ctx.font = "10px 'Sora',sans-serif"; ctx.fillStyle = "#6366f1"; ctx.textAlign = "left";
-    ctx.fillText("▶ VISUALIZATION", pad.left, 16);
+    ctx.fillText(lang === "en" ? "▶ VISUALIZATION" : "▶ TRỰC QUAN HÓA", pad.left, 16);
     ctx.restore();
   }
 
   ctx.restore();
 }
 
-function drawGenericViz(ctx, data, panelW, panelH, t) {
+function drawGenericViz(ctx, data, panelW, panelH, t, lang = "vi") {
   const cx = panelW / 2; const cy = panelH / 2;
   const ringCount = 3;
   for (let i = 0; i < ringCount; i++) {
@@ -713,7 +719,7 @@ function drawGenericViz(ctx, data, panelW, panelH, t) {
   ctx.restore();
   ctx.save(); ctx.globalAlpha = Math.min(1, Math.max(0, (t - 0.4) / 0.2));
   ctx.font = "bold 13px 'Sora',sans-serif"; ctx.fillStyle = "#6b7280"; ctx.textAlign = "center";
-  ctx.fillText(data?.title || "DuoMCB Visualizing...", cx, cy + 50);
+  ctx.fillText(lang === "en" ? (data?.title || "DuoMCB Visualizing...") : (data?.title || "DuoMCB Đang vẽ..."), cx, cy + 50);
   ctx.restore();
 }
 
@@ -721,6 +727,7 @@ function drawGenericViz(ctx, data, panelW, panelH, t) {
 function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
+  const progressFillRef = useRef(null);
   // ── Use a ref for isPlaying so the animation loop never needs it as a
   //    React dependency — prevents the loop from being cancelled/restarted
   //    on every setProgress() call which was causing the erratic bar.
@@ -754,7 +761,7 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
             : "Trả lời HOÀN TOÀN bằng tiếng Việt.";
           const endLine = lang === "en"
             ? 'End with "✓ Answer: [final answer]".'
-            : 'Kết thúc bằng "✓ Đáp án: [kết quả cuối]"."';
+            : 'Kết thúc bằng "✓ Đáp án: [kết quả cuối]".';
           const base = imageBase64
             ? `You are a math tutor. Analyze the math problem in the provided image and give a COMPLETE, detailed step-by-step solution. ${langInstr}
 Use LaTeX for ALL math expressions: inline $like this$, block $$like this$$.
@@ -769,8 +776,8 @@ ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
         };
 
         const [solutionDataEN, solutionDataVI] = await Promise.all([
-          chatFn(sessionId, makeStepPrompt("en"), { image: imageBase64 || null, mode: "solution" }),
-          chatFn(sessionId, makeStepPrompt("vi"), { image: imageBase64 || null, mode: "solution" }),
+          chatFn(sessionId, makeStepPrompt("en"), { image: imageBase64 || null, mode: "raw_solution" }),
+          chatFn(sessionId, makeStepPrompt("vi"), { image: imageBase64 || null, mode: "raw_solution" }),
         ]);
 
         const parseSteps = (reply) =>
@@ -787,6 +794,7 @@ ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
 
         // Stage 2: Visualization JSON
         // We also pass rawSteps as context to help the AI classify the viz type
+        const rawSteps = rawStepsEN.length > 0 ? rawStepsEN : rawStepsVI;
         const solutionContext = rawSteps.slice(0, 3).join(" | ");
         const vizSchemaDoc = `Types and their viz objects:
 - quadratic  → {"a":N,"b":N,"c":N,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
@@ -914,9 +922,10 @@ Output ONLY the JSON. No markdown, no extra text.`;
   // ── Canvas animation loop ──────────────────────────────────────────────
   // Key design: isPlaying is read from isPlayingRef (a ref) inside the loop,
   // so `isPlaying` state is NOT a dependency. This prevents the loop from
-  // being cancelled and restarted on every setProgress() state update.
-  // setProgress is throttled: only called every 8 frames (~7.5fps for the bar)
-  // so React re-renders are infrequent and the bar moves smoothly.
+  // being cancelled and restarted on every state update.
+  // We write the progress bar width directly to DOM via a Ref for 60fps smoothness,
+  // and we throttle the state-driven `progress` to every 4 frames (15fps) which is
+  // performant and ensures KaTeX steps show up perfectly on time.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || loadingSteps || !videoData) return;
@@ -933,7 +942,7 @@ Output ONLY the JSON. No markdown, no extra text.`;
         for (let gy = 20; gy < H; gy += 40) {
           ctx.beginPath(); ctx.arc(gx, gy, 1, 0, Math.PI * 2); ctx.fill();
         }
-      drawVisualizationPanel(ctx, videoData, W, H, t);
+      drawVisualizationPanel(ctx, videoData, W, H, t, lang);
       ctx.save(); ctx.globalAlpha = 0.15;
       ctx.font = "8px 'Sora',sans-serif"; ctx.fillStyle = "#00d8fe"; ctx.textAlign = "left";
       ctx.fillText("DuoMath AI", 8, H - 5);
@@ -946,11 +955,17 @@ Output ONLY the JSON. No markdown, no extra text.`;
         frameRef.current = (frameRef.current + 1) % totalFrames;
       }
       drawFrame(frameRef.current);
-      // Throttle: update progress state only every 8 frames to avoid
-      // flooding React with re-renders that would cancel this loop.
-      progressTickRef.current = (progressTickRef.current + 1) % 8;
+      
+      const pct = (frameRef.current / totalFrames) * 100;
+      if (progressFillRef.current) {
+        progressFillRef.current.style.width = `${pct}%`;
+      }
+
+      // Throttle: update progress state only every 4 frames to avoid
+      // flooding React with excessive re-renders.
+      progressTickRef.current = (progressTickRef.current + 1) % 4;
       if (progressTickRef.current === 0) {
-        setProgress((frameRef.current / totalFrames) * 100);
+        setProgress(pct);
       }
       animRef.current = requestAnimationFrame(tick);
     }
@@ -959,7 +974,7 @@ Output ONLY the JSON. No markdown, no extra text.`;
     animRef.current = requestAnimationFrame(tick);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingSteps, videoData]); // NOT isPlaying — controlled via isPlayingRef
+  }, [loadingSteps, videoData, lang]); // lang is added here to update visual immediately on language change
 
   const totalSec = Math.round(totalFrames / 30);
 
@@ -1068,7 +1083,7 @@ Output ONLY the JSON. No markdown, no extra text.`;
 
       {/* Progress bar */}
       <div className={styles.videoProgressBar}>
-        <div className={styles.videoProgressFill} style={{ width: `${progress}%` }} />
+        <div ref={progressFillRef} className={styles.videoProgressFill} style={{ width: `${progress}%` }} />
       </div>
 
       {/* Controls */}

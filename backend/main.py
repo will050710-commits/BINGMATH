@@ -276,8 +276,8 @@ Hình Học: Hình phẳng, Hình không gian (Solid Geometry), Tọa độ Oxyz
 
 @lru_cache(maxsize=8)
 def cached_system_prompt(variant: str = "text") -> str:
-    """MathGPT system prompt — 4 variants: text (Socratic hint), image (Vision Socratic),
-    solution (full step-by-step + bài phái sinh), translate (JSON-only)."""
+    """MathGPT system prompt — 5 variants: text (Socratic hint), image (Vision Socratic),
+    solution (full step-by-step + bài phái sinh), raw_solution (non-Socratic step solver), translate (JSON-only)."""
     if variant == "solution":
         return (
             _SOCRATIC_BASE
@@ -289,6 +289,15 @@ def cached_system_prompt(variant: str = "text") -> str:
             + "   [Đề bài phái sinh]\n"
             + "   > 💡 *Em thử giải bài này trước khi hỏi đáp án nhé!*\n"
             + _LATEX_RULES
+        )
+    if variant == "raw_solution":
+        return (
+            "You are a professional math tutor.\n"
+            "Analyze the problem and provide a highly accurate, step-by-step solution.\n"
+            "Each step must be concise, logical, and clear.\n"
+            "Use LaTeX for all math expressions (inline: $...$, block: $$...$$).\n"
+            "Write the response in the language specified by the user's prompt (English or Vietnamese).\n"
+            "Do NOT include any introduction, explanations, markdown code blocks, or extra text. Output ONLY the numbered steps (e.g., '1. ...', '2. ...')."
         )
     if variant == "image":
         return (
@@ -1326,8 +1335,8 @@ async def chat(request: Request):
             except Exception:
                 extracted_text = ""
 
-        # Chọn prompt variant theo mode (image Socratic hay image full-solution)
-        img_prompt_variant = "solution" if chat_mode == "solution" else "image"
+        # Chọn prompt variant theo mode
+        img_prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "image"
         if extracted_text.strip():
             user_content  = f"📝 **Nội dung nhận diện từ ảnh (OCR):**\n{extracted_text}\n\n**Câu hỏi:** {user_message}"
             model         = "llama-3.1-8b-instant"
@@ -1344,7 +1353,7 @@ async def chat(request: Request):
     else:
         user_content  = user_message
         # mode="solution" → giải đầy đủ + bài phái sinh; mặc định → Socratic hint
-        prompt_variant = "solution" if chat_mode == "solution" else "text"
+        prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "text"
         model         = "llama-3.1-8b-instant"
         system_prompt = cached_system_prompt(prompt_variant)
         history.append({"role": "user", "content": user_message})
@@ -1362,7 +1371,7 @@ async def chat(request: Request):
     )
 
     # Solution mode cần nhiều token hơn để sinh cả lời giải + bài phái sinh
-    max_tokens = 2000 if chat_mode == "solution" else 1024
+    max_tokens = 2000 if chat_mode in ("solution", "raw_solution") else 1024
     payload = {
         "model": model, "messages": messages,
         "max_tokens": max_tokens, "temperature": 0.3,
