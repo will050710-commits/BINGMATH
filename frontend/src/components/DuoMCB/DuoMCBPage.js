@@ -721,12 +721,24 @@ function drawGenericViz(ctx, data, panelW, panelH, t) {
 function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   const canvasRef = useRef(null);
   const animRef = useRef(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  // ── Use a ref for isPlaying so the animation loop never needs it as a
+  //    React dependency — prevents the loop from being cancelled/restarted
+  //    on every setProgress() call which was causing the erratic bar.
+  const isPlayingRef = useRef(false);
+  const [isPlaying, setIsPlayingState] = useState(false);
   const [progress, setProgress] = useState(0);
   const [loadingSteps, setLoadingSteps] = useState(true);
   const [videoData, setVideoData] = useState(null);
   const frameRef = useRef(0);
+  const progressTickRef = useRef(0); // throttle counter
   const totalFrames = 480;
+
+  // Keep ref in sync with state (for buttons that toggle play/pause)
+  function setIsPlaying(val) {
+    const next = typeof val === "function" ? val(isPlayingRef.current) : val;
+    isPlayingRef.current = next;
+    setIsPlayingState(next);
+  }
 
   useEffect(() => {
     async function fetchData() {
@@ -757,38 +769,59 @@ ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
           .slice(0, 7);
 
         // Stage 2: Visualization JSON
+        // We also pass rawSteps as context to help the AI classify the viz type
+        const solutionContext = rawSteps.slice(0, 3).join(" | ");
+        const vizSchemaDoc = `Types and their viz objects:
+- quadratic  → {"a":N,"b":N,"c":N,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
+- linear     → {"lines":[{"m":N,"b":N,"label":"eq"}],"xRange":[min,max],"yRange":[min,max]}
+- system     → {"lines":[{"m":N,"b":N,"label":"eq"},{"m":N,"b":N,"label":"eq"}],"intersection":{"x":N,"y":N},"xRange":[min,max],"yRange":[min,max]}
+- geometry   → {"shapes":[{"t":"rect","x":N,"y":N,"w":N,"h":N},{"t":"circle","cx":N,"cy":N,"r":N},{"t":"triangle","pts":[[x1,y1],[x2,y2],[x3,y3]],"labels":["A","B","C"]}]}
+- trigonometry → {"fn":"sin|cos|tan","amplitude":N,"period":N,"phase":N,"xRange":[min,max],"yRange":[min,max]}
+- calculus   → {"a":N,"b":N,"c":N,"from":N,"to":N,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
+- other      → {}`;
+
         const vizPrompt = imageBase64
-          ? `Analyze the math problem in the image. Return ONLY a single valid JSON object – no markdown, no explanation, no extra text.
-Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
+          ? `You are a math problem classifier. Look at the image carefully and classify the math problem type, then output the appropriate JSON visualization data.
 
-TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
-VIZ_OBJECT rules by type:
-- quadratic: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
-- linear: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"xRange":[min,max],"yRange":[min,max]}
-- system: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"},{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"intersection":{"x":NUMBER,"y":NUMBER},"xRange":[min,max],"yRange":[min,max]}
-- geometry: {"shapes":[{"t":"rect","x":NUMBER,"y":NUMBER,"w":NUMBER,"h":NUMBER},{"t":"circle","cx":NUMBER,"cy":NUMBER,"r":NUMBER}]}
-- trigonometry: {"fn":"sin|cos|tan","amplitude":NUMBER,"period":NUMBER,"phase":NUMBER,"xRange":[min,max],"yRange":[min,max]}
-- calculus: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"from":NUMBER,"to":NUMBER,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
-- other: {}
+Here are the first solution steps already extracted (use them to help classify):
+"${solutionContext}"
 
-IMPORTANT: For geometry problems about tiles/flower petals/parabola tiles (gạch hoa, viên gạch, cánh hoa, parabol), use type "geometry" with title containing the word "gạch" or "hoa" so the correct petal visualization is triggered.
-Output ONLY the JSON object, nothing else.`
+Return ONLY a single valid JSON object with this schema:
+{"type":"TYPE","title":"SHORT_TITLE_IN_PROBLEM_LANGUAGE","viz":VIZ_OBJECT}
+
+${vizSchemaDoc}
+
+Classification rules:
+1. If the problem involves a SQUARE or RECTANGULAR tile/brick decorated with parabolic curves, petals, or flower shapes (viên gạch, gạch hoa, cánh hoa, parabol, tile) → type="geometry", title MUST contain "hoa" or "gạch", shapes=[{"t":"rect","x":0,"y":0,"w":SIDE,"h":SIDE}]
+2. If the problem involves ax²+bx+c, quadratic equations, parabola graph, roots/delta → type="quadratic", extract a,b,c,roots,vertex
+3. If the problem involves a line y=mx+b or linear equation → type="linear"
+4. If the problem involves two equations/lines intersecting → type="system"
+5. If the problem involves sin/cos/tan functions → type="trigonometry"
+6. If the problem involves integrals or area under curve → type="calculus"
+7. If the problem involves triangles, circles, rectangles (not tile petals) → type="geometry"
+8. Otherwise → type="other"
+
+Output ONLY the JSON. No markdown, no explanation, no extra text.`
           : `Given this math problem: "${question}"
-Return ONLY a single valid JSON object – no markdown, no explanation, no extra text.
-Schema: {"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
+Here are the first solution steps (use them to help classify):
+"${solutionContext}"
 
-TYPE must be one of: quadratic, linear, system, geometry, trigonometry, calculus, other
-VIZ_OBJECT rules by type:
-- quadratic: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
-- linear: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"xRange":[min,max],"yRange":[min,max]}
-- system: {"lines":[{"m":NUMBER,"b":NUMBER,"label":"STRING"},{"m":NUMBER,"b":NUMBER,"label":"STRING"}],"intersection":{"x":NUMBER,"y":NUMBER},"xRange":[min,max],"yRange":[min,max]}
-- geometry: {"shapes":[{"t":"rect","x":NUMBER,"y":NUMBER,"w":NUMBER,"h":NUMBER},{"t":"circle","cx":NUMBER,"cy":NUMBER,"r":NUMBER}]}
-- trigonometry: {"fn":"sin|cos|tan","amplitude":NUMBER,"period":NUMBER,"phase":NUMBER,"xRange":[min,max],"yRange":[min,max]}
-- calculus: {"a":NUMBER,"b":NUMBER,"c":NUMBER,"from":NUMBER,"to":NUMBER,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
-- other: {}
+Return ONLY a single valid JSON object:
+{"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
 
-IMPORTANT: For geometry problems about tiles/flower petals/parabola tiles (gạch hoa, viên gạch, cánh hoa, parabol), use type "geometry" with title containing "hoa" or "gạch".
-Output ONLY the JSON object, nothing else.`;
+${vizSchemaDoc}
+
+Classification rules:
+1. If problem involves parabola tile / flower petal tile / viên gạch / cánh hoa → type="geometry", title contains "hoa" or "gạch"
+2. If ax²+bx+c, quadratic, roots/delta → type="quadratic"
+3. Linear y=mx+b → type="linear"
+4. Two intersecting lines → type="system"
+5. sin/cos/tan → type="trigonometry"
+6. Integral/area under curve → type="calculus"
+7. Triangles, circles, rectangles (not petal tiles) → type="geometry"
+8. Otherwise → type="other"
+
+Output ONLY the JSON. No markdown, no extra text.`;
 
         const vizData = await chatFn(sessionId, vizPrompt, {
           image: imageBase64 || null,
@@ -815,6 +848,26 @@ Output ONLY the JSON object, nothing else.`;
           // JSON parse failed — stick with generic viz
         }
 
+        // ── Fallback: if AI returned "other" but solution text hints at a type,
+        //    promote it to the right type so we show a useful visualization.
+        if (vizParsed.type === "other") {
+          const combined = (solutionReply + " " + (question || "")).toLowerCase();
+          if (/viên gạch|gạch hoa|cánh hoa|petal|tile.*parabol|parabol.*tile/.test(combined)) {
+            vizParsed.type = "geometry";
+            vizParsed.title = vizParsed.title.includes("hoa") || vizParsed.title.includes("gạch")
+              ? vizParsed.title : vizParsed.title + " (gạch hoa)";
+          } else if (/x²|x\^2|quadratic|phương trình bậc hai|delta|discriminant|parabola/.test(combined)) {
+            vizParsed.type = "quadratic";
+          } else if (/sin|cos|tan|trigon/.test(combined)) {
+            vizParsed.type = "trigonometry";
+            vizParsed.viz = { fn: /cos/.test(combined) ? "cos" : /tan/.test(combined) ? "tan" : "sin", amplitude: 1, period: Math.PI * 2, phase: 0, xRange: [0, 6.28], yRange: [-1.6, 1.6] };
+          } else if (/integral|tích phân|area under|diện tích dưới/.test(combined)) {
+            vizParsed.type = "calculus";
+          } else if (/y\s*=\s*[\d-]*x|linear|đường thẳng/.test(combined)) {
+            vizParsed.type = "linear";
+          }
+        }
+
         const problemTitle = vizParsed.title || (question ? question.substring(0, 60) : "Bài toán");
         const steps = rawSteps.length > 0
           ? [problemTitle, ...rawSteps]
@@ -837,7 +890,12 @@ Output ONLY the JSON object, nothing else.`;
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Canvas animation
+  // ── Canvas animation loop ──────────────────────────────────────────────
+  // Key design: isPlaying is read from isPlayingRef (a ref) inside the loop,
+  // so `isPlaying` state is NOT a dependency. This prevents the loop from
+  // being cancelled and restarted on every setProgress() state update.
+  // setProgress is throttled: only called every 8 frames (~7.5fps for the bar)
+  // so React re-renders are infrequent and the bar moves smoothly.
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || loadingSteps || !videoData) return;
@@ -861,18 +919,26 @@ Output ONLY the JSON object, nothing else.`;
       ctx.restore();
     }
 
-    function animate() {
-      if (!isPlaying) return;
-      frameRef.current = (frameRef.current + 1) % totalFrames;
+    function tick() {
+      // Advance frame only when playing (read from ref — no closure stale-ness)
+      if (isPlayingRef.current) {
+        frameRef.current = (frameRef.current + 1) % totalFrames;
+      }
       drawFrame(frameRef.current);
-      setProgress((frameRef.current / totalFrames) * 100);
-      animRef.current = requestAnimationFrame(animate);
+      // Throttle: update progress state only every 8 frames to avoid
+      // flooding React with re-renders that would cancel this loop.
+      progressTickRef.current = (progressTickRef.current + 1) % 8;
+      if (progressTickRef.current === 0) {
+        setProgress((frameRef.current / totalFrames) * 100);
+      }
+      animRef.current = requestAnimationFrame(tick);
     }
 
     drawFrame(frameRef.current);
-    if (isPlaying) animRef.current = requestAnimationFrame(animate);
+    animRef.current = requestAnimationFrame(tick);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [isPlaying, loadingSteps, videoData]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingSteps, videoData]); // NOT isPlaying — controlled via isPlayingRef
 
   const totalSec = Math.round(totalFrames / 30);
 
