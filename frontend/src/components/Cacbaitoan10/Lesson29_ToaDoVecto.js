@@ -215,7 +215,7 @@ export default function Lesson29_ToaDoVecto() {
         
 
         <section id="w" style={{ scrollMarginTop: 80, marginBottom: 64 }}><SH icon="🚀" title={t("Khởi động", "Warm-Up")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("Trong GPS và bản đồ số, mỗi địa điểm được xác định bởi một cặp số (kinh độ, vĩ độ). Đây chính là hệ tọa độ — và một vectơ cũng có thể biểu diễn qua tọa độ!", "In GPS and digital maps, each location is defined by a pair (longitude, latitude). This is the coordinate system — and a vector can also be expressed through coordinates!")}</div>
           </div>
         </section>
@@ -235,9 +235,9 @@ export default function Lesson29_ToaDoVecto() {
         </div>
       </section>
         <section id="k1" style={{ scrollMarginTop: 80, marginBottom: 64 }}><SH icon="📖" title={t("1. Tọa Độ Vectơ", "1. Vector Coordinates")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
             <div style={{ fontSize: 15, lineHeight: 1.8, marginBottom: 12 }}>{t("Với hệ trục Oxy, vectơ →a được biểu diễn qua các vectơ đơn vị →i=(1,0) và →j=(0,1):", "In coordinate system Oxy, vector →a is expressed via unit vectors →i=(1,0) and →j=(0,1):")}</div>
-            <div style={{ background: "white", borderRadius: 10, padding: "14px 18px", fontFamily: "monospace", fontSize: 16, textAlign: "center", lineHeight: 2.4, color: "#0B4F5C", fontWeight: 700 }}>
+            <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 10, padding: "14px 18px", fontFamily: "monospace", fontSize: 16, textAlign: "center", lineHeight: 2.4, color: "#22d3ee", fontWeight: 700 }}>
               →a = (a₁, a₂) = a₁→i + a₂→j<br />
               |→a| = √(a₁² + a₂²)
             </div>
@@ -248,24 +248,24 @@ export default function Lesson29_ToaDoVecto() {
                 title: t("Tọa độ điểm và vectơ", "Point and vector coordinates"),
                 formula: `A(x,y) → →OA = (x,y)
 →AB = (xB−xA, yB−yA)`,
-                c: "#1a5276", bg: "#eaf4fb"
+                c: "#38bdf8", bg: "rgba(14, 165, 233, 0.15)"
               },
               {
                 title: t("Phép toán theo tọa độ", "Operations via coordinates"),
                 formula: `→a±→b = (a₁±b₁, a₂±b₂)
 k→a = (ka₁, ka₂)
 →a·→b = a₁b₁+a₂b₂`,
-                c: "#1e8449", bg: "#eafaf1"
+                c: "#4ade80", bg: "rgba(16, 185, 129, 0.15)"
               },
               {
                 title: t("Điều kiện // và ⊥", "Parallel and perpendicular"),
                 formula: `//: a₁b₂−a₂b₁=0
 ⊥: a₁b₁+a₂b₂=0
 Góc: cosφ=(→a·→b)/(|→a||→b|)`,
-                c: "#922b21", bg: "#fdf2f2"
+                c: "#f87171", bg: "rgba(239, 68, 68, 0.15)"
               },
             ].map((card, i) => (
-              <article key={i} style={{ padding: 18, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+              <article key={i} style={{ padding: 18, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: card.c, marginBottom: 8 }}>{card.title}</div>
                 <div style={{ fontFamily: "monospace", fontSize: 13, background: card.bg, color: card.c, padding: "8px 12px", borderRadius: 8, whiteSpace: "pre-wrap", lineHeight: 1.8 }}>{card.formula}</div>
               </article>
@@ -273,8 +273,8 @@ Góc: cosφ=(→a·→b)/(|→a||→b|)`,
           </div>
         </section>
         <section id="k2" style={{ scrollMarginTop: 80, marginBottom: 64 }}><SH icon="📖" title={t("2. Tọa Độ Trung Điểm và Trọng Tâm", "2. Midpoint and Centroid")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-            <div style={{ background: "white", borderRadius: 8, padding: "14px 18px", fontFamily: "monospace", fontSize: 15, lineHeight: 2.4 }}>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+            <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 8, padding: "14px 18px", fontFamily: "monospace", fontSize: 15, lineHeight: 2.4 }}>
               Trung điểm M của AB: M = ((xA+xB)/2, (yA+yB)/2)<br />
               Trọng tâm G của △ABC: G = ((xA+xB+xC)/3, (yA+yB+yC)/3)
             </div>
@@ -287,12 +287,12 @@ Góc: cosφ=(→a·→b)/(|→a||→b|)`,
             { id: "e3", q: t("A(0,0), B(4,0), C(2,6). Tìm trọng tâm G.", "A(0,0), B(4,0), C(2,6). Find centroid G."), a: ["G=((0+4+2)/3,(0+0+6)/3)=(6/3,6/3)=(2,2)"] },
             ].map(({ id, q, a }) => (
               <article key={id}>
-                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>📝 {t("Bài tập", "Exercise")}</div>
                   <div style={{ fontSize: 15, lineHeight: 1.7 }}>{q}</div>
                 </div>
-                <button onClick={() => tr(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "black", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>{rev[id] ? t("Ẩn ▲", "Hide ▲") : t("Xem đáp án ▼", "Show ▼")}</button>
-                {rev[id] && <div style={{ padding: "16px 20px", background: "#eafaf1", borderRadius: "0 0 10px 10px" }}>{a.map((l, i) => <div key={i} style={{ fontSize: 15, color: "#555", marginBottom: 6 }}>{l}</div>)}</div>}
+                <button onClick={() => tr(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>{rev[id] ? t("Ẩn ▲", "Hide ▲") : t("Xem đáp án ▼", "Show ▼")}</button>
+                {rev[id] && <div style={{ padding: "16px 20px", background: "rgba(16, 185, 129, 0.15)", borderRadius: "0 0 10px 10px" }}>{a.map((l, i) => <div key={i} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>{l}</div>)}</div>}
               </article>
             ))}
           </div>

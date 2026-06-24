@@ -278,7 +278,7 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
         {/* KHỞI ĐỘNG */}
         <section id="khoiDong" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="🚀" title={t("Khởi động", "Warm-Up")} />
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t("Tình huống mở đầu", "Opening Situation")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 16 }}>
               {t('Một nhà máy sản xuất hai sản phẩm X và Y. Với các ràng buộc về nguyên liệu, nhân công và máy móc, ta có nhiều BPT đồng thời:\n• 2x + y ≤ 100 (nguyên liệu)\n• x + 3y ≤ 90 (nhân công)\n• x ≥ 0, y ≥ 0 (sản lượng không âm)',
@@ -306,21 +306,21 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
         {/* 1. ĐỊNH NGHĨA */}
         <section id="khai1" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("1. Định Nghĩa Hệ BPT", "1. System Definition")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>
               {t("Hệ BPT bậc nhất hai ẩn gồm nhiều BPT bậc nhất hai ẩn đặt đồng thời. Nghiệm của hệ là cặp (x₀, y₀) thỏa mãn TẤT CẢ các BPT trong hệ.",
                 "A system of linear inequalities in two variables consists of multiple linear inequalities simultaneously. A solution is a pair (x₀, y₀) satisfying ALL inequalities in the system.")}
             </div>
           </div>
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>📘 {t("Ví dụ hệ BPT", "Example system")}</div>
-            <div style={{ fontFamily: "monospace", fontSize: 18, color: "#0B4F5C", lineHeight: 2, padding: "10px 0" }}>
+            <div style={{ fontFamily: "monospace", fontSize: 18, color: "#22d3ee", lineHeight: 2, padding: "10px 0" }}>
               {"{"} x + y ≤ 4<br />
               {"{"} x − y ≥ −2<br />
               {"{"} x ≥ 0
             </div>
-            <div style={{ fontSize: 15, color: "#777", marginTop: 8 }}>
+            <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.5)", marginTop: 8 }}>
               {t("Nghiệm: mọi điểm (x,y) thỏa đồng thời cả 3 BPT trên.", "Solutions: all points (x,y) satisfying all 3 inequalities simultaneously.")}
             </div>
           </div>
@@ -329,22 +329,22 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
         {/* 2. MIỀN NGHIỆM */}
         <section id="khai2" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("2. Miền Nghiệm Của Hệ", "2. Solution Region of the System")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Tính chất", "Properties")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Tính chất", "Properties")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>
               {t("Miền nghiệm của hệ = giao của tất cả các nửa mặt phẳng tương ứng với từng BPT. Miền này có thể là:", "Solution region = intersection of all corresponding half-planes. This region can be:")}
             </div>
           </div>
           <div className="reveal" data-reveal data-reveal-stagger data-stagger="100" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 24, transition: "all 0.3s ease" }}>
             {[
-              { icon: "∅", title: t("Tập rỗng", "Empty set"), desc: t("Không có điểm nào thỏa tất cả BPT — các nửa mặt phẳng không có điểm chung.", "No point satisfies all — half-planes share no common point."), color: "#fdf2f2", text: "#922b21" },
-              { icon: "▲", title: t("Đa giác lồi hữu hạn", "Bounded convex polygon"), desc: t("Miền nghiệm là đa giác lồi có các đỉnh xác định.", "Solution region is a bounded convex polygon with defined vertices."), color: "#eafaf1", text: "#1e8449" },
-              { icon: "↗", title: t("Vùng vô hạn", "Unbounded region"), desc: t("Miền nghiệm kéo dài ra vô hạn theo một hoặc nhiều hướng.", "Solution region extends infinitely in one or more directions."), color: "#e8f4fd", text: "#1a5276" },
+              { icon: "∅", title: t("Tập rỗng", "Empty set"), desc: t("Không có điểm nào thỏa tất cả BPT — các nửa mặt phẳng không có điểm chung.", "No point satisfies all — half-planes share no common point."), color: "rgba(239, 68, 68, 0.15)", text: "#f87171" },
+              { icon: "▲", title: t("Đa giác lồi hữu hạn", "Bounded convex polygon"), desc: t("Miền nghiệm là đa giác lồi có các đỉnh xác định.", "Solution region is a bounded convex polygon with defined vertices."), color: "rgba(16, 185, 129, 0.15)", text: "#4ade80" },
+              { icon: "↗", title: t("Vùng vô hạn", "Unbounded region"), desc: t("Miền nghiệm kéo dài ra vô hạn theo một hoặc nhiều hướng.", "Solution region extends infinitely in one or more directions."), color: "#e8f4fd", text: "#38bdf8" },
             ].map((card, i) => (
-              <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                <div style={{ fontSize: 36, fontWeight: 700, color: "#0B4F5C", marginBottom: 8 }}>{card.icon}</div>
+              <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ fontSize: 36, fontWeight: 700, color: "#22d3ee", marginBottom: 8 }}>{card.icon}</div>
                 <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 8 }}>{card.title}</div>
-                <div style={{ fontSize: 14, color: "#777" }}>{card.desc}</div>
+                <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.5)" }}>{card.desc}</div>
                 <div style={{ marginTop: 10, padding: "4px 10px", background: card.color, color: card.text, fontSize: 12, fontWeight: 700, borderRadius: 20, display: "inline-block" }}>{card.title}</div>
               </article>
             ))}
@@ -354,8 +354,8 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
         {/* 3. CÁCH GIẢI */}
         <section id="khai3" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("3. Cách Biểu Diễn Miền Nghiệm Của Hệ", "3. Graphing the Solution Region")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#0B4F5C" }}>📋 {t("Các bước thực hiện", "Steps")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#22d3ee" }}>📋 {t("Các bước thực hiện", "Steps")}</div>
             <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display: "flex", flexDirection: "column", gap: 12, transition: "all 0.3s ease" }}>
               {[
                 { step: "1", text: t("Với mỗi BPT trong hệ: vẽ đường biên tương ứng và xác định nửa mp nghiệm.", "For each inequality: draw its boundary and identify the solution half-plane.") },
@@ -364,25 +364,25 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
                 { step: "4", text: t("Tìm các đỉnh (điểm góc) của miền bằng cách giải các hệ phương trình đường biên.", "Find the vertices by solving systems of boundary line equations.") },
               ].map((s, i) => (
                 <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 32, height: 32, borderRadius: "50%", background: "black", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{s.step}</div>
-                  <div style={{ fontSize: 15, color: "#555", lineHeight: 1.7, paddingTop: 4 }}>{s.text}</div>
+                  <div style={{ minWidth: 32, height: 32, borderRadius: "50%", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{s.step}</div>
+                  <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", lineHeight: 1.7, paddingTop: 4 }}>{s.text}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>📘 {t("Ví dụ: Tìm miền nghiệm của hệ", "Example: Find solution region of")}</div>
-            <div style={{ fontFamily: "monospace", fontSize: 18, color: "#0B4F5C", lineHeight: 2, marginBottom: 16 }}>
+            <div style={{ fontFamily: "monospace", fontSize: 18, color: "#22d3ee", lineHeight: 2, marginBottom: 16 }}>
               {"{"} x + y ≤ 4 &nbsp;&nbsp; (1)<br />
               {"{"} x − y ≥ 0 &nbsp;&nbsp; (2)<br />
               {"{"} x ≥ 0 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (3)
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 15, color: "#555" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 15, color: "rgba(255, 255, 255, 0.7)" }}>
               <div>① {t("Đường biên (1): x+y=4. Thử O: 0+0=0≤4 ✓ → tô phía chứa O.", "Boundary (1): x+y=4. Test O: 0≤4 ✓ → shade O's side.")}</div>
               <div>② {t("Đường biên (2): x−y=0 (y=x). Thử O: 0−0=0≥0 ✓ → tô phía chứa O.", "Boundary (2): x−y=0 (y=x). Test O: 0≥0 ✓ → shade O's side.")}</div>
               <div>③ {t("Đường biên (3): x=0. Thử điểm (1,0): 1≥0 ✓ → tô phía phải.", "Boundary (3): x=0. Test (1,0): 1≥0 ✓ → shade right side.")}</div>
-              <div style={{ marginTop: 8, padding: "10px 14px", background: "#eafaf1", borderRadius: 8, color: "#1e8449", fontWeight: 600 }}>
+              <div style={{ marginTop: 8, padding: "10px 14px", background: "rgba(16, 185, 129, 0.15)", borderRadius: 8, color: "#4ade80", fontWeight: 600 }}>
                 ✅ {t("Đỉnh miền: O(0,0), A(4,0), B(2,2) — tam giác có cạnh trên đường y=x.", "Vertices: O(0,0), A(4,0), B(2,2) — triangle on y=x.")}
               </div>
             </div>
@@ -425,15 +425,15 @@ export default function Lesson5_HeBPTBacNhatHaiAn() {
               },
             ].map(({ id, q, a }) => (
               <article key={id}>
-                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>📝 {t("Bài tập", "Exercise")}</div>
-                  <div style={{ color: "#777", fontSize: 14 }}>{t("Toán 10", "Grade 10")}</div>
+                  <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14 }}>{t("Toán 10", "Grade 10")}</div>
                   <div style={{ fontSize: 15, lineHeight: 1.7, marginTop: 10, whiteSpace: "pre-wrap" }}>{q}</div>
                 </div>
-                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "black", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
+                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
                   {revealedAnswers[id] ? t("Ẩn đáp án ▲", "Hide Answer ▲") : t("Xem đáp án ▼", "Show Answer ▼")}
                 </button>
-                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "#eafaf1", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "#555", marginBottom: 6 }}>{line}</div>)}</div>}
+                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "rgba(16, 185, 129, 0.15)", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>{line}</div>)}</div>}
               </article>
             ))}
           </div>

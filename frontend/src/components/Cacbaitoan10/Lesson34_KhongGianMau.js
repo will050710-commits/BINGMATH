@@ -215,7 +215,7 @@ export default function Lesson34_KhongGianMau() {
     
 
     <section id="w" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <div style={{fontSize:16,lineHeight:1.8}}>{t("Khi tung đồng xu, có 2 kết quả: sấp (S) hoặc ngửa (N). Tập {S,N} là không gian mẫu. Biến cố 'ra mặt ngửa' = {N}. Xác suất = số kết quả thuận lợi / tổng số kết quả. Đây là nền tảng của lý thuyết xác suất!","When flipping a coin: 2 outcomes: Tails (T) or Heads (H). Set {T,H} is the sample space. Event 'heads' = {H}. Probability = favorable outcomes / total outcomes. This is the foundation of probability theory!")}</div>
       </div>
     </section>
@@ -235,26 +235,26 @@ export default function Lesson34_KhongGianMau() {
         </div>
       </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Không Gian Mẫu","1. Sample Space")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-        <div style={{fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:10}}>📌 {t("Định nghĩa","Definitions")}</div>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+        <div style={{fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:10}}>📌 {t("Định nghĩa","Definitions")}</div>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:8}}>{t("• Phép thử ngẫu nhiên: thí nghiệm với kết quả không tiên đoán được.","• Random experiment: trial with unpredictable outcome.")}</div>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:8}}>{t("• Không gian mẫu Ω: tập hợp tất cả kết quả có thể.","• Sample space Ω: set of all possible outcomes.")}</div>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:8}}>{t("• Biến cố A: tập con của Ω (tập hợp các kết quả thuận lợi cho A).","• Event A: a subset of Ω (set of favorable outcomes).")}</div>
       </div>
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,transition:"all 0.3s"}}>
-        {[{ex:t("Tung 1 đồng xu","Flip 1 coin"),omega:"Ω={S,N}",n:"n(Ω)=2",c:"#1a5276",bg:"#eaf4fb"},
-          {ex:t("Tung 1 xúc xắc","Roll 1 die"),omega:"Ω={1,2,3,4,5,6}",n:"n(Ω)=6",c:"#1e8449",bg:"#eafaf1"},
-          {ex:t("Tung 2 đồng xu","Flip 2 coins"),omega:"Ω={SS,SN,NS,NN}",n:"n(Ω)=4",c:"#856404",bg:"#fff3cd"},
-          {ex:t("Rút 1 lá bài từ 52","Draw 1 card from 52"),omega:"Ω={52 lá}",n:"n(Ω)=52",c:"#922b21",bg:"#fdf2f2"},
-        ].map((card,i)=>(<article key={i} style={{padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:13,color:"#777",marginBottom:6}}>{card.ex}</div><div style={{fontFamily:"monospace",fontSize:13,color:card.c,background:card.bg,padding:"6px 10px",borderRadius:6,marginBottom:4}}>{card.omega}</div><div style={{fontSize:12,color:"#777"}}>{card.n}</div></article>))}
+        {[{ex:t("Tung 1 đồng xu","Flip 1 coin"),omega:"Ω={S,N}",n:"n(Ω)=2",c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+          {ex:t("Tung 1 xúc xắc","Roll 1 die"),omega:"Ω={1,2,3,4,5,6}",n:"n(Ω)=6",c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+          {ex:t("Tung 2 đồng xu","Flip 2 coins"),omega:"Ω={SS,SN,NS,NN}",n:"n(Ω)=4",c:"#fbbf24",bg:"rgba(245, 158, 11, 0.15)"},
+          {ex:t("Rút 1 lá bài từ 52","Draw 1 card from 52"),omega:"Ω={52 lá}",n:"n(Ω)=52",c:"#f87171",bg:"rgba(239, 68, 68, 0.15)"},
+        ].map((card,i)=>(<article key={i} style={{padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:13,color: "rgba(255, 255, 255, 0.5)",marginBottom:6}}>{card.ex}</div><div style={{fontFamily:"monospace",fontSize:13,color:card.c,background:card.bg,padding:"6px 10px",borderRadius:6,marginBottom:4}}>{card.omega}</div><div style={{fontSize:12,color: "rgba(255, 255, 255, 0.5)"}}>{card.n}</div></article>))}
       </div>
     </section>
     <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("2. Quan Hệ Giữa Các Biến Cố","2. Relations Between Events")} />
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16,transition:"all 0.3s"}}>
-        {[{name:t("Biến cố đối Ā","Complement Ā"),def:t("Tất cả kết quả KHÔNG thuộc A","All outcomes NOT in A"),formula:"Ā = Ω \ A; n(Ā)=n(Ω)−n(A)",c:"#1a5276",bg:"#eaf4fb"},
-          {name:t("Hợp A∪B","Union A∪B"),def:t("A hoặc B (hoặc cả hai) xảy ra","A or B or both occur"),formula:"n(A∪B)=n(A)+n(B)−n(A∩B)",c:"#1e8449",bg:"#eafaf1"},
-          {name:t("Giao A∩B","Intersection A∩B"),def:t("Cả A và B đều xảy ra","Both A and B occur"),formula:t("A và B xung khắc: A∩B=∅","A and B mutually exclusive: A∩B=∅"),c:"#922b21",bg:"#fdf2f2"},
-        ].map((card,i)=>(<article key={i} style={{padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:6}}>{card.name}</div><div style={{fontSize:13,color:"#555",marginBottom:6}}>{card.def}</div><div style={{fontFamily:"monospace",fontSize:12,background:card.bg,color:card.c,padding:"6px 10px",borderRadius:6}}>{card.formula}</div></article>))}
+        {[{name:t("Biến cố đối Ā","Complement Ā"),def:t("Tất cả kết quả KHÔNG thuộc A","All outcomes NOT in A"),formula:"Ā = Ω \ A; n(Ā)=n(Ω)−n(A)",c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+          {name:t("Hợp A∪B","Union A∪B"),def:t("A hoặc B (hoặc cả hai) xảy ra","A or B or both occur"),formula:"n(A∪B)=n(A)+n(B)−n(A∩B)",c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+          {name:t("Giao A∩B","Intersection A∩B"),def:t("Cả A và B đều xảy ra","Both A and B occur"),formula:t("A và B xung khắc: A∩B=∅","A and B mutually exclusive: A∩B=∅"),c:"#f87171",bg:"rgba(239, 68, 68, 0.15)"},
+        ].map((card,i)=>(<article key={i} style={{padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:6}}>{card.name}</div><div style={{fontSize:13,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{card.def}</div><div style={{fontFamily:"monospace",fontSize:12,background:card.bg,color:card.c,padding:"6px 10px",borderRadius:6}}>{card.formula}</div></article>))}
       </div>
     </section>
     <section id="th" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="✏️" title={t("Thực Hành","Practice")} />
@@ -262,7 +262,7 @@ export default function Lesson34_KhongGianMau() {
         {[{id:"e1",q:t("Tung 1 xúc xắc. Xác định Ω và biến cố A='ra số chẵn'.","Roll 1 die. Define Ω and event A='even number'."),a:["Ω={1,2,3,4,5,6}","A={2,4,6}","Ā={1,3,5}"]},
           {id:"e2",q:t("Tung 2 đồng xu. Biến cố B='ít nhất 1 mặt ngửa'. Liệt kê B.","Flip 2 coins. Event B='at least 1 head'. List B."),a:["Ω={SS,SN,NS,NN}","B={SN,NS,NN}",t("n(B)=3","n(B)=3")]},
           {id:"e3",q:t("Xúc xắc: A='số lẻ'={1,3,5}, B='số>3'={4,5,6}. Tìm A∩B và A∪B.","Die: A='odd'={1,3,5}, B='>3'={4,5,6}. Find A∩B and A∪B."),a:["A∩B={5}","A∪B={1,3,4,5,6}"]},
-        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
       </div>
     </section>
       </>

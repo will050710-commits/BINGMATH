@@ -7,7 +7,7 @@ import DuoTranslate from "../DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
 
 const SH = ({ icon, title }) => (
-  <div style={{ display:"flex",alignItems:"center",gap:12,fontSize:22,fontWeight:700,color:"#0B4F5C",marginBottom:20,paddingBottom:12,borderBottom:"2px solid #f0f0f0" }}>
+  <div style={{ display:"flex",alignItems:"center",gap:12,fontSize:22,fontWeight:700,color: "#22d3ee",marginBottom:20,paddingBottom:12,borderBottom:"2px solid #f0f0f0" }}>
     <span>{icon}</span><span>{title}</span>
   </div>
 );
@@ -15,25 +15,25 @@ const RS = ({ items, onReset, scoreLabel, t }) => (
   <div>
     <div style={{ textAlign:"center",marginBottom:24 }}>
       <div style={{ fontSize:48,marginBottom:8 }}>{items.filter(i=>i.correct).length===items.length?"🏆":items.filter(i=>i.correct).length>=items.length*0.6?"👍":"💪"}</div>
-      <div style={{ fontSize:26,fontWeight:700,color:"#0B4F5C" }}>{items.filter(i=>i.correct).length} / {items.length}</div>
-      <div style={{ color:"#777",fontSize:16,marginTop:4 }}>{scoreLabel}</div>
+      <div style={{ fontSize:26,fontWeight:700,color: "#22d3ee" }}>{items.filter(i=>i.correct).length} / {items.length}</div>
+      <div style={{ color: "rgba(255, 255, 255, 0.5)",fontSize:16,marginTop:4 }}>{scoreLabel}</div>
     </div>
     <div style={{ display:"flex",flexDirection:"column",gap:12,marginBottom:24 }}>
       {items.map((item,idx)=>(
-        <div key={idx} style={{ padding:"14px 18px",borderRadius:10,background:item.correct?"#eafaf1":"#fdf2f2",border:`1px solid ${item.correct?"#a9dfbf":"#f1948a"}` }}>
+        <div key={idx} style={{ padding:"14px 18px",borderRadius:10,background:item.correct?"rgba(16, 185, 129, 0.15)":"rgba(239, 68, 68, 0.15)",border:`1px solid ${item.correct?"#a9dfbf":"#f1948a"}` }}>
           <div style={{ display:"flex",alignItems:"flex-start",gap:10 }}>
             <span style={{ fontSize:18,flexShrink:0 }}>{item.correct?"✅":"❌"}</span>
             <div style={{ flex:1 }}>
-              <div style={{ fontSize:15,fontWeight:600,color:"#333",marginBottom:4 }}>{t("Câu","Q")} {idx+1}: {item.qText}</div>
-              {!item.correct&&<div style={{ fontSize:14,color:"#922b21" }}>{t("Đáp án đúng:","Correct:")} <strong>{item.correctText}</strong></div>}
-              {item.yourText&&!item.correct&&<div style={{ fontSize:14,color:"#777" }}>{t("Bạn chọn:","You chose:")} {item.yourText}</div>}
+              <div style={{ fontSize:15,fontWeight:600,color: "rgba(255, 255, 255, 0.9)",marginBottom:4 }}>{t("Câu","Q")} {idx+1}: {item.qText}</div>
+              {!item.correct&&<div style={{ fontSize:14,color:"#f87171" }}>{t("Đáp án đúng:","Correct:")} <strong>{item.correctText}</strong></div>}
+              {item.yourText&&!item.correct&&<div style={{ fontSize:14,color: "rgba(255, 255, 255, 0.5)" }}>{t("Bạn chọn:","You chose:")} {item.yourText}</div>}
             </div>
           </div>
         </div>
       ))}
     </div>
     <div style={{ textAlign:"center" }}>
-      <button onClick={onReset} style={{ padding:"12px 32px",background:"black",color:"white",border:"none",borderRadius:8,fontWeight:600,fontSize:15,cursor:"pointer" }}>🔄 {t("Chơi lại","Play Again")}</button>
+      <button onClick={onReset} style={{ padding:"12px 32px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",borderRadius:8,fontWeight:600,fontSize:15,cursor:"pointer" }}>🔄 {t("Chơi lại","Play Again")}</button>
     </div>
   </div>
 );
@@ -247,12 +247,12 @@ export default function OnTapChuong4() {
   }, [fc, fa, user]);
 
   return (
-    <><div style={{ width: "100%", background: "#fff", display: "flex", justifyContent: "center" }}>
+    <><div style={{ width: "100%", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", display: "flex", justifyContent: "center" }}>
       <div style={{ width: "1200px", maxWidth: "95%", color: "black", paddingTop: 60, paddingBottom: 80 }}>
         <div className="reveal" data-reveal style={{ marginBottom: 24 }}><Link href="/Cacbaitoan10" style={{ textDecoration: "none", color: "black", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", padding: "12px 16px", borderRadius: 8, fontSize: 15 }}>← {t("Quay lại", "Back")}</Link></div>
         <header className="reveal" data-reveal style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 0", position: "relative", zIndex: 300 }}>
           <div>
-            <div style={{ fontWeight: "bold", fontSize: 22, color: "#0B4F5C" }}>{t("Chương IV · Hệ Thức Lượng Trong Tam Giác", "Chapter IV · Triangle Trigonometry")}</div>
+            <div style={{ fontWeight: "bold", fontSize: 22, color: "#22d3ee" }}>{t("Chương IV · Hệ Thức Lượng Trong Tam Giác", "Chapter IV · Triangle Trigonometry")}</div>
             <div style={{ fontSize: 28, fontWeight: 600, marginTop: 4 }}>{t("Ôn Tập Chương IV", "Chapter IV Review")}</div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -264,18 +264,18 @@ export default function OnTapChuong4() {
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="70" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14, marginBottom: 40, transition: "all 0.3s" }}>
           {[{ slug: "gia-tri-luong-giac", num: "10", title: t("Giá Trị Lượng Giác", "Trig Values") }, { slug: "dinh-li-cosin", num: "11", title: t("Định Lí Côsin", "Law of Cosines") }, { slug: "dinh-li-sin", num: "12", title: t("Định Lí Sin", "Law of Sines") }, { slug: "giai-tam-giac", num: "13", title: t("Giải Tam Giác", "Solving Triangles") }].map(l => (
             <Link key={l.slug} href={`/cacbailam10/${l.slug}`} style={{ textDecoration: "none" }}>
-              <article style={{ padding: 14, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", cursor: "pointer" }}>
-                <div style={{ fontSize: 12, color: "#777", marginBottom: 3 }}>{t("Bài", "L")} {l.num}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: "#0B4F5C" }}>{l.title}</div>
+              <article style={{ padding: 14, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", cursor: "pointer" }}>
+                <div style={{ fontSize: 12, color: "rgba(255, 255, 255, 0.5)", marginBottom: 3 }}>{t("Bài", "L")} {l.num}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: "#22d3ee" }}>{l.title}</div>
                 <div style={{ fontSize: 12, color: "#aaa", marginTop: 3 }}>← {t("Ôn lại", "Review")}</div>
               </article>
             </Link>
           ))}
         </div>
 
-        <div style={{ position: "sticky", top: 0, zIndex: 200, background: "#fff", paddingTop: 12, paddingBottom: 12, marginBottom: 48, boxShadow: "0 4px 16px rgba(0,0,0,0.07)" }}>
+        <div style={{ position: "sticky", top: 0, zIndex: 200, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", paddingTop: 12, paddingBottom: 12, marginBottom: 48, boxShadow: "0 4px 16px rgba(0,0,0,0.07)" }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {tabs.map(([id, icon, label]) => (<button key={id} onClick={() => sc(id)} style={{ background: "#f9f9f9", color: "black", border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", transition: "all 0.15s" }} onMouseEnter={e => { e.currentTarget.style.background = "black"; e.currentTarget.style.color = "white"; } } onMouseLeave={e => { e.currentTarget.style.background = "#f9f9f9"; e.currentTarget.style.color = "black"; } }>{icon} {label}</button>))}
+            {tabs.map(([id, icon, label]) => (<button key={id} onClick={() => sc(id)} style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", color: "black", border: "none", borderRadius: 8, padding: "10px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", transition: "all 0.15s" }} onMouseEnter={e => { e.currentTarget.style.background = "black"; e.currentTarget.style.color = "white"; } } onMouseLeave={e => { e.currentTarget.style.background = "#f9f9f9"; e.currentTarget.style.color = "black"; } }>{icon} {label}</button>))}
           </div>
         </div>
 
@@ -287,9 +287,9 @@ export default function OnTapChuong4() {
             { title: t("Bài 12 · Định Lí Sin", "L12 · Law of Sines"), pts: ["a/sinA=b/sinB=c/sinC=2R", "R=a/(2sinA)", t("Dùng khi: AAS, ASA", "Use when: AAS, ASA"), t("Cạnh lớn đối góc lớn", "Larger side opposite larger angle")] },
             { title: t("Bài 13 · Giải Tam Giác", "L13 · Solving Triangles"), pts: [t("S=(1/2)·a·b·sinC (diện tích)", "S=(1/2)·a·b·sinC (area)"), t("Cần ≥ 3 dữ kiện (ít nhất 1 cạnh)", "Need ≥ 3 data (at least 1 side)"), t("SAS→Côsin; AAS→Sin", "SAS→Cosines; AAS→Sines"), t("Heron: S=√(s(s−a)(s−b)(s−c))", "Heron: S=√(s(s−a)(s−b)(s−c))")] }
             ].map((card, i) => (
-              <article key={i} style={{ padding: 18, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#0B4F5C", marginBottom: 10 }}>{card.title}</div>
-                {card.pts.map((pt, j) => <div key={j} style={{ fontSize: 13, color: "#555", marginBottom: 7, display: "flex", gap: 8 }}><span style={{ color: "#0B4F5C", fontWeight: 700, flexShrink: 0 }}>•</span><span style={{ fontFamily: "monospace" }}>{pt}</span></div>)}
+              <article key={i} style={{ padding: 18, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#22d3ee", marginBottom: 10 }}>{card.title}</div>
+                {card.pts.map((pt, j) => <div key={j} style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.7)", marginBottom: 7, display: "flex", gap: 8 }}><span style={{ color: "#22d3ee", fontWeight: 700, flexShrink: 0 }}>•</span><span style={{ fontFamily: "monospace" }}>{pt}</span></div>)}
               </article>
             ))}
           </div>
@@ -318,9 +318,9 @@ export default function OnTapChuong4() {
             { label: t("Định lí Sin", "Law of Sines"), formula: "a/sinA = b/sinB = c/sinC = 2R\nR = a / (2sinA)\nsinA = a / (2R)" },
             { label: t("Diện tích & Heron", "Area & Heron"), formula: "S = (½)·b·c·sinA\nS = (½)·a·c·sinB\nS = (½)·a·b·sinC\ns=(a+b+c)/2\nS = √(s(s−a)(s−b)(s−c))" },
             ].map((card, i) => (
-              <article key={i} style={{ padding: 18, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#0B4F5C", marginBottom: 10 }}>{card.label}</div>
-                <div style={{ fontFamily: "monospace", fontSize: 13, background: "white", padding: "10px 12px", borderRadius: 8, lineHeight: 1.9, whiteSpace: "pre-wrap" }}>{card.formula}</div>
+              <article key={i} style={{ padding: 18, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "#22d3ee", marginBottom: 10 }}>{card.label}</div>
+                <div style={{ fontFamily: "monospace", fontSize: 13, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", padding: "10px 12px", borderRadius: 8, lineHeight: 1.9, whiteSpace: "pre-wrap" }}>{card.formula}</div>
               </article>
             ))}
           </div>
@@ -344,15 +344,15 @@ export default function OnTapChuong4() {
               },
             ].map(({ id, q, a, badge }) => (
               <article key={id}>
-                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
                     <div style={{ fontSize: 17, fontWeight: 600 }}>📝 {t("Bài tập", "Exercise")}</div>
-                    <span style={{ background: "black", color: "white", fontSize: 12, fontWeight: 700, padding: "2px 10px", borderRadius: 20 }}>{badge}</span>
+                    <span style={{ background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", fontSize: 12, fontWeight: 700, padding: "2px 10px", borderRadius: 20 }}>{badge}</span>
                   </div>
                   <div style={{ fontSize: 15, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{q}</div>
                 </div>
-                <button onClick={() => tr(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "black", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>{rev[id] ? t("Ẩn ▲", "Hide ▲") : t("Xem đáp án ▼", "Show ▼")}</button>
-                {rev[id] && <div style={{ padding: "16px 20px", background: "#eafaf1", borderRadius: "0 0 10px 10px" }}>{a.map((l, i) => <div key={i} style={{ fontSize: 15, color: "#555", marginBottom: 6 }}>{l}</div>)}</div>}
+                <button onClick={() => tr(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>{rev[id] ? t("Ẩn ▲", "Hide ▲") : t("Xem đáp án ▼", "Show ▼")}</button>
+                {rev[id] && <div style={{ padding: "16px 20px", background: "rgba(16, 185, 129, 0.15)", borderRadius: "0 0 10px 10px" }}>{a.map((l, i) => <div key={i} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>{l}</div>)}</div>}
               </article>
             ))}
           </div>
@@ -367,13 +367,13 @@ export default function OnTapChuong4() {
               </article>
             ))}
           </div>
-          {gm === "mc" && <div style={{ padding: 24, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>{!md ? (<><div style={{ color: "#777", fontSize: 15, marginBottom: 8 }}>{t("Câu", "Q")} {mi + 1}/{mcQ.length} · {t("Điểm:", "Score:")} {msc}</div><div style={{ fontSize: 20, fontWeight: 600, marginBottom: 20 }}>{mcQ[mi].q}</div><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{mcQ[mi].o.map((opt, i) => { let bg = "white", co = "black"; if (ms !== null) { if (i === mcQ[mi].a) { bg = "#eafaf1"; co = "#1e8449"; } else if (i === ms) { bg = "#fdf2f2"; co = "#922b21"; } } return <button key={i} onClick={() => sel(i)} style={{ textAlign: "left", padding: "14px 18px", borderRadius: 10, border: "none", background: bg, color: co, fontSize: 15, fontWeight: ms !== null && (i === ms || i === mcQ[mi].a) ? 600 : 400, cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>{String.fromCharCode(65 + i)}. {opt}</button>; })}</div>{ms !== null && <><div style={{ marginTop: 16, padding: "12px 16px", background: "white", borderRadius: 8, fontSize: 15, color: "#555", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>💬 {mcQ[mi].ex}</div><button onClick={nx} style={{ marginTop: 14, padding: "12px 28px", background: "black", color: "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: "pointer" }}>{mi + 1 < mcQ.length ? t("Câu tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")}</button></>}</>) : <RS items={mri} onReset={rm} scoreLabel={msc === mcQ.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : msc >= 3 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} t={t} />}</div>}
-          {gm === "tf" && <div style={{ padding: 24, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>{!td ? (<><div style={{ color: "#777", fontSize: 15, marginBottom: 14 }}>{t("Thẻ", "Card")} {ti + 1}/{tfC.length} · {t("Điểm:", "Score:")} {ts}</div><article style={{ background: "white", borderRadius: 10, padding: 24, marginBottom: 20, textAlign: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}><div style={{ fontSize: 18, lineHeight: 1.7, marginBottom: 24 }}>{tfC[ti].s}</div>{!tf ? (<div style={{ display: "flex", gap: 16, justifyContent: "center" }}><button onClick={() => ta(true)} style={{ padding: "12px 36px", background: "#eafaf1", color: "#1e8449", border: "2px solid #1e8449", borderRadius: 8, fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✅ {t("ĐÚNG", "TRUE")}</button><button onClick={() => ta(false)} style={{ padding: "12px 36px", background: "#fdf2f2", color: "#922b21", border: "2px solid #922b21", borderRadius: 8, fontWeight: 700, fontSize: 16, cursor: "pointer" }}>❌ {t("SAI", "FALSE")}</button></div>) : (<><div style={{ padding: "12px 16px", background: "#f9f9f9", borderRadius: 8, fontSize: 15, color: "#555", textAlign: "left", marginBottom: 14, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>💬 {tfC[ti].ex}</div><button onClick={tn} style={{ padding: "12px 28px", background: "black", color: "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: "pointer" }}>{ti + 1 < tfC.length ? t("Thẻ tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")}</button></>)}</article></>) : <RS items={tri} onReset={rt} scoreLabel={ts === tfC.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : t("Cố gắng thêm! 💪", "Keep going! 💪")} t={t} />}</div>}
-          {gm === "fill" && <div style={{ padding: 24, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>{!fc ? (<><div style={{ fontSize: 18, fontWeight: 600, marginBottom: 20 }}>{t("Điền câu trả lời", "Fill in each blank")}</div>{fQ.map((q, qi) => (<div key={q.id} style={{ marginBottom: 24 }}><div style={{ fontSize: 15, color: "#777", marginBottom: 6 }}>{t("Câu", "Q")} {qi + 1}</div><div style={{ fontSize: 16, lineHeight: 1.7, marginBottom: 10 }}>{q.tp}</div><input value={fa[q.id] || ""} onChange={e => setFa(p => ({ ...p, [q.id]: e.target.value }))} placeholder={t("Nhập đáp án...", "Answer...")} style={{ width: "100%", padding: "12px 16px", borderRadius: 8, fontSize: 15, outline: "none", border: "1px solid #ddd", background: "white", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", boxSizing: "border-box" }} /></div>))}<button onClick={() => setFc(true)} style={{ padding: "12px 32px", background: "black", color: "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: "pointer" }}>{t("Kiểm tra", "Check Answers")}</button></>) : <RS items={fri} onReset={() => { setFa({}); setFc(false); } } scoreLabel={fs === fQ.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : fs >= 2 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} t={t} />}</div>}
+          {gm === "mc" && <div style={{ padding: 24, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>{!md ? (<><div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginBottom: 8 }}>{t("Câu", "Q")} {mi + 1}/{mcQ.length} · {t("Điểm:", "Score:")} {msc}</div><div style={{ fontSize: 20, fontWeight: 600, marginBottom: 20 }}>{mcQ[mi].q}</div><div style={{ display: "flex", flexDirection: "column", gap: 12 }}>{mcQ[mi].o.map((opt, i) => { let bg = "white", co = "black"; if (ms !== null) { if (i === mcQ[mi].a) { bg = "rgba(16, 185, 129, 0.15)"; co = "#4ade80"; } else if (i === ms) { bg = "rgba(239, 68, 68, 0.15)"; co = "#f87171"; } } return <button key={i} onClick={() => sel(i)} style={{ textAlign: "left", padding: "14px 18px", borderRadius: 10, border: "none", background: bg, color: co, fontSize: 15, fontWeight: ms !== null && (i === ms || i === mcQ[mi].a) ? 600 : 400, cursor: "pointer", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>{String.fromCharCode(65 + i)}. {opt}</button>; })}</div>{ms !== null && <><div style={{ marginTop: 16, padding: "12px 16px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 8, fontSize: 15, color: "rgba(255, 255, 255, 0.7)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>💬 {mcQ[mi].ex}</div><button onClick={nx} style={{ marginTop: 14, padding: "12px 28px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: "pointer" }}>{mi + 1 < mcQ.length ? t("Câu tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")}</button></>}</>) : <RS items={mri} onReset={rm} scoreLabel={msc === mcQ.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : msc >= 3 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} t={t} />}</div>}
+          {gm === "tf" && <div style={{ padding: 24, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>{!td ? (<><div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginBottom: 14 }}>{t("Thẻ", "Card")} {ti + 1}/{tfC.length} · {t("Điểm:", "Score:")} {ts}</div><article style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 10, padding: 24, marginBottom: 20, textAlign: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}><div style={{ fontSize: 18, lineHeight: 1.7, marginBottom: 24 }}>{tfC[ti].s}</div>{!tf ? (<div style={{ display: "flex", gap: 16, justifyContent: "center" }}><button onClick={() => ta(true)} style={{ padding: "12px 36px", background: "rgba(16, 185, 129, 0.15)", color: "#4ade80", border: "2px solid #4ade80", borderRadius: 8, fontWeight: 700, fontSize: 16, cursor: "pointer" }}>✅ {t("ĐÚNG", "TRUE")}</button><button onClick={() => ta(false)} style={{ padding: "12px 36px", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", border: "2px solid #f87171", borderRadius: 8, fontWeight: 700, fontSize: 16, cursor: "pointer" }}>❌ {t("SAI", "FALSE")}</button></div>) : (<><div style={{ padding: "12px 16px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 8, fontSize: 15, color: "rgba(255, 255, 255, 0.7)", textAlign: "left", marginBottom: 14, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>💬 {tfC[ti].ex}</div><button onClick={tn} style={{ padding: "12px 28px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: "pointer" }}>{ti + 1 < tfC.length ? t("Thẻ tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")}</button></>)}</article></>) : <RS items={tri} onReset={rt} scoreLabel={ts === tfC.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : t("Cố gắng thêm! 💪", "Keep going! 💪")} t={t} />}</div>}
+          {gm === "fill" && <div style={{ padding: 24, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>{!fc ? (<><div style={{ fontSize: 18, fontWeight: 600, marginBottom: 20 }}>{t("Điền câu trả lời", "Fill in each blank")}</div>{fQ.map((q, qi) => (<div key={q.id} style={{ marginBottom: 24 }}><div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.5)", marginBottom: 6 }}>{t("Câu", "Q")} {qi + 1}</div><div style={{ fontSize: 16, lineHeight: 1.7, marginBottom: 10 }}>{q.tp}</div><input value={fa[q.id] || ""} onChange={e => setFa(p => ({ ...p, [q.id]: e.target.value }))} placeholder={t("Nhập đáp án...", "Answer...")} style={{ width: "100%", padding: "12px 16px", borderRadius: 8, fontSize: 15, outline: "none", border: "1px solid rgba(255, 255, 255, 0.08)", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", boxSizing: "border-box" }} /></div>))}<button onClick={() => setFc(true)} style={{ padding: "12px 32px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: "pointer" }}>{t("Kiểm tra", "Check Answers")}</button></>) : <RS items={fri} onReset={() => { setFa({}); setFc(false); } } scoreLabel={fs === fQ.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : fs >= 2 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} t={t} />}</div>}
         </section>
 
         <hr style={{ width: "5px" }}></hr>
-        <div className="reveal" data-reveal style={{ textAlign: "center", color: "#777", fontSize: 15, marginBottom: 60 }}>Toán 10 · Chân Trời Sáng Tạo · {t("Ôn Tập Chương IV", "Chapter IV Review")}</div>
+        <div className="reveal" data-reveal style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginBottom: 60 }}>Toán 10 · Chân Trời Sáng Tạo · {t("Ôn Tập Chương IV", "Chapter IV Review")}</div>
         <style>{`.reveal{opacity:0;transform:translateY(28px) scale(0.97);transition:opacity 0.55s cubic-bezier(.2,.8,.2,1),transform 0.45s cubic-bezier(.2,.8,.2,1);will-change:opacity,transform;}.reveal.visible{opacity:1;transform:translateY(0) scale(1);}.reveal[data-reveal-stagger].visible{opacity:1;transform:none;}.reveal[data-reveal-stagger]>*{opacity:0;transform:translateY(24px) scale(0.97);will-change:opacity,transform;}header.reveal{transform:translateY(-18px);opacity:0;}header.reveal.visible{opacity:1;transform:translateY(0);}article{transition:transform 0.25s cubic-bezier(.2,.8,.2,1),box-shadow 0.25s ease;border-radius:10px;padding:8px;}article:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 12px 28px rgba(0,0,0,0.12);}`}</style>
       
       </div>

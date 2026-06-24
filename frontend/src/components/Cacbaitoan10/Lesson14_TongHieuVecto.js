@@ -222,7 +222,7 @@ export default function Lesson14_TongHieuVecto() {
 
       <section id="w" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
           <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Nếu bạn đi bộ 3km về hướng đông rồi 4km về hướng bắc, bạn đã di chuyển tổng cộng bao nhiêu km (theo đường thẳng)? Đây là bài toán cộng vectơ trong thực tế!","If you walk 3km east then 4km north, how far have you actually moved (straight line)? This is vector addition in real life!")}</div>
           <div style={{fontSize:16}}>❓ <em>{t("Câu trả lời: 5km (tam giác vuông 3-4-5). Hướng là gì?","Answer: 5km (3-4-5 right triangle). What direction?")}</em></div>
         </div>
@@ -244,38 +244,38 @@ export default function Lesson14_TongHieuVecto() {
       </section>
       <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("1. Tổng Hai Vectơ","1. Sum of Two Vectors")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-          <div style={{fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10}}>📌 {t("Quy tắc ba điểm","Three-point rule")}</div>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+          <div style={{fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:10}}>📌 {t("Quy tắc ba điểm","Three-point rule")}</div>
           <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Cho hai vectơ →a và →b. Đặt điểm đầu của →b tại điểm cuối của →a:","Given →a and →b. Place the start of →b at the end of →a:")}</div>
-          <div style={{background:"white",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:16,textAlign:"center",lineHeight:2.4}}>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:16,textAlign:"center",lineHeight:2.4}}>
             →AB + →BC = →AC<br/>
             →a + →b = →a + →b (quy tắc nối đầu đuôi)
           </div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16,transition:"all 0.3s"}}>
-          {[{title:t("Tính chất giao hoán","Commutative"),formula:"→a + →b = →b + →a",bg:"#eaf4fb",c:"#1a5276"},
-            {title:t("Tính chất kết hợp","Associative"),formula:"(→a + →b) + →c = →a + (→b + →c)",bg:"#eafaf1",c:"#1e8449"},
-            {title:t("Phần tử trung lập","Identity element"),formula:"→a + →0 = →0 + →a = →a",bg:"#fff3cd",c:"#856404"},
-            {title:t("Phần tử đối","Inverse element"),formula:"→a + (−→a) = →0",bg:"#fdf2f2",c:"#922b21"},
-          ].map((card,i)=><article key={i} style={{padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div><div style={{fontFamily:"monospace",fontSize:14,background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8}}>{card.formula}</div></article>)}
+          {[{title:t("Tính chất giao hoán","Commutative"),formula:"→a + →b = →b + →a",bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {title:t("Tính chất kết hợp","Associative"),formula:"(→a + →b) + →c = →a + (→b + →c)",bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {title:t("Phần tử trung lập","Identity element"),formula:"→a + →0 = →0 + →a = →a",bg:"rgba(245, 158, 11, 0.15)",c:"#fbbf24"},
+            {title:t("Phần tử đối","Inverse element"),formula:"→a + (−→a) = →0",bg:"rgba(239, 68, 68, 0.15)",c:"#f87171"},
+          ].map((card,i)=><article key={i} style={{padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div><div style={{fontFamily:"monospace",fontSize:14,background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8}}>{card.formula}</div></article>)}
         </div>
       </section>
       <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("2. Quy Tắc Hình Bình Hành","2. Parallelogram Rule")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
           <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Nếu →a = →OA và →b = →OB (cùng điểm đầu O), thì →a + →b = →OC, trong đó C là đỉnh còn lại của hình bình hành OACB.","If →a = →OA and →b = →OB (same start O), then →a + →b = →OC, where C is the remaining vertex of parallelogram OACB.")}</div>
-          <div style={{background:"white",fontFamily:"monospace",fontSize:15,padding:"10px 14px",borderRadius:8,color:"#0B4F5C",fontWeight:600}}>→OA + →OB = →OC (C là đỉnh đối của O trong hình bình hành OACB)</div>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",fontFamily:"monospace",fontSize:15,padding:"10px 14px",borderRadius:8,color: "#22d3ee",fontWeight:600}}>→OA + →OB = →OC (C là đỉnh đối của O trong hình bình hành OACB)</div>
         </div>
       </section>
       <section id="k3" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("3. Hiệu Hai Vectơ","3. Difference of Two Vectors")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
           <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Hiệu của →a và →b được định nghĩa:","Difference of →a and →b is defined as:")}</div>
-          <div style={{background:"white",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:16,textAlign:"center",lineHeight:2.4}}>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:16,textAlign:"center",lineHeight:2.4}}>
             →a − →b = →a + (−→b)<br/>
             →AB − →AC = →CB (quy tắc trừ)
           </div>
-          <div style={{marginTop:12,padding:"10px 14px",background:"#fff3cd",borderRadius:8,fontSize:14}}>
+          <div style={{marginTop:12,padding:"10px 14px",background:"rgba(245, 158, 11, 0.15)",borderRadius:8,fontSize:14}}>
             💡 {t("Nhớ: →AB = →OB − →OA (hiệu vectơ vị trí)","Remember: →AB = →OB − →OA (position vector difference)")}
           </div>
         </div>
@@ -289,7 +289,7 @@ export default function Lesson14_TongHieuVecto() {
              a:[t("Theo quy tắc hình bình hành (chung điểm đầu A):","Parallelogram rule (common start A):"),t("→AB + →AD = →AC (đường chéo AC)","→AB + →AD = →AC (diagonal AC)")]},
             {id:"e3",q:t("Cho →OA, →OB là vectơ vị trí. Tính →AB.","Given position vectors →OA, →OB. Find →AB."),
              a:[t("→AB = →AO + →OB = −→OA + →OB","→AB = −→OA + →OB"),t("→AB = →OB − →OA","→AB = →OB − →OA")]},
-          ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+          ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
         </div>
       </section>
       </>

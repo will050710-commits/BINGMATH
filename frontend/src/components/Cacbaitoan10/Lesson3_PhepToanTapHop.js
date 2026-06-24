@@ -242,14 +242,14 @@ export default function Lesson3_PhepToanTapHop() {
 
   const renderTheory = ({ t, lang, LessonVideoPlayer, videoId, videoSubtitles }) => {
     const OpCard = ({ op, sym, defn, formula, example, result }) => (
-      <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
+      <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 10 }}>
-          <span style={{ fontSize: 36, fontWeight: 700, color: "#0B4F5C" }}>{sym}</span>
+          <span style={{ fontSize: 36, fontWeight: 700, color: "#22d3ee" }}>{sym}</span>
           <span style={{ fontSize: 18, fontWeight: 600 }}>{op}</span>
         </div>
         <div style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 10 }}>{defn}</div>
-        <div style={{ fontFamily: "monospace", fontSize: 16, background: "white", padding: "8px 14px", borderRadius: 8, marginBottom: 10, color: "#0B4F5C" }}>{formula}</div>
-        <div style={{ fontSize: 15, color: "#555" }}>📘 {example} = <strong>{result}</strong></div>
+        <div style={{ fontFamily: "monospace", fontSize: 16, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", padding: "8px 14px", borderRadius: 8, marginBottom: 10, color: "#22d3ee" }}>{formula}</div>
+        <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)" }}>📘 {example} = <strong>{result}</strong></div>
       </div>
     );
     return (
@@ -267,7 +267,7 @@ export default function Lesson3_PhepToanTapHop() {
         {/* ════ KHỞI ĐỘNG ════ */}
         <section id="khoiDong" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="🚀" title={t("Khởi động", "Warm-Up")} />
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t("Tình huống mở đầu", "Opening Situation")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 16 }}>
               {t('Trong một lớp học có 30 học sinh: 18 em học Toán, 15 em học Lý, và 7 em học cả hai. Có bao nhiêu em học ít nhất một trong hai môn? Làm thế nào để không đếm trùng?',
@@ -303,21 +303,21 @@ export default function Lesson3_PhepToanTapHop() {
             example="A={1,2,3}, B={2,3,4} → A ∪ B"
             result="{1,2,3,4}"
           />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>📐 {t("Tính chất", "Properties")}</div>
             <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, transition: "all 0.3s ease" }}>
               {[["A ∪ B = B ∪ A", t("Giao hoán","Commutative")], ["(A ∪ B) ∪ C = A ∪ (B ∪ C)", t("Kết hợp","Associative")], ["A ∪ ∅ = A", t("Phần tử trung lập","Identity")], ["A ∪ A = A", t("Lũy đẳng","Idempotent")]].map(([formula, name]) => (
-                <article key={formula} style={{ padding: "12px 16px", borderRadius: 10, background: "white", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center" }}>
-                  <div style={{ fontFamily: "monospace", fontSize: 15, color: "#0B4F5C", marginBottom: 4 }}>{formula}</div>
-                  <div style={{ fontSize: 13, color: "#777" }}>{name}</div>
+                <article key={formula} style={{ padding: "12px 16px", borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center" }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 15, color: "#22d3ee", marginBottom: 4 }}>{formula}</div>
+                  <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.5)" }}>{name}</div>
                 </article>
               ))}
             </div>
           </div>
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 10 }}>📊 {t("Công thức cộng (Inclusion-Exclusion)", "Inclusion-Exclusion Formula")}</div>
-            <div style={{ fontFamily: "monospace", fontSize: 20, color: "#0B4F5C", textAlign: "center", padding: "16px 0" }}>|A ∪ B| = |A| + |B| − |A ∩ B|</div>
-            <div style={{ fontSize: 15, color: "#777", textAlign: "center" }}>{t("Tránh đếm hai lần các phần tử thuộc cả A và B.", "Avoids counting twice elements in both A and B.")}</div>
+            <div style={{ fontFamily: "monospace", fontSize: 20, color: "#22d3ee", textAlign: "center", padding: "16px 0" }}>|A ∪ B| = |A| + |B| − |A ∩ B|</div>
+            <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.5)", textAlign: "center" }}>{t("Tránh đếm hai lần các phần tử thuộc cả A và B.", "Avoids counting twice elements in both A and B.")}</div>
           </div>
         </section>
 
@@ -332,13 +332,13 @@ export default function Lesson3_PhepToanTapHop() {
             example="A={1,2,3}, B={2,3,4} → A ∩ B"
             result="{2,3}"
           />
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>📐 {t("Tính chất", "Properties")}</div>
             <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, transition: "all 0.3s ease" }}>
               {[["A ∩ B = B ∩ A", t("Giao hoán","Commutative")], ["(A ∩ B) ∩ C = A ∩ (B ∩ C)", t("Kết hợp","Associative")], ["A ∩ ∅ = ∅", t("Phần tử không","Zero element")], ["A ∩ A = A", t("Lũy đẳng","Idempotent")]].map(([formula, name]) => (
-                <article key={formula} style={{ padding: "12px 16px", borderRadius: 10, background: "white", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center" }}>
-                  <div style={{ fontFamily: "monospace", fontSize: 15, color: "#0B4F5C", marginBottom: 4 }}>{formula}</div>
-                  <div style={{ fontSize: 13, color: "#777" }}>{name}</div>
+                <article key={formula} style={{ padding: "12px 16px", borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center" }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 15, color: "#22d3ee", marginBottom: 4 }}>{formula}</div>
+                  <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.5)" }}>{name}</div>
                 </article>
               ))}
             </div>
@@ -356,7 +356,7 @@ export default function Lesson3_PhepToanTapHop() {
             example="A={1,2,3,4}, B={2,4} → A \\ B"
             result="{1,3}"
           />
-          <div className="reveal" data-reveal style={{ padding: 14, borderRadius: 10, background: "#fdf2f2", fontSize: 15, color: "#922b21" }}>
+          <div className="reveal" data-reveal style={{ padding: 14, borderRadius: 10, background: "rgba(239, 68, 68, 0.15)", fontSize: 15, color: "#f87171" }}>
             ⚠️ {t("Chú ý: A \\ B ≠ B \\ A (phép hiệu KHÔNG có tính giao hoán)", "Note: A \\ B ≠ B \\ A (difference is NOT commutative)")}
           </div>
         </section>
@@ -364,19 +364,19 @@ export default function Lesson3_PhepToanTapHop() {
         {/* ════ 4. PHẦN BÙ ════ */}
         <section id="khai4" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("4. Phần Bù Cᵤ(A)", "4. Complement Cᵤ(A)")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 20 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("Cho tập hợp toàn thể U và A ⊂ U. Phần bù của A trong U là tập gồm các phần tử thuộc U nhưng không thuộc A.", "Given universe U and A ⊂ U, the complement of A in U is the set of elements in U but not in A.")}</div>
-            <div style={{ fontFamily: "monospace", fontSize: 16, color: "#0B4F5C", margin: "10px 0", padding: "8px 14px", background: "white", borderRadius: 8 }}>Cᵤ(A) = U \\ A = {"{x | x ∈ U và x ∉ A}"}</div>
-            <div style={{ fontSize: 15, color: "#555" }}>📘 U = {"{1,2,3,4,5}"}, A = {"{1,3,5}"} → Cᵤ(A) = <strong>{"{2,4}"}</strong></div>
+            <div style={{ fontFamily: "monospace", fontSize: 16, color: "#22d3ee", margin: "10px 0", padding: "8px 14px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 8 }}>Cᵤ(A) = U \\ A = {"{x | x ∈ U và x ∉ A}"}</div>
+            <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)" }}>📘 U = {"{1,2,3,4,5}"}, A = {"{1,3,5}"} → Cᵤ(A) = <strong>{"{2,4}"}</strong></div>
           </div>
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>🔁 {t("Định luật De Morgan", "De Morgan's Laws")}</div>
             <div className="reveal" data-reveal data-reveal-stagger data-stagger="100" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 20, transition: "all 0.3s ease" }}>
               {[{ law: "Cᵤ(A ∪ B) = Cᵤ(A) ∩ Cᵤ(B)", desc: t("Phần bù của hợp = giao của hai phần bù", "Complement of union = intersection of complements") }, { law: "Cᵤ(A ∩ B) = Cᵤ(A) ∪ Cᵤ(B)", desc: t("Phần bù của giao = hợp của hai phần bù", "Complement of intersection = union of complements") }].map((item, i) => (
-                <article key={i} style={{ padding: "14px 18px", borderRadius: 10, background: "white", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center" }}>
-                  <div style={{ fontFamily: "monospace", fontSize: 16, color: "#0B4F5C", marginBottom: 6 }}>{item.law}</div>
-                  <div style={{ fontSize: 14, color: "#777" }}>{item.desc}</div>
+                <article key={i} style={{ padding: "14px 18px", borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center" }}>
+                  <div style={{ fontFamily: "monospace", fontSize: 16, color: "#22d3ee", marginBottom: 6 }}>{item.law}</div>
+                  <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.5)" }}>{item.desc}</div>
                 </article>
               ))}
             </div>
@@ -393,15 +393,15 @@ export default function Lesson3_PhepToanTapHop() {
               { id: "e3", q: t("Cho U = {1,2,3,4,5,6,7,8}, A = {1,3,5,7}.\nTìm Cᵤ(A) và kiểm tra Cᵤ(Cᵤ(A)) = A.", "Let U = {1,2,3,4,5,6,7,8}, A = {1,3,5,7}.\nFind Cᵤ(A) and verify Cᵤ(Cᵤ(A)) = A."), a: ["Cᵤ(A) = {2,4,6,8}", "Cᵤ(Cᵤ(A)) = Cᵤ({2,4,6,8}) = {1,3,5,7} = A ✓"] },
             ].map(({ id, q, a }) => (
               <article key={id}>
-                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>📝 {t("Bài tập","Exercise")}</div>
-                  <div style={{ color: "#777", fontSize: 14 }}>{t("Toán 10","Grade 10")}</div>
+                  <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14 }}>{t("Toán 10","Grade 10")}</div>
                   <div style={{ fontSize: 15, lineHeight: 1.7, marginTop: 10, whiteSpace: "pre-wrap" }}>{q}</div>
                 </div>
-                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "black", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
+                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
                   {revealedAnswers[id] ? t("Ẩn đáp án ▲","Hide Answer ▲") : t("Xem đáp án ▼","Show Answer ▼")}
                 </button>
-                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "#eafaf1", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "#555", marginBottom: 6 }}>{line}</div>)}</div>}
+                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "rgba(16, 185, 129, 0.15)", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>{line}</div>)}</div>}
               </article>
             ))}
           </div>

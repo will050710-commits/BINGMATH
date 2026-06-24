@@ -222,7 +222,7 @@ export default function Lesson15_TichSoVecto() {
 
       <section id="w" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
           <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Nếu một người đi với vectơ vận tốc →v, thì sau 2 giờ họ đã di chuyển theo vectơ 2→v — cùng hướng nhưng gấp đôi độ dài. Đây là tích của số với vectơ!","If someone moves with velocity vector →v, after 2 hours they've displaced 2→v — same direction but double length. This is scalar multiplication of a vector!")}</div>
           <div style={{fontSize:16}}>❓ <em>{t("k→v với k < 0 nghĩa là gì về hướng?","What does k→v mean for direction when k < 0?")}</em></div>
         </div>
@@ -244,10 +244,10 @@ export default function Lesson15_TichSoVecto() {
       </section>
       <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("1. Định Nghĩa Tích Số với Vectơ","1. Definition: Scalar × Vector")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-          <div style={{fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10}}>📌 {t("Định nghĩa","Definition")}</div>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+          <div style={{fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:10}}>📌 {t("Định nghĩa","Definition")}</div>
           <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Cho số thực k và vectơ →a ≠ →0:","For real number k and vector →a ≠ →0:")}</div>
-          <div style={{background:"white",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:15,lineHeight:2.2}}>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:15,lineHeight:2.2}}>
             |k→a| = |k| · |→a|<br/>
             k &gt; 0: k→a cùng hướng →a<br/>
             k &lt; 0: k→a ngược hướng →a<br/>
@@ -255,17 +255,17 @@ export default function Lesson15_TichSoVecto() {
           </div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,transition:"all 0.3s"}}>
-          {[{k:"k > 0",desc:t("Cùng hướng →a, dài |k|·|→a|","Same direction as →a, length |k|·|→a|"),bg:"#eafaf1",c:"#1e8449"},
-            {k:"k < 0",desc:t("Ngược hướng →a, dài |k|·|→a|","Opposite to →a, length |k|·|→a|"),bg:"#fdf2f2",c:"#922b21"},
-            {k:"k = 0",desc:t("Kết quả là vectơ không →0","Result is zero vector →0"),bg:"#eaf4fb",c:"#1a5276"},
-            {k:"|k| > 1",desc:t("Phóng to vectơ (kéo dài)","Vector scaled up (stretched)"),bg:"#fff3cd",c:"#856404"},
-          ].map((card,i)=><article key={i} style={{padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center"}}><div style={{fontFamily:"monospace",fontSize:16,fontWeight:700,color:card.c,marginBottom:8}}>{card.k}</div><div style={{background:card.bg,color:card.c,padding:"8px 10px",borderRadius:8,fontSize:13,lineHeight:1.6}}>{card.desc}</div></article>)}
+          {[{k:"k > 0",desc:t("Cùng hướng →a, dài |k|·|→a|","Same direction as →a, length |k|·|→a|"),bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {k:"k < 0",desc:t("Ngược hướng →a, dài |k|·|→a|","Opposite to →a, length |k|·|→a|"),bg:"rgba(239, 68, 68, 0.15)",c:"#f87171"},
+            {k:"k = 0",desc:t("Kết quả là vectơ không →0","Result is zero vector →0"),bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {k:"|k| > 1",desc:t("Phóng to vectơ (kéo dài)","Vector scaled up (stretched)"),bg:"rgba(245, 158, 11, 0.15)",c:"#fbbf24"},
+          ].map((card,i)=><article key={i} style={{padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center"}}><div style={{fontFamily:"monospace",fontSize:16,fontWeight:700,color:card.c,marginBottom:8}}>{card.k}</div><div style={{background:card.bg,color:card.c,padding:"8px 10px",borderRadius:8,fontSize:13,lineHeight:1.6}}>{card.desc}</div></article>)}
         </div>
       </section>
       <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("2. Tính Chất","2. Properties")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
-          <div style={{background:"white",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:15,lineHeight:2.2}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:15,lineHeight:2.2}}>
             k(→a + →b) = k→a + k→b  (phân phối)<br/>
             (k + l)→a = k→a + l→a   (phân phối)<br/>
             (kl)→a = k(l→a)          (kết hợp)<br/>
@@ -276,11 +276,11 @@ export default function Lesson15_TichSoVecto() {
       </section>
       <section id="k3" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("3. Điều Kiện Cùng Phương","3. Collinearity Condition")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
-          <div style={{fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:10}}>📌 {t("Định lý","Theorem")}</div>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+          <div style={{fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:10}}>📌 {t("Định lý","Theorem")}</div>
           <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Hai vectơ →a ≠ →0 và →b cùng phương khi và chỉ khi tồn tại số thực k sao cho:","Two vectors →a ≠ →0 and →b are parallel iff there exists a real k such that:")}</div>
-          <div style={{background:"white",borderRadius:10,padding:"12px 18px",fontFamily:"monospace",fontSize:18,textAlign:"center",color:"#0B4F5C",fontWeight:700}}>→b = k·→a</div>
-          <div style={{marginTop:12,padding:"10px 14px",background:"#fff3cd",borderRadius:8,fontSize:14}}>{t("💡 Ứng dụng: kiểm tra 3 điểm thẳng hàng. A, B, C thẳng hàng ⟺ →AB = k·→AC.","💡 Application: check if 3 points are collinear. A, B, C collinear ⟺ →AB = k·→AC.")}</div>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"12px 18px",fontFamily:"monospace",fontSize:18,textAlign:"center",color: "#22d3ee",fontWeight:700}}>→b = k·→a</div>
+          <div style={{marginTop:12,padding:"10px 14px",background:"rgba(245, 158, 11, 0.15)",borderRadius:8,fontSize:14}}>{t("💡 Ứng dụng: kiểm tra 3 điểm thẳng hàng. A, B, C thẳng hàng ⟺ →AB = k·→AC.","💡 Application: check if 3 points are collinear. A, B, C collinear ⟺ →AB = k·→AC.")}</div>
         </div>
       </section>
       <section id="th" style={{scrollMarginTop:80,marginBottom:64}}>
@@ -292,7 +292,7 @@ export default function Lesson15_TichSoVecto() {
              a:[t("Gọi M là trung điểm BC: →GM = (→GB+→GC)/2 → →GB+→GC = 2→GM","Let M be midpoint BC: →GB+→GC=2→GM"),t("G là trọng tâm → G trên AM với AG=2GM → →GA = −2→GM","G is centroid → AG=2GM → →GA=−2→GM"),t("→GA+→GB+→GC = −2→GM+2→GM = →0 ✓","→GA+→GB+→GC=0 ✓")]},
             {id:"e3",q:t("Ba điểm A, B, C thẳng hàng. →AB=(2,4), →AC=(1,2). Kiểm tra.","A,B,C collinear? →AB=(2,4), →AC=(1,2). Check."),
              a:[t("→AB = 2·(1,2) = 2·→AC","→AB = 2·→AC"),t("Vì →AB = k·→AC (k=2), nên A, B, C thẳng hàng ✓","Since →AB=2·→AC, points A,B,C are collinear ✓")]},
-          ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+          ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
         </div>
       </section>
       </>

@@ -238,9 +238,9 @@ export default function Lesson6_OnTapChuong2() {
             { slug: "he-bpt-bac-nhat-hai-an", num: "5", title: t("Hệ BPT Bậc Nhất Hai Ẩn", "System of Inequalities") },
           ].map((lesson) => (
             <Link key={lesson.slug} href={`/cacbailam10/${lesson.slug}`} style={{ textDecoration: "none" }}>
-              <article style={{ padding: 16, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", cursor: "pointer" }}>
-                <div style={{ fontSize: 13, color: "#777", marginBottom: 4 }}>{t("Bài", "Lesson")} {lesson.num}</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: "#0B4F5C" }}>{lesson.title}</div>
+              <article style={{ padding: 16, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", cursor: "pointer" }}>
+                <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.5)", marginBottom: 4 }}>{t("Bài", "Lesson")} {lesson.num}</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: "#22d3ee" }}>{lesson.title}</div>
                 <div style={{ fontSize: 13, color: "#aaa", marginTop: 4 }}>← {t("Ôn lại", "Review")}</div>
               </article>
             </Link>
@@ -275,11 +275,11 @@ export default function Lesson6_OnTapChuong2() {
                 ],
               },
             ].map((card, i) => (
-              <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                <div style={{ fontSize: 16, fontWeight: 700, color: "#0B4F5C", marginBottom: 12 }}>{card.title}</div>
+              <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#22d3ee", marginBottom: 12 }}>{card.title}</div>
                 {card.points.map((pt, j) => (
-                  <div key={j} style={{ fontSize: 14, color: "#555", marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 8 }}>
-                    <span style={{ color: "#0B4F5C", fontWeight: 700, flexShrink: 0 }}>•</span>
+                  <div key={j} style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.7)", marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                    <span style={{ color: "#22d3ee", fontWeight: 700, flexShrink: 0 }}>•</span>
                     <span>{pt}</span>
                   </div>
                 ))}
@@ -313,9 +313,9 @@ export default function Lesson6_OnTapChuong2() {
               { label: t("Miền nghiệm hệ BPT", "System solution region"), formula: t("MN(hệ) = MN(BPT₁) ∩ MN(BPT₂) ∩ ...\n= phần chung của tất cả", "SR(system) = SR(BPT₁) ∩ SR(BPT₂) ∩ ...\n= common part of all") },
               { label: t("Tìm đỉnh miền nghiệm", "Finding vertices"), formula: t("Giải hệ PT từng cặp đường biên:\n{ d₁: a₁x+b₁y+c₁=0\n{ d₂: a₂x+b₂y+c₂=0", "Solve each pair of boundary equations:\n{ d₁: a₁x+b₁y+c₁=0\n{ d₂: a₂x+b₂y+c₂=0") },
             ].map((card, i) => (
-              <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#0B4F5C", marginBottom: 10 }}>{card.label}</div>
-                <div style={{ fontFamily: "monospace", fontSize: 14, color: "#333", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "white", padding: "10px 14px", borderRadius: 8 }}>{card.formula}</div>
+              <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#22d3ee", marginBottom: 10 }}>{card.label}</div>
+                <div style={{ fontFamily: "monospace", fontSize: 14, color: "rgba(255, 255, 255, 0.9)", lineHeight: 1.8, whiteSpace: "pre-wrap", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", padding: "10px 14px", borderRadius: 8 }}>{card.formula}</div>
               </article>
             ))}
           </div>
@@ -363,18 +363,18 @@ export default function Lesson6_OnTapChuong2() {
               },
             ].map(({ id, q, a, badge }) => (
               <article key={id}>
-                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                     <div style={{ fontSize: 18, fontWeight: 600 }}>📝 {t("Bài tập", "Exercise")}</div>
-                    <span style={{ background: "black", color: "white", fontSize: 12, fontWeight: 700, padding: "2px 10px", borderRadius: 20 }}>{badge}</span>
+                    <span style={{ background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", fontSize: 12, fontWeight: 700, padding: "2px 10px", borderRadius: 20 }}>{badge}</span>
                   </div>
-                  <div style={{ color: "#777", fontSize: 14, marginBottom: 10 }}>{t("Toán 10", "Grade 10")}</div>
+                  <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14, marginBottom: 10 }}>{t("Toán 10", "Grade 10")}</div>
                   <div style={{ fontSize: 15, lineHeight: 1.7, whiteSpace: "pre-wrap" }}>{q}</div>
                 </div>
-                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "black", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
+                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
                   {revealedAnswers[id] ? t("Ẩn đáp án ▲", "Hide Answer ▲") : t("Xem đáp án ▼", "Show Answer ▼")}
                 </button>
-                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "#eafaf1", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "#555", marginBottom: 6 }}>{line}</div>)}</div>}
+                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "rgba(16, 185, 129, 0.15)", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>{line}</div>)}</div>}
               </article>
             ))}
           </div>

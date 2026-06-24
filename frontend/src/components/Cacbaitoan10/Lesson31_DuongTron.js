@@ -215,7 +215,7 @@ export default function Lesson31_DuongTron() {
     
 
     <section id="w" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <div style={{fontSize:16,lineHeight:1.8}}>{t("Sóng radio lan truyền theo hình tròn. Radar quét theo hình tròn. Bánh xe, đồng hồ, cung tròn — đường tròn xuất hiện khắp nơi. Trong tọa độ, một đường tròn được mô tả bằng một phương trình bậc hai đơn giản!","Radio waves spread in circles. Radar sweeps in circles. Wheels, clocks, arcs — circles appear everywhere. In coordinates, a circle is described by a simple second-degree equation!")}</div>
       </div>
     </section>
@@ -235,22 +235,22 @@ export default function Lesson31_DuongTron() {
         </div>
       </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Phương Trình Đường Tròn","1. Circle Equation")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:17,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.6}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:17,textAlign:"center",color: "#22d3ee",fontWeight:700,lineHeight:2.6}}>
           (x−a)² + (y−b)² = R² &nbsp; [Dạng chính tắc]<br/>
           x²+y²−2ax−2by+(a²+b²−R²) = 0 &nbsp; [Dạng mở rộng]
         </div>
-        <div style={{marginTop:10,fontSize:14,color:"#777",lineHeight:1.8}}>
+        <div style={{marginTop:10,fontSize:14,color: "rgba(255, 255, 255, 0.5)",lineHeight:1.8}}>
           {t("Tâm I(a,b), bán kính R. Điểm M(x,y)∈đường tròn ⟺ IM=R.","Center I(a,b), radius R. Point M(x,y) is on circle ⟺ IM=R.")}
         </div>
       </div>
     </section>
     <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("2. Vị Trí Tương Đối","2. Relative Position")} />
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,transition:"all 0.3s"}}>
-        {[{title:t("Điểm M và đường tròn","Point and circle"),items:[t("d(I,M)<R: M nằm trong","d(I,M)<R: inside"),t("d(I,M)=R: M trên đường tròn","d(I,M)=R: on circle"),t("d(I,M)>R: M nằm ngoài","d(I,M)>R: outside")],c:"#1a5276",bg:"#eaf4fb"},
-          {title:t("Đường thẳng và đường tròn","Line and circle"),items:[t("d(I,d)<R: cắt (2 điểm)","d(I,d)<R: intersects (2 pts)"),t("d(I,d)=R: tiếp tuyến","d(I,d)=R: tangent"),t("d(I,d)>R: không giao","d(I,d)>R: no intersection")],c:"#1e8449",bg:"#eafaf1"},
-          {title:t("Hai đường tròn","Two circles"),items:[t("d<|R₁−R₂|: trong nhau","d<|R₁−R₂|: one inside"),t("|R₁−R₂|≤d≤R₁+R₂: cắt nhau","intersect"),t("d>R₁+R₂: ngoài nhau","d>R₁+R₂: external")],c:"#922b21",bg:"#fdf2f2"},
-        ].map((card,i)=>(<article key={i} style={{padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div>{card.items.map((item,j)=><div key={j} style={{background:card.bg,color:card.c,padding:"5px 10px",borderRadius:6,fontSize:12,marginBottom:4}}>{item}</div>)}</article>))}
+        {[{title:t("Điểm M và đường tròn","Point and circle"),items:[t("d(I,M)<R: M nằm trong","d(I,M)<R: inside"),t("d(I,M)=R: M trên đường tròn","d(I,M)=R: on circle"),t("d(I,M)>R: M nằm ngoài","d(I,M)>R: outside")],c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+          {title:t("Đường thẳng và đường tròn","Line and circle"),items:[t("d(I,d)<R: cắt (2 điểm)","d(I,d)<R: intersects (2 pts)"),t("d(I,d)=R: tiếp tuyến","d(I,d)=R: tangent"),t("d(I,d)>R: không giao","d(I,d)>R: no intersection")],c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+          {title:t("Hai đường tròn","Two circles"),items:[t("d<|R₁−R₂|: trong nhau","d<|R₁−R₂|: one inside"),t("|R₁−R₂|≤d≤R₁+R₂: cắt nhau","intersect"),t("d>R₁+R₂: ngoài nhau","d>R₁+R₂: external")],c:"#f87171",bg:"rgba(239, 68, 68, 0.15)"},
+        ].map((card,i)=>(<article key={i} style={{padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div>{card.items.map((item,j)=><div key={j} style={{background:card.bg,color:card.c,padding:"5px 10px",borderRadius:6,fontSize:12,marginBottom:4}}>{item}</div>)}</article>))}
       </div>
     </section>
     <section id="th" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="✏️" title={t("Thực Hành","Practice")} />
@@ -258,7 +258,7 @@ export default function Lesson31_DuongTron() {
         {[{id:"e1",q:t("Viết PT đường tròn tâm I(2,−1), bán kính R=3.","Write circle equation: center I(2,−1), radius R=3."),a:["(x−2)²+(y+1)²=9","Mở rộng: x²+y²−4x+2y+4+1−9=0","x²+y²−4x+2y−4=0"]},
           {id:"e2",q:t("Tìm tâm và bán kính: x²+y²−6x+4y−3=0","Find center and radius: x²+y²−6x+4y−3=0"),a:["(x²−6x+9)+(y²+4y+4)=3+9+4=16","(x−3)²+(y+2)²=16",t("Tâm I(3,−2), R=4","Center I(3,−2), R=4")]},
           {id:"e3",q:t("Kiểm tra điểm M(5,1) có thuộc đường tròn (x−2)²+(y−1)²=9 không.","Check if M(5,1) is on circle (x−2)²+(y−1)²=9."),a:["(5−2)²+(1−1)²=9+0=9=R²",t("M thuộc đường tròn ✓","M is on the circle ✓")]},
-        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
       </div>
     </section>
       </>

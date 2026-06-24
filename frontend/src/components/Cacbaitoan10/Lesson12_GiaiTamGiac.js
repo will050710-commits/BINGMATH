@@ -248,7 +248,7 @@ export default function Lesson12_GiaiTamGiac() {
       {/* KHỞI ĐỘNG */}
       <section id="w" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Các nhà khảo sát địa hình, kiến trúc sư và hoa tiêu tàu biển đều cần giải tam giác mỗi ngày. Biết góc và khoảng cách từ các điểm quan sát, họ tính ra chiều cao núi, chiều dài cầu hay vị trí tàu. Tất cả đều quy về bài toán giải tam giác.","Surveyors, architects, and navigators solve triangles daily. From observed angles and known distances, they compute mountain heights, bridge lengths, or ship positions. All reduce to solving triangles.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Cần tối thiểu bao nhiêu dữ kiện (bao gồm ít nhất 1 cạnh) để xác định duy nhất một tam giác?","What is the minimum number of pieces of data (including at least 1 side) to uniquely determine a triangle?")}</em></div>
         </div>
@@ -272,8 +272,8 @@ export default function Lesson12_GiaiTamGiac() {
       {/* 1. KHÁI NIỆM */}
       <section id="k1" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("1. Khái Niệm Giải Tam Giác","1. Solving a Triangle — Concept")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10 }}>📌 {t("Định nghĩa","Definition")}</div>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:10 }}>📌 {t("Định nghĩa","Definition")}</div>
           <div style={{ fontSize:15,lineHeight:1.8 }}>{t("Giải tam giác ABC là tìm tất cả các cạnh (a, b, c) và các góc (A, B, C) chưa biết, từ một số dữ kiện đã cho.","Solving triangle ABC means finding all unknown sides (a, b, c) and angles (A, B, C) from given data.")}</div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,transition:"all 0.3s" }}>
@@ -281,10 +281,10 @@ export default function Lesson12_GiaiTamGiac() {
             {icon:"🔑",title:t("Công cụ chính","Main tools"),note:t("Định lí Sin + Định lí Côsin + A+B+C=180°","Law of Sines + Law of Cosines + A+B+C=180°")},
             {icon:"✅",title:t("Nghiệm hợp lệ","Valid solution"),note:t("Các góc dương, tổng 3 góc=180°, cạnh dương","Positive angles, sum=180°, positive sides")},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center" }}>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center" }}>
               <div style={{ fontSize:28,marginBottom:8 }}>{card.icon}</div>
-              <div style={{ fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:6 }}>{card.title}</div>
-              <div style={{ fontSize:13,color:"#777",lineHeight:1.6 }}>{card.note}</div>
+              <div style={{ fontSize:15,fontWeight:700,color: "#22d3ee",marginBottom:6 }}>{card.title}</div>
+              <div style={{ fontSize:13,color: "rgba(255, 255, 255, 0.5)",lineHeight:1.6 }}>{card.note}</div>
             </article>
           ))}
         </div>
@@ -293,21 +293,21 @@ export default function Lesson12_GiaiTamGiac() {
       {/* 2. DIỆN TÍCH */}
       <section id="k2" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("2. Công Thức Diện Tích","2. Area Formula")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12 }}>{t("Diện tích tam giác qua 2 cạnh và góc xen giữa:","Area via 2 sides and included angle:")}</div>
-          <div style={{ background:"white",borderRadius:10,padding:"16px 20px",textAlign:"center",fontFamily:"monospace",fontSize:20,color:"#0B4F5C",fontWeight:700,lineHeight:2.4 }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:12 }}>{t("Diện tích tam giác qua 2 cạnh và góc xen giữa:","Area via 2 sides and included angle:")}</div>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"16px 20px",textAlign:"center",fontFamily:"monospace",fontSize:20,color: "#22d3ee",fontWeight:700,lineHeight:2.4 }}>
             S = (1/2) · a · b · sinC<br/>
             S = (1/2) · b · c · sinA<br/>
             S = (1/2) · a · c · sinB
           </div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,transition:"all 0.3s" }}>
-          {[{shape:t("Tam giác vuông (C=90°)","Right triangle (C=90°)"),formula:"S = (1/2)·a·b",note:t("sin90°=1","sin90°=1"),bg:"#eafaf1",c:"#1e8449"},
-            {shape:t("Tam giác đều cạnh a","Equilateral, side a"),formula:"S = (√3/4)·a²",note:t("sinA=sin60°=√3/2","sinA=√3/2"),bg:"#eaf4fb",c:"#1a5276"},
-            {shape:t("Công thức Heron (biết 3 cạnh)","Heron's formula (3 sides known)"),formula:"S = √(s(s-a)(s-b)(s-c))",note:t("s=(a+b+c)/2","s=(a+b+c)/2"),bg:"#f5eef8",c:"#6c3483"},
+          {[{shape:t("Tam giác vuông (C=90°)","Right triangle (C=90°)"),formula:"S = (1/2)·a·b",note:t("sin90°=1","sin90°=1"),bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {shape:t("Tam giác đều cạnh a","Equilateral, side a"),formula:"S = (√3/4)·a²",note:t("sinA=sin60°=√3/2","sinA=√3/2"),bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {shape:t("Công thức Heron (biết 3 cạnh)","Heron's formula (3 sides known)"),formula:"S = √(s(s-a)(s-b)(s-c))",note:t("s=(a+b+c)/2","s=(a+b+c)/2"),bg:"rgba(168, 85, 247, 0.15)",c:"#c084fc"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize:14,color:"#777",marginBottom:6 }}>{card.shape}</div>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize:14,color: "rgba(255, 255, 255, 0.5)",marginBottom:6 }}>{card.shape}</div>
               <div style={{ fontFamily:"monospace",fontSize:15,fontWeight:700,color:card.c,marginBottom:4 }}>{card.formula}</div>
               <div style={{ background:card.bg,color:card.c,padding:"4px 10px",borderRadius:6,fontSize:12,display:"inline-block" }}>{card.note}</div>
             </article>
@@ -319,11 +319,11 @@ export default function Lesson12_GiaiTamGiac() {
       <section id="k3" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("3. Các Trường Hợp Giải Tam Giác","3. Triangle Solving Cases")} />
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16,transition:"all 0.3s" }}>
-          {[{case:"SAS",vi:t("Biết 2 cạnh + góc xen giữa","2 sides + included angle"),step:t("1. Dùng Đ.L.Côsin → cạnh thứ 3\n2. Dùng Đ.L.Sin → góc thứ 2\n3. Tổng 3 góc → góc thứ 3","1. Law of Cosines → 3rd side\n2. Law of Sines → 2nd angle\n3. Sum=180° → 3rd angle"),bg:"#eaf4fb",c:"#1a5276"},
-            {case:"SSS",vi:t("Biết 3 cạnh","3 sides known"),step:t("1. Đ.L.Côsin → tính cosA\n2. Đ.L.Côsin → tính cosB\n3. Tổng góc → C=180°−A−B","1. Cosine law → cosA\n2. Cosine law → cosB\n3. C=180°−A−B"),bg:"#eafaf1",c:"#1e8449"},
-            {case:"AAS/ASA",vi:t("Biết 2 góc + 1 cạnh","2 angles + 1 side"),step:t("1. Tổng 3 góc → góc thứ 3\n2. Đ.L.Sin → cạnh thứ 2\n3. Đ.L.Sin → cạnh thứ 3","1. Sum=180° → 3rd angle\n2. Law of Sines → 2nd side\n3. Law of Sines → 3rd side"),bg:"#fff3cd",c:"#856404"},
+          {[{case:"SAS",vi:t("Biết 2 cạnh + góc xen giữa","2 sides + included angle"),step:t("1. Dùng Đ.L.Côsin → cạnh thứ 3\n2. Dùng Đ.L.Sin → góc thứ 2\n3. Tổng 3 góc → góc thứ 3","1. Law of Cosines → 3rd side\n2. Law of Sines → 2nd angle\n3. Sum=180° → 3rd angle"),bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {case:"SSS",vi:t("Biết 3 cạnh","3 sides known"),step:t("1. Đ.L.Côsin → tính cosA\n2. Đ.L.Côsin → tính cosB\n3. Tổng góc → C=180°−A−B","1. Cosine law → cosA\n2. Cosine law → cosB\n3. C=180°−A−B"),bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {case:"AAS/ASA",vi:t("Biết 2 góc + 1 cạnh","2 angles + 1 side"),step:t("1. Tổng 3 góc → góc thứ 3\n2. Đ.L.Sin → cạnh thứ 2\n3. Đ.L.Sin → cạnh thứ 3","1. Sum=180° → 3rd angle\n2. Law of Sines → 2nd side\n3. Law of Sines → 3rd side"),bg:"rgba(245, 158, 11, 0.15)",c:"#fbbf24"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:8 }}>
                 <span style={{ background:card.c,color:"white",fontWeight:700,padding:"3px 12px",borderRadius:20,fontSize:14 }}>{card.case}</span>
                 <span style={{ fontSize:14,color:card.c,fontWeight:600 }}>{card.vi}</span>
@@ -343,10 +343,10 @@ export default function Lesson12_GiaiTamGiac() {
             {icon:"🛸",title:t("Định vị (GPS/Hàng không)","Navigation (GPS/Aviation)"),desc:t("Từ 3 trạm biết tọa độ, đo góc tới mục tiêu → giải hệ tam giác → xác định vị trí chính xác","From 3 known stations, measure angles to target → solve triangle system → find exact position")},
             {icon:"🏗️",title:t("Xây dựng & Kiến trúc","Construction & Architecture"),desc:t("Tính góc mái nhà, độ dài kèo, chiều cao cột từ các số liệu đo đạc thực địa","Compute roof angles, rafter lengths, column heights from field measurements")},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize:28,marginBottom:8 }}>{card.icon}</div>
-              <div style={{ fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:6 }}>{card.title}</div>
-              <div style={{ fontSize:13,color:"#777",lineHeight:1.6 }}>{card.desc}</div>
+              <div style={{ fontSize:15,fontWeight:700,color: "#22d3ee",marginBottom:6 }}>{card.title}</div>
+              <div style={{ fontSize:13,color: "rgba(255, 255, 255, 0.5)",lineHeight:1.6 }}>{card.desc}</div>
             </article>
           ))}
         </div>
@@ -365,14 +365,14 @@ export default function Lesson12_GiaiTamGiac() {
              a:["s=(5+7+8)/2=10",t("S=√(10·5·3·2)=√300=10√3≈17.32","S=√300=10√3≈17.32")]},
           ].map(({id,q,a})=>(
             <article key={id}>
-              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize:18,fontWeight:600,marginBottom:4 }}>📝 {t("Bài tập","Exercise")}</div>
                 <div style={{ fontSize:15,lineHeight:1.7 }}>{q}</div>
               </div>
-              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
+              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
                 {rev[id]?t("Ẩn đáp án ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}
               </button>
-              {rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}
+              {rev[id]&&<div style={{ padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6 }}>{l}</div>)}</div>}
             </article>
           ))}
         </div>

@@ -236,12 +236,12 @@ export default function Lesson19_HinhHocDoLuong2() {
 
   const renderTheory = ({ t, lang, LessonVideoPlayer, videoId, videoSubtitles }) => {
     const shapes = [
-      {name:t("Tam giác","Triangle"),icon:"△",area:t("S = ½ · đáy · cao\nS = ½ · a · b · sinC\nS = √(s(s−a)(s−b)(s−c))","S=½·base·height\nS=½·a·b·sinC\nHeron formula"),perimeter:t("P = a + b + c","P=a+b+c"),c:"#1a5276",bg:"#eaf4fb"},
-      {name:t("Hình vuông","Square"),icon:"□",area:t("S = a²","S=a²"),perimeter:t("P = 4a","P=4a"),c:"#1e8449",bg:"#eafaf1"},
-      {name:t("Hình chữ nhật","Rectangle"),icon:"▭",area:t("S = a · b","S=a·b"),perimeter:t("P = 2(a+b)","P=2(a+b)"),c:"#6c3483",bg:"#f5eef8"},
-      {name:t("Hình bình hành","Parallelogram"),icon:"▱",area:t("S = đáy · chiều cao","S=base·height"),perimeter:t("P = 2(a+b)","P=2(a+b)"),c:"#856404",bg:"#fff3cd"},
-      {name:t("Hình thoi","Rhombus"),icon:"◇",area:t("S = d₁ · d₂ / 2","S=d₁·d₂/2"),perimeter:t("P = 4a","P=4a"),c:"#922b21",bg:"#fdf2f2"},
-      {name:t("Hình thang","Trapezoid"),icon:"⌓",area:t("S = (a + b) · h / 2","S=(a+b)·h/2"),perimeter:t("P = a+b+c+d","P=a+b+c+d"),c:"#0B4F5C",bg:"#e8f8f5"},
+      {name:t("Tam giác","Triangle"),icon:"△",area:t("S = ½ · đáy · cao\nS = ½ · a · b · sinC\nS = √(s(s−a)(s−b)(s−c))","S=½·base·height\nS=½·a·b·sinC\nHeron formula"),perimeter:t("P = a + b + c","P=a+b+c"),c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+      {name:t("Hình vuông","Square"),icon:"□",area:t("S = a²","S=a²"),perimeter:t("P = 4a","P=4a"),c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+      {name:t("Hình chữ nhật","Rectangle"),icon:"▭",area:t("S = a · b","S=a·b"),perimeter:t("P = 2(a+b)","P=2(a+b)"),c:"#c084fc",bg:"rgba(168, 85, 247, 0.15)"},
+      {name:t("Hình bình hành","Parallelogram"),icon:"▱",area:t("S = đáy · chiều cao","S=base·height"),perimeter:t("P = 2(a+b)","P=2(a+b)"),c:"#fbbf24",bg:"rgba(245, 158, 11, 0.15)"},
+      {name:t("Hình thoi","Rhombus"),icon:"◇",area:t("S = d₁ · d₂ / 2","S=d₁·d₂/2"),perimeter:t("P = 4a","P=4a"),c:"#f87171",bg:"rgba(239, 68, 68, 0.15)"},
+      {name:t("Hình thang","Trapezoid"),icon:"⌓",area:t("S = (a + b) · h / 2","S=(a+b)·h/2"),perimeter:t("P = a+b+c+d","P=a+b+c+d"),c:"#22d3ee",bg:"rgba(20, 184, 166, 0.15)"},
     ];
     return (
       <>
@@ -255,7 +255,7 @@ export default function Lesson19_HinhHocDoLuong2() {
       {/* KHỞI ĐỘNG */}
       <section id="w" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Một người cần lát gạch sàn nhà. Phòng hình chữ nhật 5m×4m, có một bàn hình tròn bán kính 0.8m đặt ở giữa (không cần lát dưới bàn). Tính diện tích cần lát gạch — đây là bài toán kết hợp diện tích hình phẳng rất thực tế!","Someone needs to tile a floor. Room is 5m×4m rectangle, with a circular table radius 0.8m in the middle (no tile needed under table). Find the area to tile — this is a very practical combined-area problem!")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("S = 5×4 − π×0.8² ≈ 20 − 2.01 ≈ 17.99 m². Đây là cách kết hợp diện tích.","S = 5×4 − π×0.8² ≈ 17.99 m². This is how to combine areas.")}</em></div>
         </div>
@@ -281,7 +281,7 @@ export default function Lesson19_HinhHocDoLuong2() {
         <SH icon="📖" title={t("1. Diện Tích và Chu Vi Đa Giác","1. Polygon Area & Perimeter")} />
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="70" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:18,transition:"all 0.3s" }}>
           {shapes.map((s,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:10 }}>
                 <span style={{ fontSize:22,color:s.c }}>{s.icon}</span>
                 <span style={{ fontSize:15,fontWeight:700,color:s.c }}>{s.name}</span>
@@ -290,9 +290,9 @@ export default function Lesson19_HinhHocDoLuong2() {
                 <div style={{ fontSize:12,color:s.c,fontWeight:700,marginBottom:4 }}>DIỆN TÍCH / AREA</div>
                 <div style={{ fontFamily:"monospace",fontSize:13,color:s.c,whiteSpace:"pre-wrap",lineHeight:1.7 }}>{s.area}</div>
               </div>
-              <div style={{ background:"white",borderRadius:8,padding:"6px 12px",border:`1px solid ${s.bg}` }}>
-                <div style={{ fontSize:12,color:"#777",fontWeight:700,marginBottom:2 }}>CHU VI / PERIMETER</div>
-                <div style={{ fontFamily:"monospace",fontSize:13,color:"#333" }}>{s.perimeter}</div>
+              <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"6px 12px",border:`1px solid ${s.bg}` }}>
+                <div style={{ fontSize:12,color: "rgba(255, 255, 255, 0.5)",fontWeight:700,marginBottom:2 }}>CHU VI / PERIMETER</div>
+                <div style={{ fontFamily:"monospace",fontSize:13,color: "rgba(255, 255, 255, 0.9)" }}>{s.perimeter}</div>
               </div>
             </article>
           ))}
@@ -303,12 +303,12 @@ export default function Lesson19_HinhHocDoLuong2() {
       <section id="k2" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("2. Hình Tròn, Cung Tròn và Hình Quạt","2. Circles, Arcs and Sectors")} />
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(250px,1fr))",gap:20,transition:"all 0.3s" }}>
-          {[{icon:"⭕",name:t("Hình tròn bán kính R","Circle radius R"),formulas:["S = πR²","C = 2πR","d = 2R (đường kính)"],c:"#1a5276",bg:"#eaf4fb"},
-            {icon:"🌙",name:t("Cung tròn góc α (radian)","Arc, central angle α (radians)"),formulas:["ℓ = R·α (độ dài cung)","ℓ = 2πR·α/360° (độ)","Vd: α=60°, ℓ=πR/3"],c:"#1e8449",bg:"#eafaf1"},
-            {icon:"🍕",name:t("Hình quạt tròn góc α","Sector, angle α"),formulas:["S = R²·α/2 (radian)","S = πR²·α/360° (độ)","Vd: α=90°, S=πR²/4"],c:"#922b21",bg:"#fdf2f2"},
-            {icon:"🔵",name:t("Hình vành khăn (R và r)","Annulus (R and r)"),formulas:["S = π(R²−r²)","S = π(R+r)(R−r)","Vd: R=5, r=3: S=16π"],c:"#6c3483",bg:"#f5eef8"},
+          {[{icon:"⭕",name:t("Hình tròn bán kính R","Circle radius R"),formulas:["S = πR²","C = 2πR","d = 2R (đường kính)"],c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+            {icon:"🌙",name:t("Cung tròn góc α (radian)","Arc, central angle α (radians)"),formulas:["ℓ = R·α (độ dài cung)","ℓ = 2πR·α/360° (độ)","Vd: α=60°, ℓ=πR/3"],c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+            {icon:"🍕",name:t("Hình quạt tròn góc α","Sector, angle α"),formulas:["S = R²·α/2 (radian)","S = πR²·α/360° (độ)","Vd: α=90°, S=πR²/4"],c:"#f87171",bg:"rgba(239, 68, 68, 0.15)"},
+            {icon:"🔵",name:t("Hình vành khăn (R và r)","Annulus (R and r)"),formulas:["S = π(R²−r²)","S = π(R+r)(R−r)","Vd: R=5, r=3: S=16π"],c:"#c084fc",bg:"rgba(168, 85, 247, 0.15)"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize:24,marginBottom:6 }}>{card.icon}</div>
               <div style={{ fontSize:14,fontWeight:700,color:card.c,marginBottom:8 }}>{card.name}</div>
               <div style={{ background:card.bg,borderRadius:8,padding:"8px 12px" }}>
@@ -322,9 +322,9 @@ export default function Lesson19_HinhHocDoLuong2() {
       {/* 3. ĐA GIÁC ĐỀU */}
       <section id="k3" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("3. Đa Giác Đều n Cạnh","3. Regular n-gon")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12 }}>{t("Đa giác đều n cạnh, mỗi cạnh a:","Regular n-gon, each side a:")}</div>
-          <div style={{ background:"white",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:14,lineHeight:2.2 }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:12 }}>{t("Đa giác đều n cạnh, mỗi cạnh a:","Regular n-gon, each side a:")}</div>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:14,lineHeight:2.2 }}>
             Chu vi: P = n·a<br/>
             Góc trung tâm: α = 360°/n<br/>
             Bán kính ngoại tiếp: R = a/(2sin(180°/n))<br/>
@@ -338,10 +338,10 @@ export default function Lesson19_HinhHocDoLuong2() {
             {n:5,name:t("Ngũ giác đều","Regular ⬠"),S:"S ≈ 1.72a²"},
             {n:6,name:t("Lục giác đều","Regular ⬡"),S:"S = 3a²√3/2"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center" }}>
-              <div style={{ fontSize:28,fontWeight:700,color:"#0B4F5C",marginBottom:4 }}>{card.n}</div>
-              <div style={{ fontSize:13,color:"#777",marginBottom:6 }}>{card.name}</div>
-              <div style={{ fontFamily:"monospace",fontSize:12,background:"white",padding:"4px 8px",borderRadius:6,color:"#0B4F5C" }}>{card.S}</div>
+            <article key={i} style={{ padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center" }}>
+              <div style={{ fontSize:28,fontWeight:700,color: "#22d3ee",marginBottom:4 }}>{card.n}</div>
+              <div style={{ fontSize:13,color: "rgba(255, 255, 255, 0.5)",marginBottom:6 }}>{card.name}</div>
+              <div style={{ fontFamily:"monospace",fontSize:12,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",padding:"4px 8px",borderRadius:6,color: "#22d3ee" }}>{card.S}</div>
             </article>
           ))}
         </div>
@@ -355,11 +355,11 @@ export default function Lesson19_HinhHocDoLuong2() {
             {icon:"➖",title:t("Trừ diện tích","Subtract areas"),desc:t("Tính diện tích hình lớn, trừ đi các phần bị khoét.","Compute large shape, subtract holes or cut-outs."),ex:"S = S_lớn − S_lỗ"},
             {icon:"📐",title:t("Dùng tọa độ","Use coordinates"),desc:t("Công thức Shoelace: S=½|Σ(xᵢyᵢ₊₁−xᵢ₊₁yᵢ)| cho đa giác bất kỳ.","Shoelace formula: S=½|Σ(xᵢyᵢ₊₁−xᵢ₊₁yᵢ)| for any polygon."),ex:"Shoelace / Gauss"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize:28,marginBottom:8 }}>{card.icon}</div>
-              <div style={{ fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:6 }}>{card.title}</div>
-              <div style={{ fontSize:13,color:"#777",lineHeight:1.6,marginBottom:8 }}>{card.desc}</div>
-              <div style={{ fontFamily:"monospace",fontSize:13,background:"white",padding:"6px 10px",borderRadius:6,color:"#0B4F5C",fontWeight:600 }}>{card.ex}</div>
+              <div style={{ fontSize:15,fontWeight:700,color: "#22d3ee",marginBottom:6 }}>{card.title}</div>
+              <div style={{ fontSize:13,color: "rgba(255, 255, 255, 0.5)",lineHeight:1.6,marginBottom:8 }}>{card.desc}</div>
+              <div style={{ fontFamily:"monospace",fontSize:13,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",padding:"6px 10px",borderRadius:6,color: "#22d3ee",fontWeight:600 }}>{card.ex}</div>
             </article>
           ))}
         </div>
@@ -378,14 +378,14 @@ export default function Lesson19_HinhHocDoLuong2() {
              a:[t("S=3a²√3/2=3·16·√3/2=24√3≈41.57 cm²","S=3×16×√3/2=24√3≈41.57"),t("(Lục giác đều = 6 tam giác đều cạnh a)","(Regular hexagon = 6 equilateral triangles)")]},
           ].map(({id,q,a})=>(
             <article key={id}>
-              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize:18,fontWeight:600,marginBottom:4 }}>📝 {t("Bài tập","Exercise")}</div>
                 <div style={{ fontSize:15,lineHeight:1.7,whiteSpace:"pre-wrap" }}>{q}</div>
               </div>
-              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
+              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
                 {rev[id]?t("Ẩn đáp án ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}
               </button>
-              {rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}
+              {rev[id]&&<div style={{ padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6 }}>{l}</div>)}</div>}
             </article>
           ))}
         </div>

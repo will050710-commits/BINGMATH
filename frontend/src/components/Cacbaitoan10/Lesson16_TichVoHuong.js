@@ -222,7 +222,7 @@ export default function Lesson16_TichVoHuong() {
 
       <section id="w" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
           <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Trong vật lý, công của một lực F dọc theo đường dịch chuyển d là: W = F·d·cosθ. Đây chính là tích vô hướng của hai vectơ! Nếu lực vuông góc với chuyển vị thì cosθ=0 → W=0 (không sinh công).","In physics, work done by force F over displacement d is W=F·d·cosθ. This IS the dot product! If force is perpendicular to displacement, cosθ=0 → W=0 (no work done).")}</div>
           <div style={{fontSize:16}}>❓ <em>{t("Tại sao tích vô hướng lại trả về một số, không phải một vectơ?","Why does the dot product return a scalar, not a vector?")}</em></div>
         </div>
@@ -244,25 +244,25 @@ export default function Lesson16_TichVoHuong() {
       </section>
       <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("1. Định Nghĩa Tích Vô Hướng","1. Definition of Dot Product")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-          <div style={{fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10}}>📌 {t("Định nghĩa","Definition")}</div>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+          <div style={{fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:10}}>📌 {t("Định nghĩa","Definition")}</div>
           <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Cho hai vectơ →a và →b. Góc giữa chúng là φ (0° ≤ φ ≤ 180°):","For vectors →a and →b with angle φ between them (0°≤φ≤180°):")}</div>
-          <div style={{background:"white",borderRadius:10,padding:"16px 20px",textAlign:"center",fontFamily:"monospace",fontSize:20,color:"#0B4F5C",fontWeight:700,lineHeight:2.2}}>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"16px 20px",textAlign:"center",fontFamily:"monospace",fontSize:20,color: "#22d3ee",fontWeight:700,lineHeight:2.2}}>
             →a · →b = |→a| · |→b| · cosφ
           </div>
-          <div style={{marginTop:12,padding:"10px 14px",background:"#fff3cd",borderRadius:8,fontSize:14}}>💡 {t("Kết quả là một SỐ THỰC (scalar), không phải vectơ!","The result is a REAL NUMBER (scalar), not a vector!")}</div>
+          <div style={{marginTop:12,padding:"10px 14px",background:"rgba(245, 158, 11, 0.15)",borderRadius:8,fontSize:14}}>💡 {t("Kết quả là một SỐ THỰC (scalar), không phải vectơ!","The result is a REAL NUMBER (scalar), not a vector!")}</div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:14,transition:"all 0.3s"}}>
-          {[{cond:t("φ = 0° (cùng hướng)","φ=0° (same direction)"),result:"→a·→b = |→a|·|→b|",note:"+",bg:"#eafaf1",c:"#1e8449"},
-            {cond:t("φ = 90° (vuông góc)","φ=90° (perpendicular)"),result:"→a·→b = 0",note:"0",bg:"#eaf4fb",c:"#1a5276"},
-            {cond:t("φ = 180° (ngược hướng)","φ=180° (opposite)"),result:"→a·→b = −|→a|·|→b|",note:"−",bg:"#fdf2f2",c:"#922b21"},
-          ].map((card,i)=><article key={i} style={{padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center"}}><div style={{fontSize:12,color:card.c,fontWeight:700,marginBottom:6}}>{card.cond}</div><div style={{fontFamily:"monospace",fontSize:13,background:card.bg,color:card.c,padding:"6px 10px",borderRadius:6,marginBottom:4}}>{card.result}</div><div style={{fontSize:20,fontWeight:700,color:card.c}}>{card.note}</div></article>)}
+          {[{cond:t("φ = 0° (cùng hướng)","φ=0° (same direction)"),result:"→a·→b = |→a|·|→b|",note:"+",bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {cond:t("φ = 90° (vuông góc)","φ=90° (perpendicular)"),result:"→a·→b = 0",note:"0",bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {cond:t("φ = 180° (ngược hướng)","φ=180° (opposite)"),result:"→a·→b = −|→a|·|→b|",note:"−",bg:"rgba(239, 68, 68, 0.15)",c:"#f87171"},
+          ].map((card,i)=><article key={i} style={{padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center"}}><div style={{fontSize:12,color:card.c,fontWeight:700,marginBottom:6}}>{card.cond}</div><div style={{fontFamily:"monospace",fontSize:13,background:card.bg,color:card.c,padding:"6px 10px",borderRadius:6,marginBottom:4}}>{card.result}</div><div style={{fontSize:20,fontWeight:700,color:card.c}}>{card.note}</div></article>)}
         </div>
       </section>
       <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("2. Tính Chất & Ứng Dụng","2. Properties & Applications")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
-          <div style={{background:"white",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:14,lineHeight:2.0}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:14,lineHeight:2.0}}>
             →a · →b = →b · →a  (giao hoán)<br/>
             →a · (→b + →c) = →a·→b + →a·→c  (phân phối)<br/>
             (k→a)·→b = k(→a·→b)  (tuyến tính)<br/>
@@ -271,17 +271,17 @@ export default function Lesson16_TichVoHuong() {
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(230px,1fr))",gap:16,transition:"all 0.3s"}}>
           {[{title:t("Tính độ dài","Compute length"),formula:`|→a|² = →a · →a
-|→a| = √(→a · →a)`,bg:"#eaf4fb",c:"#1a5276"},
-            {title:t("Kiểm tra vuông góc","Check perpendicular"),formula:"→a ⊥ →b ⟺ →a · →b = 0",bg:"#eafaf1",c:"#1e8449"},
-            {title:t("Tính góc giữa 2 vectơ","Compute angle"),formula:"cosφ = (→a·→b) / (|→a|·|→b|)",bg:"#fff3cd",c:"#856404"},
-          ].map((card,i)=><article key={i} style={{padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div><div style={{background:card.bg,color:card.c,fontFamily:"monospace",fontSize:13,padding:"8px 12px",borderRadius:8,whiteSpace:"pre-wrap",lineHeight:1.8}}>{card.formula}</div></article>)}
+|→a| = √(→a · →a)`,bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {title:t("Kiểm tra vuông góc","Check perpendicular"),formula:"→a ⊥ →b ⟺ →a · →b = 0",bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {title:t("Tính góc giữa 2 vectơ","Compute angle"),formula:"cosφ = (→a·→b) / (|→a|·|→b|)",bg:"rgba(245, 158, 11, 0.15)",c:"#fbbf24"},
+          ].map((card,i)=><article key={i} style={{padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div><div style={{background:card.bg,color:card.c,fontFamily:"monospace",fontSize:13,padding:"8px 12px",borderRadius:8,whiteSpace:"pre-wrap",lineHeight:1.8}}>{card.formula}</div></article>)}
         </div>
       </section>
       <section id="k3" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("3. Tích Vô Hướng Theo Toạ Độ","3. Dot Product via Coordinates")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
           <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Nếu →a = (x₁, y₁) và →b = (x₂, y₂):","If →a=(x₁,y₁) and →b=(x₂,y₂):")}</div>
-          <div style={{background:"white",borderRadius:10,padding:"14px 18px",textAlign:"center",fontFamily:"monospace",fontSize:17,color:"#0B4F5C",fontWeight:700,lineHeight:2.4}}>
+          <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",textAlign:"center",fontFamily:"monospace",fontSize:17,color: "#22d3ee",fontWeight:700,lineHeight:2.4}}>
             →a · →b = x₁x₂ + y₁y₂<br/>
             |→a|² = x₁² + y₁²<br/>
             cosφ = (x₁x₂+y₁y₂) / (√(x₁²+y₁²)·√(x₂²+y₂²))
@@ -297,7 +297,7 @@ export default function Lesson16_TichVoHuong() {
              a:[t("→AB=(4,0), →AC=(0,3)","→AB=(4,0), →AC=(0,3)"),t("→AB·→AC=4·0+0·3=0 → cos A=0 → A=90°","→AB·→AC=0 → A=90°")]},
             {id:"e3",q:t("→a=(1,1), →b=(1,0). Tính góc φ giữa →a và →b.","→a=(1,1), →b=(1,0). Find angle φ."),
              a:["→a·→b=1·1+1·0=1",t("|→a|=√2, |→b|=1","| →a|=√2, |→b|=1"),t("cosφ=1/(√2·1)=1/√2=√2/2 → φ=45°","cosφ=1/√2 → φ=45°")]},
-          ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+          ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
         </div>
       </section>
       </>

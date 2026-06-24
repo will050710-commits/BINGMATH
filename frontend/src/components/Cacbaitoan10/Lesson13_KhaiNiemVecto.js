@@ -222,7 +222,7 @@ export default function Lesson13_KhaiNiemVecto() {
 
       <section id="w" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
           <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Khi mô tả chuyển động, lực, hoặc tốc độ gió, chúng ta cần biết không chỉ độ lớn mà còn cả hướng. Đó chính là lý do vectơ ra đời — đại lượng có cả độ lớn lẫn hướng.","When describing motion, force, or wind speed, we need not just magnitude but also direction. That is why vectors exist — quantities with both magnitude and direction.")}</div>
           <div style={{fontSize:16}}>❓ <em>{t("Lực kéo 10N theo hướng đông và lực kéo 10N theo hướng bắc có giống nhau không?","Is a 10N force east the same as a 10N force north?")}</em></div>
         </div>
@@ -244,20 +244,20 @@ export default function Lesson13_KhaiNiemVecto() {
       </section>
       <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("1. Khái Niệm Vectơ","1. Vector Concept")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-          <div style={{fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10}}>📌 {t("Định nghĩa","Definition")}</div>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+          <div style={{fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:10}}>📌 {t("Định nghĩa","Definition")}</div>
           <div style={{fontSize:15,lineHeight:1.8}}>{t("Vectơ là một đoạn thẳng có hướng. Vectơ AB (ký hiệu →AB) có: điểm đầu A, điểm cuối B, hướng từ A đến B, độ dài |AB|.","A vector is a directed line segment. Vector AB (written →AB) has: initial point A, terminal point B, direction from A to B, length |AB|.")}</div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,transition:"all 0.3s"}}>
           {[{icon:"📏",title:t("Độ dài (Modulus)","Length (Modulus)"),desc:t("|→AB| = khoảng cách A đến B. |→u| ≥ 0","| →AB | = distance A to B. |→u| ≥ 0")},
             {icon:"🧭",title:t("Hướng (Direction)","Direction"),desc:t("Góc mà vectơ tạo với chiều dương trục Ox","Angle the vector makes with positive x-axis")},
             {icon:"📍",title:t("Vectơ không","Zero Vector"),desc:t("→0: điểm đầu = điểm cuối, |→0|=0, hướng tùy ý","→0: start=end, |→0|=0, direction undefined")},
-          ].map((card,i)=><article key={i} style={{padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center"}}><div style={{fontSize:28,marginBottom:8}}>{card.icon}</div><div style={{fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:6}}>{card.title}</div><div style={{fontSize:13,color:"#777",lineHeight:1.6}}>{card.desc}</div></article>)}
+          ].map((card,i)=><article key={i} style={{padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center"}}><div style={{fontSize:28,marginBottom:8}}>{card.icon}</div><div style={{fontSize:15,fontWeight:700,color: "#22d3ee",marginBottom:6}}>{card.title}</div><div style={{fontSize:13,color: "rgba(255, 255, 255, 0.5)",lineHeight:1.6}}>{card.desc}</div></article>)}
         </div>
       </section>
       <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("2. Hai Vectơ Bằng Nhau","2. Equal Vectors")} />
-        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+        <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
           <div style={{fontSize:15,lineHeight:1.8}}>{t("Hai vectơ bằng nhau (→a = →b) khi và chỉ khi chúng có cùng độ dài VÀ cùng hướng. Vị trí điểm gốc không quan trọng!","Two vectors are equal (→a = →b) iff they have the same length AND same direction. The position of the starting point doesn't matter!")}</div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="90" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16,transition:"all 0.3s"}}>
@@ -268,7 +268,7 @@ export default function Lesson13_KhaiNiemVecto() {
       `• Cùng độ dài: |→a|=|→b|\n• Cùng hướng`,
       `• Same length: |→a|=|→b|\n• Same direction`
     ),
-    bg: "#eafaf1", c: "#1e8449"
+    bg: "rgba(16, 185, 129, 0.15)", c: "#4ade80"
   },
   {
     title: t("→a ≠ →b nếu", "→a ≠ →b if"),
@@ -276,7 +276,7 @@ export default function Lesson13_KhaiNiemVecto() {
       `• Độ dài khác nhau, HOẶC\n• Hướng khác nhau`,
       `• Different lengths, OR\n• Different directions`
     ),
-    bg: "#fdf2f2", c: "#922b21"
+    bg: "rgba(239, 68, 68, 0.15)", c: "#f87171"
   },
   {
     title: t("Vectơ đối −→a", "Opposite vector −→a"),
@@ -284,10 +284,10 @@ export default function Lesson13_KhaiNiemVecto() {
       `• Cùng độ dài với →a\n• Ngược hướng với →a`,
       `• Same length as →a\n• Opposite direction to →a`
     ),
-    bg: "#eaf4fb", c: "#1a5276"
+    bg: "rgba(14, 165, 233, 0.15)", c: "#38bdf8"
   },
 ].map((card, i) => (
-     <article key={i} style={{padding:16, borderRadius:10, background:"#f9f9f9", boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+     <article key={i} style={{padding:16, borderRadius:10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
        <div style={{fontSize:14, fontWeight:700, color:card.c, marginBottom:8}}>{card.title}</div>
        <div style={{background:card.bg, color:card.c, padding:"8px 12px", borderRadius:8, fontSize:13, whiteSpace:"pre-wrap", lineHeight:1.7}}>{card.cond}</div>
      </article>
@@ -297,10 +297,10 @@ export default function Lesson13_KhaiNiemVecto() {
       <section id="k3" style={{scrollMarginTop:80,marginBottom:64}}>
         <SH icon="📖" title={t("3. Vectơ Cùng Phương, Cùng Hướng","3. Parallel & Same-Direction Vectors")} />
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16,transition:"all 0.3s"}}>
-          {[{title:t("Cùng phương","Parallel"),desc:t("→a và →b cùng phương khi giá của chúng song song hoặc trùng nhau.","→a and →b are parallel when their lines of action are parallel or identical."),ex:t("→AB và →CD cùng phương nếu AB // CD","→AB and →CD are parallel if AB // CD"),c:"#1a5276",bg:"#eaf4fb"},
-            {title:t("Cùng hướng","Same direction"),desc:t("Cùng phương VÀ cùng chiều (không ngược chiều).","Parallel AND same direction (not opposite)."),ex:t("→AB và →CD cùng hướng nếu → từ A→B và C→D cùng chiều","→AB and →CD same direction if both point the same way"),c:"#1e8449",bg:"#eafaf1"},
-            {title:t("Ngược hướng","Opposite direction"),desc:t("Cùng phương NHƯNG ngược chiều nhau.","Parallel BUT pointing in opposite directions."),ex:t("→AB và →DC ngược hướng (D→C ngược A→B)","→AB and →DC are opposite (D→C vs A→B)"),c:"#922b21",bg:"#fdf2f2"},
-          ].map((card,i)=><article key={i} style={{padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:15,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div><div style={{fontSize:13,color:"#555",marginBottom:8,lineHeight:1.6}}>{card.desc}</div><div style={{background:card.bg,color:card.c,padding:"6px 10px",borderRadius:6,fontSize:12}}>{card.ex}</div></article>)}
+          {[{title:t("Cùng phương","Parallel"),desc:t("→a và →b cùng phương khi giá của chúng song song hoặc trùng nhau.","→a and →b are parallel when their lines of action are parallel or identical."),ex:t("→AB và →CD cùng phương nếu AB // CD","→AB and →CD are parallel if AB // CD"),c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+            {title:t("Cùng hướng","Same direction"),desc:t("Cùng phương VÀ cùng chiều (không ngược chiều).","Parallel AND same direction (not opposite)."),ex:t("→AB và →CD cùng hướng nếu → từ A→B và C→D cùng chiều","→AB and →CD same direction if both point the same way"),c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+            {title:t("Ngược hướng","Opposite direction"),desc:t("Cùng phương NHƯNG ngược chiều nhau.","Parallel BUT pointing in opposite directions."),ex:t("→AB và →DC ngược hướng (D→C ngược A→B)","→AB and →DC are opposite (D→C vs A→B)"),c:"#f87171",bg:"rgba(239, 68, 68, 0.15)"},
+          ].map((card,i)=><article key={i} style={{padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:15,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div><div style={{fontSize:13,color: "rgba(255, 255, 255, 0.7)",marginBottom:8,lineHeight:1.6}}>{card.desc}</div><div style={{background:card.bg,color:card.c,padding:"6px 10px",borderRadius:6,fontSize:12}}>{card.ex}</div></article>)}
         </div>
       </section>
       <section id="th" style={{scrollMarginTop:80,marginBottom:64}}>
@@ -312,7 +312,7 @@ export default function Lesson13_KhaiNiemVecto() {
              a:[t("Cần thêm điều kiện: →a và →b phải CÙNG HƯỚNG.","Need extra condition: →a and →b must have the SAME DIRECTION."),t("Chỉ có độ dài bằng nhau chưa đủ — hai vectơ có thể khác hướng!","Equal lengths alone are not enough — they could point in different directions!")]},
             {id:"e3",q:t("Vectơ →0 có bằng bất kỳ vectơ không?","Is the zero vector equal to any other vector?"),
              a:[t("Không. →0 chỉ bằng chính nó: →0 = →0.","No. →0 equals only itself: →0 = →0."),t("|→0|=0, nhưng mọi vectơ khác không đều có độ dài >0.","| →0|=0, but every nonzero vector has length >0.")]},
-          ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+          ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
         </div>
       </section>
       </>

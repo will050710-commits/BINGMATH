@@ -221,7 +221,7 @@ export default function Lesson27_NhiThucNewton() {
     
 
     <section id="w" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("(a+b)² = a²+2ab+b². (a+b)³ = a³+3a²b+3ab²+b³. Các hệ số 1,2,1 và 1,3,3,1 có quy luật gì? Đó là Tam Giác Pascal và Nhị Thức Newton — cho phép khai triển (a+b)ⁿ với mọi n!","(a+b)²=a²+2ab+b². (a+b)³=a³+3a²b+3ab²+b³. The coefficients 1,2,1 and 1,3,3,1 follow a pattern: Pascal's Triangle and the Binomial Theorem — allowing expansion of (a+b)ⁿ for any n!")}</div>
       </div>
     </section>
@@ -241,41 +241,41 @@ export default function Lesson27_NhiThucNewton() {
         </div>
       </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Nhị Thức Newton","1. Binomial Theorem")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-        <div style={{fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12}}>📌 {t("Công thức tổng quát:","General formula:")}</div>\n        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:15,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.4}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+        <div style={{fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:12}}>📌 {t("Công thức tổng quát:","General formula:")}</div>\n        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:15,textAlign:"center",color: "#22d3ee",fontWeight:700,lineHeight:2.4}}>
           (a+b)ⁿ = Σₖ₌₀ⁿ Cₙᵏ · aⁿ⁻ᵏ · bᵏ<br/>
           = Cₙ⁰aⁿ + Cₙ¹aⁿ⁻¹b + Cₙ²aⁿ⁻²b² + ... + Cₙⁿbⁿ
         </div>
-        <div style={{marginTop:12,padding:"10px 14px",background:"#fff3cd",borderRadius:8,fontSize:14}}>
+        <div style={{marginTop:12,padding:"10px 14px",background:"rgba(245, 158, 11, 0.15)",borderRadius:8,fontSize:14}}>
           💡 {t("Số hạng tổng quát (STQ): T_{k+1} = Cₙᵏ · aⁿ⁻ᵏ · bᵏ (k = 0,1,...,n)","General term: T_{k+1} = Cₙᵏ·aⁿ⁻ᵏ·bᵏ")}
         </div>
       </div>
     </section>
     <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("2. Tam Giác Pascal","2. Pascal's Triangle")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
-        <div style={{background:"white",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:14,lineHeight:2.2,textAlign:"center"}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:14,lineHeight:2.2,textAlign:"center"}}>
           n=0:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1<br/>
           n=1:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;1<br/>
           n=2:&nbsp;&nbsp;&nbsp;&nbsp;1&nbsp;&nbsp;2&nbsp;&nbsp;1<br/>
           n=3:&nbsp;&nbsp;1&nbsp;&nbsp;3&nbsp;&nbsp;3&nbsp;&nbsp;1<br/>
           n=4:&nbsp;1&nbsp;&nbsp;4&nbsp;&nbsp;6&nbsp;&nbsp;4&nbsp;&nbsp;1
         </div>
-        <div style={{marginTop:10,fontSize:14,color:"#777"}}>{t("Quy luật: mỗi số = tổng hai số ngay trên nó. Hàng n cho các hệ số Cₙ⁰, Cₙ¹, ..., Cₙⁿ.","Rule: each number = sum of the two directly above. Row n gives coefficients Cₙ⁰,...,Cₙⁿ.")}</div>
+        <div style={{marginTop:10,fontSize:14,color: "rgba(255, 255, 255, 0.5)"}}>{t("Quy luật: mỗi số = tổng hai số ngay trên nó. Hàng n cho các hệ số Cₙ⁰, Cₙ¹, ..., Cₙⁿ.","Rule: each number = sum of the two directly above. Row n gives coefficients Cₙ⁰,...,Cₙⁿ.")}</div>
       </div>
     </section>
     <section id="k3" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("3. Tính Chất Quan Trọng","3. Key Properties")} />
   <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16,transition:"all 0.3s"}}>
     {[
-      {title:t("Tổng hệ số","Sum of coefficients"), formula:"(1+1)ⁿ = 2ⁿ\nΣCₙᵏ = 2ⁿ", note:t("Thay a=b=1","Set a=b=1"), c:"#1a5276", bg:"#eaf4fb"},
-      {title:t("Tổng hệ số xen kẽ","Alternating sum"), formula:"(1−1)ⁿ = 0\nΣ(−1)ᵏCₙᵏ = 0", note:t("Thay a=1, b=−1","Set a=1, b=−1"), c:"#922b21", bg:"#fdf2f2"},
-      {title:t("Số hạng giữa","Middle term"), formula:"n chẵn: T_{n/2+1} = Cₙⁿ/²·aⁿ/²·bⁿ/²\nn lẻ: 2 số hạng giữa", note:t("STQ có k=n/2","Term with k=n/2"), c:"#856404", bg:"#fff3cd"},
+      {title:t("Tổng hệ số","Sum of coefficients"), formula:"(1+1)ⁿ = 2ⁿ\nΣCₙᵏ = 2ⁿ", note:t("Thay a=b=1","Set a=b=1"), c:"#38bdf8", bg:"rgba(14, 165, 233, 0.15)"},
+      {title:t("Tổng hệ số xen kẽ","Alternating sum"), formula:"(1−1)ⁿ = 0\nΣ(−1)ᵏCₙᵏ = 0", note:t("Thay a=1, b=−1","Set a=1, b=−1"), c:"#f87171", bg:"rgba(239, 68, 68, 0.15)"},
+      {title:t("Số hạng giữa","Middle term"), formula:"n chẵn: T_{n/2+1} = Cₙⁿ/²·aⁿ/²·bⁿ/²\nn lẻ: 2 số hạng giữa", note:t("STQ có k=n/2","Term with k=n/2"), c:"#fbbf24", bg:"rgba(245, 158, 11, 0.15)"},
     ].map((card,i)=>(
-      <article key={i} style={{padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+      <article key={i} style={{padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div>
         <div style={{fontFamily:"monospace",fontSize:13,background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,whiteSpace:"pre-wrap",lineHeight:1.8,marginBottom:6}}>
           {card.formula}
         </div>
-        <div style={{fontSize:12,color:"#777"}}>{card.note}</div>
+        <div style={{fontSize:12,color: "rgba(255, 255, 255, 0.5)"}}>{card.note}</div>
       </article>
     ))}
   </div>
@@ -285,7 +285,7 @@ export default function Lesson27_NhiThucNewton() {
         {[{id:"e1",q:t("Khai triển (x+2)⁴ bằng nhị thức Newton.","Expand (x+2)⁴ using the Binomial Theorem."),a:["T_{k+1} = C₄ᵏ·x⁴⁻ᵏ·2ᵏ","C₄⁰x⁴+C₄¹·2x³+C₄²·4x²+C₄³·8x+C₄⁴·16","= x⁴+8x³+24x²+32x+16"]},
           {id:"e2",q:t("Tìm số hạng chứa x³ trong khai triển (2x−1)⁵.","Find the term containing x³ in (2x−1)⁵."),a:["T_{k+1} = C₅ᵏ·(2x)⁵⁻ᵏ·(−1)ᵏ",t("Cần 5−k=3 → k=2","Need 5−k=3 → k=2"),"T₃ = C₅²·(2x)³·(−1)² = 10·8x³·1 = 80x³"]},
           {id:"e3",q:t("Tính tổng Σₖ₌₀⁶ Cₙᵏ với n=6.","Find the sum Σₖ₌₀⁶ C₆ᵏ."),a:[t("Dùng tính chất: (1+1)⁶ = 2⁶","Property: (1+1)⁶=2⁶"),"Σ C₆ᵏ = 2⁶ = 64"]},
-        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
       </div>
     </section>
       </>

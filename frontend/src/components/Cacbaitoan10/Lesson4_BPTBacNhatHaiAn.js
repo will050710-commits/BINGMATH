@@ -275,7 +275,7 @@ export default function Lesson4_BPTBacNhatHaiAn() {
         {/* ════ KHỞI ĐỘNG ════ */}
         <section id="khoiDong" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="🚀" title={t("Khởi động", "Warm-Up")} />
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t("Tình huống mở đầu", "Opening Situation")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 16 }}>
               {t('Một xưởng sản xuất hai loại sản phẩm A và B. Mỗi sản phẩm A tốn 2 giờ, mỗi sản phẩm B tốn 3 giờ. Tổng thời gian làm việc không quá 120 giờ/ngày. Điều kiện này có thể mô tả bằng: 2x + 3y ≤ 120, với x, y ≥ 0.',
@@ -303,15 +303,15 @@ export default function Lesson4_BPTBacNhatHaiAn() {
         {/* ════ 1. ĐỊNH NGHĨA ════ */}
         <section id="khai1" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("1. Định Nghĩa", "1. Definition")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>
               {t("Bất phương trình bậc nhất hai ẩn x, y có dạng:", "A linear inequality in two variables x, y has the form:")}
             </div>
-            <div style={{ fontFamily: "monospace", fontSize: 22, color: "#0B4F5C", textAlign: "center", padding: "16px 0" }}>
+            <div style={{ fontFamily: "monospace", fontSize: 22, color: "#22d3ee", textAlign: "center", padding: "16px 0" }}>
               ax + by + c {">"} 0 &nbsp;|&nbsp; ax + by + c {"<"} 0 &nbsp;|&nbsp; ax + by + c ≥ 0 &nbsp;|&nbsp; ax + by + c ≤ 0
             </div>
-            <div style={{ fontSize: 15, color: "#777" }}>
+            <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.5)" }}>
               {t("Trong đó a, b, c ∈ ℝ và a, b không đồng thời bằng 0.", "Where a, b, c ∈ ℝ and a, b are not both zero.")}
             </div>
           </div>
@@ -320,12 +320,12 @@ export default function Lesson4_BPTBacNhatHaiAn() {
               { label: t("✅ BPT bậc nhất hai ẩn", "✅ Linear inequalities in 2 vars"), items: ["2x + 3y > 6", "x − y ≤ 0", "−x + 2y + 1 ≥ 0"], ok: true },
               { label: t("❌ KHÔNG phải BPT bậc nhất hai ẩn", "❌ NOT linear in 2 vars"), items: ["x² + y > 0  (có x²)", "x + y + z < 1  (3 ẩn)", "2x + 3y = 6  (phương trình)"], ok: false },
             ].map((g, i) => (
-              <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+              <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>{g.label}</div>
                 {g.items.map((item, ii) => (
-                  <div key={ii} style={{ fontSize: 15, color: "#555", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div key={ii} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <code style={{ fontFamily: "monospace" }}>{item}</code>
-                    <span style={{ fontSize: 12, fontWeight: 700, background: g.ok ? "#eafaf1" : "#fdf2f2", color: g.ok ? "#1e8449" : "#922b21", padding: "2px 10px", borderRadius: 20, marginLeft: 8 }}>{g.ok ? "✓" : "✗"}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, background: g.ok ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)", color: g.ok ? "#4ade80" : "#f87171", padding: "2px 10px", borderRadius: 20, marginLeft: 8 }}>{g.ok ? "✓" : "✗"}</span>
                   </div>
                 ))}
               </article>
@@ -336,8 +336,8 @@ export default function Lesson4_BPTBacNhatHaiAn() {
         {/* ════ 2. MIỀN NGHIỆM ════ */}
         <section id="khai2" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("2. Nghiệm và Miền Nghiệm", "2. Solutions and Solution Region")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 10 }}>
               {t("Cặp số (x₀, y₀) là nghiệm của BPT ax + by + c > 0 nếu khi thay x = x₀, y = y₀ vào BPT, ta được bất đẳng thức đúng.",
                 "A pair (x₀, y₀) is a solution of ax + by + c > 0 if substituting x = x₀, y = y₀ yields a true inequality.")}
@@ -347,7 +347,7 @@ export default function Lesson4_BPTBacNhatHaiAn() {
                 "The set of all solutions is called the solution region. For a linear inequality in two variables, it is always a half-plane.")}
             </div>
           </div>
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>🔑 {t("Nhận xét quan trọng", "Key Observation")}</div>
             <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16, transition: "all 0.3s ease" }}>
               {[
@@ -355,10 +355,10 @@ export default function Lesson4_BPTBacNhatHaiAn() {
                 { icon: "🔒", title: t("Đường kín / mở", "Closed / open boundary"), desc: t("Dấu ≥, ≤ → đường biên thuộc miền nghiệm (vẽ liền nét).\nDấu >, < → đường biên không thuộc (vẽ nét đứt).", "≥, ≤ → boundary included (solid line).\n>, < → boundary excluded (dashed line).") },
                 { icon: "🎯", title: t("Kiểm tra với O(0,0)", "Test with O(0,0)"), desc: t("Thử gốc tọa độ vào BPT:\n• Thỏa → O thuộc miền nghiệm → tô phía O\n• Không thỏa → tô phía đối diện", "Test origin:\n• Satisfies → shade O's side\n• Fails → shade opposite side") },
               ].map((card, i) => (
-                <article key={i} style={{ padding: 16, borderRadius: 10, background: "white", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <article key={i} style={{ padding: 16, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ fontSize: 24, marginBottom: 6 }}>{card.icon}</div>
                   <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{card.title}</div>
-                  <div style={{ fontSize: 14, color: "#777", whiteSpace: "pre-wrap" }}>{card.desc}</div>
+                  <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.5)", whiteSpace: "pre-wrap" }}>{card.desc}</div>
                 </article>
               ))}
             </div>
@@ -368,8 +368,8 @@ export default function Lesson4_BPTBacNhatHaiAn() {
         {/* ════ 3. BIỂU DIỄN ════ */}
         <section id="khai3" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("3. Cách Biểu Diễn Miền Nghiệm", "3. Graphing the Solution Region")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#0B4F5C" }}>📋 {t("Các bước thực hiện", "Steps")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#22d3ee" }}>📋 {t("Các bước thực hiện", "Steps")}</div>
             <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display: "flex", flexDirection: "column", gap: 12, transition: "all 0.3s ease" }}>
               {[
                 { step: "1", text: t("Vẽ đường thẳng d: ax + by + c = 0 (dạng phương trình đường thẳng).", "Draw the line d: ax + by + c = 0.") },
@@ -378,19 +378,19 @@ export default function Lesson4_BPTBacNhatHaiAn() {
                 { step: "4", text: t("Quy ước vẽ đường biên: liền nét (≥, ≤), nét đứt (>, <).", "Draw boundary: solid line (≥, ≤), dashed line (>, <).") },
               ].map((s, i) => (
                 <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                  <div style={{ minWidth: 32, height: 32, borderRadius: "50%", background: "black", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{s.step}</div>
-                  <div style={{ fontSize: 15, color: "#555", lineHeight: 1.7, paddingTop: 4, whiteSpace: "pre-wrap" }}>{s.text}</div>
+                  <div style={{ minWidth: 32, height: 32, borderRadius: "50%", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>{s.step}</div>
+                  <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", lineHeight: 1.7, paddingTop: 4, whiteSpace: "pre-wrap" }}>{s.text}</div>
                 </div>
               ))}
             </div>
           </div>
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>📘 {t("Ví dụ: Biểu diễn miền nghiệm của 2x + y ≥ 4", "Example: Graph 2x + y ≥ 4")}</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 15, color: "#555", lineHeight: 1.8 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 15, color: "rgba(255, 255, 255, 0.7)", lineHeight: 1.8 }}>
               <div>① {t("Đường biên: 2x + y = 4. Vẽ liền nét (dấu ≥).", "Boundary: 2x + y = 4. Draw solid (≥).")}</div>
               <div>② {t("Thử O(0,0): 2(0) + 0 = 0 < 4 → không thỏa.", "Test O(0,0): 2(0)+0 = 0 < 4 → fails.")}</div>
               <div>③ {t("Tô màu nửa mặt phẳng không chứa O (phía trên-phải đường biên).", "Shade the half-plane not containing O (above-right of boundary).")}</div>
-              <div style={{ marginTop: 8, padding: "10px 14px", background: "#eafaf1", borderRadius: 8, color: "#1e8449", fontWeight: 600 }}>
+              <div style={{ marginTop: 8, padding: "10px 14px", background: "rgba(16, 185, 129, 0.15)", borderRadius: 8, color: "#4ade80", fontWeight: 600 }}>
                 ✅ {t("Miền tô màu (kể cả đường biên) chính là miền nghiệm.", "The shaded region (including boundary) is the solution region.")}
               </div>
             </div>
@@ -431,15 +431,15 @@ export default function Lesson4_BPTBacNhatHaiAn() {
               },
             ].map(({ id, q, a }) => (
               <article key={id}>
-                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>📝 {t("Bài tập", "Exercise")}</div>
-                  <div style={{ color: "#777", fontSize: 14 }}>{t("Toán 10", "Grade 10")}</div>
+                  <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14 }}>{t("Toán 10", "Grade 10")}</div>
                   <div style={{ fontSize: 15, lineHeight: 1.7, marginTop: 10, whiteSpace: "pre-wrap" }}>{q}</div>
                 </div>
-                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "black", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
+                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
                   {revealedAnswers[id] ? t("Ẩn đáp án ▲", "Hide Answer ▲") : t("Xem đáp án ▼", "Show Answer ▼")}
                 </button>
-                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "#eafaf1", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "#555", marginBottom: 6 }}>{line}</div>)}</div>}
+                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "rgba(16, 185, 129, 0.15)", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>{line}</div>)}</div>}
               </article>
             ))}
           </div>

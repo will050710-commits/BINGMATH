@@ -7,13 +7,13 @@ const TOOLS = [
     id: "graphing",
     label: "Đồ thị",
     title: "Graphing Calculator",
-    src: "https://www.geogebra.org/graphing?embed",
+    src: "https://www.geogebra.org/classic?embed&p=g",
   },
   {
     id: "geometry",
     label: "Hình học",
     title: "Geometry",
-    src: "https://www.geogebra.org/geometry?embed",
+    src: "https://www.geogebra.org/classic?embed&p=geometry",
   },
   {
     id: "classic",
@@ -25,43 +25,51 @@ const TOOLS = [
     id: "threeD",
     label: "3D / Vectơ",
     title: "3D Calculator",
-    src: "https://www.geogebra.org/3d?embed",
+    src: "https://www.geogebra.org/classic?embed&p=3d",
   },
   {
     id: "cas",
     label: "CAS",
     title: "Computer Algebra System",
-    src: "https://www.geogebra.org/cas?embed",
+    src: "https://www.geogebra.org/classic?embed&p=cas",
   },
   {
     id: "probability",
     label: "Xác suất",
     title: "Probability Calculator",
-    src: "https://www.geogebra.org/probability?embed",
+    src: "https://www.geogebra.org/classic?embed&p=probability",
   },
 ];
 
 export default function MathToolsPanel({ lang = "vi" }) {
   const [open, setOpen] = useState(false);
   const [activeTool, setActiveTool] = useState(TOOLS[0].id);
+  const [hovered, setHovered] = useState(false);
   const t = (vi, en) => (lang === "vi" ? vi : en);
   const selectedTool = TOOLS.find((tool) => tool.id === activeTool) || TOOLS[0];
 
   const S = {
     trigger: {
-      position: "absolute",
-      top: 12,
-      right: 12,
-      zIndex: 3,
-      border: "1px solid rgba(255,255,255,0.55)",
-      background: "rgba(11,79,92,0.88)",
+      position: "fixed",
+      bottom: 24,
+      right: 92,
+      zIndex: 9999,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "linear-gradient(135deg, #06b6d4, #0891b2)",
       color: "white",
-      borderRadius: 8,
-      padding: "9px 12px",
-      fontSize: 13,
-      fontWeight: 700,
+      border: "none",
+      width: 56,
+      height: 56,
+      borderRadius: "50%",
+      fontSize: 22,
       cursor: "pointer",
-      boxShadow: "0 4px 16px rgba(0,0,0,0.18)",
+      boxShadow: hovered
+        ? "0 8px 32px rgba(6,182,212,0.65), 0 0 0 5px rgba(6,182,212,0.2)"
+        : "0 4px 24px rgba(6,182,212,0.5), 0 0 0 3px rgba(6,182,212,0.15)",
+      transform: hovered ? "translateY(-4px) scale(1.08)" : "translateY(0) scale(1)",
+      transition: "transform 0.3s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s, background 0.2s",
     },
     overlay: {
       position: "fixed",
@@ -89,7 +97,7 @@ export default function MathToolsPanel({ lang = "vi" }) {
       gap: 16,
       padding: "16px 18px",
       borderBottom: "1px solid #e6eef0",
-      background: "#0B4F5C",
+      background: "#22d3ee",
       color: "white",
     },
     title: {
@@ -116,9 +124,9 @@ export default function MathToolsPanel({ lang = "vi" }) {
       background: "#f7fbfc",
     },
     tab: (active) => ({
-      border: `1px solid ${active ? "#0B4F5C" : "#ccdadd"}`,
+      border: `1px solid ${active ? "#22d3ee" : "#ccdadd"}`,
       borderRadius: 8,
-      background: active ? "#0B4F5C" : "white",
+      background: active ? "#22d3ee" : "white",
       color: active ? "white" : "#244248",
       padding: "9px 14px",
       fontSize: 14,
@@ -136,14 +144,22 @@ export default function MathToolsPanel({ lang = "vi" }) {
       height: "100%",
       border: "none",
       display: "block",
-      background: "white",
+      background: "rgba(255, 255, 255, 0.04)",
     },
   };
 
   return (
     <>
-      <button type="button" style={S.trigger} onClick={() => setOpen(true)}>
-        {t("Công cụ toán", "Math tools")}
+      <button
+        type="button"
+        style={S.trigger}
+        onClick={() => setOpen(true)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        title={t("Công cụ toán học", "Math tools")}
+        aria-label={t("Mở công cụ toán học", "Open math tools")}
+      >
+        📐
       </button>
 
       {open && (

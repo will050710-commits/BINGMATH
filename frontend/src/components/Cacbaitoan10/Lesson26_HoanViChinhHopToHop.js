@@ -227,7 +227,7 @@ export default function Lesson26_HoanViChinhHopToHop() {
     
 
     <section id="w" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Xếp 4 người vào 4 ghế: 4!=24 cách. Chọn đội trưởng và phó từ 10 người: P(10,2)=90 cách. Chọn 3 người từ 10 người (không phân biệt thứ tự): C(10,3)=120 cách. Ba khái niệm này là nền tảng của tổ hợp!","Arrange 4 people in 4 chairs: 4!=24. Choose captain and vice from 10: P(10,2)=90. Choose 3 from 10 (unordered): C(10,3)=120. These 3 concepts are the foundation of combinatorics!")}</div>
       </div>
     </section>
@@ -247,41 +247,41 @@ export default function Lesson26_HoanViChinhHopToHop() {
         </div>
       </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Hoán Vị","1. Permutations of n Elements")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Hoán vị của n phần tử là một cách sắp xếp n phần tử đó theo một thứ tự xác định.","A permutation of n elements is an arrangement of all n elements in a specific order.")}</div>
-        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:20,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.2}}>Pₙ = n! = n×(n−1)×...×2×1<br/><span style={{fontSize:14,fontWeight:400,color:"#777"}}>0! = 1 &nbsp;|&nbsp; 1! = 1 &nbsp;|&nbsp; 5! = 120</span></div>
+        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:20,textAlign:"center",color: "#22d3ee",fontWeight:700,lineHeight:2.2}}>Pₙ = n! = n×(n−1)×...×2×1<br/><span style={{fontSize:14,fontWeight:400,color: "rgba(255, 255, 255, 0.5)"}}>0! = 1 &nbsp;|&nbsp; 1! = 1 &nbsp;|&nbsp; 5! = 120</span></div>
       </div>
     </section>
     <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("2. Chỉnh Hợp","2. Arrangements (k from n)")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Chỉnh hợp chập k của n phần tử: số cách chọn và sắp xếp k phần tử từ n phần tử (có THỨ TỰ).","Arrangement of k from n: ways to select and order k from n elements (ORDER matters).")}</div>
-        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:19,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.4}}>
+        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:19,textAlign:"center",color: "#22d3ee",fontWeight:700,lineHeight:2.4}}>
           Aₙᵏ = n! / (n−k)! = n(n−1)...(n−k+1)
         </div>
-        <div style={{marginTop:10,fontSize:14,color:"#777",textAlign:"center"}}>{t("Ví dụ: A₅² = 5×4 = 20","Example: A₅² = 5×4 = 20")}</div>
+        <div style={{marginTop:10,fontSize:14,color: "rgba(255, 255, 255, 0.5)",textAlign:"center"}}>{t("Ví dụ: A₅² = 5×4 = 20","Example: A₅² = 5×4 = 20")}</div>
       </div>
     </section>
     <section id="k3" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("3. Tổ Hợp","3. Combinations (k from n)")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:16}}>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Tổ hợp chập k của n phần tử: số cách chọn k phần tử từ n (KHÔNG có thứ tự, không phân biệt).","Combination of k from n: ways to choose k from n (NO ORDER, unordered).")}</div>
-        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:19,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.4}}>
+        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:19,textAlign:"center",color: "#22d3ee",fontWeight:700,lineHeight:2.4}}>
           Cₙᵏ = n! / (k!(n−k)!) = Aₙᵏ / k!
         </div>
-        <div style={{marginTop:10,fontSize:14,color:"#777",textAlign:"center"}}>{t("Ví dụ: C₅² = 10, C₁₀³ = 120","Example: C₅² = 10, C₁₀³ = 120")}</div>
+        <div style={{marginTop:10,fontSize:14,color: "rgba(255, 255, 255, 0.5)",textAlign:"center"}}>{t("Ví dụ: C₅² = 10, C₁₀³ = 120","Example: C₅² = 10, C₁₀³ = 120")}</div>
       </div>
-      <div className="reveal" data-reveal style={{padding:16,borderRadius:10,background:"#fff3cd",border:"1px solid #ffc107",fontSize:14,marginTop:8}}>
+      <div className="reveal" data-reveal style={{padding:16,borderRadius:10,background:"rgba(245, 158, 11, 0.15)",border:"1px solid #ffc107",fontSize:14,marginTop:8}}>
         ⭐ {t("Tính chất: Cₙᵏ = Cₙⁿ⁻ᵏ. Tức C₁₀³ = C₁₀⁷ = 120.","Property: Cₙᵏ=Cₙⁿ⁻ᵏ. So C₁₀³=C₁₀⁷=120.")}
       </div>
     </section>
     <section id="k4" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("4. So Sánh Ba Khái Niệm","4. Comparing the Three Concepts")} />
       <div className="reveal" data-reveal style={{overflowX:"auto",borderRadius:10,boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <table style={{borderCollapse:"collapse",width:"100%",fontSize:14,minWidth:500}}>
-          <thead><tr style={{background:"#0B4F5C",color:"white"}}>{[t("Khái niệm","Concept"),t("Công thức","Formula"),t("Thứ tự?","Order?"),t("Lấy bao nhiêu?","Take k?"),t("Ví dụ","Example")].map((h,i)=><td key={i} style={{padding:"10px 12px",fontWeight:700,border:"1px solid rgba(255,255,255,0.2)"}}>{h}</td>)}</tr></thead>
+          <thead><tr style={{background:"#22d3ee",color:"white"}}>{[t("Khái niệm","Concept"),t("Công thức","Formula"),t("Thứ tự?","Order?"),t("Lấy bao nhiêu?","Take k?"),t("Ví dụ","Example")].map((h,i)=><td key={i} style={{padding:"10px 12px",fontWeight:700,border:"1px solid rgba(255,255,255,0.2)"}}>{h}</td>)}</tr></thead>
           <tbody>
             {[[t("Hoán vị Pₙ","Permutation Pₙ"),"n!",t("CÓ","YES"),t("Tất cả n","All n"),"P₄=24"],
               [t("Chỉnh hợp Aₙᵏ","Arrangement Aₙᵏ"),"n!/(n−k)!",t("CÓ","YES"),"k","A₅²=20"],
               [t("Tổ hợp Cₙᵏ","Combination Cₙᵏ"),"n!/(k!(n−k)!)",t("KHÔNG","NO"),"k","C₅²=10"]
-            ].map((row,ri)=>(<tr key={ri} style={{background:ri%2===0?"#f9f9f9":"white"}}>{row.map((cell,ci)=>(<td key={ci} style={{padding:"9px 12px",border:"1px solid #e0e0e0",fontFamily:ci===1||ci===4?"monospace":"inherit",fontSize:ci===1?13:14,fontWeight:ci===0?700:400,color:ci===0?"#0B4F5C":ci===2?ri===2?"#922b21":"#1e8449":"#333"}}>{cell}</td>))}</tr>))}
+            ].map((row,ri)=>(<tr key={ri} style={{background:ri%2===0?"#f9f9f9":"white"}}>{row.map((cell,ci)=>(<td key={ci} style={{padding:"9px 12px",border:"1px solid #e0e0e0",fontFamily:ci===1||ci===4?"monospace":"inherit",fontSize:ci===1?13:14,fontWeight:ci===0?700:400,color:ci===0?"#22d3ee":ci===2?ri===2?"#f87171":"#4ade80":"#333"}}>{cell}</td>))}</tr>))}
           </tbody>
         </table>
       </div>
@@ -291,7 +291,7 @@ export default function Lesson26_HoanViChinhHopToHop() {
         {[{id:"e1",q:t("Có bao nhiêu cách xếp 5 học sinh vào 5 ghế khác nhau?","How many ways to arrange 5 students in 5 different chairs?"),a:["P₅ = 5! = 5×4×3×2×1 = 120"]},
           {id:"e2",q:t("Chọn lớp trưởng và lớp phó từ 10 HS (thứ tự quan trọng). Bao nhiêu cách?","Choose president then vice from 10 students (order matters). How many?"),a:["A₁₀² = 10×9 = 90",t("(Chỉnh hợp vì thứ tự quan trọng: chức vụ khác nhau)","(Arrangement since president ≠ vice)")],},
           {id:"e3",q:t("Chọn 3 đại diện từ 10 HS (không phân biệt thứ tự). Bao nhiêu cách?","Choose 3 representatives from 10 students (unordered). How many?"),a:["C₁₀³ = 10!/(3!×7!) = 120",t("(Tổ hợp vì không phân biệt thứ tự)","(Combination since order doesn't matter)")]},
-        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
       </div>
     </section>
       </>

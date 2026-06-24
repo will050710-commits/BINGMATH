@@ -611,10 +611,7 @@ export default function PremiumLessonEngine({
             ))}
           </div>
 
-          {/* Math Tools Button integrated inside navigation header bar */}
-          <div style={{ position: "relative", width: 120, height: 38, flexShrink: 0 }}>
-            <MathToolsPanel lang={lang} />
-          </div>
+
 
           {/* Bilingual toggle */}
           <div style={{ position: "relative", display: "flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: 3, borderRadius: 24, flexShrink: 0 }}>
@@ -944,6 +941,7 @@ export default function PremiumLessonEngine({
       {showHUD && <GamificationHUD onClose={closeHUD} />}
 
       <DuoTranslate />
+      <MathToolsPanel lang={lang} />
 
       <style>{`
         [data-reveal]{opacity:0;transform:translateY(24px);transition:opacity 0.6s cubic-bezier(.16,1,.3,1),transform 0.5s cubic-bezier(.16,1,.3,1);}

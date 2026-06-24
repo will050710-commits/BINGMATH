@@ -215,7 +215,7 @@ export default function Lesson35_XacSuatBienCo() {
     
 
     <section id="w" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <div style={{fontSize:16,lineHeight:1.8}}>{t("Dự báo thời tiết '70% khả năng mưa', thống kê bệnh '1/1000 người mắc', trò chơi casino '47% thắng' — tất cả dùng xác suất. Xác suất là cách đo 'khả năng xảy ra' của một sự kiện!","Weather forecast '70% chance of rain', disease statistics '1 in 1000', casino '47% win rate' — all use probability. Probability measures the 'likelihood' of an event!")}</div>
       </div>
     </section>
@@ -235,21 +235,21 @@ export default function Lesson35_XacSuatBienCo() {
         </div>
       </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Định Nghĩa Xác Suất","1. Definition of Probability")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Trong không gian mẫu đồng khả năng (mọi kết quả như nhau), xác suất của biến cố A là:","In a uniform sample space (equally likely outcomes), probability of event A is:")}</div>
-        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:20,textAlign:"center",color:"#0B4F5C",fontWeight:700,lineHeight:2.4}}>
+        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:20,textAlign:"center",color: "#22d3ee",fontWeight:700,lineHeight:2.4}}>
           P(A) = n(A) / n(Ω)
         </div>
-        <div style={{marginTop:10,fontSize:14,color:"#777",lineHeight:1.8}}>{t("0 ≤ P(A) ≤ 1 | P(Ω)=1 (chắc chắn) | P(∅)=0 (không thể)","0≤P(A)≤1 | P(Ω)=1 (certain) | P(∅)=0 (impossible)")}</div>
+        <div style={{marginTop:10,fontSize:14,color: "rgba(255, 255, 255, 0.5)",lineHeight:1.8}}>{t("0 ≤ P(A) ≤ 1 | P(Ω)=1 (chắc chắn) | P(∅)=0 (không thể)","0≤P(A)≤1 | P(Ω)=1 (certain) | P(∅)=0 (impossible)")}</div>
       </div>
     </section>
     <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("2. Các Quy Tắc Tính Xác Suất","2. Probability Rules")} />
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(250px,1fr))",gap:16,transition:"all 0.3s"}}>
-        {[{title:t("Xác suất biến cố đối","Complement rule"),formula:"P(Ā) = 1 − P(A)",note:t("Rất hữu dụng: tính P(ít nhất 1) = 1 − P(không có)","Useful: P(at least 1)=1−P(none)"),c:"#1a5276",bg:"#eaf4fb"},
-          {title:t("Quy tắc cộng tổng quát","General addition"),formula:"P(A∪B)=P(A)+P(B)−P(A∩B)",note:t("Dùng cho mọi biến cố","For any events"),c:"#1e8449",bg:"#eafaf1"},
-          {title:t("Cộng biến cố xung khắc","Addition for exclusive"),formula:"P(A∪B)=P(A)+P(B)",note:t("Khi A∩B=∅","When A and B mutually exclusive"),c:"#856404",bg:"#fff3cd"},
-          {title:t("Nhân biến cố độc lập","Multiplication for independent"),formula:"P(A∩B)=P(A)×P(B)",note:t("Khi A và B độc lập nhau","When A and B are independent"),c:"#922b21",bg:"#fdf2f2"},
-        ].map((card,i)=>(<article key={i} style={{padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div><div style={{fontFamily:"monospace",fontSize:14,background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,marginBottom:6}}>{card.formula}</div><div style={{fontSize:12,color:"#777"}}>{card.note}</div></article>))}
+        {[{title:t("Xác suất biến cố đối","Complement rule"),formula:"P(Ā) = 1 − P(A)",note:t("Rất hữu dụng: tính P(ít nhất 1) = 1 − P(không có)","Useful: P(at least 1)=1−P(none)"),c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+          {title:t("Quy tắc cộng tổng quát","General addition"),formula:"P(A∪B)=P(A)+P(B)−P(A∩B)",note:t("Dùng cho mọi biến cố","For any events"),c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+          {title:t("Cộng biến cố xung khắc","Addition for exclusive"),formula:"P(A∪B)=P(A)+P(B)",note:t("Khi A∩B=∅","When A and B mutually exclusive"),c:"#fbbf24",bg:"rgba(245, 158, 11, 0.15)"},
+          {title:t("Nhân biến cố độc lập","Multiplication for independent"),formula:"P(A∩B)=P(A)×P(B)",note:t("Khi A và B độc lập nhau","When A and B are independent"),c:"#f87171",bg:"rgba(239, 68, 68, 0.15)"},
+        ].map((card,i)=>(<article key={i} style={{padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:14,fontWeight:700,color:card.c,marginBottom:8}}>{card.title}</div><div style={{fontFamily:"monospace",fontSize:14,background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,marginBottom:6}}>{card.formula}</div><div style={{fontSize:12,color: "rgba(255, 255, 255, 0.5)"}}>{card.note}</div></article>))}
       </div>
     </section>
     <section id="th" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="✏️" title={t("Thực Hành","Practice")} />
@@ -257,7 +257,7 @@ export default function Lesson35_XacSuatBienCo() {
         {[{id:"e1",q:t("Tung xúc xắc. Tính P('ra số chẵn') và P('ra số>4').","Roll die. Find P('even') and P('>4')."),a:["A={2,4,6}, n(A)=3: P(A)=3/6=1/2","B={5,6}, n(B)=2: P(B)=2/6=1/3"]},
           {id:"e2",q:t("Rút 1 lá từ 52 lá bài. P('rút được át') = ?","Draw 1 card from 52. P('draw an ace') = ?"),a:[t("Có 4 lá át trong 52 lá","4 aces in 52 cards"),"P(át) = 4/52 = 1/13 ≈ 0.077"]},
           {id:"e3",q:t("Tung 2 đồng xu. P('ít nhất 1 mặt ngửa').","Flip 2 coins. P('at least 1 head')."),a:["Cách 1: Ω={SS,SN,NS,NN}. Biến cố: {SN,NS,NN}. P=3/4",t("Cách 2: P(ít nhất 1 ngửa)=1−P(không ngửa)=1−P(SS)=1−1/4=3/4","Method 2: 1−P(no heads)=1−1/4=3/4")]},
-        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
       </div>
     </section>
       </>

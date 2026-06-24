@@ -247,7 +247,7 @@ export default function Lesson18_HinhHocDoLuong1() {
       {/* KHỞI ĐỘNG */}
       <section id="w" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Các nhà thiết kế mạch điện, kiến trúc sư xây vòm, và kỹ sư cơ khí thường xuyên cần tính đường tròn bao quanh hoặc nằm trong một hình tam giác. Những công thức hệ thức lượng trong tam giác giúp giải quyết chính xác các bài toán đó.","Circuit designers, arch architects, and mechanical engineers regularly need circles surrounding or inscribed in triangles. The metric relations of triangles solve these problems precisely.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Nếu đường tròn ngoại tiếp tam giác có bán kính R, thì R liên hệ gì với cạnh và góc của tam giác?","If the circumscribed circle has radius R, how does R relate to the triangle's sides and angles?")}</em></div>
         </div>
@@ -275,21 +275,21 @@ export default function Lesson18_HinhHocDoLuong1() {
           {[{
             icon:"⭕",title:t("Đường tròn NGOẠI TIẾP","Circumscribed Circle"),
             items:[t("Bán kính R: đi qua 3 đỉnh","Radius R: passes through 3 vertices"),t("R = a/(2sinA) = b/(2sinB) = c/(2sinC)","R = a/(2sinA)"),t("Tam giác vuông tại C: R = c/2","Right at C: R = c/2"),t("Tam giác đều cạnh a: R = a√3/3","Equilateral: R = a√3/3")],
-            bg:"#eaf4fb",c:"#1a5276"
+            bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"
           },{
             icon:"🔵",title:t("Đường tròn NỘI TIẾP","Inscribed Circle"),
             items:[t("Bán kính r: tiếp xúc 3 cạnh","Radius r: tangent to 3 sides"),t("r = S/p (S=diện tích, p=nửa chu vi)","r = S/p (S=area, p=semi-perimeter)"),t("Tam giác vuông: r = (a+b−c)/2","Right triangle: r = (a+b−c)/2"),t("Tam giác đều cạnh a: r = a√3/6","Equilateral: r = a√3/6")],
-            bg:"#eafaf1",c:"#1e8449"
+            bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"
           },{
             icon:"📐",title:t("Quan hệ R và r","Relationship R and r"),
             items:[t("Euler: OI² = R²−2Rr (O=tâm ngoại, I=tâm nội)","Euler: OI²=R²−2Rr"),t("R ≥ 2r (dấu = khi tam giác đều)","R ≥ 2r (equality for equilateral)"),t("Tam giác đều: R = 2r","Equilateral: R = 2r")],
-            bg:"#f5eef8",c:"#6c3483"
+            bg:"rgba(168, 85, 247, 0.15)",c:"#c084fc"
           }].map((card,i)=>(
-            <article key={i} style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize:24,marginBottom:8 }}>{card.icon}</div>
               <div style={{ fontSize:16,fontWeight:700,color:card.c,marginBottom:12 }}>{card.title}</div>
               {card.items.map((item,j)=>(
-                <div key={j} style={{ fontSize:13,color:"#555",marginBottom:8,display:"flex",gap:8 }}>
+                <div key={j} style={{ fontSize:13,color: "rgba(255, 255, 255, 0.7)",marginBottom:8,display:"flex",gap:8 }}>
                   <span style={{ color:card.c,fontWeight:700,flexShrink:0 }}>•</span>
                   <span style={{ fontFamily:"monospace" }}>{item}</span>
                 </div>
@@ -302,9 +302,9 @@ export default function Lesson18_HinhHocDoLuong1() {
       {/* 2. ĐƯỜNG TRUNG TUYẾN */}
       <section id="k2" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("2. Đường Trung Tuyến","2. Medians")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12 }}>{t("Công thức đường trung tuyến:","Median formulas:")}</div>
-          <div style={{ background:"white",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:15,lineHeight:2.4,textAlign:"center" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:12 }}>{t("Công thức đường trung tuyến:","Median formulas:")}</div>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:15,lineHeight:2.4,textAlign:"center" }}>
             ma² = (2b² + 2c² − a²) / 4<br/>
             mb² = (2a² + 2c² − b²) / 4<br/>
             mc² = (2a² + 2b² − c²) / 4
@@ -315,10 +315,10 @@ export default function Lesson18_HinhHocDoLuong1() {
             {title:t("Tam giác đều cạnh a","Equilateral, side a"),note:t("3 đường trung tuyến bằng nhau.","All 3 medians are equal."),formula:"m = a√3/2"},
             {title:t("Tam giác vuông tại C","Right triangle at C"),note:t("Trung tuyến tới cạnh huyền = R.","Median to hypotenuse = R."),formula:"mc = c/2 = R"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:6 }}>{card.title}</div>
-              <div style={{ fontSize:13,color:"#777",marginBottom:8,lineHeight:1.6 }}>{card.note}</div>
-              <div style={{ fontFamily:"monospace",fontSize:14,fontWeight:600,color:"#0B4F5C",background:"white",padding:"6px 12px",borderRadius:6 }}>{card.formula}</div>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize:15,fontWeight:700,color: "#22d3ee",marginBottom:6 }}>{card.title}</div>
+              <div style={{ fontSize:13,color: "rgba(255, 255, 255, 0.5)",marginBottom:8,lineHeight:1.6 }}>{card.note}</div>
+              <div style={{ fontFamily:"monospace",fontSize:14,fontWeight:600,color: "#22d3ee",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",padding:"6px 12px",borderRadius:6 }}>{card.formula}</div>
             </article>
           ))}
         </div>
@@ -327,12 +327,12 @@ export default function Lesson18_HinhHocDoLuong1() {
       {/* 3. ĐƯỜNG CAO */}
       <section id="k3" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("3. Đường Cao","3. Altitudes")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12 }}>{t("Công thức đường cao:","Altitude formulas:")}</div>
-          <div style={{ background:"white",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:15,lineHeight:2.4,textAlign:"center" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:12 }}>{t("Công thức đường cao:","Altitude formulas:")}</div>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:15,lineHeight:2.4,textAlign:"center" }}>
             ha = 2S / a &nbsp;&nbsp;&nbsp; hb = 2S / b &nbsp;&nbsp;&nbsp; hc = 2S / c
           </div>
-          <div style={{ marginTop:12,padding:"10px 14px",background:"#fff3cd",borderRadius:8,fontSize:14 }}>
+          <div style={{ marginTop:12,padding:"10px 14px",background:"rgba(245, 158, 11, 0.15)",borderRadius:8,fontSize:14 }}>
             💡 {t("Cũng có thể dùng: ha = b·sinC = c·sinB","Also: ha = b·sinC = c·sinB")}
           </div>
         </div>
@@ -341,9 +341,9 @@ export default function Lesson18_HinhHocDoLuong1() {
             {shape:t("Tam giác vuông tại C (cạnh góc vuông a, b)","Right triangle, legs a, b"),formula:"hc = ab/c (đường cao tới cạnh huyền)"},
             {shape:t("Hệ thức trong tam giác vuông","Right triangle relations"),formula:"hc² = ha'·hb'\n(tích các hình chiếu trên huyền)"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize:14,color:"#777",marginBottom:6 }}>{card.shape}</div>
-              <div style={{ fontFamily:"monospace",fontSize:14,fontWeight:600,color:"#0B4F5C",whiteSpace:"pre-wrap",lineHeight:1.8 }}>{card.formula}</div>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize:14,color: "rgba(255, 255, 255, 0.5)",marginBottom:6 }}>{card.shape}</div>
+              <div style={{ fontFamily:"monospace",fontSize:14,fontWeight:600,color: "#22d3ee",whiteSpace:"pre-wrap",lineHeight:1.8 }}>{card.formula}</div>
             </article>
           ))}
         </div>
@@ -352,9 +352,9 @@ export default function Lesson18_HinhHocDoLuong1() {
       {/* 4. HỆ THỨC ĐẶC BIỆT */}
       <section id="k4" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("4. Hệ Thức Trong Tam Giác Vuông","4. Right Triangle Relations")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12 }}>{t("Tam giác vuông tại C, đường cao CH = h, hình chiếu A&apos; và B&apos;:","Right triangle at C, altitude CH=h, projections A&apos; and B&apos;:")}</div>
-          <div style={{ background:"white",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:14,lineHeight:2.2 }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:12 }}>{t("Tam giác vuông tại C, đường cao CH = h, hình chiếu A&apos; và B&apos;:","Right triangle at C, altitude CH=h, projections A&apos; and B&apos;:")}</div>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:14,lineHeight:2.2 }}>
             c² = a² + b² (Pythagore)<br/>
             h = ab/c<br/>
             a² = c·CA&apos;  &nbsp;&nbsp;  b² = c·CB&apos;<br/>
@@ -362,7 +362,7 @@ export default function Lesson18_HinhHocDoLuong1() {
             1/h² = 1/a² + 1/b²
           </div>
         </div>
-        <div className="reveal" data-reveal style={{ padding:14,borderRadius:10,background:"#fff3cd",border:"1px solid #ffc107",fontSize:15 }}>
+        <div className="reveal" data-reveal style={{ padding:14,borderRadius:10,background:"rgba(245, 158, 11, 0.15)",border:"1px solid #ffc107",fontSize:15 }}>
           ⭐ {t("Các hệ thức này rất quan trọng trong thi cử và ứng dụng thực tế (tính độ dốc, chiều cao tòa nhà, v.v.).","These relations are crucial in exams and applications (slope, building height, etc.).")}
         </div>
       </section>
@@ -380,14 +380,14 @@ export default function Lesson18_HinhHocDoLuong1() {
              a:[t("h = 6√3/2 = 3√3≈5.20","h=3√3"),t("R = a√3/3 = 6√3/3 = 2√3≈3.46","R=2√3"),t("r = a√3/6 = 6√3/6 = √3≈1.73","r=√3"),t("Kiểm tra: R = 2r = 2√3 ✓","R=2r ✓")]},
           ].map(({id,q,a})=>(
             <article key={id}>
-              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize:18,fontWeight:600,marginBottom:4 }}>📝 {t("Bài tập","Exercise")}</div>
                 <div style={{ fontSize:15,lineHeight:1.7,whiteSpace:"pre-wrap" }}>{q}</div>
               </div>
-              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
+              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
                 {rev[id]?t("Ẩn đáp án ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}
               </button>
-              {rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}
+              {rev[id]&&<div style={{ padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6 }}>{l}</div>)}</div>}
             </article>
           ))}
         </div>

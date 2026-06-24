@@ -221,7 +221,7 @@ export default function Lesson25_QuyTacCongNhan() {
     
 
     <section id="w" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}>
         <div style={{fontSize:16,lineHeight:1.8,marginBottom:16}}>{t("Bạn muốn chọn một trang phục: 3 áo, 4 quần. Có bao nhiêu cách phối? (3×4=12). Và nếu chỉ chọn một trong hai: áo hoặc quần, thì 3+4=7. Đây chính là Quy Tắc Nhân và Quy Tắc Cộng!","You want to choose an outfit: 3 shirts, 4 pants. How many combos? (3×4=12). And if choosing just one item (shirt OR pants): 3+4=7. These are the Multiplication and Addition Rules!")}</div>
         <div style={{fontSize:16}}>❓ <em>{t("Từ Hà Nội đi Đà Nẵng có 3 cách. Từ Đà Nẵng đi TP.HCM có 4 cách. Có bao nhiêu cách đi từ HN → ĐN → HCM?","From Hanoi to Da Nang: 3 ways. Da Nang to HCM: 4 ways. How many routes HN→ĐN→HCM?")}</em></div>
       </div>
@@ -242,26 +242,26 @@ export default function Lesson25_QuyTacCongNhan() {
         </div>
       </section>
     <section id="k1" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("1. Quy Tắc Nhân","1. Multiplication Rule")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-        <div style={{fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10}}>📌 {t("Nội dung","Rule")}</div>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+        <div style={{fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:10}}>📌 {t("Nội dung","Rule")}</div>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Một công việc gồm k bước liên tiếp. Bước 1 có n₁ cách, bước 2 có n₂ cách,..., bước k có nₖ cách. Số cách thực hiện công việc là:","A task has k consecutive steps. Step 1 has n₁ ways,..., step k has nₖ ways. Total ways:")}</div>
-        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:22,textAlign:"center",color:"#0B4F5C",fontWeight:700}}>N = n₁ × n₂ × ... × nₖ</div>
-        <div style={{marginTop:12,padding:"10px 14px",background:"#eafaf1",borderRadius:8,fontSize:14}}>✅ {t("Dùng khi các bước PHẢI xảy ra đồng thời (và... và...).","Use when all steps MUST occur (and... and...).")}</div>
+        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:22,textAlign:"center",color: "#22d3ee",fontWeight:700}}>N = n₁ × n₂ × ... × nₖ</div>
+        <div style={{marginTop:12,padding:"10px 14px",background:"rgba(16, 185, 129, 0.15)",borderRadius:8,fontSize:14}}>✅ {t("Dùng khi các bước PHẢI xảy ra đồng thời (và... và...).","Use when all steps MUST occur (and... and...).")}</div>
       </div>
     </section>
     <section id="k2" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("2. Quy Tắc Cộng","2. Addition Rule")} />
-      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
-        <div style={{fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10}}>📌 {t("Nội dung","Rule")}</div>
+      <div className="reveal" data-reveal style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20}}>
+        <div style={{fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:10}}>📌 {t("Nội dung","Rule")}</div>
         <div style={{fontSize:15,lineHeight:1.8,marginBottom:12}}>{t("Một công việc có thể hoàn thành bằng k cách khác nhau (xung khắc). Cách 1 có n₁ phương án, cách 2 có n₂ phương án,...Số phương án là:","A task can be completed in k mutually exclusive ways. Way 1 has n₁ options,...Total options:")}</div>
-        <div style={{background:"white",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:22,textAlign:"center",color:"#0B4F5C",fontWeight:700}}>N = n₁ + n₂ + ... + nₖ</div>
-        <div style={{marginTop:12,padding:"10px 14px",background:"#fdf2f2",borderRadius:8,fontSize:14}}>✅ {t("Dùng khi các cách LOẠI TRỪ nhau (hoặc... hoặc...).","Use when ways are MUTUALLY EXCLUSIVE (or... or...).")}</div>
+        <div style={{background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"14px 18px",fontFamily:"monospace",fontSize:22,textAlign:"center",color: "#22d3ee",fontWeight:700}}>N = n₁ + n₂ + ... + nₖ</div>
+        <div style={{marginTop:12,padding:"10px 14px",background:"rgba(239, 68, 68, 0.15)",borderRadius:8,fontSize:14}}>✅ {t("Dùng khi các cách LOẠI TRỪ nhau (hoặc... hoặc...).","Use when ways are MUTUALLY EXCLUSIVE (or... or...).")}</div>
       </div>
     </section>
     <section id="k3" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="📖" title={t("3. Ví Dụ So Sánh","3. Comparison Examples")} />
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:16,transition:"all 0.3s"}}>
-        {[{icon:"✖️",rule:t("Quy Tắc NHÂN","MULTIPLY Rule"),ex:t("Mật khẩu 4 chữ số (mỗi chữ số 0-9): 10×10×10×10=10⁴=10000","4-digit PIN (each 0-9): 10×10×10×10=10,000"),ex2:t("Trang phục: 3 áo × 4 quần = 12 bộ","Outfit: 3 shirts × 4 pants = 12 combos"),c:"#1e8449",bg:"#eafaf1"},
-          {icon:"➕",rule:t("Quy Tắc CỘNG","ADD Rule"),ex:t("Đi từ A→B: 3 đường bộ hoặc 2 đường thủy = 3+2=5 lựa chọn","A→B: 3 roads or 2 water routes = 3+2=5 choices"),ex2:t("Chọn 1 sách trong 5 sách toán hoặc 3 sách văn = 5+3=8","Choose 1 book: 5 math OR 3 literature = 8"),c:"#1a5276",bg:"#eaf4fb"},
-        ].map((card,i)=>(<article key={i} style={{padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:24,marginBottom:6}}>{card.icon}</div><div style={{fontSize:16,fontWeight:700,color:card.c,marginBottom:10}}>{card.rule}</div><div style={{background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,fontSize:13,marginBottom:6}}>{card.ex}</div><div style={{background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,fontSize:13}}>{card.ex2}</div></article>))}
+        {[{icon:"✖️",rule:t("Quy Tắc NHÂN","MULTIPLY Rule"),ex:t("Mật khẩu 4 chữ số (mỗi chữ số 0-9): 10×10×10×10=10⁴=10000","4-digit PIN (each 0-9): 10×10×10×10=10,000"),ex2:t("Trang phục: 3 áo × 4 quần = 12 bộ","Outfit: 3 shirts × 4 pants = 12 combos"),c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+          {icon:"➕",rule:t("Quy Tắc CỘNG","ADD Rule"),ex:t("Đi từ A→B: 3 đường bộ hoặc 2 đường thủy = 3+2=5 lựa chọn","A→B: 3 roads or 2 water routes = 3+2=5 choices"),ex2:t("Chọn 1 sách trong 5 sách toán hoặc 3 sách văn = 5+3=8","Choose 1 book: 5 math OR 3 literature = 8"),c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+        ].map((card,i)=>(<article key={i} style={{padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:24,marginBottom:6}}>{card.icon}</div><div style={{fontSize:16,fontWeight:700,color:card.c,marginBottom:10}}>{card.rule}</div><div style={{background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,fontSize:13,marginBottom:6}}>{card.ex}</div><div style={{background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,fontSize:13}}>{card.ex2}</div></article>))}
       </div>
     </section>
     <section id="th" style={{scrollMarginTop:80,marginBottom:64}}><SH icon="✏️" title={t("Thực Hành","Practice")} />
@@ -269,7 +269,7 @@ export default function Lesson25_QuyTacCongNhan() {
         {[{id:"e1",q:t("Biển số xe gồm 2 chữ cái (26 chữ cái) và 4 chữ số (0-9). Biết chữ cái và chữ số có thể lặp lại. Có bao nhiêu biển số?","License plates: 2 letters (26) then 4 digits (0-9), repetition allowed. How many plates?"),a:["26×26×10×10×10×10 = 26²×10⁴ = 676×10000 = 6,760,000"]},
           {id:"e2",q:t("Từ các chữ số {1,2,3,4,5}, lập số tự nhiên có 3 chữ số khác nhau. Có bao nhiêu số?","From {1,2,3,4,5}, form 3-digit numbers with distinct digits. How many?"),a:[t("Hàng trăm: 5 cách, Hàng chục: 4 cách (còn lại), Hàng đơn vị: 3 cách","Hundreds: 5, Tens: 4, Units: 3"),"5×4×3 = 60"]},
           {id:"e3",q:t("Một lớp có 15 nam và 12 nữ. Cần chọn 1 lớp trưởng hoặc 1 lớp phó (không cùng người). Có bao nhiêu cách chọn?","Class: 15 boys, 12 girls. Choose 1 president OR 1 vice-president (different people). How many ways?"),a:[t("Quy tắc cộng: 1 lớp trưởng (27 người) + 1 lớp phó (26 người còn lại... nhưng nếu 'chọn một trong hai' thì: 27+27=54? Đề hỏi chọn 1 người bất kỳ làm 1 trong 2 chức: 27 cách cho mỗi chức, nhưng là HOẶC nên 27+27=54.","Addition rule: president (27) + VP (27) = 54"),"27 + 27 = 54"]},
-        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color:"#555",marginBottom:6}}>{l}</div>)}</div>}</article>))}
+        ].map(({id,q,a})=>(<article key={id}><div style={{padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)"}}><div style={{fontSize:18,fontWeight:600,marginBottom:4}}>📝 {t("Bài tập","Exercise")}</div><div style={{fontSize:15,lineHeight:1.7}}>{q}</div></div><button onClick={()=>tr(id)} style={{display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left"}}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>{rev[id]&&<div style={{padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px"}}>{a.map((l,i)=><div key={i} style={{fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6}}>{l}</div>)}</div>}</article>))}
       </div>
     </section>
       </>

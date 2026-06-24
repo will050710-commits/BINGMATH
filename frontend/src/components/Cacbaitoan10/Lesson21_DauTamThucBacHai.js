@@ -241,7 +241,7 @@ export default function Lesson21_DauTamThucBacHai() {
       {/* KHỞI ĐỘNG */}
       <section id="w" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Trong lợi nhuận kinh doanh, hàm lợi nhuận có dạng f(x) = −x² + 10x − 16 (nghìn đồng), với x là số sản phẩm. Hỏi với x nào thì f(x) > 0 (có lãi)? Đây là bài toán xét dấu tam thức bậc hai.","In a business profit model, profit is f(x) = −x²+10x−16 (thousands). For which x is f(x)>0 (profitable)? This is a sign-analysis problem for a quadratic trinomial.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Hãy tính Δ và tìm 2 nghiệm của f(x) trước khi học lý thuyết.","Try computing Δ and the two roots of f(x) before studying the theory.")}</em></div>
         </div>
@@ -265,10 +265,10 @@ export default function Lesson21_DauTamThucBacHai() {
       {/* 1. ĐỊNH NGHĨA */}
       <section id="k1" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("1. Tam Thức Bậc Hai","1. Quadratic Trinomial")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:10 }}>📌 {t("Định nghĩa","Definition")}</div>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:10 }}>📌 {t("Định nghĩa","Definition")}</div>
           <div style={{ fontSize:15,lineHeight:1.8,marginBottom:12 }}>{t("Tam thức bậc hai (theo x) là biểu thức dạng f(x) = ax² + bx + c, trong đó a ≠ 0. Biệt thức Δ = b² − 4ac quyết định số nghiệm và dấu của f(x).","A quadratic trinomial in x has the form f(x)=ax²+bx+c, a≠0. The discriminant Δ=b²−4ac determines the number of roots and sign of f(x).")}</div>
-          <div style={{ background:"white",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:15,lineHeight:2.2 }}>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"12px 16px",fontFamily:"monospace",fontSize:15,lineHeight:2.2 }}>
             Δ = b² − 4ac<br/>
             Δ &gt; 0 → 2 nghiệm phân biệt x₁,x₂ (x₁ &lt; x₂)<br/>
             Δ = 0 → nghiệm kép x₀ = −b/(2a)<br/>
@@ -280,23 +280,23 @@ export default function Lesson21_DauTamThucBacHai() {
       {/* 2. BẢNG XÉT DẤU */}
       <section id="k2" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("2. Bảng Xét Dấu (Định Lý)","2. Sign Table (Theorem)")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12 }}>📌 {t("Định lý về dấu tam thức bậc hai (a>0, Δ>0, nghiệm x₁<x₂):","Sign theorem (a>0, Δ>0, roots x₁<x₂):")}</div>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:12 }}>📌 {t("Định lý về dấu tam thức bậc hai (a>0, Δ>0, nghiệm x₁<x₂):","Sign theorem (a>0, Δ>0, roots x₁<x₂):")}</div>
           <div style={{ overflowX:"auto" }}>
             <table style={{ borderCollapse:"collapse",width:"100%",fontSize:14,minWidth:500 }}>
               <tbody>
                 {[["x","−∞","","x₁","","x₂","","+∞"],
                   ["f(x)","+","","0","−","0","+",""]].map((row,ri)=>(
-                  <tr key={ri} style={{ background:ri===0?"#0B4F5C":"white" }}>
+                  <tr key={ri} style={{ background:ri===0?"#22d3ee":"white" }}>
                     {row.map((cell,ci)=>(
-                      <td key={ci} style={{ padding:"10px 14px",textAlign:"center",border:"1px solid #ddd",color:ri===0?"white":cell==="0"?"#1a5276":cell==="−"?"#922b21":cell==="+"?"#1e8449":"#555",fontWeight:cell==="0"||cell==="+"||cell==="−"?700:400,fontFamily:"monospace",fontSize:15 }}>{cell}</td>
+                      <td key={ci} style={{ padding:"10px 14px",textAlign:"center",border: "1px solid rgba(255, 255, 255, 0.08)",color:ri===0?"white":cell==="0"?"#38bdf8":cell==="−"?"#f87171":cell==="+"?"#4ade80":"#555",fontWeight:cell==="0"||cell==="+"||cell==="−"?700:400,fontFamily:"monospace",fontSize:15 }}>{cell}</td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <div style={{ marginTop:12,padding:"10px 14px",background:"#fff3cd",borderRadius:8,fontSize:14 }}>
+          <div style={{ marginTop:12,padding:"10px 14px",background:"rgba(245, 158, 11, 0.15)",borderRadius:8,fontSize:14 }}>
             💡 {t("Quy tắc: f(x) cùng dấu với a ở ngoài khoảng (x₁,x₂), và ngược dấu với a ở trong khoảng (x₁,x₂).","Rule: f(x) has the same sign as a outside (x₁,x₂), and opposite sign inside (x₁,x₂).")}
           </div>
         </div>
@@ -306,18 +306,18 @@ export default function Lesson21_DauTamThucBacHai() {
       <section id="k3" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("3. Bảng Tổng Hợp 6 Trường Hợp","3. All 6 Cases Summary")} />
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="70" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:16,transition:"all 0.3s" }}>
-          {[{cond:"a>0, Δ>0",roots:t("x₁<x₂","x₁<x₂"),sign:t("+ ngoài | − trong | + ngoài","+outside | −inside | +outside"),pos:t("x<x₁ hoặc x>x₂","x<x₁ or x>x₂"),neg:t("x₁<x<x₂","x₁<x<x₂"),c:"#1e8449",bg:"#eafaf1"},
-            {cond:"a>0, Δ=0",roots:"x₀",sign:t("≥0 mọi x, =0 tại x₀","≥0 for all x, =0 at x₀"),pos:t("mọi x≠x₀","all x≠x₀"),neg:t("∅ (không âm)","∅ (not negative)"),c:"#1a5276",bg:"#eaf4fb"},
-            {cond:"a>0, Δ<0",roots:t("Vô nghiệm","No roots"),sign:t(">0 mọi x",">0 for all x"),pos:"ℝ",neg:"∅",c:"#856404",bg:"#fff3cd"},
-            {cond:"a<0, Δ>0",roots:t("x₁<x₂","x₁<x₂"),sign:t("− ngoài | + trong | − ngoài","−outside | +inside | −outside"),pos:t("x₁<x<x₂","x₁<x<x₂"),neg:t("x<x₁ hoặc x>x₂","x<x₁ or x>x₂"),c:"#922b21",bg:"#fdf2f2"},
-            {cond:"a<0, Δ=0",roots:"x₀",sign:t("≤0 mọi x, =0 tại x₀","≤0 for all x, =0 at x₀"),pos:t("∅ (không dương)","∅ (not positive)"),neg:t("mọi x≠x₀","all x≠x₀"),c:"#6c3483",bg:"#f5eef8"},
+          {[{cond:"a>0, Δ>0",roots:t("x₁<x₂","x₁<x₂"),sign:t("+ ngoài | − trong | + ngoài","+outside | −inside | +outside"),pos:t("x<x₁ hoặc x>x₂","x<x₁ or x>x₂"),neg:t("x₁<x<x₂","x₁<x<x₂"),c:"#4ade80",bg:"rgba(16, 185, 129, 0.15)"},
+            {cond:"a>0, Δ=0",roots:"x₀",sign:t("≥0 mọi x, =0 tại x₀","≥0 for all x, =0 at x₀"),pos:t("mọi x≠x₀","all x≠x₀"),neg:t("∅ (không âm)","∅ (not negative)"),c:"#38bdf8",bg:"rgba(14, 165, 233, 0.15)"},
+            {cond:"a>0, Δ<0",roots:t("Vô nghiệm","No roots"),sign:t(">0 mọi x",">0 for all x"),pos:"ℝ",neg:"∅",c:"#fbbf24",bg:"rgba(245, 158, 11, 0.15)"},
+            {cond:"a<0, Δ>0",roots:t("x₁<x₂","x₁<x₂"),sign:t("− ngoài | + trong | − ngoài","−outside | +inside | −outside"),pos:t("x₁<x<x₂","x₁<x<x₂"),neg:t("x<x₁ hoặc x>x₂","x<x₁ or x>x₂"),c:"#f87171",bg:"rgba(239, 68, 68, 0.15)"},
+            {cond:"a<0, Δ=0",roots:"x₀",sign:t("≤0 mọi x, =0 tại x₀","≤0 for all x, =0 at x₀"),pos:t("∅ (không dương)","∅ (not positive)"),neg:t("mọi x≠x₀","all x≠x₀"),c:"#c084fc",bg:"rgba(168, 85, 247, 0.15)"},
             {cond:"a<0, Δ<0",roots:t("Vô nghiệm","No roots"),sign:t("<0 mọi x","<0 for all x"),pos:"∅",neg:"ℝ",c:"#555",bg:"#f4f6f7"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontFamily:"monospace",fontSize:15,fontWeight:700,color:card.c,background:card.bg,padding:"4px 10px",borderRadius:6,display:"inline-block",marginBottom:8 }}>{card.cond}</div>
-              <div style={{ fontSize:13,color:"#555",marginBottom:4 }}>📋 {card.sign}</div>
-              <div style={{ fontSize:13,color:"#1e8449",marginBottom:2 }}>✅ f(x)&gt;0: {card.pos}</div>
-              <div style={{ fontSize:13,color:"#922b21" }}>❌ f(x)&lt;0: {card.neg}</div>
+              <div style={{ fontSize:13,color: "rgba(255, 255, 255, 0.7)",marginBottom:4 }}>📋 {card.sign}</div>
+              <div style={{ fontSize:13,color:"#4ade80",marginBottom:2 }}>✅ f(x)&gt;0: {card.pos}</div>
+              <div style={{ fontSize:13,color:"#f87171" }}>❌ f(x)&lt;0: {card.neg}</div>
             </article>
           ))}
         </div>
@@ -335,14 +335,14 @@ export default function Lesson21_DauTamThucBacHai() {
              a:[t("f(x)=(x−2)²","f(x)=(x−2)²"),t("Δ=16−16=0; x₀=2","Δ=0; double root x₀=2"),t("(x−2)²≥0 với mọi x → nghiệm: x∈ℝ","(x−2)²≥0 for all x → solution: x∈ℝ")]},
           ].map(({id,q,a})=>(
             <article key={id}>
-              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize:18,fontWeight:600,marginBottom:4 }}>📝 {t("Bài tập","Exercise")}</div>
                 <div style={{ fontSize:15,lineHeight:1.7 }}>{q}</div>
               </div>
-              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
+              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
                 {rev[id]?t("Ẩn đáp án ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}
               </button>
-              {rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}
+              {rev[id]&&<div style={{ padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6 }}>{l}</div>)}</div>}
             </article>
           ))}
         </div>

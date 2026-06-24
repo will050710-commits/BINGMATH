@@ -242,7 +242,7 @@ export default function Lesson10_DinhLiCosin() {
       {/* KHỞI ĐỘNG */}
       <section id="w" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Nếu biết hai cạnh và góc xen giữa của tam giác, bạn có thể tính cạnh còn lại không? Hoặc biết 3 cạnh, bạn có thể tính các góc? Định lí Côsin trả lời chính xác điều đó.","If you know two sides and the included angle of a triangle, can you find the third side? Or knowing 3 sides, can you find all angles? The Law of Cosines answers exactly that.")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Định lí Pythagore có liên hệ gì với Định lí Côsin không?","How is the Pythagorean theorem related to the Law of Cosines?")}</em></div>
         </div>
@@ -266,16 +266,16 @@ export default function Lesson10_DinhLiCosin() {
       {/* 1. ĐỊNH LÍ */}
       <section id="k1" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("1. Phát Biểu Định Lí Côsin","1. Statement of the Law of Cosines")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:12 }}>📌 {t("Định lí","Theorem")}</div>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:12 }}>📌 {t("Định lí","Theorem")}</div>
           <div style={{ fontSize:15,lineHeight:1.8,marginBottom:16 }}>{t("Trong tam giác ABC với a, b, c là các cạnh đối diện với góc A, B, C:","In triangle ABC with sides a, b, c opposite angles A, B, C:")}</div>
-          <div style={{ background:"white",borderRadius:10,padding:"18px 24px",fontFamily:"monospace",fontSize:17,lineHeight:2.6,textAlign:"center" }}>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"18px 24px",fontFamily:"monospace",fontSize:17,lineHeight:2.6,textAlign:"center" }}>
             a² = b² + c² − 2bc · cosA<br/>
             b² = a² + c² − 2ac · cosB<br/>
             c² = a² + b² − 2ab · cosC
           </div>
         </div>
-        <div className="reveal" data-reveal style={{ padding:16,borderRadius:10,background:"#fff3cd",border:"1px solid #ffc107",fontSize:15 }}>
+        <div className="reveal" data-reveal style={{ padding:16,borderRadius:10,background:"rgba(245, 158, 11, 0.15)",border:"1px solid #ffc107",fontSize:15 }}>
           💡 {t("Trường hợp đặc biệt: C=90° → cosC=0 → c²=a²+b² (Định lí Pythagore!). Định lí Côsin là mở rộng của Pythagore cho mọi tam giác.","Special case: C=90° → cosC=0 → c²=a²+b² (Pythagorean theorem!). Law of Cosines generalizes Pythagoras to any triangle.")}
         </div>
       </section>
@@ -283,20 +283,20 @@ export default function Lesson10_DinhLiCosin() {
       {/* 2. TÍNH GÓC */}
       <section id="k2" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("2. Tính Góc Khi Biết 3 Cạnh","2. Finding Angles from 3 Sides")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:16,color:"#0B4F5C",marginBottom:12 }}>{t("Rút ra công thức tính góc:","Rearranging for angles:")}</div>
-          <div style={{ background:"white",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:16,lineHeight:2.4,textAlign:"center" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:16,color: "#22d3ee",marginBottom:12 }}>{t("Rút ra công thức tính góc:","Rearranging for angles:")}</div>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:8,padding:"14px 18px",fontFamily:"monospace",fontSize:16,lineHeight:2.4,textAlign:"center" }}>
             cosA = (b² + c² − a²) / (2bc)<br/>
             cosB = (a² + c² − b²) / (2ac)<br/>
             cosC = (a² + b² − c²) / (2ab)
           </div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16,transition:"all 0.3s" }}>
-          {[{label:t("cosA > 0","cosA > 0"),note:t("→ A nhọn (A < 90°)","→ A is acute (A < 90°)"),bg:"#eafaf1",c:"#1e8449"},
-            {label:t("cosA = 0","cosA = 0"),note:t("→ A = 90° (vuông)","→ A = 90° (right angle)"),bg:"#eaf4fb",c:"#1a5276"},
-            {label:t("cosA < 0","cosA < 0"),note:t("→ A tù (A > 90°)","→ A is obtuse (A > 90°)"),bg:"#fdf2f2",c:"#922b21"},
+          {[{label:t("cosA > 0","cosA > 0"),note:t("→ A nhọn (A < 90°)","→ A is acute (A < 90°)"),bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {label:t("cosA = 0","cosA = 0"),note:t("→ A = 90° (vuông)","→ A = 90° (right angle)"),bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {label:t("cosA < 0","cosA < 0"),note:t("→ A tù (A > 90°)","→ A is obtuse (A > 90°)"),bg:"rgba(239, 68, 68, 0.15)",c:"#f87171"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center" }}>
+            <article key={i} style={{ padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",textAlign:"center" }}>
               <div style={{ fontFamily:"monospace",fontSize:18,fontWeight:700,color:card.c,marginBottom:8 }}>{card.label}</div>
               <div style={{ background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,fontSize:14,fontWeight:600 }}>{card.note}</div>
             </article>
@@ -308,11 +308,11 @@ export default function Lesson10_DinhLiCosin() {
       <section id="k3" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("3. Khi Nào Dùng Định Lí Côsin?","3. When to Use the Law of Cosines?")} />
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="90" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20,transition:"all 0.3s" }}>
-          {[{case:t("Biết 2 cạnh + góc xen giữa (SAS)","2 sides + included angle (SAS)"),use:t("→ Tính cạnh thứ 3: a²=b²+c²−2bc·cosA","→ Find 3rd side: a²=b²+c²−2bc·cosA"),bg:"#eafaf1",c:"#1e8449"},
-            {case:t("Biết 3 cạnh (SSS)","3 sides known (SSS)"),use:t("→ Tính cả 3 góc bằng công thức cosine ngược","→ Find all 3 angles using inverse cosine"),bg:"#eaf4fb",c:"#1a5276"},
-            {case:t("Kiểm tra dạng tam giác","Check triangle type"),use:t("→ c²=a²+b² (vuông), <(nhọn), >(tù)","→ c²=a²+b² (right), < (acute), > (obtuse)"),bg:"#fff3cd",c:"#856404"},
+          {[{case:t("Biết 2 cạnh + góc xen giữa (SAS)","2 sides + included angle (SAS)"),use:t("→ Tính cạnh thứ 3: a²=b²+c²−2bc·cosA","→ Find 3rd side: a²=b²+c²−2bc·cosA"),bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {case:t("Biết 3 cạnh (SSS)","3 sides known (SSS)"),use:t("→ Tính cả 3 góc bằng công thức cosine ngược","→ Find all 3 angles using inverse cosine"),bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {case:t("Kiểm tra dạng tam giác","Check triangle type"),use:t("→ c²=a²+b² (vuông), <(nhọn), >(tù)","→ c²=a²+b² (right), < (acute), > (obtuse)"),bg:"rgba(245, 158, 11, 0.15)",c:"#fbbf24"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize:14,fontWeight:700,color:card.c,marginBottom:8 }}>{card.case}</div>
               <div style={{ background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,fontSize:13,fontFamily:"monospace" }}>{card.use}</div>
             </article>
@@ -333,14 +333,14 @@ export default function Lesson10_DinhLiCosin() {
              a:[t("c²=25; a²+b²=9+16=25","c²=25; a²+b²=25"),t("Vì c²=a²+b² → C=90° → TAM GIÁC VUÔNG!","c²=a²+b² → C=90° → RIGHT triangle!")]},
           ].map(({id,q,a})=>(
             <article key={id}>
-              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize:18,fontWeight:600,marginBottom:4 }}>📝 {t("Bài tập","Exercise")}</div>
                 <div style={{ fontSize:15,lineHeight:1.7 }}>{q}</div>
               </div>
-              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
+              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
                 {rev[id]?t("Ẩn đáp án ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}
               </button>
-              {rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}
+              {rev[id]&&<div style={{ padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6 }}>{l}</div>)}</div>}
             </article>
           ))}
         </div>

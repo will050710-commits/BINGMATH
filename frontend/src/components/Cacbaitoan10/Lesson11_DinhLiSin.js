@@ -242,7 +242,7 @@ export default function Lesson11_DinhLiSin() {
       {/* KHỞI ĐỘNG */}
       <section id="w" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="🚀" title={t("Khởi động","Warm-Up")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
           <div style={{ fontSize:16,lineHeight:1.8,marginBottom:16 }}>{t("Để đo khoảng cách giữa hai điểm không thể tiếp cận trực tiếp (ví dụ: hai bờ sông), người ta đặt một điểm đo thứ ba rồi dùng các góc đo được. Định lí Sin kết nối cạnh và góc đối diện — rất mạnh khi đã biết 2 góc!","To measure the distance between two inaccessible points (e.g. two riverbanks), a third measurement point is set up and angles are measured. The Law of Sines connects each side with its opposite angle — very powerful when 2 angles are known!")}</div>
           <div style={{ fontSize:16 }}>❓ <em>{t("Nếu biết 2 góc của tam giác, ta có thể tìm góc thứ 3 không?","If you know 2 angles of a triangle, can you always find the third?")}</em></div>
         </div>
@@ -266,21 +266,21 @@ export default function Lesson11_DinhLiSin() {
       {/* 1. ĐỊNH LÍ SIN */}
       <section id="k1" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("1. Phát Biểu Định Lí Sin","1. Statement of the Law of Sines")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontWeight:"bold",fontSize:17,color:"#0B4F5C",marginBottom:12 }}>📌 {t("Định lí","Theorem")}</div>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontWeight:"bold",fontSize:17,color: "#22d3ee",marginBottom:12 }}>📌 {t("Định lí","Theorem")}</div>
           <div style={{ fontSize:15,lineHeight:1.8,marginBottom:16 }}>{t("Trong tam giác ABC với R là bán kính đường tròn ngoại tiếp:","In triangle ABC with R = circumradius:")}</div>
-          <div style={{ background:"white",borderRadius:10,padding:"20px 24px",textAlign:"center" }}>
-            <div style={{ fontFamily:"monospace",fontSize:22,color:"#0B4F5C",fontWeight:700,letterSpacing:2 }}>
+          <div style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",borderRadius:10,padding:"20px 24px",textAlign:"center" }}>
+            <div style={{ fontFamily:"monospace",fontSize:22,color: "#22d3ee",fontWeight:700,letterSpacing:2 }}>
               a / sinA = b / sinB = c / sinC = 2R
             </div>
           </div>
         </div>
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:16,transition:"all 0.3s" }}>
-          {[{title:t("Cạnh lớn hơn","Larger side"),note:t("đối diện với góc lớn hơn","opposite the larger angle"),bg:"#eaf4fb",c:"#1a5276"},
-            {title:t("Cạnh bằng nhau","Equal sides"),note:t("khi và chỉ khi góc đối diện bằng nhau","iff opposite angles are equal"),bg:"#eafaf1",c:"#1e8449"},
-            {title:t("Cạnh lớn nhất","Largest side"),note:t("đối diện với góc lớn nhất","opposite the largest angle"),bg:"#fff3cd",c:"#856404"},
+          {[{title:t("Cạnh lớn hơn","Larger side"),note:t("đối diện với góc lớn hơn","opposite the larger angle"),bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
+            {title:t("Cạnh bằng nhau","Equal sides"),note:t("khi và chỉ khi góc đối diện bằng nhau","iff opposite angles are equal"),bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {title:t("Cạnh lớn nhất","Largest side"),note:t("đối diện với góc lớn nhất","opposite the largest angle"),bg:"rgba(245, 158, 11, 0.15)",c:"#fbbf24"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize:15,fontWeight:700,color:card.c,marginBottom:6 }}>{card.title}</div>
               <div style={{ background:card.bg,color:card.c,padding:"8px 12px",borderRadius:8,fontSize:14 }}>{card.note}</div>
             </article>
@@ -291,8 +291,8 @@ export default function Lesson11_DinhLiSin() {
       {/* 2. BÁN KÍNH R */}
       <section id="k2" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("2. Bán Kính Đường Tròn Ngoại Tiếp R","2. Circumradius R")} />
-        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
-          <div style={{ fontFamily:"monospace",fontSize:16,background:"white",padding:"14px 18px",borderRadius:8,lineHeight:2.2 }}>
+        <div className="reveal" data-reveal style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",marginBottom:20 }}>
+          <div style={{ fontFamily:"monospace",fontSize:16,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",padding:"14px 18px",borderRadius:8,lineHeight:2.2 }}>
             R = a / (2·sinA) = b / (2·sinB) = c / (2·sinC)
           </div>
         </div>
@@ -301,9 +301,9 @@ export default function Lesson11_DinhLiSin() {
             {shape:t("Tam giác vuông (C=90°)","Right triangle (C=90°)"),formula:"R = c / 2 (nửa cạnh huyền)"},
             {shape:t("Tam giác cân b=c","Isosceles b=c"),formula:"R = b / (2·sinB)"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize:14,color:"#777",marginBottom:6 }}>{card.shape}</div>
-              <div style={{ fontFamily:"monospace",fontSize:15,fontWeight:600,color:"#0B4F5C" }}>{card.formula}</div>
+            <article key={i} style={{ padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize:14,color: "rgba(255, 255, 255, 0.5)",marginBottom:6 }}>{card.shape}</div>
+              <div style={{ fontFamily:"monospace",fontSize:15,fontWeight:600,color: "#22d3ee" }}>{card.formula}</div>
             </article>
           ))}
         </div>
@@ -313,10 +313,10 @@ export default function Lesson11_DinhLiSin() {
       <section id="k3" style={{ scrollMarginTop:80,marginBottom:64 }}>
         <SH icon="📖" title={t("3. Khi Nào Dùng Định Lí Nào?","3. Law of Sines vs. Cosines")} />
         <div className="reveal" data-reveal data-reveal-stagger data-stagger="100" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))",gap:20,transition:"all 0.3s" }}>
-          {[{title:t("✅ Dùng Định Lí SIN","✅ Use Law of SINES"),items:[t("Biết 2 góc + 1 cạnh bất kỳ (AAS)","2 angles + any 1 side (AAS)"),t("Biết 1 góc và cạnh đối diện + thêm 1 góc (ASA)","1 angle + opposite side + 1 more angle (ASA)"),t("Tính bán kính ngoại tiếp R","Computing circumradius R")],bg:"#eafaf1",c:"#1e8449"},
-            {title:t("✅ Dùng Định Lí CÔSIN","✅ Use Law of COSINES"),items:[t("Biết 3 cạnh → tìm góc (SSS)","3 sides → find angles (SSS)"),t("Biết 2 cạnh + góc xen giữa (SAS)","2 sides + included angle (SAS)"),t("Kiểm tra loại tam giác (nhọn/tù/vuông)","Check triangle type (acute/obtuse/right)")],bg:"#eaf4fb",c:"#1a5276"},
+          {[{title:t("✅ Dùng Định Lí SIN","✅ Use Law of SINES"),items:[t("Biết 2 góc + 1 cạnh bất kỳ (AAS)","2 angles + any 1 side (AAS)"),t("Biết 1 góc và cạnh đối diện + thêm 1 góc (ASA)","1 angle + opposite side + 1 more angle (ASA)"),t("Tính bán kính ngoại tiếp R","Computing circumradius R")],bg:"rgba(16, 185, 129, 0.15)",c:"#4ade80"},
+            {title:t("✅ Dùng Định Lí CÔSIN","✅ Use Law of COSINES"),items:[t("Biết 3 cạnh → tìm góc (SSS)","3 sides → find angles (SSS)"),t("Biết 2 cạnh + góc xen giữa (SAS)","2 sides + included angle (SAS)"),t("Kiểm tra loại tam giác (nhọn/tù/vuông)","Check triangle type (acute/obtuse/right)")],bg:"rgba(14, 165, 233, 0.15)",c:"#38bdf8"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize:15,fontWeight:700,color:card.c,marginBottom:10 }}>{card.title}</div>
               {card.items.map((item,j)=><div key={j} style={{ background:card.bg,color:card.c,padding:"7px 12px",borderRadius:6,fontSize:14,marginBottom:6 }}>• {item}</div>)}
             </article>
@@ -337,14 +337,14 @@ export default function Lesson11_DinhLiSin() {
              a:[t("sinB/b=sinA/a → sinB=b·sinA/a=8·(1/2)/5=4/5","sinB=b·sinA/a=8·(1/2)/5=4/5"),t("B=arcsin(4/5)≈53.13° hoặc B'≈126.87°","B≈53.13° or B'≈126.87°")]},
           ].map(({id,q,a})=>(
             <article key={id}>
-              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize:18,fontWeight:600,marginBottom:4 }}>📝 {t("Bài tập","Exercise")}</div>
                 <div style={{ fontSize:15,lineHeight:1.7 }}>{q}</div>
               </div>
-              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
+              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>
                 {rev[id]?t("Ẩn đáp án ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}
               </button>
-              {rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}
+              {rev[id]&&<div style={{ padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6 }}>{l}</div>)}</div>}
             </article>
           ))}
         </div>

@@ -1,7 +1,5 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import MathToolsPanel from "./MathToolsPanel";
 
 /* ─────────────────────────────────────────────────
    LessonVideoPlayer
@@ -19,7 +17,6 @@ import MathToolsPanel from "./MathToolsPanel";
    ─────────────────────────────────────────────────*/
 export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi", credit }) {
   const t = (vi, en) => (lang === "vi" ? vi : en);
-  const iframeRef = useRef(null);
   const playerRef = useRef(null);
   const timerRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -33,41 +30,64 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const onYTReady = () => {
-      if (!iframeRef.current) return;
-      playerRef.current = new window.YT.Player(iframeRef.current, {
+    let active = true;
+    let player = null;
+
+    const initPlayer = () => {
+      if (!active) return;
+      if (!window.YT || !window.YT.Player) return;
+
+      const playerEl = document.getElementById(`yt-player-${videoId}`);
+      if (!playerEl) return;
+
+      player = new window.YT.Player(`yt-player-${videoId}`, {
+        videoId: videoId,
+        width: "100%",
+        height: "100%",
+        playerVars: {
+          enablejsapi: 1,
+          rel: 0,
+          modestbranding: 1,
+          cc_load_policy: 0,
+        },
         events: {
-          onReady: () => setPlayerReady(true),
+          onReady: () => {
+            if (active) setPlayerReady(true);
+          },
           onStateChange: (e) => {
-            // 1 = playing
-            setIsPlaying(e.data === 1);
+            if (active) setIsPlaying(e.data === 1);
           },
         },
       });
+      playerRef.current = player;
     };
 
     if (window.YT && window.YT.Player) {
-      onYTReady();
+      initPlayer();
     } else {
-      // Load YouTube IFrame API
+      // Register global callback
+      const prevCallback = window.onYouTubeIframeAPIReady;
+      window.onYouTubeIframeAPIReady = () => {
+        if (prevCallback) prevCallback();
+        initPlayer();
+      };
+
       if (!document.getElementById("yt-iframe-api")) {
         const tag = document.createElement("script");
         tag.id = "yt-iframe-api";
         tag.src = "https://www.youtube.com/iframe_api";
         document.head.appendChild(tag);
       }
-      window.__onYouTubeIframeAPIReady_lvp = onYTReady;
-      const prev = window.onYouTubeIframeAPIReady;
-      window.onYouTubeIframeAPIReady = () => {
-        if (prev) prev();
-        onYTReady();
-      };
     }
+
     return () => {
-      if (playerRef.current) {
-        try { playerRef.current.destroy(); } catch (_) {}
-        playerRef.current = null;
+      active = false;
+      if (player) {
+        try { player.destroy(); } catch (_) {}
       }
+      playerRef.current = null;
+      setPlayerReady(false);
+      setIsPlaying(false);
     };
   }, [videoId]);
 
@@ -118,7 +138,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
       border: "none",
     },
     subtitleBar: {
-      background: "linear-gradient(135deg, #0B4F5C 0%, #0e6678 100%)",
+      background: "linear-gradient(135deg, #22d3ee 0%, #0e6678 100%)",
       borderRadius: "0 0 16px 16px",
       padding: "14px 20px",
       minHeight: 52,
@@ -164,7 +184,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
       gap: 8,
     },
     videoLink: {
-      color: "#0B4F5C",
+      color: "#22d3ee",
       fontWeight: 700,
       textDecoration: "none",
     },
@@ -182,7 +202,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
       top: 0, right: 0,
       width: "min(420px, 95vw)",
       height: "100vh",
-      background: "white",
+      background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",
       zIndex: 10001,
       boxShadow: "-8px 0 40px rgba(0,0,0,0.18)",
       display: "flex",
@@ -196,7 +216,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
       justifyContent: "space-between",
       padding: "20px 24px 16px",
       borderBottom: "1px solid #f0f0f0",
-      background: "linear-gradient(135deg,#0B4F5C,#0e6678)",
+      background: "linear-gradient(135deg,#22d3ee,#0e6678)",
       color: "white",
       flexShrink: 0,
     },
@@ -244,12 +264,12 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
           {sidebar.vi && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#888", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>{t("Dịch nghĩa", "Translation")}</div>
-              <div style={{ fontSize: 18, fontWeight: 600, color: "#0B4F5C" }}>{sidebar.vi}</div>
+              <div style={{ fontSize: 18, fontWeight: 600, color: "#22d3ee" }}>{sidebar.vi}</div>
             </div>
           )}
           {sidebar.detail && (
             <div
-              style={{ fontSize: 15, lineHeight: 1.85, color: "#333", borderTop: sidebar.vi ? "1px solid #f0f0f0" : "none", paddingTop: sidebar.vi ? 16 : 0 }}
+              style={{ fontSize: 15, lineHeight: 1.85, color: "rgba(255, 255, 255, 0.9)", borderTop: sidebar.vi ? "1px solid #f0f0f0" : "none", paddingTop: sidebar.vi ? 16 : 0 }}
               dangerouslySetInnerHTML={{ __html: sidebar.detail }}
             />
           )}
@@ -259,15 +279,10 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
       {/* ── Main video widget ── */}
       <div style={S.wrapper}>
         <div style={S.videoBox}>
-          <iframe
-            ref={iframeRef}
+          <div
+            id={`yt-player-${videoId}`}
             style={S.iframe}
-            src={`https://www.youtube.com/embed/${videoId}?enablejsapi=1&rel=0&modestbranding=1&cc_load_policy=0`}
-            title="Lesson Explanation Video"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
           />
-          <MathToolsPanel lang={lang} />
         </div>
 
         {/* ── Subtitle bar ── */}
@@ -300,7 +315,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
                 dangerouslySetInnerHTML={{
                   __html: credit.replace(
                     /Khan Academy/g,
-                    `<a href="https://www.youtube.com/@khanacademy" target="_blank" rel="noopener noreferrer" style="color: #0B4F5C; text-decoration: underline; font-weight: 600; transition: opacity 0.2s;" onMouseOver="this.style.opacity=0.8" onMouseOut="this.style.opacity=1">Khan Academy</a>`
+                    `<a href="https://www.youtube.com/@khanacademy" target="_blank" rel="noopener noreferrer" style="color: #22d3ee; text-decoration: underline; font-weight: 600; transition: opacity 0.2s;" onMouseOver="this.style.opacity=0.8" onMouseOut="this.style.opacity=1">Khan Academy</a>`
                   ),
                 }}
               />

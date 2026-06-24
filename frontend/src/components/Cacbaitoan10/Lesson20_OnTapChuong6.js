@@ -209,9 +209,9 @@ export default function Lesson20_OnTapChuong6() {
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="70" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:14,marginBottom:40,transition:"all 0.3s" }}>
         {[{slug:"hinh-hoc-do-luong-1",num:"20",title:t("Hệ Thức Lượng Trong Tam Giác","Triangle Metric Relations")},{slug:"hinh-hoc-do-luong-2",num:"21",title:t("Diện Tích và Chu Vi","Area and Perimeter")}].map(l=>(
           <Link key={l.slug} href={`/cacbailam10/${l.slug}`} style={{ textDecoration:"none" }}>
-            <article style={{ padding:16,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",cursor:"pointer" }}>
-              <div style={{ fontSize:13,color:"#777",marginBottom:3 }}>{t("Bài","Lesson")} {l.num}</div>
-              <div style={{ fontSize:15,fontWeight:600,color:"#0B4F5C" }}>{l.title}</div>
+            <article style={{ padding:16,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",cursor:"pointer" }}>
+              <div style={{ fontSize:13,color: "rgba(255, 255, 255, 0.5)",marginBottom:3 }}>{t("Bài","Lesson")} {l.num}</div>
+              <div style={{ fontSize:15,fontWeight:600,color: "#22d3ee" }}>{l.title}</div>
               <div style={{ fontSize:12,color:"#aaa",marginTop:3 }}>← {t("Ôn lại","Review")}</div>
             </article>
           </Link>
@@ -227,9 +227,9 @@ export default function Lesson20_OnTapChuong6() {
           {[{title:t("Bài 20 · Hệ Thức Lượng Trong Tam Giác","L20 · Triangle Metric Relations"),pts:[t("R = a/(2sinA) — bán kính ngoại tiếp","R = a/(2sinA) — circumradius"),t("r = S/p — bán kính nội tiếp (p=nửa chu vi)","r = S/p — inradius (p=semi-perimeter)"),t("ma² = (2b²+2c²−a²)/4 — đường trung tuyến","ma²=(2b²+2c²−a²)/4 — median"),t("ha = 2S/a — đường cao","ha=2S/a — altitude"),t("Tam giác đều: R=2r; R=a√3/3; r=a√3/6","Equilateral: R=2r; R=a√3/3")]},
             {title:t("Bài 21 · Diện Tích và Chu Vi","L21 · Area & Perimeter"),pts:[t("Tam giác: S=½·đáy·cao=½ab·sinC=Heron","Triangle: ½·base·height=½ab·sinC=Heron"),t("Hình thang: S=(a+b)·h/2","Trapezoid: S=(a+b)·h/2"),t("Hình thoi: S=d₁·d₂/2","Rhombus: S=d₁·d₂/2"),t("Hình tròn: S=πR², C=2πR","Circle: S=πR², C=2πR"),t("Vành khăn: S=π(R²−r²)","Annulus: S=π(R²−r²)"),t("Lục giác đều: S=3a²√3/2","Regular hexagon: S=3a²√3/2")]}
           ].map((card,i)=>(
-            <article key={i} style={{ padding:20,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:12 }}>{card.title}</div>
-              {card.pts.map((pt,j)=><div key={j} style={{ fontSize:13,color:"#555",marginBottom:8,display:"flex",gap:8 }}><span style={{ color:"#0B4F5C",fontWeight:700,flexShrink:0 }}>•</span><span style={{ fontFamily:"monospace" }}>{pt}</span></div>)}
+            <article key={i} style={{ padding:20,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize:15,fontWeight:700,color: "#22d3ee",marginBottom:12 }}>{card.title}</div>
+              {card.pts.map((pt,j)=><div key={j} style={{ fontSize:13,color: "rgba(255, 255, 255, 0.7)",marginBottom:8,display:"flex",gap:8 }}><span style={{ color: "#22d3ee",fontWeight:700,flexShrink:0 }}>•</span><span style={{ fontFamily:"monospace" }}>{pt}</span></div>)}
             </article>
           ))}
         </div>
@@ -259,9 +259,9 @@ export default function Lesson20_OnTapChuong6() {
             {label:t("Diện tích đa giác","Polygon Areas"),formula:"Tam giác: ½·b·h; ½ab·sinC; Heron\nHình vuông: a²\nHình chữ nhật: a·b\nHình bình hành: đáy·cao\nHình thoi: d₁·d₂/2\nHình thang: (a+b)·h/2"},
             {label:t("Hình tròn & liên quan","Circles & Related"),formula:"S_tròn = πR²\nC = 2πR\nS_quạt = πR²·α/360°\nℓ_cung = 2πR·α/360°\nS_vành_khăn = π(R²−r²)\nS_lục_giác_đều = 3a²√3/2"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize:14,fontWeight:700,color:"#0B4F5C",marginBottom:10 }}>{card.label}</div>
-              <div style={{ fontFamily:"monospace",fontSize:12,background:"white",padding:"10px 12px",borderRadius:8,lineHeight:1.9,whiteSpace:"pre-wrap" }}>{card.formula}</div>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize:14,fontWeight:700,color: "#22d3ee",marginBottom:10 }}>{card.label}</div>
+              <div style={{ fontFamily:"monospace",fontSize:12,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",padding:"10px 12px",borderRadius:8,lineHeight:1.9,whiteSpace:"pre-wrap" }}>{card.formula}</div>
             </article>
           ))}
         </div>
@@ -280,15 +280,15 @@ export default function Lesson20_OnTapChuong6() {
              a:[t("h=6√3/2=3√3; R=6√3/3=2√3; r=6√3/6=√3","h=3√3, R=2√3, r=√3"),t("S_tam_giác=(√3/4)·36=9√3≈15.59","S_triangle=9√3"),t("S_ngoại_tiếp=π·(2√3)²=12π≈37.70","S_circumcircle=12π"),t("S_phần_ngoài=12π−9√3≈22.11","S_outside=12π−9√3≈22.11")]},
           ].map(({id,q,a,badge})=>(
             <article key={id}>
-              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:6 }}>
                   <div style={{ fontSize:17,fontWeight:600 }}>📝 {t("Bài tập","Exercise")}</div>
-                  <span style={{ background:"black",color:"white",fontSize:12,fontWeight:700,padding:"2px 10px",borderRadius:20 }}>{badge}</span>
+                  <span style={{ background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",fontSize:12,fontWeight:700,padding:"2px 10px",borderRadius:20 }}>{badge}</span>
                 </div>
                 <div style={{ fontSize:15,lineHeight:1.7,whiteSpace:"pre-wrap" }}>{q}</div>
               </div>
-              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>
-              {rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}
+              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>
+              {rev[id]&&<div style={{ padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6 }}>{l}</div>)}</div>}
             </article>
           ))}
         </div>

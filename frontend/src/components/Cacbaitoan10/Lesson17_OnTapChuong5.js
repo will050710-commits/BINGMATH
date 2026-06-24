@@ -209,9 +209,9 @@ export default function Lesson17_OnTapChuong5() {
       <div className="reveal" data-reveal data-reveal-stagger data-stagger="70" style={{ display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(170px,1fr))",gap:14,marginBottom:40,transition:"all 0.3s" }}>
         {[{slug:"khai-niem-vecto",num:"15",title:t("Khái Niệm Vectơ","Vector Concept")},{slug:"tong-hieu-vecto",num:"16",title:t("Tổng & Hiệu Vectơ","Sum & Difference")},{slug:"tich-so-vecto",num:"17",title:t("Tích Số với Vectơ","Scalar Mult.")},{slug:"tich-vo-huong",num:"18",title:t("Tích Vô Hướng","Dot Product")}].map(l=>(
           <Link key={l.slug} href={`/cacbailam10/${l.slug}`} style={{ textDecoration:"none" }}>
-            <article style={{ padding:14,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",cursor:"pointer" }}>
-              <div style={{ fontSize:12,color:"#777",marginBottom:3 }}>{t("Bài","L")} {l.num}</div>
-              <div style={{ fontSize:14,fontWeight:600,color:"#0B4F5C" }}>{l.title}</div>
+            <article style={{ padding:14,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)",cursor:"pointer" }}>
+              <div style={{ fontSize:12,color: "rgba(255, 255, 255, 0.5)",marginBottom:3 }}>{t("Bài","L")} {l.num}</div>
+              <div style={{ fontSize:14,fontWeight:600,color: "#22d3ee" }}>{l.title}</div>
               <div style={{ fontSize:12,color:"#aaa",marginTop:3 }}>← {t("Ôn lại","Review")}</div>
             </article>
           </Link>
@@ -229,9 +229,9 @@ export default function Lesson17_OnTapChuong5() {
             {title:t("Bài 17 · Tích Số với Vectơ","L17 · Scalar Multiplication"),pts:[t("|k→a|=|k|·|→a|","| k→a|=|k|·|→a|"),t("k>0: cùng hướng; k<0: ngược hướng","k>0: same dir; k<0: opposite"),t("→b=k·→a ⟺ →a//→b (cùng phương)","→b=k·→a ⟺ →a//→b (parallel)"),t("A,B,C thẳng hàng ⟺ →AB=k·→AC","A,B,C collinear ⟺ →AB=k·→AC")]},
             {title:t("Bài 18 · Tích Vô Hướng","L18 · Dot Product"),pts:[t("→a·→b=|→a||→b|cosφ (số thực!)","→a·→b=|→a||→b|cosφ (scalar!)"),t("→a⊥→b ⟺ →a·→b=0","→a⊥→b ⟺ →a·→b=0"),t("→a=(x₁,y₁), →b=(x₂,y₂): →a·→b=x₁x₂+y₁y₂","Coordinates: →a·→b=x₁x₂+y₁y₂"),t("|→a|=√(x²+y²)","| →a|=√(x²+y²)")]},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize:15,fontWeight:700,color:"#0B4F5C",marginBottom:10 }}>{card.title}</div>
-              {card.pts.map((pt,j)=><div key={j} style={{ fontSize:13,color:"#555",marginBottom:7,display:"flex",gap:8 }}><span style={{ color:"#0B4F5C",fontWeight:700,flexShrink:0 }}>•</span><span style={{ fontFamily:"monospace" }}>{pt}</span></div>)}
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize:15,fontWeight:700,color: "#22d3ee",marginBottom:10 }}>{card.title}</div>
+              {card.pts.map((pt,j)=><div key={j} style={{ fontSize:13,color: "rgba(255, 255, 255, 0.7)",marginBottom:7,display:"flex",gap:8 }}><span style={{ color: "#22d3ee",fontWeight:700,flexShrink:0 }}>•</span><span style={{ fontFamily:"monospace" }}>{pt}</span></div>)}
             </article>
           ))}
         </div>
@@ -261,9 +261,9 @@ export default function Lesson17_OnTapChuong5() {
             {label:t("Tích vô hướng","Dot product"),formula:"→a·→b = |→a|·|→b|·cosφ\n→a=(x₁,y₁): →a·→b=x₁x₂+y₁y₂\n→a⊥→b ⟺ →a·→b=0\ncosφ=(→a·→b)/(|→a|·|→b|)"},
             {label:t("Độ dài & Điều kiện","Length & Conditions"),formula:"|→a|=√(x²+y²)\n|→a|²=→a·→a\n3 điểm thẳng hàng: →AB=k·→AC\nHình bình hành: →OA+→OB=→OC"},
           ].map((card,i)=>(
-            <article key={i} style={{ padding:18,borderRadius:10,background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize:14,fontWeight:700,color:"#0B4F5C",marginBottom:10 }}>{card.label}</div>
-              <div style={{ fontFamily:"monospace",fontSize:13,background:"white",padding:"10px 12px",borderRadius:8,lineHeight:1.9,whiteSpace:"pre-wrap" }}>{card.formula}</div>
+            <article key={i} style={{ padding:18,borderRadius:10,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontSize:14,fontWeight:700,color: "#22d3ee",marginBottom:10 }}>{card.label}</div>
+              <div style={{ fontFamily:"monospace",fontSize:13,background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",padding:"10px 12px",borderRadius:8,lineHeight:1.9,whiteSpace:"pre-wrap" }}>{card.formula}</div>
             </article>
           ))}
         </div>
@@ -282,15 +282,15 @@ export default function Lesson17_OnTapChuong5() {
              a:[t("→AB=(3−1, 6−2)=(2,4)","→AB=(2,4)"),t("→AC=(4−1, 8−2)=(3,6)","→AC=(3,6)"),t("→AB=2·(1,2) và →AC=3·(1,2). Cả hai cùng phương (1,2).","Both parallel to (1,2)."),t("→AB = (2/3)·→AC → A, B, C THẲNG HÀNG ✓","→AB=(2/3)→AC → A,B,C are COLLINEAR ✓")]},
           ].map(({id,q,a,badge})=>(
             <article key={id}>
-              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background:"#f9f9f9",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ padding:"16px 20px",borderRadius:"10px 10px 0 0",background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)",boxShadow:"0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:6 }}>
                   <div style={{ fontSize:17,fontWeight:600 }}>📝 {t("Bài tập","Exercise")}</div>
-                  <span style={{ background:"black",color:"white",fontSize:12,fontWeight:700,padding:"2px 10px",borderRadius:20 }}>{badge}</span>
+                  <span style={{ background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",fontSize:12,fontWeight:700,padding:"2px 10px",borderRadius:20 }}>{badge}</span>
                 </div>
                 <div style={{ fontSize:15,lineHeight:1.7,whiteSpace:"pre-wrap" }}>{q}</div>
               </div>
-              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background:"black",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>
-              {rev[id]&&<div style={{ padding:"16px 20px",background:"#eafaf1",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color:"#555",marginBottom:6 }}>{l}</div>)}</div>}
+              <button onClick={()=>tr(id)} style={{ display:"block",width:"100%",padding:"12px 20px",background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)",color:"white",border:"none",fontWeight:600,fontSize:15,cursor:"pointer",textAlign:"left" }}>{rev[id]?t("Ẩn ▲","Hide ▲"):t("Xem đáp án ▼","Show ▼")}</button>
+              {rev[id]&&<div style={{ padding:"16px 20px",background:"rgba(16, 185, 129, 0.15)",borderRadius:"0 0 10px 10px" }}>{a.map((l,i)=><div key={i} style={{ fontSize:15,color: "rgba(255, 255, 255, 0.7)",marginBottom:6 }}>{l}</div>)}</div>}
             </article>
           ))}
         </div>

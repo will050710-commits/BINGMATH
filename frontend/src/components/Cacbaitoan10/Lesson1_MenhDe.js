@@ -264,7 +264,7 @@ export default function Lesson1_MenhDe() {
         ════════════════════════════════════════ */}
         <section id="khoiDong" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="🚀" title={t("Khởi động", "Warm-Up")} />
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t("Tình huống mở đầu", "Opening Situation")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 16 }}>
               {t('Trong cuộc sống hằng ngày, chúng ta thường phát biểu những câu khẳng định — ví dụ: "Hôm nay trời nắng" hay "2 + 2 = 4". Liệu mọi câu đều có thể xác định đúng hay sai không?',
@@ -294,21 +294,21 @@ export default function Lesson1_MenhDe() {
         ════════════════════════════════════════ */}
         <section id="khai1" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("1. Khái Niệm Mệnh Đề", "1. Propositions")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("Mệnh đề là một câu khẳng định có giá trị chân lý xác định — hoặc đúng (Đ) hoặc sai (S), không thể vừa đúng vừa sai.", "A proposition is a declarative sentence with a definite truth value — either true (T) or false (F), but not both.")}</div>
-            <div style={{ color: "#777", fontSize: 15, marginTop: 10 }}>💡 {t("Mệnh đề ký hiệu bằng chữ in hoa: P, Q, R. Câu hỏi và mệnh lệnh không phải mệnh đề.", "Propositions are denoted P, Q, R. Questions and commands are NOT propositions.")}</div>
+            <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginTop: 10 }}>💡 {t("Mệnh đề ký hiệu bằng chữ in hoa: P, Q, R. Câu hỏi và mệnh lệnh không phải mệnh đề.", "Propositions are denoted P, Q, R. Questions and commands are NOT propositions.")}</div>
           </div>
           <div className="reveal" data-reveal data-reveal-stagger data-stagger="100" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, transition: "all 0.3s ease" }}>
             {[
-              { label: t("✅ Mệnh đề ĐÚNG", "✅ TRUE Propositions"), items: ['"2 + 2 = 4"', t('"Hà Nội là thủ đô Việt Nam"', '"Hanoi is the capital of Vietnam"'), t('"Số 7 là số nguyên tố"', '"7 is a prime number"')], bc: "#1e8449", bb: "#eafaf1", badge: t("ĐÚNG","TRUE") },
-              { label: t("❌ Mệnh đề SAI", "❌ FALSE Propositions"), items: ['"3 + 4 = 8"', t('"Mặt trời quay quanh Trái Đất"', '"The Sun orbits the Earth"')], bc: "#922b21", bb: "#fdf2f2", badge: t("SAI","FALSE") },
+              { label: t("✅ Mệnh đề ĐÚNG", "✅ TRUE Propositions"), items: ['"2 + 2 = 4"', t('"Hà Nội là thủ đô Việt Nam"', '"Hanoi is the capital of Vietnam"'), t('"Số 7 là số nguyên tố"', '"7 is a prime number"')], bc: "#4ade80", bb: "rgba(16, 185, 129, 0.15)", badge: t("ĐÚNG","TRUE") },
+              { label: t("❌ Mệnh đề SAI", "❌ FALSE Propositions"), items: ['"3 + 4 = 8"', t('"Mặt trời quay quanh Trái Đất"', '"The Sun orbits the Earth"')], bc: "#f87171", bb: "rgba(239, 68, 68, 0.15)", badge: t("SAI","FALSE") },
               { label: t("🚫 KHÔNG phải mệnh đề", "🚫 NOT Propositions"), items: [t('"x + 1 = 5" (chứa biến)', '"x + 1 = 5" (has variable)'), t('"Bạn có khỏe không?" (câu hỏi)', '"Are you well?" (question)'), t('"Học chăm chỉ!" (lệnh)', '"Study hard!" (command)')], bc: "#555", bb: "#f0f0f0", badge: t("Không xác định","Undetermined") },
             ].map((group, gi) => (
-              <article key={gi} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+              <article key={gi} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>{group.label}</div>
                 {group.items.map((item, ii) => (
-                  <div key={ii} style={{ fontSize: 15, color: "#555", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div key={ii} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span>{item}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, background: group.bb, color: group.bc, padding: "2px 10px", borderRadius: 20, marginLeft: 8, whiteSpace: "nowrap" }}>{group.badge}</span>
                   </div>
@@ -323,18 +323,18 @@ export default function Lesson1_MenhDe() {
         ════════════════════════════════════════ */}
         <section id="khai2" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("2. Mệnh Đề Phủ Định (¬P)", "2. Negation (¬P)")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("Phủ định của mệnh đề P, ký hiệu ¬P, là mệnh đề có giá trị chân lý ngược lại với P.", "The negation of P, written ¬P, is the proposition with the opposite truth value of P.")}</div>
           </div>
           <div className="reveal" data-reveal style={{ marginBottom: 24 }}>
             <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 14 }}>{t("Bảng chân trị", "Truth Table")}</div>
             <div style={{ display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", borderRadius: 10, overflow: "hidden" }}>
               <table style={{ borderCollapse: "collapse", fontSize: 15 }}>
-                <thead><tr>{["P","¬P"].map(h => <th key={h} style={{ background: "black", color: "white", padding: "12px 48px", textAlign: "center" }}>{h}</th>)}</tr></thead>
+                <thead><tr>{["P","¬P"].map(h => <th key={h} style={{ background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", padding: "12px 48px", textAlign: "center" }}>{h}</th>)}</tr></thead>
                 <tbody>
-                  <tr><td style={{ padding: "10px 48px", textAlign: "center", background: "#eafaf1", color: "#1e8449", fontWeight: 600, border: "1px solid #eee" }}>{t("Đúng","True")}</td><td style={{ padding: "10px 48px", textAlign: "center", background: "#fdf2f2", color: "#922b21", fontWeight: 600, border: "1px solid #eee" }}>{t("Sai","False")}</td></tr>
-                  <tr><td style={{ padding: "10px 48px", textAlign: "center", background: "#fdf2f2", color: "#922b21", fontWeight: 600, border: "1px solid #eee" }}>{t("Sai","False")}</td><td style={{ padding: "10px 48px", textAlign: "center", background: "#eafaf1", color: "#1e8449", fontWeight: 600, border: "1px solid #eee" }}>{t("Đúng","True")}</td></tr>
+                  <tr><td style={{ padding: "10px 48px", textAlign: "center", background: "rgba(16, 185, 129, 0.15)", color: "#4ade80", fontWeight: 600, border: "1px solid rgba(255, 255, 255, 0.08)" }}>{t("Đúng","True")}</td><td style={{ padding: "10px 48px", textAlign: "center", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontWeight: 600, border: "1px solid rgba(255, 255, 255, 0.08)" }}>{t("Sai","False")}</td></tr>
+                  <tr><td style={{ padding: "10px 48px", textAlign: "center", background: "rgba(239, 68, 68, 0.15)", color: "#f87171", fontWeight: 600, border: "1px solid rgba(255, 255, 255, 0.08)" }}>{t("Sai","False")}</td><td style={{ padding: "10px 48px", textAlign: "center", background: "rgba(16, 185, 129, 0.15)", color: "#4ade80", fontWeight: 600, border: "1px solid rgba(255, 255, 255, 0.08)" }}>{t("Đúng","True")}</td></tr>
                 </tbody>
               </table>
             </div>
@@ -344,14 +344,14 @@ export default function Lesson1_MenhDe() {
               { p: t('P: "12 chia hết cho 3"','P: "12 is divisible by 3"'), pv: true, np: t('¬P: "12 không chia hết cho 3"','¬P: "12 is not divisible by 3"'), npv: false },
               { p: t('P: "√2 là số hữu tỉ"','P: "√2 is rational"'), pv: false, np: t('¬P: "√2 không là số hữu tỉ"','¬P: "√2 is not rational"'), npv: true },
             ].map((ex, i) => (
-              <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+              <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                   <div style={{ fontSize: 15 }}>{ex.p}</div>
-                  <span style={{ fontSize: 12, fontWeight: 700, background: ex.pv?"#eafaf1":"#fdf2f2", color: ex.pv?"#1e8449":"#922b21", padding: "2px 10px", borderRadius: 20 }}>{ex.pv?t("ĐÚNG","TRUE"):t("SAI","FALSE")}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, background: ex.pv?"rgba(16, 185, 129, 0.15)":"rgba(239, 68, 68, 0.15)", color: ex.pv?"#4ade80":"#f87171", padding: "2px 10px", borderRadius: 20 }}>{ex.pv?t("ĐÚNG","TRUE"):t("SAI","FALSE")}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ fontSize: 15 }}>{ex.np}</div>
-                  <span style={{ fontSize: 12, fontWeight: 700, background: ex.npv?"#eafaf1":"#fdf2f2", color: ex.npv?"#1e8449":"#922b21", padding: "2px 10px", borderRadius: 20 }}>{ex.npv?t("ĐÚNG","TRUE"):t("SAI","FALSE")}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, background: ex.npv?"rgba(16, 185, 129, 0.15)":"rgba(239, 68, 68, 0.15)", color: ex.npv?"#4ade80":"#f87171", padding: "2px 10px", borderRadius: 20 }}>{ex.npv?t("ĐÚNG","TRUE"):t("SAI","FALSE")}</span>
                 </div>
               </article>
             ))}
@@ -363,17 +363,17 @@ export default function Lesson1_MenhDe() {
         ════════════════════════════════════════ */}
         <section id="khai3" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("3. Mệnh Đề Kéo Theo (P ⇒ Q)", "3. Implication (P ⇒ Q)")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t('Mệnh đề "Nếu P thì Q", ký hiệu P ⇒ Q. P là giả thiết, Q là kết luận. P ⇒ Q chỉ SAI khi P đúng và Q sai.', '"If P then Q", written P ⇒ Q. P is hypothesis, Q is conclusion. P ⇒ Q is FALSE only when P is true and Q is false.')}</div>
-            <div style={{ color: "#777", fontSize: 15, marginTop: 10 }}>💡 {t("P là điều kiện đủ để có Q; Q là điều kiện cần để có P.", "P is sufficient for Q; Q is necessary for P.")}</div>
+            <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginTop: 10 }}>💡 {t("P là điều kiện đủ để có Q; Q là điều kiện cần để có P.", "P is sufficient for Q; Q is necessary for P.")}</div>
           </div>
           <div className="reveal" data-reveal style={{ marginBottom: 24 }}>
             <div style={{ fontWeight: 600, fontSize: 16, marginBottom: 14 }}>{t("Bảng chân trị P ⇒ Q", "Truth Table for P ⇒ Q")}</div>
             <div style={{ display: "inline-block", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", borderRadius: 10, overflow: "hidden" }}>
               <table style={{ borderCollapse: "collapse", fontSize: 15 }}>
-                <thead><tr>{["P","Q","P ⇒ Q"].map(h => <th key={h} style={{ background: "black", color: "white", padding: "12px 40px", textAlign: "center" }}>{h}</th>)}</tr></thead>
-                <tbody>{[["T","T","T"],["T","F","F"],["F","T","T"],["F","F","T"]].map((row,ri) => (<tr key={ri}>{row.map((c,ci) => <td key={ci} style={{ padding:"10px 40px", textAlign:"center", background:c==="T"?"#eafaf1":"#fdf2f2", color:c==="T"?"#1e8449":"#922b21", fontWeight:600, border:"1px solid #eee" }}>{c}</td>)}</tr>))}</tbody>
+                <thead><tr>{["P","Q","P ⇒ Q"].map(h => <th key={h} style={{ background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", padding: "12px 40px", textAlign: "center" }}>{h}</th>)}</tr></thead>
+                <tbody>{[["T","T","T"],["T","F","F"],["F","T","T"],["F","F","T"]].map((row,ri) => (<tr key={ri}>{row.map((c,ci) => <td key={ci} style={{ padding:"10px 40px", textAlign:"center", background:c==="T"?"rgba(16, 185, 129, 0.15)":"rgba(239, 68, 68, 0.15)", color:c==="T"?"#4ade80":"#f87171", fontWeight:600, border: "1px solid rgba(255, 255, 255, 0.08)" }}>{c}</td>)}</tr>))}</tbody>
               </table>
             </div>
           </div>
@@ -382,11 +382,11 @@ export default function Lesson1_MenhDe() {
               { expr: t('"Nếu n chia hết cho 6 thì n chia hết cho 2"','"If n is divisible by 6 then n is divisible by 2"'), v: true, note: t("Mọi bội của 6 đều là bội của 2.","Every multiple of 6 is a multiple of 2.") },
               { expr: t('"Nếu n chia hết cho 2 thì n chia hết cho 6"','"If n is divisible by 2 then n is divisible by 6"'), v: false, note: t("Phản ví dụ: n = 4.","Counter-example: n = 4.") },
             ].map((ex, i) => (
-              <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+              <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontSize: 15, marginBottom: 12 }}>{ex.expr}</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, background: ex.v?"#eafaf1":"#fdf2f2", color: ex.v?"#1e8449":"#922b21", padding: "2px 10px", borderRadius: 20 }}>{ex.v?t("ĐÚNG","TRUE"):t("SAI","FALSE")}</span>
-                  <span style={{ color: "#777", fontSize: 14, fontStyle: "italic" }}>{ex.note}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, background: ex.v?"rgba(16, 185, 129, 0.15)":"rgba(239, 68, 68, 0.15)", color: ex.v?"#4ade80":"#f87171", padding: "2px 10px", borderRadius: 20 }}>{ex.v?t("ĐÚNG","TRUE"):t("SAI","FALSE")}</span>
+                  <span style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14, fontStyle: "italic" }}>{ex.note}</span>
                 </div>
               </article>
             ))}
@@ -398,15 +398,15 @@ export default function Lesson1_MenhDe() {
         ════════════════════════════════════════ */}
         <section id="khai4" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("4. Mệnh Đề Tương Đương (P ⟺ Q)", "4. Equivalence (P ⟺ Q)")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t('Mệnh đề "P khi và chỉ khi Q", ký hiệu P ⟺ Q, đúng khi P và Q cùng giá trị chân lý.','"P if and only if Q", written P ⟺ Q, is true when P and Q share the same truth value.')}</div>
-            <div style={{ color: "#777", fontSize: 15, marginTop: 10 }}>💡 {t("P ⟺ Q tương đương với (P ⇒ Q) ∧ (Q ⇒ P). P, Q là điều kiện cần và đủ của nhau.","P ⟺ Q ≡ (P ⇒ Q) ∧ (Q ⇒ P). P and Q are necessary and sufficient conditions for each other.")}</div>
+            <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginTop: 10 }}>💡 {t("P ⟺ Q tương đương với (P ⇒ Q) ∧ (Q ⇒ P). P, Q là điều kiện cần và đủ của nhau.","P ⟺ Q ≡ (P ⇒ Q) ∧ (Q ⇒ P). P and Q are necessary and sufficient conditions for each other.")}</div>
           </div>
           <div className="reveal" data-reveal>
-            <article style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", display: "inline-flex", alignItems: "center", gap: 16 }}>
+            <article style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", display: "inline-flex", alignItems: "center", gap: 16 }}>
               <div style={{ fontSize: 15 }}>{t('"n chia hết cho 2 khi và chỉ khi n là số chẵn"','"n is divisible by 2 if and only if n is even"')}</div>
-              <span style={{ fontSize: 12, fontWeight: 700, background: "#eafaf1", color: "#1e8449", padding: "2px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{t("ĐÚNG","TRUE")}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, background: "rgba(16, 185, 129, 0.15)", color: "#4ade80", padding: "2px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>{t("ĐÚNG","TRUE")}</span>
             </article>
           </div>
         </section>
@@ -421,12 +421,12 @@ export default function Lesson1_MenhDe() {
               { sym: "∀", name: t("Với mọi (lượng từ phổ dụng)","For all (universal quantifier)"), desc: t('"∀x ∈ A, P(x)" — P(x) đúng với mọi x thuộc A.','"∀x ∈ A, P(x)" — P(x) is true for every x in A.'), neg: "¬(∀x ∈ A, P(x)) = ∃x ∈ A, ¬P(x)", ex: t('"∀n ∈ ℕ, n² ≥ 0" → ĐÚNG','"∀n ∈ ℕ, n² ≥ 0" → TRUE') },
               { sym: "∃", name: t("Tồn tại (lượng từ vị từ)","There exists (existential quantifier)"), desc: t('"∃x ∈ A, P(x)" — tồn tại ít nhất một x ∈ A sao cho P(x) đúng.','"∃x ∈ A, P(x)" — there is at least one x ∈ A such that P(x) holds.'), neg: "¬(∃x ∈ A, P(x)) = ∀x ∈ A, ¬P(x)", ex: t('"∃x ∈ ℝ, x² = 2" → ĐÚNG (x = √2)','"∃x ∈ ℝ, x² = 2" → TRUE (x = √2)') },
             ].map((q, i) => (
-              <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                <div style={{ fontSize: 40, fontWeight: 700, color: "#0B4F5C", marginBottom: 8 }}>{q.sym}</div>
+              <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ fontSize: 40, fontWeight: 700, color: "#22d3ee", marginBottom: 8 }}>{q.sym}</div>
                 <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>{q.name}</div>
-                <div style={{ fontSize: 15, color: "#555", marginBottom: 10 }}>{q.desc}</div>
-                <div style={{ fontSize: 14, color: "#777", marginBottom: 6, fontFamily: "monospace", background: "white", padding: "6px 10px", borderRadius: 6 }}>📌 {q.neg}</div>
-                <div style={{ fontSize: 14, color: "#777" }}>📘 {q.ex}</div>
+                <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 10 }}>{q.desc}</div>
+                <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.5)", marginBottom: 6, fontFamily: "monospace", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", padding: "6px 10px", borderRadius: 6 }}>📌 {q.neg}</div>
+                <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.5)" }}>📘 {q.ex}</div>
               </article>
             ))}
           </div>
@@ -444,15 +444,15 @@ export default function Lesson1_MenhDe() {
               { id: "e3", q: t("P: \"ΔABC vuông tại A\", Q: \"BC² = AB² + AC²\".\nPhát biểu P ⇒ Q và kiểm tra.","P: \"△ABC is right-angled at A\", Q: \"BC² = AB² + AC²\".\nState P ⇒ Q and check."), a: [t("P ⇒ Q: \"Nếu ΔABC vuông tại A thì BC² = AB² + AC²\"","P ⇒ Q: \"If △ABC is right-angled at A, then BC² = AB² + AC²\""),t("Đây là Định lý Pythagoras → ĐÚNG","This is the Pythagorean Theorem → TRUE")] },
             ].map(({ id, q, a }) => (
               <article key={id}>
-                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>📝 {t("Bài tập","Exercise")}</div>
-                  <div style={{ color: "#777", fontSize: 14 }}>{t("Toán 10","Grade 10")}</div>
+                  <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14 }}>{t("Toán 10","Grade 10")}</div>
                   <div style={{ fontSize: 15, lineHeight: 1.7, marginTop: 10, whiteSpace: "pre-wrap" }}>{q}</div>
                 </div>
-                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "black", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
+                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
                   {revealedAnswers[id] ? t("Ẩn đáp án ▲","Hide Answer ▲") : t("Xem đáp án ▼","Show Answer ▼")}
                 </button>
-                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "#eafaf1", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "#555", marginBottom: 6 }}>{line}</div>)}</div>}
+                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "rgba(16, 185, 129, 0.15)", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>{line}</div>)}</div>}
               </article>
             ))}
           </div>

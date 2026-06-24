@@ -250,7 +250,7 @@ export default function Lesson2_TapHop() {
         {/* ════ KHỞI ĐỘNG ════ */}
         <section id="khoiDong" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="🚀" title={t("Khởi động", "Warm-Up")} />
-          <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>{t("Tình huống mở đầu", "Opening Situation")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8, marginBottom: 16 }}>
               {t('Khi nói về một nhóm vật thể — ví dụ "các số tự nhiên nhỏ hơn 10" hay "các học sinh trong lớp" — ta cần một khái niệm toán học để biểu diễn chúng. Toán học gọi đó là tập hợp.',
@@ -277,10 +277,10 @@ export default function Lesson2_TapHop() {
         <section id="khai1" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("1. Khái Niệm Tập Hợp", "1. Sets")} />
           <div className="ora" style={{ display: "grid", gap: 24 }}>
-            <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+            <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+              <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
               <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("Tập hợp là một nhóm các đối tượng, mỗi đối tượng gọi là phần tử. Tập hợp được ký hiệu bằng chữ in hoa, phần tử được liệt kê trong dấu ngoặc nhọn { }.", "A set is a collection of objects; each object is an element. Sets are denoted by uppercase letters; elements are listed inside curly braces { }.")}</div>
-              <div style={{ color: "#777", fontSize: 15, marginTop: 10 }}>💡 {t("Nếu a là phần tử của A: a ∈ A. Nếu không: a ∉ A.", "If a is an element of A: a ∈ A. Otherwise: a ∉ A.")}</div>
+              <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginTop: 10 }}>💡 {t("Nếu a là phần tử của A: a ∈ A. Nếu không: a ∉ A.", "If a is an element of A: a ∈ A. Otherwise: a ∉ A.")}</div>
             </div>
             <div className="reveal" data-reveal>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>{t("Hai cách xác định tập hợp", "Two ways to define a set")}</div>
@@ -289,20 +289,20 @@ export default function Lesson2_TapHop() {
                   { method: t("① Liệt kê phần tử","① Listing elements"), example: "A = {1, 2, 3, 4, 5}", note: t("Liệt kê hết các phần tử, ngăn cách bởi dấu phẩy.","List all elements separated by commas.") },
                   { method: t("② Tính chất đặc trưng","② Characteristic property"), example: "B = {x ∈ ℕ | x ≤ 5}", note: t("Dùng điều kiện để xác định phần tử thuộc tập hợp.","Use a condition to define which elements belong.") },
                 ].map((card, i) => (
-                  <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                  <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                     <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 10 }}>{card.method}</div>
-                    <div style={{ fontFamily: "monospace", fontSize: 18, color: "#0B4F5C", marginBottom: 10, padding: "8px 12px", background: "white", borderRadius: 6 }}>{card.example}</div>
-                    <div style={{ fontSize: 15, color: "#777" }}>{card.note}</div>
+                    <div style={{ fontFamily: "monospace", fontSize: 18, color: "#22d3ee", marginBottom: 10, padding: "8px 12px", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", borderRadius: 6 }}>{card.example}</div>
+                    <div style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.5)" }}>{card.note}</div>
                   </article>
                 ))}
               </div>
             </div>
-            <div style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+            <div style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
               <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>∅ — {t("Tập hợp rỗng", "The Empty Set")}</div>
               <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("Tập hợp không có phần tử nào gọi là tập hợp rỗng, ký hiệu ∅ hoặc {}.", "A set with no elements is called the empty set, denoted ∅ or {}.")}</div>
               <div style={{ marginTop: 12, display: "flex", gap: 16, flexWrap: "wrap" }}>
                 {[t("∅ là tập con của mọi tập hợp","∅ is a subset of every set"), t("∅ ≠ {0} (tập {0} có một phần tử)","∅ ≠ {0} (the set {0} has one element)")].map((note, i) => (
-                  <div key={i} style={{ background: "white", padding: "8px 14px", borderRadius: 8, fontSize: 14, color: "#555", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>💡 {note}</div>
+                  <div key={i} style={{ background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", padding: "8px 14px", borderRadius: 8, fontSize: 14, color: "rgba(255, 255, 255, 0.7)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>💡 {note}</div>
                 ))}
               </div>
             </div>
@@ -312,20 +312,20 @@ export default function Lesson2_TapHop() {
         {/* ════ 2. TẬP CON ════ */}
         <section id="khai2" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("2. Tập Con (A ⊂ B)", "2. Subsets (A ⊂ B)")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("A là tập con của B (A ⊂ B) khi mọi phần tử của A đều là phần tử của B.", "A is a subset of B (A ⊂ B) when every element of A is also an element of B.")}</div>
-            <div style={{ color: "#777", fontSize: 15, marginTop: 10 }}>💡 {t("A ⊄ B khi tồn tại ít nhất một phần tử của A không thuộc B.","A ⊄ B when at least one element of A does not belong to B.")}</div>
+            <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginTop: 10 }}>💡 {t("A ⊄ B khi tồn tại ít nhất một phần tử của A không thuộc B.","A ⊄ B when at least one element of A does not belong to B.")}</div>
           </div>
-          <div className="reveal" data-reveal style={{ marginBottom: 24, padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+          <div className="reveal" data-reveal style={{ marginBottom: 24, padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
             <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 14 }}>{t("Số tập con của tập n phần tử", "Number of subsets of an n-element set")}</div>
-            <div style={{ fontFamily: "monospace", fontSize: 22, color: "#0B4F5C", textAlign: "center", padding: "12px 0" }}>|A| = n → {t("số tập con", "subsets")} = 2ⁿ</div>
+            <div style={{ fontFamily: "monospace", fontSize: 22, color: "#22d3ee", textAlign: "center", padding: "12px 0" }}>|A| = n → {t("số tập con", "subsets")} = 2ⁿ</div>
             <div className="reveal" data-reveal data-reveal-stagger data-stagger="80" style={{ display: "flex", gap: 24, flexWrap: "wrap", marginTop: 16, transition: "all 0.3s ease" }}>
               {[["A = {a}", 1, 2, ["{}", "{a}"]], ["A = {a,b}", 2, 4, ["{}", "{a}", "{b}", "{a,b}"]], ["A = {a,b,c}", 3, 8, ["...", "8 tập con"]]].map(([label, n, count, subsets], i) => (
-                <article key={i} style={{ flex: "1 1 180px", padding: 16, borderRadius: 10, background: "white", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center" }}>
+                <article key={i} style={{ flex: "1 1 180px", padding: 16, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", textAlign: "center" }}>
                   <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>{label}</div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: "#0B4F5C" }}>2{n === 1 ? "¹" : n === 2 ? "²" : "³"} = {count}</div>
-                  <div style={{ fontSize: 13, color: "#777", marginTop: 6 }}>{subsets.join(", ")}</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: "#22d3ee" }}>2{n === 1 ? "¹" : n === 2 ? "²" : "³"} = {count}</div>
+                  <div style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.5)", marginTop: 6 }}>{subsets.join(", ")}</div>
                 </article>
               ))}
             </div>
@@ -335,10 +335,10 @@ export default function Lesson2_TapHop() {
         {/* ════ 3. TẬP BẰNG NHAU ════ */}
         <section id="khai3" style={{ scrollMarginTop: 80, marginBottom: 64 }}>
           <SectionHeader icon="📖" title={t("3. Hai Tập Hợp Bằng Nhau", "3. Equal Sets")} />
-          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
-            <div style={{ fontWeight: "bold", fontSize: 18, color: "#0B4F5C", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
+          <div className="reveal" data-reveal style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)", marginBottom: 24 }}>
+            <div style={{ fontWeight: "bold", fontSize: 18, color: "#22d3ee", marginBottom: 10 }}>📌 {t("Định nghĩa", "Definition")}</div>
             <div style={{ fontSize: 16, lineHeight: 1.8 }}>{t("A = B khi và chỉ khi A ⊂ B và B ⊂ A, tức là hai tập có cùng tập phần tử.", "A = B if and only if A ⊂ B and B ⊂ A, meaning both sets contain exactly the same elements.")}</div>
-            <div style={{ color: "#777", fontSize: 15, marginTop: 10 }}>💡 {t("Thứ tự liệt kê và số lần lặp phần tử không ảnh hưởng đến tập hợp.", "The order of listing and repetition of elements do not affect the set.")}</div>
+            <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginTop: 10 }}>💡 {t("Thứ tự liệt kê và số lần lặp phần tử không ảnh hưởng đến tập hợp.", "The order of listing and repetition of elements do not affect the set.")}</div>
           </div>
           <div className="reveal" data-reveal data-reveal-stagger data-stagger="100" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24, transition: "all 0.3s ease" }}>
             {[
@@ -346,10 +346,10 @@ export default function Lesson2_TapHop() {
               { a: "{1, 1, 2}", b: "{1, 2}", eq: true, reason: t("Phần tử lặp không tính → bằng nhau", "Repeated element counted once → equal") },
               { a: "{1, 2, 3}", b: "{1, 2}", eq: false, reason: t("A có phần tử 3 mà B không có → khác nhau", "A has element 3 that B does not → not equal") },
             ].map((ex, i) => (
-              <article key={i} style={{ padding: 20, borderRadius: 10, background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+              <article key={i} style={{ padding: 20, borderRadius: 10, background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                 <div style={{ fontFamily: "monospace", fontSize: 16, marginBottom: 8 }}>{ex.a} {ex.eq ? "=" : "≠"} {ex.b}</div>
-                <span style={{ fontSize: 12, fontWeight: 700, background: ex.eq ? "#eafaf1" : "#fdf2f2", color: ex.eq ? "#1e8449" : "#922b21", padding: "2px 10px", borderRadius: 20 }}>{ex.eq ? t("BẰNG NHAU", "EQUAL") : t("KHÁC NHAU", "NOT EQUAL")}</span>
-                <div style={{ fontSize: 14, color: "#777", marginTop: 8, fontStyle: "italic" }}>{ex.reason}</div>
+                <span style={{ fontSize: 12, fontWeight: 700, background: ex.eq ? "rgba(16, 185, 129, 0.15)" : "rgba(239, 68, 68, 0.15)", color: ex.eq ? "#4ade80" : "#f87171", padding: "2px 10px", borderRadius: 20 }}>{ex.eq ? t("BẰNG NHAU", "EQUAL") : t("KHÁC NHAU", "NOT EQUAL")}</span>
+                <div style={{ fontSize: 14, color: "rgba(255, 255, 255, 0.5)", marginTop: 8, fontStyle: "italic" }}>{ex.reason}</div>
               </article>
             ))}
           </div>
@@ -365,15 +365,15 @@ export default function Lesson2_TapHop() {
               { id: "e3", q: t("Cho A = {1, 2, 4}, B = {x ∈ ℕ | x là ước của 4}.\nA và B có bằng nhau không?", "Let A = {1, 2, 4}, B = {x ∈ ℕ | x is a divisor of 4}.\nAre A and B equal?"), a: [t("B = {1, 2, 4} (ước của 4 là 1, 2, 4)", "B = {1, 2, 4} (divisors of 4 are 1, 2, 4)"), t("A = {1,2,4} = B → A = B ✓", "A = {1,2,4} = B → A = B ✓")] },
             ].map(({ id, q, a }) => (
               <article key={id}>
-                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "#f9f9f9", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+                <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>📝 {t("Bài tập","Exercise")}</div>
-                  <div style={{ color: "#777", fontSize: 14 }}>{t("Toán 10","Grade 10")}</div>
+                  <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14 }}>{t("Toán 10","Grade 10")}</div>
                   <div style={{ fontSize: 15, lineHeight: 1.7, marginTop: 10, whiteSpace: "pre-wrap" }}>{q}</div>
                 </div>
-                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "black", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
+                <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
                   {revealedAnswers[id] ? t("Ẩn đáp án ▲","Hide Answer ▲") : t("Xem đáp án ▼","Show Answer ▼")}
                 </button>
-                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "#eafaf1", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "#555", marginBottom: 6 }}>{line}</div>)}</div>}
+                {revealedAnswers[id] && <div style={{ padding: "16px 20px", background: "rgba(16, 185, 129, 0.15)", borderRadius: "0 0 10px 10px" }}>{a.map((line, i) => <div key={i} style={{ fontSize: 15, color: "rgba(255, 255, 255, 0.7)", marginBottom: 6 }}>{line}</div>)}</div>}
               </article>
             ))}
           </div>
