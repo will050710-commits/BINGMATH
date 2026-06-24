@@ -1,0 +1,12 @@
+{
+  "AllowMultiple": "false",
+  "Description": "\"Add lang and setLang props to PremiumLessonEngine with local state fallback.\"",
+  "EndLine": "194",
+  "Instruction": "\"Add propLang and propSetLang hooks and fallback.\"",
+  "ReplacementContent": "\"  lessonSlug,\\n  chapterTitle,\\n  lessonTitle,\\n  learningObjectives = [],\\n  navItems = [],\\n  videoId,\\n  videoSubtitles = [],\\n  mcQuestions = [],\\n  tfCards = [],\\n  fillQuestions = [],\\n  renderTheory,\\n  lang: propLang,\\n  setLang: propSetLang,\\n}) {\\n  const { user, saveGameResult } = useAuth();\\n  const [localLang, localSetLang] = useState(\\\"vi\\\");\\n  const lang = propLang !== undefined ? propLang : localLang;\\n  const setLang = propSetLang !== undefined ? propSetLang : localSetLang;\"",
+  "StartLine": "180",
+  "TargetContent": "\"  lessonSlug,\\n  chapterTitle,\\n  lessonTitle,\\n  learningObjectives = [],\\n  navItems = [],\\n  videoId,\\n  videoSubtitles = [],\\n  mcQuestions = [],\\n  tfCards = [],\\n  fillQuestions = [],\\n  renderTheory,\\n}) {\\n  const { user, saveGameResult } = useAuth();\\n  const [lang, setLang] = useState(\\\"vi\\\");\"",
+  "TargetFile": "\"c:\\\\Users\\\\Latitude 7300\\\\OneDrive\\\\Máy tính\\\\duosteam - Copy\\\\duosteam\\\\frontend\\\\src\\\\components\\\\Cacbaitoan10\\\\PremiumLessonEngine.js\"",
+  "toolAction": "\"Adding language props to engine\"",
+  "toolSummary": "\"Update PremiumLessonEngine.js props\""
+}

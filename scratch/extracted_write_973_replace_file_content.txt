@@ -1,0 +1,12 @@
+{
+  "AllowMultiple": "false",
+  "Description": "\"Add imports for adaptive difficulty and gamification hooks\"",
+  "EndLine": "11",
+  "Instruction": "\"Add getNextDifficulty, useGamification, and GamificationHUD imports.\"",
+  "ReplacementContent": "\"import { useEffect, useState, useRef, useCallback } from \\\"react\\\";\\nimport { motion, AnimatePresence } from \\\"framer-motion\\\";\\nimport { useAuth } from \\\"@/context/authContext\\\";\\nimport Link from \\\"next/link\\\";\\nimport DuoTranslate from \\\"@/components/DuoMCB/DuoTranslate\\\";\\nimport LessonVideoPlayer from \\\"./LessonVideoPlayer\\\";\\nimport MathToolsPanel from \\\"./MathToolsPanel\\\";\\nimport { getNextDifficulty } from \\\"@/lib/api\\\";\\nimport { useGamification } from \\\"@/hooks/useGamification\\\";\\nimport GamificationHUD from \\\"@/components/GamificationHUD\\\";\\n\"",
+  "StartLine": "3",
+  "TargetContent": "\"import { useEffect, useState, useRef, useCallback } from \\\"react\\\";\\nimport { motion, AnimatePresence } from \\\"framer-motion\\\";\\nimport { useAuth } from \\\"@/context/authContext\\\";\\nimport Link from \\\"next/link\\\";\\nimport DuoTranslate from \\\"@/components/DuoMCB/DuoTranslate\\\";\\nimport LessonVideoPlayer from \\\"./LessonVideoPlayer\\\";\\nimport MathToolsPanel from \\\"./MathToolsPanel\\\";\"",
+  "TargetFile": "\"c:\\\\Users\\\\Latitude 7300\\\\OneDrive\\\\Máy tính\\\\duosteam - Copy\\\\duosteam\\\\frontend\\\\src\\\\components\\\\Cacbaitoan10\\\\PremiumLessonEngine.js\"",
+  "toolAction": "\"Updating imports in PremiumLessonEngine.js\"",
+  "toolSummary": "\"Replace file content PremiumLessonEngine.js imports\""
+}

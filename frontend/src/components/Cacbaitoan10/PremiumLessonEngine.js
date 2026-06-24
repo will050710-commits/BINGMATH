@@ -8,6 +8,9 @@ import Link from "next/link";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
 import MathToolsPanel from "./MathToolsPanel";
+import { logQuizAttempt, getNextDifficulty } from "@/lib/api";
+import { useGamification } from "@/hooks/useGamification";
+import GamificationHUD from "@/components/GamificationHUD";
 
 // ─── PARTICLE BURST ──────────────────────────────────────────────────────────
 function ParticleBurst({ active }) {
@@ -188,11 +191,23 @@ export default function PremiumLessonEngine({
   tfCards = [],
   fillQuestions = [],
   renderTheory,
+  lang: propLang,
+  setLang: propSetLang,
 }) {
   const { user, saveGameResult } = useAuth();
-  const [lang, setLang] = useState("vi");
+  const [localLang, localSetLang] = useState("vi");
+  const lang = propLang !== undefined ? propLang : localLang;
+  const setLang = propSetLang !== undefined ? propSetLang : localSetLang;
   const [gameMode, setGameMode] = useState("mc");
   const [activeSection, setActiveSection] = useState("khoiDong");
+
+  // Dynamic Difficulty and Gamification Hook
+  const { showHUD, triggerGamification, closeHUD } = useGamification();
+  const [difficultyMode, setDifficultyMode] = useState("auto"); // auto | manual
+  const [difficulty, setDifficulty] = useState("NB"); // NB | TH | VD | VDC
+
+  const questionStartTimeRef = useRef(Date.now());
+  const sessionStartTime = useRef(Date.now());
 
   // Game state
   const [mcIndex, setMcIndex] = useState(0);
@@ -211,6 +226,144 @@ export default function PremiumLessonEngine({
   const [fillChecked, setFillChecked] = useState(false);
 
   const t = (vi, en) => (lang === "vi" ? vi : en);
+
+  // ─── QUESTION NORMALIZERS ──────────────────────────────────────────────────
+  const normalizeMcQuestion = (q, idx) => {
+    if (!q) return null;
+    const rawQ = q.q || q.question || "";
+    const rawOpts = q.options || q.o || [];
+    let rawAns = q.answer !== undefined ? q.answer : q.a;
+    if (typeof rawAns === 'string') {
+      const code = rawAns.toUpperCase().charCodeAt(0);
+      if (code >= 65 && code <= 68) {
+        rawAns = code - 65;
+      } else {
+        rawAns = parseInt(rawAns, 10) || 0;
+      }
+    }
+    const rawExplain = q.explain || q.ex || q.explanation || "";
+    const key = q.id || q.key || `mc_${idx}`;
+    return {
+      q: rawQ,
+      options: rawOpts,
+      answer: rawAns,
+      explain: rawExplain,
+      key,
+      difficulty: q.difficulty || q.level || "NB"
+    };
+  };
+
+  const normalizeTfCard = (q, idx) => {
+    if (!q) return null;
+    const stmt = q.stmt || q.s || q.statement || "";
+    let rawAns = q.answer !== undefined ? q.answer : q.a;
+    let answer = false;
+    if (typeof rawAns === 'string') {
+      const lower = rawAns.toLowerCase().trim();
+      answer = (lower === 'true' || lower === 'đúng' || lower === 'dung' || lower === 't' || lower === 'd' || lower === '1');
+    } else {
+      answer = Boolean(rawAns);
+    }
+    const explain = q.explain || q.ex || q.explanation || "";
+    const key = q.id || q.key || `tf_${idx}`;
+    return {
+      stmt,
+      answer,
+      explain,
+      key,
+      difficulty: q.difficulty || q.level || "NB"
+    };
+  };
+
+  const normalizeFillQuestion = (q, idx) => {
+    if (!q) return null;
+    const id = q.id || q.key || `fill_${idx}`;
+    const template = q.template || q.tp || q.text || "";
+    const answer = q.answer || q.ans || "";
+    const altAnswers = q.altAnswers || q.alt || [];
+    const hint = q.hint || q.h || "";
+    return {
+      id,
+      template,
+      answer,
+      altAnswers,
+      hint,
+      difficulty: q.difficulty || q.level || "NB"
+    };
+  };
+
+  const normalizeListOrDict = (input, normalizer) => {
+    if (!input) return [];
+    if (Array.isArray(input)) {
+      return input.map(normalizer).filter(Boolean);
+    }
+    if (typeof input === "object") {
+      const result = {};
+      Object.keys(input).forEach(k => {
+        if (Array.isArray(input[k])) {
+          result[k] = input[k].map(normalizer).filter(Boolean);
+        }
+      });
+      return result;
+    }
+    return [];
+  };
+
+  const normalizedMc = normalizeListOrDict(mcQuestions, normalizeMcQuestion);
+  const normalizedTf = normalizeListOrDict(tfCards, normalizeTfCard);
+  const normalizedFill = normalizeListOrDict(fillQuestions, normalizeFillQuestion);
+
+  // Helper to slice legacy question arrays or retrieve structured dict entries
+  const getActiveList = (normalizedInput) => {
+    if (!normalizedInput) return [];
+    if (!Array.isArray(normalizedInput) && typeof normalizedInput === "object") {
+      const key = Object.keys(normalizedInput).find(k => k.toUpperCase() === difficulty.toUpperCase());
+      if (key && Array.isArray(normalizedInput[key])) {
+        return normalizedInput[key];
+      }
+      const anyKey = Object.keys(normalizedInput)[0];
+      if (anyKey && Array.isArray(normalizedInput[anyKey])) {
+        return normalizedInput[anyKey];
+      }
+      return [];
+    }
+
+    const len = normalizedInput.length;
+    if (len === 0) return [];
+    if (len < 3) return normalizedInput; // Too short to split
+    
+    // Index-based slicing for 100% legacy coverage:
+    // NB: first 40%, TH: next 30%, VD: next 20%, VDC: last 10%
+    const nbCount = Math.max(1, Math.round(len * 0.4));
+    const thCount = Math.max(1, Math.round(len * 0.3));
+    const vdCount = Math.max(1, Math.round(len * 0.2));
+    
+    const nbSlice = normalizedInput.slice(0, nbCount);
+    const thSlice = normalizedInput.slice(nbCount, nbCount + thCount);
+    const vdSlice = normalizedInput.slice(nbCount + thCount, nbCount + thCount + vdCount);
+    const vdcSlice = normalizedInput.slice(nbCount + thCount + vdCount);
+    
+    if (difficulty === "NB") return nbSlice.length > 0 ? nbSlice : normalizedInput;
+    if (difficulty === "TH") return thSlice.length > 0 ? thSlice : normalizedInput;
+    if (difficulty === "VD") return vdSlice.length > 0 ? vdSlice : normalizedInput;
+    if (difficulty === "VDC") return vdcSlice.length > 0 ? vdcSlice : normalizedInput;
+    return normalizedInput;
+  };
+
+  const activeMcQuestions = getActiveList(normalizedMc);
+  const activeTfCards = getActiveList(normalizedTf);
+  const activeFillQuestions = getActiveList(normalizedFill);
+
+  // Fetch recommended difficulty in Auto ELO mode
+  useEffect(() => {
+    if (difficultyMode === "auto" && lessonSlug) {
+      getNextDifficulty(lessonSlug).then(res => {
+        if (res.ok && res.data && res.data.recommended_difficulty) {
+          setDifficulty(res.data.recommended_difficulty);
+        }
+      }).catch(err => console.error("Error fetching recommended difficulty:", err));
+    }
+  }, [difficultyMode, lessonSlug]);
 
   // Scroll reveal
   useEffect(() => {
@@ -242,18 +395,43 @@ export default function PremiumLessonEngine({
   const handleMcSelect = (i) => {
     if (mcSelected !== null) return;
     setMcSelected(i);
-    const correct = i === mcQuestions[mcIndex].answer;
+    const correct = i === activeMcQuestions[mcIndex].answer;
     if (correct) setMcScore((s) => s + 1);
     setMcHistory((h) => [...h, { q: mcIndex, selected: i, correct }]);
   };
+
   const handleMcNext = () => {
-    if (mcIndex + 1 >= mcQuestions.length) {
+    if (mcIndex + 1 >= activeMcQuestions.length) {
       setMcDone(true);
+      const totalTime = Math.round((Date.now() - sessionStartTime.current) / 1000);
+      const accuracy = Math.round((mcScore / activeMcQuestions.length) * 100);
+      triggerGamification({
+        questions: mcHistory.map((h, idx) => ({
+          key: activeMcQuestions[h.q].key || `mc_${idx}`,
+          section: lessonSlug,
+          difficulty: activeMcQuestions[h.q].difficulty || difficulty,
+          isCorrect: h.correct
+        })),
+        timeTakenSec: totalTime,
+        topic: lessonSlug,
+        sessionAccuracy: accuracy
+      }).then(() => {
+        // Refetch recommended difficulty to reflect user's newly updated ELO
+        if (difficultyMode === "auto") {
+          getNextDifficulty(lessonSlug).then(res => {
+            if (res.ok && res.data && res.data.recommended_difficulty) {
+              setDifficulty(res.data.recommended_difficulty);
+            }
+          });
+        }
+      });
     } else {
       setMcIndex((i) => i + 1);
       setMcSelected(null);
+      questionStartTimeRef.current = Date.now();
     }
   };
+
   const resetMc = () => {
     setMcIndex(0);
     setMcSelected(null);
@@ -266,18 +444,42 @@ export default function PremiumLessonEngine({
   const handleTfAnswer = (ans) => {
     if (tfFlipped) return;
     setTfFlipped(true);
-    const correct = ans === tfCards[tfIndex].answer;
+    const correct = ans === activeTfCards[tfIndex].answer;
     if (correct) setTfScore((s) => s + 1);
     setTfHistory((h) => [...h, { q: tfIndex, given: ans, correct }]);
   };
+
   const handleTfNext = () => {
-    if (tfIndex + 1 >= tfCards.length) {
+    if (tfIndex + 1 >= activeTfCards.length) {
       setTfDone(true);
+      const totalTime = Math.round((Date.now() - sessionStartTime.current) / 1000);
+      const accuracy = Math.round((tfScore / activeTfCards.length) * 100);
+      triggerGamification({
+        questions: tfHistory.map((h, idx) => ({
+          key: activeTfCards[h.q].key || `tf_${idx}`,
+          section: lessonSlug,
+          difficulty: activeTfCards[h.q].difficulty || difficulty,
+          isCorrect: h.correct
+        })),
+        timeTakenSec: totalTime,
+        topic: lessonSlug,
+        sessionAccuracy: accuracy
+      }).then(() => {
+        if (difficultyMode === "auto") {
+          getNextDifficulty(lessonSlug).then(res => {
+            if (res.ok && res.data && res.data.recommended_difficulty) {
+              setDifficulty(res.data.recommended_difficulty);
+            }
+          });
+        }
+      });
     } else {
       setTfIndex((i) => i + 1);
       setTfFlipped(false);
+      questionStartTimeRef.current = Date.now();
     }
   };
+
   const resetTf = () => {
     setTfIndex(0);
     setTfFlipped(false);
@@ -291,58 +493,96 @@ export default function PremiumLessonEngine({
     const raw = (fillAnswers[q.id] || "").toLowerCase().trim().replace(/\s/g, "");
     return [q.answer, ...(q.altAnswers || [])].map((a) => a.toLowerCase().replace(/\s/g, "")).includes(raw);
   };
-  const fillScore = fillChecked ? fillQuestions.filter((q) => checkFill(q)).length : null;
+  const fillScore = fillChecked ? activeFillQuestions.filter((q) => checkFill(q)).length : null;
+
+  const handleFillCheck = () => {
+    setFillChecked(true);
+    const correctCount = activeFillQuestions.filter((q) => checkFill(q)).length;
+    const totalTime = Math.round((Date.now() - sessionStartTime.current) / 1000);
+    const accuracy = Math.round((correctCount / activeFillQuestions.length) * 100);
+    triggerGamification({
+      questions: activeFillQuestions.map((q) => ({
+        key: q.id,
+        section: lessonSlug,
+        difficulty: q.difficulty || difficulty,
+        isCorrect: checkFill(q)
+      })),
+      timeTakenSec: totalTime,
+      topic: lessonSlug,
+      sessionAccuracy: accuracy
+    }).then(() => {
+      if (difficultyMode === "auto") {
+        getNextDifficulty(lessonSlug).then(res => {
+          if (res.ok && res.data && res.data.recommended_difficulty) {
+            setDifficulty(res.data.recommended_difficulty);
+          }
+        });
+      }
+    });
+  };
 
   // Formatting results
   const mcResultItems = mcHistory.map((h) => ({
     correct: h.correct,
-    qText: mcQuestions[h.q].q,
-    correctText: mcQuestions[h.q].options[mcQuestions[h.q].answer],
-    yourText: mcQuestions[h.q].options[h.selected]
+    qText: activeMcQuestions[h.q].q,
+    correctText: activeMcQuestions[h.q].options[activeMcQuestions[h.q].answer],
+    yourText: activeMcQuestions[h.q].options[h.selected]
   }));
+
   const tfResultItems = tfHistory.map((h) => ({
     correct: h.correct,
-    qText: tfCards[h.q].stmt,
-    correctText: tfCards[h.q].answer ? t("ĐÚNG", "TRUE") : t("SAI", "FALSE"),
+    qText: activeTfCards[h.q].stmt,
+    correctText: activeTfCards[h.q].answer ? t("ĐÚNG", "TRUE") : t("SAI", "FALSE"),
     yourText: h.given ? t("ĐÚNG", "TRUE") : t("SAI", "FALSE")
   }));
-  const fillResultItems = fillChecked ? fillQuestions.map((q) => ({
+
+  const fillResultItems = fillChecked ? activeFillQuestions.map((q) => ({
     correct: checkFill(q),
     qText: q.template,
     correctText: q.answer,
     yourText: fillAnswers[q.id] || t("(bỏ trống)", "(blank)")
   })) : [];
 
-  // DB integration via useEffects
+  // DB integration via useEffects (legacy callback sync)
   useEffect(() => {
-    if (mcDone && user && mcQuestions.length > 0) {
-      saveGameResult({ lesson_slug: lessonSlug, mode: "mc", score: mcScore, total: mcQuestions.length });
+    if (mcDone && user && activeMcQuestions.length > 0) {
+      saveGameResult({ lesson_slug: lessonSlug, mode: "mc", score: mcScore, total: activeMcQuestions.length });
     }
-  }, [mcDone, mcScore, user, lessonSlug, mcQuestions.length, saveGameResult]);
+  }, [mcDone, mcScore, user, lessonSlug, activeMcQuestions.length, saveGameResult]);
 
   useEffect(() => {
-    if (tfDone && user && tfCards.length > 0) {
-      saveGameResult({ lesson_slug: lessonSlug, mode: "tf", score: tfScore, total: tfCards.length });
+    if (tfDone && user && activeTfCards.length > 0) {
+      saveGameResult({ lesson_slug: lessonSlug, mode: "tf", score: tfScore, total: activeTfCards.length });
     }
-  }, [tfDone, tfScore, user, lessonSlug, tfCards.length, saveGameResult]);
+  }, [tfDone, tfScore, user, lessonSlug, activeTfCards.length, saveGameResult]);
 
   useEffect(() => {
-    if (fillChecked && user && fillQuestions.length > 0) {
+    if (fillChecked && user && activeFillQuestions.length > 0) {
       saveGameResult({
         lesson_slug: lessonSlug,
         mode: "fill",
-        score: fillQuestions.filter((q) => checkFill(q)).length,
-        total: fillQuestions.length
+        score: activeFillQuestions.filter((q) => checkFill(q)).length,
+        total: activeFillQuestions.length
       });
     }
-  }, [fillChecked, fillAnswers, user, lessonSlug, fillQuestions.length, saveGameResult]);
+  }, [fillChecked, fillAnswers, user, lessonSlug, activeFillQuestions.length, saveGameResult]);
+
+  // Reset internal indices when difficulty level changes
+  useEffect(() => {
+    resetMc();
+    resetTf();
+    setFillAnswers({});
+    setFillChecked(false);
+    sessionStartTime.current = Date.now();
+    questionStartTimeRef.current = Date.now();
+  }, [gameMode, difficulty]);
 
   return (
     <div style={{ width: "100%", minHeight: "100vh", background: "linear-gradient(160deg, #020c1b 0%, #0a1628 20%, #0c2340 50%, #0a1628 100%)", color: "white", overflowX: "hidden" }}>
       
       {/* ── Top Navigation Bar ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 400, background: "rgba(2,12,27,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "10px 0" }}>
-        <div style={{ width: "1400px", maxWidth: "97%", margin: "0 auto", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ width: "1400px", maxWidth: "97%", margin: "0 auto", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", position: "relative" }}>
           <Link href="/Cacbaitoan10" style={{ textDecoration: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600, padding: "6px 12px", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, cursor: "pointer", transition: "all 0.2s", flexShrink: 0 }}
               onMouseEnter={e => { e.currentTarget.style.color = "white"; e.currentTarget.style.borderColor = "rgba(99,102,241,0.4)"; }}
@@ -371,6 +611,11 @@ export default function PremiumLessonEngine({
             ))}
           </div>
 
+          {/* Math Tools Button integrated inside navigation header bar */}
+          <div style={{ position: "relative", width: 120, height: 38, flexShrink: 0 }}>
+            <MathToolsPanel lang={lang} />
+          </div>
+
           {/* Bilingual toggle */}
           <div style={{ position: "relative", display: "flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: 3, borderRadius: 24, flexShrink: 0 }}>
             <motion.div
@@ -387,8 +632,6 @@ export default function PremiumLessonEngine({
               </button>
             ))}
           </div>
-
-         
         </div>
       </div>
 
@@ -437,6 +680,112 @@ export default function PremiumLessonEngine({
                 <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{t("Luyện tập tương tác — 3 thể loại", "Interactive practice — 3 formats")}</div>
               </div>
 
+              {/* Adaptive Difficulty Control Panel */}
+              <div style={{
+                padding: "16px 20px",
+                background: "rgba(255, 255, 255, 0.03)",
+                borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 12
+              }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255, 255, 255, 0.7)" }}>
+                    {t("Độ khó:", "Difficulty Mode:")}
+                  </span>
+                  <div style={{ display: "flex", background: "rgba(0, 0, 0, 0.3)", borderRadius: 20, padding: 3, border: "1px solid rgba(255,255,255,0.08)", position: "relative" }}>
+                    <button 
+                      onClick={() => setDifficultyMode("auto")}
+                      style={{
+                        background: difficultyMode === "auto" ? "rgba(99, 102, 241, 0.8)" : "transparent",
+                        color: difficultyMode === "auto" ? "white" : "rgba(255, 255, 255, 0.5)",
+                        border: "none", borderRadius: 16, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all 0.25s",
+                        boxShadow: difficultyMode === "auto" ? "0 0 10px rgba(99, 102, 241, 0.4)" : "none"
+                      }}
+                    >
+                      🤖 {t("Tự động", "Auto")}
+                    </button>
+                    <button 
+                      onClick={() => setDifficultyMode("manual")}
+                      style={{
+                        background: difficultyMode === "manual" ? "rgba(34, 211, 238, 0.8)" : "transparent",
+                        color: difficultyMode === "manual" ? "white" : "rgba(255, 255, 255, 0.5)",
+                        border: "none", borderRadius: 16, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all 0.25s",
+                        boxShadow: difficultyMode === "manual" ? "0 0 10px rgba(34, 211, 238, 0.4)" : "none"
+                      }}
+                    >
+                      🛠️ {t("Thủ công", "Manual")}
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6 }}>
+                  {[
+                    ["NB", "Nhận Biết", "Recall"],
+                    ["TH", "Thông Hiểu", "Understand"],
+                    ["VD", "Vận Dụng", "Apply"],
+                    ["VDC", "Vận Dụng Cao", "Analyze"]
+                  ].map(([level, labelVi, labelEn]) => {
+                    const isActive = difficulty === level;
+                    const isAuto = difficultyMode === "auto";
+                    
+                    let border = "1px solid rgba(255, 255, 255, 0.08)";
+                    let bg = "rgba(255, 255, 255, 0.02)";
+                    let color = "rgba(255, 255, 255, 0.4)";
+                    
+                    if (isActive) {
+                      if (isAuto) {
+                        border = "1.5px solid #6366f1";
+                        bg = "rgba(99, 102, 241, 0.15)";
+                        color = "#a5b4fc";
+                      } else {
+                        border = "1.5px solid #22d3ee";
+                        bg = "rgba(34, 211, 238, 0.15)";
+                        color = "#22d3ee";
+                      }
+                    } else if (!isAuto) {
+                      color = "rgba(255, 255, 255, 0.7)";
+                    }
+
+                    return (
+                      <button
+                        key={level}
+                        disabled={isAuto}
+                        onClick={() => setDifficulty(level)}
+                        style={{
+                          padding: "8px 4px",
+                          borderRadius: 8,
+                          border,
+                          background: bg,
+                          color,
+                          fontSize: 10,
+                          fontWeight: 800,
+                          cursor: isAuto ? "not-allowed" : "pointer",
+                          transition: "all 0.2s",
+                          textAlign: "center",
+                          boxShadow: isActive ? `0 0 12px ${isAuto ? "rgba(99, 102, 241, 0.3)" : "rgba(34, 211, 238, 0.3)"}` : "none",
+                          opacity: isAuto && !isActive ? 0.5 : 1
+                        }}
+                        title={t(labelVi, labelEn)}
+                      >
+                        <div style={{ fontSize: 11, marginBottom: 2 }}>{level}</div>
+                        <div style={{ fontSize: 8, fontWeight: 500, opacity: 0.7 }}>
+                          {t(labelVi.split(" ")[0], labelEn.substring(0, 5))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+                {difficultyMode === "auto" && (
+                  <div style={{ fontSize: 10.5, color: "rgba(99, 102, 241, 0.85)", display: "flex", alignItems: "center", gap: 5, padding: "2px 4px" }}>
+                    <span>⚡</span>
+                    <span>
+                      {t("Độ khó tự động điều chỉnh theo ELO của bạn.", "Difficulty automatically adjusts to your ELO.")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {/* Game Mode Selector */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
                 {[
@@ -464,22 +813,22 @@ export default function PremiumLessonEngine({
                   {/* ── MC ── */}
                   {gameMode === "mc" && (
                     <motion.div key="mc" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                      {mcQuestions.length === 0 ? (
-                        <div style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 0" }}>{t("Không có câu hỏi trắc nghiệm.", "No multiple choice questions.")}</div>
+                      {activeMcQuestions.length === 0 ? (
+                        <div style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 0" }}>{t("Không có câu hỏi trắc nghiệm ở độ khó này.", "No multiple choice questions for this difficulty.")}</div>
                       ) : !mcDone ? (
                         <>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{t("Câu", "Q")} {mcIndex + 1}/{mcQuestions.length}</span>
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{t("Câu", "Q")} {mcIndex + 1}/{activeMcQuestions.length}</span>
                             <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1" }}>{t("Điểm:", "Score:")} {mcScore}</span>
                           </div>
-                          <div style={{ fontSize: 15.5, fontWeight: 600, color: "white", lineHeight: 1.6, marginBottom: 18 }}>{mcQuestions[mcIndex].q}</div>
+                          <div style={{ fontSize: 15.5, fontWeight: 600, color: "white", lineHeight: 1.6, marginBottom: 18 }}>{activeMcQuestions[mcIndex].q}</div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                            {mcQuestions[mcIndex].options.map((opt, i) => {
+                            {activeMcQuestions[mcIndex].options.map((opt, i) => {
                               let bg = "rgba(255,255,255,0.05)";
                               let border = "rgba(255,255,255,0.08)";
                               let color = "rgba(255,255,255,0.8)";
                               if (mcSelected !== null) {
-                                if (i === mcQuestions[mcIndex].answer) {
+                                if (i === activeMcQuestions[mcIndex].answer) {
                                   bg = "rgba(5,150,105,0.18)";
                                   border = "rgba(5,150,105,0.5)";
                                   color = "#6ee7b7";
@@ -502,14 +851,14 @@ export default function PremiumLessonEngine({
                           {mcSelected !== null && (
                             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 14 }}>
                               <div style={{ padding: "11px 14px", background: "rgba(255,255,255,0.04)", borderRadius: 9, fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 12 }}>
-                                💬 {mcQuestions[mcIndex].explain}
+                                💬 {activeMcQuestions[mcIndex].explain}
                               </div>
-                              <MorphButton onClick={handleMcNext} label={mcIndex + 1 < mcQuestions.length ? t("Câu tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")} />
+                              <MorphButton onClick={handleMcNext} label={mcIndex + 1 < activeMcQuestions.length ? t("Câu tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")} />
                             </motion.div>
                           )}
                         </>
                       ) : (
-                        <ResultSummary items={mcResultItems} onReset={resetMc} t={t} scoreLabel={mcScore === mcQuestions.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : mcScore >= mcQuestions.length * 0.6 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} />
+                        <ResultSummary items={mcResultItems} onReset={resetMc} t={t} scoreLabel={mcScore === activeMcQuestions.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : mcScore >= activeMcQuestions.length * 0.6 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} />
                       )}
                     </motion.div>
                   )}
@@ -517,16 +866,16 @@ export default function PremiumLessonEngine({
                   {/* ── T/F ── */}
                   {gameMode === "tf" && (
                     <motion.div key="tf" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                      {tfCards.length === 0 ? (
-                        <div style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 0" }}>{t("Không có câu hỏi đúng/sai.", "No true/false questions.")}</div>
+                      {activeTfCards.length === 0 ? (
+                        <div style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 0" }}>{t("Không có câu hỏi đúng/sai ở độ khó này.", "No true/false questions for this difficulty.")}</div>
                       ) : !tfDone ? (
                         <>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
-                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{t("Thẻ", "Card")} {tfIndex + 1}/{tfCards.length}</span>
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{t("Thẻ", "Card")} {tfIndex + 1}/{activeTfCards.length}</span>
                             <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1" }}>{t("Điểm:", "Score:")} {tfScore}</span>
                           </div>
                           <div style={{ padding: "18px 16px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 16, textAlign: "center", fontSize: 15, lineHeight: 1.7, color: "rgba(255,255,255,0.85)" }}>
-                            {tfCards[tfIndex].stmt}
+                            {activeTfCards[tfIndex].stmt}
                           </div>
                           {!tfFlipped ? (
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -536,14 +885,14 @@ export default function PremiumLessonEngine({
                           ) : (
                             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                               <div style={{ padding: "11px 14px", background: "rgba(255,255,255,0.04)", borderRadius: 9, fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 12 }}>
-                                💬 {tfCards[tfIndex].explain}
+                                💬 {activeTfCards[tfIndex].explain}
                               </div>
-                              <MorphButton onClick={handleTfNext} label={tfIndex + 1 < tfCards.length ? t("Thẻ tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")} />
+                              <MorphButton onClick={handleTfNext} label={tfIndex + 1 < activeTfCards.length ? t("Thẻ tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")} />
                             </motion.div>
                           )}
                         </>
                       ) : (
-                        <ResultSummary items={tfResultItems} onReset={resetTf} t={t} scoreLabel={tfScore === tfCards.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : tfScore >= tfCards.length * 0.6 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} />
+                        <ResultSummary items={tfResultItems} onReset={resetTf} t={t} scoreLabel={tfScore === activeTfCards.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : tfScore >= activeTfCards.length * 0.6 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} />
                       )}
                     </motion.div>
                   )}
@@ -551,12 +900,12 @@ export default function PremiumLessonEngine({
                   {/* ── Fill ── */}
                   {gameMode === "fill" && (
                     <motion.div key="fill" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-                      {fillQuestions.length === 0 ? (
-                        <div style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 0" }}>{t("Không có câu hỏi điền từ.", "No fill in the blanks.")}</div>
+                      {activeFillQuestions.length === 0 ? (
+                        <div style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "20px 0" }}>{t("Không có câu hỏi điền từ ở độ khó này.", "No fill in the blanks for this difficulty.")}</div>
                       ) : !fillChecked ? (
                         <>
                           <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 18 }}>{t("Điền câu trả lời vào chỗ trống", "Fill in each blank")}</div>
-                          {fillQuestions.map((q, qi) => (
+                          {activeFillQuestions.map((q, qi) => (
                             <div key={q.id} style={{ marginBottom: 20 }}>
                               <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("Câu", "Q")} {qi + 1}</div>
                               <div style={{ fontSize: 14.5, lineHeight: 1.7, color: "rgba(255,255,255,0.8)", marginBottom: 9 }}>{q.template}</div>
@@ -578,10 +927,10 @@ export default function PremiumLessonEngine({
                               <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.3)", marginTop: 5 }}>💡 {q.hint}</div>
                             </div>
                           ))}
-                          <MorphButton onClick={() => setFillChecked(true)} label={t("Kiểm tra đáp án", "Check Answers")} />
+                          <MorphButton onClick={handleFillCheck} label={t("Kiểm tra đáp án", "Check Answers")} />
                         </>
                       ) : (
-                        <ResultSummary items={fillResultItems} onReset={() => { setFillAnswers({}); setFillChecked(false); }} t={t} scoreLabel={fillScore === fillQuestions.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : fillScore >= fillQuestions.length * 0.6 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} />
+                        <ResultSummary items={fillResultItems} onReset={() => { setFillAnswers({}); setFillChecked(false); }} t={t} scoreLabel={fillScore === activeFillQuestions.length ? t("Xuất sắc! 🎉", "Perfect! 🎉") : fillScore >= activeFillQuestions.length * 0.6 ? t("Tốt lắm! 👍", "Well done! 👍") : t("Cố gắng thêm! 💪", "Keep going! 💪")} />
                       )}
                     </motion.div>
                   )}
@@ -591,6 +940,8 @@ export default function PremiumLessonEngine({
           </section>
         </div>
       </div>
+
+      {showHUD && <GamificationHUD onClose={closeHUD} />}
 
       <DuoTranslate />
 
