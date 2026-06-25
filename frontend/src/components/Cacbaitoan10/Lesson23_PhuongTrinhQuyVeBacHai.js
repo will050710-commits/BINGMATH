@@ -234,7 +234,7 @@ export default function Lesson23_PhuongTrinhQuyVeBacHai() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="0_fSIsZHeZk"
+            videoId="MQtsRYPx3v0"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
@@ -300,7 +300,7 @@ export default function Lesson23_PhuongTrinhQuyVeBacHai() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="0_fSIsZHeZk"
+      videoId="MQtsRYPx3v0"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

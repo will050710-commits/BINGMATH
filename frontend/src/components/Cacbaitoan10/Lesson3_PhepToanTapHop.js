@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/static-components */
+﻿/* eslint-disable react-hooks/static-components */
 "use client";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -283,7 +283,7 @@ export default function Lesson3_PhepToanTapHop() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="jafz_fX4X04"
+              videoId="sBvaPopWOmQ"
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
@@ -394,8 +394,7 @@ export default function Lesson3_PhepToanTapHop() {
             ].map(({ id, q, a }) => (
               <article key={id}>
                 <div style={{ padding: "16px 20px", borderRadius: "10px 10px 0 0", background: "rgba(255, 255, 255, 0.04)", border: "1px solid rgba(255, 255, 255, 0.08)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                  <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>📝 {t("Bài tập","Exercise")}</div>
-                  <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14 }}>{t("Toán 10","Grade 10")}</div>
+                  <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 4 }}>📝 {t("Bài tập","Exercise")}</div>                  <div style={{ color: "rgba(255, 255, 255, 0.5)", fontSize: 14 }}>{t("Toán 10","Grade 10")}</div>
                   <div style={{ fontSize: 15, lineHeight: 1.7, marginTop: 10, whiteSpace: "pre-wrap" }}>{q}</div>
                 </div>
                 <button onClick={() => toggleAnswer(id)} style={{ display: "block", width: "100%", padding: "12px 20px", background: "rgba(0, 0, 0, 0.3)", border: "1px solid rgba(255, 255, 255, 0.1)", color: "white", border: "none", fontWeight: 600, fontSize: 15, cursor: "pointer", textAlign: "left" }}>
@@ -419,7 +418,7 @@ export default function Lesson3_PhepToanTapHop() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="jafz_fX4X04"
+      videoId="sBvaPopWOmQ"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

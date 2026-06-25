@@ -3,6 +3,57 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import styles from "./DuoTranslate.module.css";
 import { createSession, translateText } from "./duoServer";
+import katex from "katex";
+import "katex/dist/katex.min.css";
+import MathGraphSVG from "../Cacbaitoan10/MathGraphSVG";
+
+// LaTeX parsing utility
+function parseMathAndText(text) {
+  if (!text) return [];
+  const tokens = [];
+  let index = 0;
+  
+  while (index < text.length) {
+    const nextBlock = text.indexOf("$$", index);
+    const nextBlockBracket = text.indexOf("\\[", index);
+    const nextInline = text.indexOf("$", index);
+    const nextInlineParen = text.indexOf("\\(", index);
+    
+    const finders = [
+      { type: "block_dollar", index: nextBlock, startLen: 2, endDelim: "$$" },
+      { type: "block_bracket", index: nextBlockBracket, startLen: 2, endDelim: "\\]" },
+      { type: "inline_dollar", index: nextInline, startLen: 1, endDelim: "$" },
+      { type: "inline_paren", index: nextInlineParen, startLen: 2, endDelim: "\\)" }
+    ].filter(f => f.index !== -1).sort((a, b) => a.index - b.index);
+    
+    if (finders.length === 0) {
+      tokens.push({ type: "text", content: text.substring(index) });
+      break;
+    }
+    
+    const first = finders[0];
+    
+    if (first.index > index) {
+      tokens.push({ type: "text", content: text.substring(index, first.index) });
+    }
+    
+    const searchStart = first.index + first.startLen;
+    const endIdx = text.indexOf(first.endDelim, searchStart);
+    
+    if (endIdx === -1) {
+      tokens.push({ type: "text", content: text.substring(first.index) });
+      break;
+    }
+    
+    const mathContent = text.substring(searchStart, endIdx);
+    const isBlock = first.type.startsWith("block");
+    tokens.push({ type: "math", content: mathContent, isBlock });
+    
+    index = endIdx + first.endDelim.length;
+  }
+  
+  return tokens;
+}
 
 /**
  * DuoTranslate
@@ -17,6 +68,8 @@ export default function DuoTranslate({ children }) {
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
+  const [showTheory, setShowTheory] = useState(false);
+  const [theoryLang, setTheoryLang] = useState("vi");
   const panelRef = useRef(null);
   const lastTranslatedRef = useRef("");
   const debounceRef = useRef(null);
@@ -72,6 +125,7 @@ export default function DuoTranslate({ children }) {
     setIsOpen(true);
     setLoading(true);
     setResults(null);
+    setShowTheory(false);
     try {
       const parsed = await translateText(text);
 
@@ -93,6 +147,10 @@ export default function DuoTranslate({ children }) {
       }
 
       setResults(parsed);
+      // Auto-detect best theory lang
+      if (parsed && !parsed.error) {
+        setTheoryLang(parsed.source_lang === "vi" ? "en" : "vi");
+      }
     } catch (e) {
       setResults({ error: true, raw: `Unexpected error: ${e?.message || e}\n\nMake sure main.py is running.` });
     } finally {
@@ -121,6 +179,33 @@ export default function DuoTranslate({ children }) {
   };
   const typeColor = (t) => typeColors[t?.toLowerCase()] || "#9ca3af";
 
+  function renderMathText(text) {
+    if (!text) return null;
+    const tokens = parseMathAndText(text);
+    return tokens.map((token, idx) => {
+      if (token.type === "text") {
+        return <span key={idx}>{token.content}</span>;
+      }
+      try {
+        const html = katex.renderToString(token.content.trim(), {
+          displayMode: token.isBlock,
+          throwOnError: false,
+        });
+        return (
+          <span
+            key={idx}
+            dangerouslySetInnerHTML={{ __html: html }}
+            style={token.isBlock ? { display: "block", margin: "10px 0", textAlign: "center" } : {}}
+          />
+        );
+      } catch {
+        return <code key={idx}>{token.content}</code>;
+      }
+    });
+  }
+
+  const isEnToVi = results?.source_lang ? results.source_lang === "en" : true;
+
   return (
     <div className={styles.root}>
       <div className={styles.content}>{children}</div>
@@ -135,7 +220,7 @@ export default function DuoTranslate({ children }) {
             <span className={styles.headerIcon}>🔤</span>
             <div>
               <div className={styles.headerTitle}>DuoTranslate</div>
-              <div className={styles.headerSub}>EN → VI</div>
+              <div className={styles.headerSub}>{isEnToVi ? "EN ➔ VI" : "VI ➔ EN"}</div>
             </div>
           </div>
           <button className={styles.closeBtn} onClick={handleClose}>✕</button>
@@ -173,14 +258,60 @@ export default function DuoTranslate({ children }) {
             <div className={styles.results}>
 
               <div className={styles.translationCard}>
-                <div className={styles.cardLabel}>🇻🇳 Bản dịch</div>
+                <div className={styles.cardLabel}>{isEnToVi ? "🇻🇳 Bản dịch" : "🇬🇧 Translation"}</div>
                 <p className={styles.translationText}>{results.translation}</p>
               </div>
 
               {results.summary && (
                 <div className={styles.summaryCard}>
-                  <div className={styles.cardLabel}>💡 Ghi chú</div>
+                  <div className={styles.cardLabel}>{isEnToVi ? "💡 Ghi chú" : "💡 Conceptual Note"}</div>
                   <p className={styles.summaryText}>{results.summary}</p>
+                </div>
+              )}
+
+              {/* Theory Expand Button */}
+              {results.theory && (
+                <div className={styles.theoryAction}>
+                  <button
+                    className={styles.moreBtn}
+                    onClick={() => setShowTheory(p => !p)}
+                  >
+                    {showTheory ? "▲ Thu gọn lý thuyết" : "👁️ Xem thêm lý thuyết & đồ thị"}
+                  </button>
+                </div>
+              )}
+
+              {/* Theory Panel */}
+              {showTheory && results.theory && (
+                <div className={styles.theoryPanel}>
+                  <div className={styles.theoryHeader}>
+                    <div className={styles.theoryTitle}>{theoryLang === "vi" ? "📘 Lý thuyết chi tiết" : "📘 Detailed Theory"}</div>
+                    <div className={styles.theoryLangSelector}>
+                      <button
+                        className={`${styles.langBtn} ${theoryLang === "vi" ? styles.langBtnActive : ""}`}
+                        onClick={() => setTheoryLang("vi")}
+                      >
+                        🇻🇳 VI
+                      </button>
+                      <button
+                        className={`${styles.langBtn} ${theoryLang === "en" ? styles.langBtnActive : ""}`}
+                        onClick={() => setTheoryLang("en")}
+                      >
+                        🇬🇧 EN
+                      </button>
+                    </div>
+                  </div>
+                  <div className={styles.theoryBody}>
+                    {renderMathText(results.theory[theoryLang] || results.theory.vi || "")}
+                  </div>
+                  {results.diagram_type && results.diagram_type !== "default" && (
+                    <div className={styles.diagramContainer}>
+                      <div className={styles.diagramLabel}>{theoryLang === "vi" ? "📈 Minh họa trực quan:" : "📈 Visual Illustration:"}</div>
+                      <div className={styles.diagramBox}>
+                        <MathGraphSVG type={results.diagram_type} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -209,7 +340,7 @@ export default function DuoTranslate({ children }) {
           {!loading && !results && (
             <div className={styles.hintState}>
               <span>🖱️</span>
-              <p>Bôi đen bất kỳ đoạn văn nào để dịch sang tiếng Việt</p>
+              <p>Bôi đen bất kỳ đoạn văn nào để dịch song ngữ</p>
             </div>
           )}
 

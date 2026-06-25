@@ -235,7 +235,7 @@ export default function Lesson14_TongHieuVecto() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="YmXbE0EUTG4"
+            videoId="fNk_zzaMoSs"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
@@ -303,7 +303,7 @@ export default function Lesson14_TongHieuVecto() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="YmXbE0EUTG4"
+      videoId="fNk_zzaMoSs"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

@@ -235,7 +235,7 @@ export default function Lesson16_TichVoHuong() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="Kz_Mre-X0T0"
+            videoId="LyGKycYT2v0"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ 3Blue1Brown (CC BY)", "Video by 3Blue1Brown (CC BY)")}
@@ -311,7 +311,7 @@ export default function Lesson16_TichVoHuong() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="Kz_Mre-X0T0"
+      videoId="LyGKycYT2v0"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

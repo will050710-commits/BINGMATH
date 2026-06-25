@@ -47,6 +47,49 @@ export default function StreakBar() {
     if (ready && user) loadStats();
   }, [ready, user, loadStats]);
 
+  const handleBuyFreeze = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!gami) return;
+    if (gami.total_xp < 100) {
+      alert("Bạn cần tối thiểu 100 XP để mua Đóng băng Streak!");
+      return;
+    }
+    const confirmBuy = window.confirm("Bạn có muốn đổi 100 XP lấy 1 lượt Đóng băng Streak (🧊) không?");
+    if (!confirmBuy) return;
+
+    try {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_BASE}/api/gami/buy-freeze`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ cost: 100 })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        alert("Mua Đóng băng Streak thành công! 🧊");
+        setGami(prev => ({
+          ...prev,
+          freeze_count: data.freeze_count,
+          total_xp: data.total_xp,
+          level: data.level
+        }));
+        sessionStorage.removeItem(CACHE_KEY);
+      } else {
+        const errData = await res.json();
+        alert(errData.detail || "Không thể mua Đóng băng Streak.");
+      }
+    } catch (err) {
+      console.error("Buy freeze error:", err);
+      alert("Có lỗi xảy ra khi thực hiện mua.");
+    }
+  };
+
   if (!user || !gami) return null;
 
   const xpThresholds = [0,100,250,450,700,1000,1400,1900,2500,3200,4000];
@@ -97,17 +140,34 @@ export default function StreakBar() {
         </div>
 
         {/* Freeze */}
-        {gami.freeze_count > 0 && (
-          <>
-            <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.08)" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ fontSize: 14 }}>🧊</span>
-              <span style={{ fontSize: 12, color: "#7dd3fc", fontWeight: 700 }}>
-                {gami.freeze_count}
-              </span>
-            </div>
-          </>
-        )}
+        <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.08)" }} />
+        <div 
+          onClick={handleBuyFreeze}
+          title="Click để đổi 100 XP lấy 1 Đóng băng Streak"
+          style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: 4,
+            padding: "2px 6px",
+            borderRadius: 6,
+            background: "rgba(125,211,252,0.05)",
+            border: "1px solid rgba(125,211,252,0.15)",
+            transition: "all 0.2s"
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = "rgba(125,211,252,0.15)";
+            e.currentTarget.style.borderColor = "rgba(125,211,252,0.4)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = "rgba(125,211,252,0.05)";
+            e.currentTarget.style.borderColor = "rgba(125,211,252,0.15)";
+          }}
+        >
+          <span style={{ fontSize: 14 }}>🧊</span>
+          <span style={{ fontSize: 12, color: "#7dd3fc", fontWeight: 700 }}>
+            {gami.freeze_count || 0}
+          </span>
+        </div>
       </div>
     </Link>
   );

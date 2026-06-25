@@ -234,7 +234,7 @@ export default function Lesson25_QuyTacCongNhan() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="Uscf6N2N3_0"
+            videoId="3_otNr9kRuY"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Khan Academy India (YouTube)", "Video by Khan Academy India (YouTube)")}
@@ -283,7 +283,7 @@ export default function Lesson25_QuyTacCongNhan() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="Uscf6N2N3_0"
+      videoId="3_otNr9kRuY"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

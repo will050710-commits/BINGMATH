@@ -522,6 +522,8 @@ export default function MathMapCreator() {
     reader.readAsDataURL(file);
   };
 
+  const [aiParsing, setAiParsing] = useState(false);
+
   const handleImportMap = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -591,7 +593,7 @@ export default function MathMapCreator() {
         });
 
         setQuestions(mappedQuestions);
-        
+
         if (rawData.bgm === "custom" && rawData.bgm_url) {
           setCustomBgmData(rawData.bgm_url);
           setCustomBgmName(rawData.customBgmName || "custom.mp3");
@@ -604,6 +606,80 @@ export default function MathMapCreator() {
         alert(`Đã nhập thành công thông tin & ${mappedQuestions.length} câu hỏi của MathMap: "${rawData.title}"!`);
       } catch (err) {
         alert("Lỗi khi đọc file: " + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleAIImportMap = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAiParsing(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const textContent = event.target.result;
+      try {
+        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://duomath.onrender.com";
+        const res = await fetch(`${API_BASE}/api/mathmap/parse-file`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: textContent }),
+        });
+        if (!res.ok) {
+          throw new Error(`Server returned HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        if (data.error) {
+          throw new Error(data.raw || "Lỗi bất thường từ AI.");
+        }
+
+        // Set metadata
+        setMetadata({
+          title: data.title || "",
+          title_en: data.title_en || "",
+          grade: data.grade || "Lớp 11",
+          bgm: "dramatic01",
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          description: data.description || "",
+        });
+
+        // Set questions
+        const mappedQuestions = (data.questions || []).map((q, idx) => {
+          let opts = [];
+          if (Array.isArray(q.options)) {
+            opts = q.options.map((opt, i) => ({
+              id: opt.id || ['a', 'b', 'c', 'd'][i],
+              text_vi: opt.text_vi || opt.text || "",
+              text_en: opt.text_en || "",
+            }));
+          }
+          while (opts.length < 4) {
+            const letter = ['a', 'b', 'c', 'd'][opts.length];
+            opts.push({ id: letter, text_vi: "", text_en: "" });
+          }
+
+          return {
+            id: q.id || `q-${Date.now()}-${idx}`,
+            type: q.type || "multiple_choice",
+            order: q.order || (idx + 1),
+            content_vi: q.content_vi || "",
+            content_en: q.content_en || "",
+            options: opts,
+            correct_answer: q.correct_answer || 'a',
+            explanation_vi: q.explanation_vi || "",
+            points: q.points || 100,
+            time_seconds: q.time_seconds || 30,
+          };
+        });
+
+        setQuestions(mappedQuestions);
+        alert(`AI đã chuyển hóa thành công ${mappedQuestions.length} câu hỏi từ tệp tin!`);
+      } catch (err) {
+        alert("Lỗi phân tích bằng AI: " + err.message);
+      } finally {
+        setAiParsing(false);
+        e.target.value = "";
       }
     };
     reader.readAsText(file);
@@ -831,7 +907,7 @@ export default function MathMapCreator() {
                   <h2 style={{ fontSize: 18, fontWeight: 700, color: "white" }}>
                     📋 Thông tin MathMap
                   </h2>
-                  <div>
+                  <div style={{ display: "flex", gap: 8 }}>
                     <input
                       type="file"
                       accept=".json"
@@ -851,7 +927,42 @@ export default function MathMapCreator() {
                     >
                       📥 Nhập từ file JSON
                     </button>
+                    <input
+                      type="file"
+                      accept=".txt,.md"
+                      id="ai-import-map-file-creator"
+                      onChange={handleAIImportMap}
+                      style={{ display: "none" }}
+                    />
+                    <button
+                      type="button"
+                      disabled={aiParsing}
+                      onClick={() => document.getElementById("ai-import-map-file-creator").click()}
+                      style={{
+                        padding: "6px 12px", borderRadius: 8, fontSize: 12,
+                        background: "rgba(6, 182, 212, 0.15)",
+                        border: "1px solid rgba(6, 182, 212, 0.3)",
+                        color: "#22d3ee", cursor: "pointer", fontWeight: 700,
+                        opacity: aiParsing ? 0.6 : 1,
+                      }}
+                    >
+                      {aiParsing ? "⌛ Đang phân tích..." : "🧠 Nhập bằng AI (.txt, .md)"}
+                    </button>
                   </div>
+                </div>
+
+                {/* AI Formatting guidelines */}
+                <div style={{
+                  padding: "12px 16px", borderRadius: 10,
+                  background: "rgba(6, 182, 212, 0.05)",
+                  border: "1px solid rgba(6, 182, 212, 0.18)",
+                  fontSize: "12.5px", lineHeight: "1.65", color: "rgba(255,255,255,0.75)"
+                }}>
+                  💡 <strong>Quy tắc soạn file để AI tự động chuyển hóa:</strong><br />
+                  1. Mỗi câu hỏi bắt đầu bằng: <code>Câu X:</code> hoặc <code>Question X:</code><br />
+                  2. Đáp án trắc nghiệm trên dòng mới: <code>A. [Lựa chọn 1]</code>, <code>B. ...</code>, etc.<br />
+                  3. Đáp án đúng ở cuối câu ghi rõ: <code>Đáp án: A</code> hoặc <code>Answer: A</code><br />
+                  4. Có thể thêm lời giải: <code>Giải thích: [Lý giải...]</code>. Các công thức toán dùng <code>$ ... $</code>.
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>

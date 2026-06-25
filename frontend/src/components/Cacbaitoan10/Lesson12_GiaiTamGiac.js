@@ -261,7 +261,7 @@ export default function Lesson12_GiaiTamGiac() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="tIen_7vX-C8"
+            videoId="VjmFKle7xIw"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
@@ -390,7 +390,7 @@ export default function Lesson12_GiaiTamGiac() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="tIen_7vX-C8"
+      videoId="VjmFKle7xIw"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

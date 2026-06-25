@@ -210,7 +210,7 @@ export default function Lesson28_OnTapChuong8() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="XqQTXW7SKf0"
+            videoId="HDLBCv4yyIs"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
@@ -236,7 +236,7 @@ export default function Lesson28_OnTapChuong8() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="XqQTXW7SKf0"
+      videoId="HDLBCv4yyIs"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

@@ -268,7 +268,7 @@ export default function Lesson19_HinhHocDoLuong2() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="uX3B6t98fB0"
+            videoId="LoaBd-sPzkU"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
@@ -403,7 +403,7 @@ export default function Lesson19_HinhHocDoLuong2() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="uX3B6t98fB0"
+      videoId="LoaBd-sPzkU"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

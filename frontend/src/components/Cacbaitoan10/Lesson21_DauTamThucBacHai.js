@@ -254,7 +254,7 @@ export default function Lesson21_DauTamThucBacHai() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="pYgP8v6DGl4"
+            videoId="xdiBjypYFRQ"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ NancyPi (YouTube)", "Video by NancyPi (YouTube)")}
@@ -360,7 +360,7 @@ export default function Lesson21_DauTamThucBacHai() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="pYgP8v6DGl4"
+      videoId="xdiBjypYFRQ"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

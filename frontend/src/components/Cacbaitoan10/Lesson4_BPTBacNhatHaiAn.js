@@ -291,7 +291,7 @@ export default function Lesson4_BPTBacNhatHaiAn() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="AM7V0Xv928Y"
+              videoId="unSBFwK881s"
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
@@ -457,7 +457,7 @@ export default function Lesson4_BPTBacNhatHaiAn() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="AM7V0Xv928Y"
+      videoId="unSBFwK881s"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

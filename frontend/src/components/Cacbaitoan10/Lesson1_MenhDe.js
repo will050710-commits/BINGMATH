@@ -281,7 +281,7 @@ export default function Lesson1_MenhDe() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="Vzre276y-R0"
+              videoId="sOeldimAvnM"
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
@@ -472,7 +472,7 @@ export default function Lesson1_MenhDe() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="Vzre276y-R0"
+      videoId="sOeldimAvnM"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

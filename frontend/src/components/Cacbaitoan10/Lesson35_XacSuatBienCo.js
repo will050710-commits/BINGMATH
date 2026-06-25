@@ -227,7 +227,7 @@ export default function Lesson35_XacSuatBienCo() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="AY3O_q2139E"
+            videoId="q0P9xTHbSus"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
@@ -271,7 +271,7 @@ export default function Lesson35_XacSuatBienCo() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="AY3O_q2139E"
+      videoId="q0P9xTHbSus"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

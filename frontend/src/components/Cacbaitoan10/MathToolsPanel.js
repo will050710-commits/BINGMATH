@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 
 const TOOLS = [
   {
@@ -42,11 +43,16 @@ const TOOLS = [
 ];
 
 export default function MathToolsPanel({ lang = "vi" }) {
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [activeTool, setActiveTool] = useState(TOOLS[0].id);
   const [hovered, setHovered] = useState(false);
   const t = (vi, en) => (lang === "vi" ? vi : en);
   const selectedTool = TOOLS.find((tool) => tool.id === activeTool) || TOOLS[0];
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const S = {
     trigger: {
@@ -146,9 +152,20 @@ export default function MathToolsPanel({ lang = "vi" }) {
       display: "block",
       background: "rgba(255, 255, 255, 0.04)",
     },
+    footer: {
+      padding: "10px 16px",
+      borderTop: "1px solid #e6eef0",
+      background: "#f7fbfc",
+      fontSize: 12,
+      color: "#6b7280",
+      lineHeight: 1.5,
+      textAlign: "center",
+    },
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <button
         type="button"
@@ -198,9 +215,16 @@ export default function MathToolsPanel({ lang = "vi" }) {
                 allow="fullscreen"
               />
             </div>
+            <div style={S.footer}>
+              {t(
+                "💡 Mẹo: Nếu công cụ GeoGebra không hiển thị, có thể do nhà mạng chặn DNS. Hãy đổi DNS máy tính sang Google (8.8.8.8) hoặc Cloudflare (1.1.1.1) để khắc phục.",
+                "💡 Tip: If the GeoGebra tool fails to load, it might be due to DNS blocking by your ISP. Switch your DNS to Google (8.8.8.8) or Cloudflare (1.1.1.1) to resolve this."
+              )}
+            </div>
           </aside>
         </>
       )}
-    </>
+    </>,
+    document.body
   );
 }

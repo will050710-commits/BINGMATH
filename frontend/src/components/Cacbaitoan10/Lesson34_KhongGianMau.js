@@ -227,7 +227,7 @@ export default function Lesson34_KhongGianMau() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="3g83I7unRcs"
+            videoId="KFgvOQtH0Z0"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Khan Academy (YouTube)", "Video by Khan Academy (YouTube)")}
@@ -276,7 +276,7 @@ export default function Lesson34_KhongGianMau() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="3g83I7unRcs"
+      videoId="KFgvOQtH0Z0"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

@@ -233,7 +233,7 @@ export default function Lesson27_NhiThucNewton() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="Y7Z6S7OuhIs"
+            videoId="iPwrDWQ7hPc"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ NancyPi (YouTube)", "Video by NancyPi (YouTube)")}
@@ -299,7 +299,7 @@ export default function Lesson27_NhiThucNewton() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="Y7Z6S7OuhIs"
+      videoId="iPwrDWQ7hPc"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

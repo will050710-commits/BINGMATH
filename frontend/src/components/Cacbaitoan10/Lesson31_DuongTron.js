@@ -227,7 +227,7 @@ export default function Lesson31_DuongTron() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="6r1f5I676Ew"
+            videoId="iX5UgArMyiI"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ NancyPi (YouTube)", "Video by NancyPi (YouTube)")}
@@ -272,7 +272,7 @@ export default function Lesson31_DuongTron() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="6r1f5I676Ew"
+      videoId="iX5UgArMyiI"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

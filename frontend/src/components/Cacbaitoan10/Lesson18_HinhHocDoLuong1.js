@@ -260,7 +260,7 @@ export default function Lesson18_HinhHocDoLuong1() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="5UfCOfG9I1k"
+            videoId="sZMezOCZr40"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
@@ -405,7 +405,7 @@ export default function Lesson18_HinhHocDoLuong1() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="5UfCOfG9I1k"
+      videoId="sZMezOCZr40"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

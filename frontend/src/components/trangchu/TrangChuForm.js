@@ -8,6 +8,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
 import { useMathMapStore } from "@/context/MathMapStore";
+import MasteryRings from "./MasteryRings";
+import KnowledgeAlbum from "../stats/KnowledgeAlbum";
+import katex from "katex";
+import "katex/dist/katex.min.css";
 
 // Dynamically import EditProfileModal to reduce initial JS bundle size
 const EditProfileModal = dynamic(() => import("./EditProfileModal"), {
@@ -345,6 +349,95 @@ export default function TrangChuForm() {
   const [showProfile, setShowProfile] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [mathSymbols] = useState(STATIC_MATH_SYMBOLS);
+
+  const [showAlbumModal, setShowAlbumModal] = useState(false);
+  const [showGachaModal, setShowGachaModal] = useState(false);
+  const [isOpeningChest, setIsOpeningChest] = useState(false);
+  const [gachaRewardCard, setGachaRewardCard] = useState(null);
+
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [leaderboardFilter, setLeaderboardFilter] = useState("all"); // "all" | "school" | "grade"
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
+  const fetchLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    try {
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      let url = `${API_BASE}/api/leaderboard`;
+      const queryParams = [];
+      if (leaderboardFilter === "school" && user?.school) {
+        queryParams.push(`school=${encodeURIComponent(user.school)}`);
+      } else if (leaderboardFilter === "grade" && user?.grade) {
+        queryParams.push(`grade=${encodeURIComponent(user.grade)}`);
+      }
+      if (queryParams.length > 0) {
+        url += `?${queryParams.join("&")}`;
+      }
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setLeaderboardData(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch leaderboard:", err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [leaderboardFilter, user]);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, [fetchLeaderboard]);
+
+  const handleOpenGacha = async () => {
+    if (!user) {
+      alert("Vui lòng đăng nhập để mở rương tri thức!");
+      return;
+    }
+    const currentXp = competitiveStats?.xp || 0;
+    if (currentXp < 50) {
+      alert("Bạn cần tối thiểu 50 XP để mở rương tri thức!");
+      return;
+    }
+
+    setIsOpeningChest(true);
+    setShowGachaModal(true);
+    setGachaRewardCard(null);
+
+    try {
+      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
+      const headers = { "Content-Type": "application/json" };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const res = await fetch(`${API_BASE}/api/gacha/open`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ cost: 50 })
+      });
+
+      // Shaking animation delay
+      await new Promise(r => setTimeout(r, 1600));
+
+      if (res.ok) {
+        const data = await res.json();
+        setGachaRewardCard(data.card);
+        // Reload page data or notify user to update XP UI
+        // We can reload after closing modal to sync the client state cleanly.
+      } else {
+        const err = await res.json();
+        alert(err.detail || "Có lỗi xảy ra khi mở rương.");
+        setShowGachaModal(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Không thể kết nối đến máy chủ.");
+      setShowGachaModal(false);
+    } finally {
+      setIsOpeningChest(false);
+    }
+  };
 
   // Reveal animations on scroll
   useEffect(() => {
@@ -802,6 +895,201 @@ export default function TrangChuForm() {
             </div>
           </div>
 
+          {/* ═══════ GAMIFICATION HUB ═══════ */}
+          {user && (
+            <div className="reveal visible" style={{ marginTop: 20, marginBottom: 50 }}>
+              <div style={{ textAlign: "center", marginBottom: 30 }}>
+                <h2 style={{ fontSize: 32, fontWeight: 900, marginBottom: 8, letterSpacing: 0.5 }}>
+                  Thử Thách & Thành Tích Hàng Ngày
+                </h2>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16 }}>
+                  Hoàn thành chỉ tiêu, mở khóa thẻ bài công thức và thăng hạng cùng trường lớp!
+                </p>
+              </div>
+
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))",
+                gap: 24,
+                alignItems: "stretch"
+              }}>
+                {/* 1. Daily Rings */}
+                <div style={{
+                  background: "rgba(8, 18, 42, 0.6)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 24,
+                  padding: 24,
+                  backdropFilter: "blur(16px)",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  alignItems: "center"
+                }}>
+                  <MasteryRings />
+                </div>
+
+                {/* 2. Gacha Chest */}
+                <div style={{
+                  background: "rgba(8, 18, 42, 0.6)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 24,
+                  padding: 28,
+                  backdropFilter: "blur(16px)",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  textAlign: "center",
+                  position: "relative"
+                }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "white" }}>
+                      📦 Rương Công Thức
+                    </h3>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>
+                      Tích lũy XP từ bài tập để mở rương nhận thẻ bài toán học ngẫu nhiên.
+                    </p>
+                  </div>
+
+                  <div style={{ margin: "24px 0", position: "relative" }}>
+                    <div style={{
+                      position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+                      width: 120, height: 120, borderRadius: "50%",
+                      background: "radial-gradient(circle, rgba(0, 210, 255, 0.25) 0%, transparent 70%)",
+                      animation: "ringPulse 3s ease-in-out infinite",
+                      zIndex: 0
+                    }} />
+                    <span style={{ fontSize: 72, display: "inline-block", cursor: "pointer", zIndex: 1, position: "relative", animation: "badgeFloat 4s ease-in-out infinite" }} onClick={handleOpenGacha}>
+                      🎁
+                    </span>
+                  </div>
+
+                  <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+                    <button
+                      onClick={handleOpenGacha}
+                      style={{
+                        width: "100%", padding: "12px 0", borderRadius: 12,
+                        background: "linear-gradient(135deg, #00d4ff 0%, #0072ff 100%)",
+                        color: "white", fontSize: 14, fontWeight: 800, border: "none",
+                        cursor: "pointer", boxShadow: "0 4px 15px rgba(0,212,255,0.3)",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                      onMouseLeave={e => e.currentTarget.style.transform = "none"}
+                    >
+                      🎁 Mở Rương Tri Thức (50 XP)
+                    </button>
+
+                    <button
+                      onClick={() => setShowAlbumModal(true)}
+                      style={{
+                        width: "100%", padding: "11px 0", borderRadius: 12,
+                        background: "rgba(255,255,255,0.04)",
+                        color: "#38bdf8", fontSize: 13.5, fontWeight: 700,
+                        border: "1px solid rgba(56,189,248,0.2)",
+                        cursor: "pointer", transition: "all 0.2s"
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.1)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                    >
+                      🎴 Xem Album Thẻ Bài
+                    </button>
+                  </div>
+                </div>
+
+                {/* 3. Leaderboard */}
+                <div style={{
+                  background: "rgba(8, 18, 42, 0.6)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: 24,
+                  padding: 24,
+                  backdropFilter: "blur(16px)",
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
+                  display: "flex",
+                  flexDirection: "column"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                    <h3 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "white" }}>
+                      🏆 Bảng Xếp Hạng
+                    </h3>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {[
+                        { id: "all", label: "Toàn cầu" },
+                        { id: "school", label: "Trường" },
+                        { id: "grade", label: "Lớp" }
+                      ].map(f => {
+                        const active = leaderboardFilter === f.id;
+                        return (
+                          <button
+                            key={f.id}
+                            onClick={() => setLeaderboardFilter(f.id)}
+                            style={{
+                              padding: "4px 8px", borderRadius: 6, fontSize: 11,
+                              fontWeight: active ? 700 : 400,
+                              background: active ? "rgba(0, 212, 255, 0.15)" : "rgba(255,255,255,0.02)",
+                              border: active ? "1px solid rgba(0, 212, 255, 0.3)" : "1px solid rgba(255,255,255,0.06)",
+                              color: active ? "#00d4ff" : "rgba(255,255,255,0.5)",
+                              cursor: "pointer", transition: "all 0.15s"
+                            }}
+                          >
+                            {f.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, overflowY: "auto", maxHeight: 220 }}>
+                    {leaderboardLoading ? (
+                      <div style={{ color: "rgba(255,255,255,0.4)", textAlign: "center", padding: "40px 0", fontSize: 13 }}>
+                        Đang tải xếp hạng...
+                      </div>
+                    ) : leaderboardData.length === 0 ? (
+                      <div style={{ color: "rgba(255,255,255,0.3)", textAlign: "center", padding: "40px 0", fontSize: 13 }}>
+                        {leaderboardFilter === "school" && !user?.school ? "Hãy cập nhật trường trong hồ sơ!" : "Chưa có dữ liệu."}
+                      </div>
+                    ) : (
+                      leaderboardData.slice(0, 5).map((entry, idx) => {
+                        const isMe = entry.user_id === user.id;
+                        const medal = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : null;
+                        return (
+                          <div key={idx} style={{
+                            display: "flex", alignItems: "center", gap: 10,
+                            padding: "8px 12px", borderRadius: 10,
+                            background: isMe ? "rgba(99,102,241,0.15)" : "rgba(255,255,255,0.02)",
+                            border: isMe ? "1px solid rgba(99,102,241,0.3)" : "1px solid rgba(255,255,255,0.04)"
+                          }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, width: 20, color: "rgba(255,255,255,0.5)" }}>
+                              {medal || `#${idx + 1}`}
+                            </span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 700, color: isMe ? "#a78bfa" : "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {entry.username} {isMe && "(Bạn)"}
+                              </div>
+                              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
+                                {entry.school ? `${entry.school} • ` : ""}Lớp {entry.grade || "10"}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <span style={{ fontSize: 13, fontWeight: 800, color: "#00d4ff" }}>
+                                {entry.xp?.toLocaleString()} XP
+                              </span>
+                              <div style={{ fontSize: 9.5, color: "#f97316", fontWeight: 700 }}>
+                                🔥 {entry.current_streak} ngày
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* ═══════ FEATURE SWIPE CAROUSEL ═══════ */}
           <FeatureSwipeCarousel features={features} router={router} />
 
@@ -921,6 +1209,148 @@ export default function TrangChuForm() {
 
         </div>
       </div>
+
+      {/* 🎴 Album Modals & overlays */}
+      <AnimatePresence>
+        {showAlbumModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowAlbumModal(false)}
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 9999, padding: 20, backdropFilter: "blur(12px)"
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: "100%", maxWidth: 1000, maxHeight: "85vh", overflowY: "auto",
+                background: "rgba(10, 20, 42, 0.95)",
+                border: "1px solid rgba(56,189,248,0.3)",
+                borderRadius: 24, padding: 32,
+                boxShadow: "0 30px 60px rgba(0,0,0,0.6)",
+                position: "relative"
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h2 style={{ fontSize: 24, fontWeight: 900, color: "white", margin: 0 }}>🎴 Album Công Thức</h2>
+                <button
+                  onClick={() => setShowAlbumModal(false)}
+                  style={{
+                    background: "none", border: "none", color: "white",
+                    fontSize: 24, cursor: "pointer"
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              <KnowledgeAlbum />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showGachaModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={!isOpeningChest ? () => { setShowGachaModal(false); window.location.reload(); } : undefined}
+            style={{
+              position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 9999, padding: 20, backdropFilter: "blur(16px)"
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: "100%", maxWidth: 360,
+                background: "rgba(13,31,60,0.95)",
+                border: "1px solid rgba(0,212,255,0.35)",
+                borderRadius: 24, padding: 32,
+                boxShadow: "0 30px 60px rgba(0,0,0,0.6)",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                textAlign: "center", gap: 20
+              }}
+            >
+              {isOpeningChest ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+                  <span style={{
+                    fontSize: 84, display: "inline-block",
+                    animation: "spinSlow 1s linear infinite"
+                  }}>
+                    🎁
+                  </span>
+                  <h4 style={{ margin: 0, fontSize: 18, color: "#00d4ff", fontWeight: 800 }}>
+                    Đang giải phóng tri thức...
+                  </h4>
+                </div>
+              ) : gachaRewardCard ? (
+                <>
+                  <span style={{ fontSize: 11, fontWeight: 900, color: "#f59e0b", letterSpacing: 1, textTransform: "uppercase", background: "rgba(245,158,11,0.15)", padding: "4px 12px", borderRadius: 20 }}>
+                    THÀNH CÔNG!
+                  </span>
+                  <div style={{
+                    width: "100%",
+                    background: "radial-gradient(circle at 50% 50%, rgba(245,158,11,0.15) 0%, rgba(8, 18, 42, 0.8) 100%)",
+                    border: "1px solid rgba(245, 158, 11, 0.5)",
+                    borderRadius: 16, padding: 24,
+                    boxShadow: "0 10px 30px rgba(245,158,11,0.25)"
+                  }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: "#f59e0b", textTransform: "uppercase", marginBottom: 6 }}>
+                      {gachaRewardCard.rarity} Card
+                    </div>
+                    <h3 style={{ fontSize: 20, fontWeight: 900, color: "white", margin: "0 0 12px 0" }}>
+                      {gachaRewardCard.name}
+                    </h3>
+                    <div style={{
+                      background: "rgba(0,0,0,0.4)", borderRadius: 10, padding: 12, fontSize: 13.5, color: "white",
+                      margin: "12px 0", border: "1px solid rgba(255,255,255,0.04)"
+                    }}>
+                      <div dangerouslySetInnerHTML={{
+                        __html: (() => {
+                          try {
+                            return katex.renderToString(gachaRewardCard.formula, { throwOnError: false });
+                          } catch {
+                            return gachaRewardCard.formula;
+                          }
+                        })()
+                      }} style={{ fontSize: 14, color: "white", textAlign: "center" }} />
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
+                      {gachaRewardCard.description}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => { setShowGachaModal(false); window.location.reload(); }}
+                    style={{
+                      width: "100%", padding: "12px 0", borderRadius: 12,
+                      background: "linear-gradient(135deg, #00d4ff 0%, #0072ff 100%)",
+                      color: "white", fontSize: 13.5, fontWeight: 800, border: "none",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Thêm vào Album 🎴
+                  </button>
+                </>
+              ) : (
+                <div style={{ color: "red" }}>Không thể mở rương.</div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Global CSS enhancements */}
       <style jsx global>{`

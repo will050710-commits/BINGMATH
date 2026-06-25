@@ -698,6 +698,27 @@ def init_db():
 
         CREATE INDEX IF NOT EXISTS idx_quiz_user_topic ON quiz_attempts(user_id, topic, attempted_at DESC);
         CREATE INDEX IF NOT EXISTS idx_quest_user_date ON daily_quests(user_id, date);
+
+        -- user_cards for Gacha system
+        CREATE TABLE IF NOT EXISTS user_cards (
+            user_id INTEGER,
+            card_id TEXT,
+            owned_count INTEGER DEFAULT 1,
+            unlocked_at TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (user_id, card_id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        -- daily_progress for Mastery Rings
+        CREATE TABLE IF NOT EXISTS daily_progress (
+            user_id INTEGER PRIMARY KEY,
+            last_reset TEXT,
+            practice_count INTEGER DEFAULT 0,
+            mastery_count INTEGER DEFAULT 0,
+            socratic_count INTEGER DEFAULT 0,
+            daily_xp_goal INTEGER DEFAULT 30,
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
     """)
     conn.commit()
     
@@ -1445,6 +1466,116 @@ async def chat(request: Request):
 #  TRANSLATE
 # ═══════════════════════════════════════════════════════════════════════════════
 
+#  TRANSLATE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def get_mock_translation(text: str) -> dict:
+    t = text.lower()
+    if any(k in t for k in ["parabol", "quadratic", "hàm số bậc hai", "đỉnh"]):
+        return {
+            "translation": "Hàm số bậc hai (Parabola)",
+            "summary": "Hàm số bậc hai có dạng y = ax² + bx + c (a ≠ 0), đồ thị là một parabol.",
+            "source_lang": "en" if "quadratic" in t or "parabola" in t else "vi",
+            "diagram_type": "parabola",
+            "theory": {
+                "vi": "Hàm số bậc hai $y = ax^2 + bx + c$ ($a \\neq 0$) có đỉnh là $I\\left(-\\frac{b}{2a}, -\\frac{\\Delta}{4a}\\right)$.\n\nTrục đối xứng là $x = -\\frac{b}{2a}$. Đồ thị mở lên nếu $a > 0$ và xuống nếu $a < 0$.",
+                "en": "The quadratic function $y = ax^2 + bx + c$ ($a \\neq 0$) has its vertex at $I\\left(-\\frac{b}{2a}, -\\frac{\\Delta}{4a}\\right)$.\n\nThe axis of symmetry is $x = -\\frac{b}{2a}$. It opens upwards if $a > 0$ and downwards if $a < 0$."
+            },
+            "words": [
+                {"word": "parabola", "type": "noun", "pronunciation": "/pəˈræb.əl.ə/", "vietnamese": "đường parabol", "example": "The graph of a quadratic function is a parabola."},
+                {"word": "vertex", "type": "noun", "pronunciation": "/ˈvɜː.teks/", "vietnamese": "đỉnh", "example": "The vertex of the parabola is at (2, -1)."}
+            ]
+        }
+    elif any(k in t for k in ["venn", "set", "tập hợp"]):
+        return {
+            "translation": "Biểu đồ Venn / Tập hợp",
+            "summary": "Biểu đồ Venn dùng các vòng tròn để biểu diễn trực quan quan hệ giữa các tập hợp.",
+            "source_lang": "en" if "set" in t or "venn" in t else "vi",
+            "diagram_type": "venn",
+            "theory": {
+                "vi": "Biểu đồ Venn biểu diễn các tập hợp dưới dạng hình học.\n\n- Giao của 2 tập hợp $A \\cap B$ chứa các phần tử thuộc cả $A$ và $B$.\n- Hợp của 2 tập hợp $A \\cup B$ chứa các phần tử thuộc $A$, $B$ hoặc cả hai.",
+                "en": "Venn diagrams represent sets geometrically using circles.\n\n- Intersection $A \\cap B$ contains elements in both $A$ and $B$.\n- Union $A \\cup B$ contains elements in $A$, $B$, or both."
+            },
+            "words": [
+                {"word": "set", "type": "noun", "pronunciation": "/set/", "vietnamese": "tập hợp", "example": "Let A be the set of natural numbers."},
+                {"word": "intersection", "type": "noun", "pronunciation": "/ˌɪn.təˈsek.ʃən/", "vietnamese": "phần giao", "example": "The intersection of sets A and B is denoted by A ∩ B."}
+            ]
+        }
+    elif any(k in t for k in ["inequality", "bất đẳng thức", "bất phương trình"]):
+        return {
+            "translation": "Bất đẳng thức (Inequality)",
+            "summary": "Bất đẳng thức so sánh giá trị của hai biểu thức toán học không bằng nhau.",
+            "source_lang": "en" if "inequality" in t else "vi",
+            "diagram_type": "inequality",
+            "theory": {
+                "vi": "Bất đẳng thức so sánh biểu thức dùng các dấu $<, \\le, >, \\ge$.\n\n- Bất đẳng thức Cauchy (AM-GM): Với các số không âm, trung bình cộng lớn hơn hoặc bằng trung bình nhân: $\\frac{a+b}{2} \\ge \\sqrt{ab}$.",
+                "en": "Inequalities compare expressions using $<, \\le, >, \\ge$.\n\n- AM-GM Inequality: For non-negative numbers, the arithmetic mean is at least the geometric mean: $\\frac{a+b}{2} \\ge \\sqrt{ab}$."
+            },
+            "words": [
+                {"word": "inequality", "type": "noun", "pronunciation": "/ˌɪn.ɪˈkwɒl.ə.ti/", "vietnamese": "bất đẳng thức", "example": "We need to prove the Cauchy inequality."},
+                {"word": "greater than", "type": "phrase", "pronunciation": "/ɡreɪtə ðæn/", "vietnamese": "lớn hơn", "example": "5 is greater than 3."}
+            ]
+        }
+    elif any(k in t for k in ["vector", "vectơ", "hướng"]):
+        return {
+            "translation": "Vectơ (Vector)",
+            "summary": "Một đoạn thẳng có hướng xác định bởi điểm đầu và điểm cuối.",
+            "source_lang": "en" if "vector" in t else "vi",
+            "diagram_type": "vectors",
+            "theory": {
+                "vi": "Vectơ $\\vec{u}$ có độ dài và hướng xác định.\n\n- Quy tắc ba điểm: $\\vec{AB} + \\vec{BC} = \\vec{AC}$.\n- Phép cộng vectơ tuân theo quy tắc hình bình hành.",
+                "en": "A vector $\\vec{u}$ is determined by its magnitude and direction.\n\n- Triangle rule: $\\vec{AB} + \\vec{BC} = \\vec{AC}$.\n- Vector addition follows the parallelogram rule."
+            },
+            "words": [
+                {"word": "vector", "type": "noun", "pronunciation": "/ˈvek.tər/", "vietnamese": "vectơ", "example": "Force is a vector quantity."},
+                {"word": "magnitude", "type": "noun", "pronunciation": "/ˈmæɡ.nɪ.tʃuːd/", "vietnamese": "độ lớn / độ dài", "example": "The magnitude of the vector is 5."}
+            ]
+        }
+    elif any(k in t for k in ["ellipse", "elip", "tiêu điểm"]):
+        return {
+            "translation": "Đường Elip (Ellipse)",
+            "summary": "Đường elip là tập hợp các điểm có tổng khoảng cách tới hai tiêu điểm F1 và F2 là hằng số 2a.",
+            "source_lang": "en" if "ellipse" in t else "vi",
+            "diagram_type": "ellipse",
+            "theory": {
+                "vi": "Phương trình chính tắc của Elip: $\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1$ ($a > b > 0$).\n\n- Tiêu cự: $2c$ với $c = \\sqrt{a^2 - b^2}$.\n- Tiêu điểm: $F_1(-c, 0)$, $F_2(c, 0)$.",
+                "en": "Standard equation of an ellipse: $\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1$ ($a > b > 0$).\n\n- Focal length: $2c$ with $c = \\sqrt{a^2 - b^2}$.\n- Foci: $F_1(-c, 0)$, $F_2(c, 0)$."
+            },
+            "words": [
+                {"word": "ellipse", "type": "noun", "pronunciation": "/iˈlɪps/", "vietnamese": "elip", "example": "Planets move around the Sun in elliptical orbits."},
+                {"word": "foci", "type": "noun (plural)", "pronunciation": "/ˈfəʊ.saɪ/", "vietnamese": "các tiêu điểm", "example": "An ellipse has two foci."}
+            ]
+        }
+    elif any(k in t for k in ["trig", "sin", "cos", "tan", "lượng giác"]):
+        return {
+            "translation": "Lượng giác (Trigonometry)",
+            "summary": "Các hàm số lượng giác định nghĩa góc quay trên đường tròn lượng giác đơn vị.",
+            "source_lang": "en" if "trig" in t or "sin" in t or "cos" in t or "tan" in t else "vi",
+            "diagram_type": "trig",
+            "theory": {
+                "vi": "Đường tròn lượng giác có bán kính bằng $1$.\n\n- Công thức cơ bản: $\\sin^2 x + \\cos^2 x = 1$.\n- Trục hoành biểu thị giá trị của $\\cos x$, trục tung biểu thị $\\sin x$.",
+                "en": "The unit circle has a radius of $1$.\n\n- Fundamental identity: $\\sin^2 x + \\cos^2 x = 1$.\n- The horizontal axis shows $\\cos x$, the vertical axis shows $\\sin x$."
+            },
+            "words": [
+                {"word": "sine", "type": "noun", "pronunciation": "/saɪn/", "vietnamese": "sin", "example": "The sine of 90 degrees is 1."},
+                {"word": "unit circle", "type": "noun", "pronunciation": "/ˈjuː.nɪt ˈsɜː.kəl/", "vietnamese": "đường tròn lượng giác", "example": "Trigonometric values are represented on the unit circle."}
+            ]
+        }
+    else:
+        return {
+            "translation": f"Bản dịch tương đương của: '{text}'",
+            "summary": f"Thuật ngữ toán học: {text}",
+            "source_lang": "vi" if any(c in t for c in "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ") else "en",
+            "diagram_type": "default",
+            "theory": {
+                "vi": f"Lý thuyết liên quan đến cụm từ **{text}**.\n\nCác công thức toán tương đương có thể biểu diễn qua hệ thống LaTeX: $a^2 + b^2 = c^2$.",
+                "en": f"Theory related to the term **{text}**.\n\nMathematical formulas are represented via LaTeX: $a^2 + b^2 = c^2$."
+            },
+            "words": [
+                {"word": text, "type": "term", "pronunciation": "/.../", "vietnamese": "Dịch nghĩa tương ứng", "example": "Example usage context."}
+            ]
+        }
+
 @app.post("/api/translate")
 async def translate(request: Request):
     d = await request.json()
@@ -1452,12 +1583,61 @@ async def translate(request: Request):
     if not text:
         raise HTTPException(400, "text is required.")
 
+    # Try resolving user id for daily progress tracking (optional)
+    uid = None
+    try:
+        uid = await resolve_user_id(request)
+    except Exception:
+        pass
+
+    if uid:
+        db = get_db()
+        try:
+            _check_and_reset_daily_progress(db, uid)
+            db.execute("UPDATE daily_progress SET socratic_count = socratic_count + 1 WHERE user_id=?", (uid,))
+            db.commit()
+        except Exception as e:
+            print("[WARN] Failed to increment socratic progress:", e)
+        finally:
+            db.close()
+
+    # FALLBACK if Groq Key is missing
+    if not GROQ_KEY:
+        return JSONResponse(get_mock_translation(text))
+
     prompt = (
-        "Translate this English math text to Vietnamese. "
-        "Reply ONLY with JSON (no markdown): "
-        '{"translation":"...","summary":"...","words":['
-        '{"word":"...","type":"...","pronunciation":"...","vietnamese":"...","example":"..."}]}\n\n'
-        f"Text: {text}"
+        "You are a translation API. Analyze the input text. "
+        "If it is in English, translate it to Vietnamese, and provide bilingual (English & Vietnamese) mathematical explanations. "
+        "If it is in Vietnamese, translate it to English, and provide bilingual mathematical explanations.\n\n"
+        "Also, determine if the mathematical concept matches or relates to one of these diagrams:\n"
+        "- 'venn': for sets, logic, intersection, union, Venn diagram, etc.\n"
+        "- 'inequality': for inequalities, bounds, regions, systems of inequalities, etc.\n"
+        "- 'parabola': for quadratic functions, vertex, axis of symmetry, parabol, quadratic, etc.\n"
+        "- 'vectors': for vectors, direction, velocity, vector sum, resultant vector, etc.\n"
+        "- 'ellipse': for ellipse, foci, major axis, ellipse equation, etc.\n"
+        "- 'trig': for trigonometric functions, angle, sin, cos, tan, unit circle, etc.\n"
+        "- 'default': if it does not fit any of the above.\n\n"
+        "Reply ONLY with a valid JSON object matching this exact schema (do not wrap in markdown, output only the raw JSON):\n"
+        "{\n"
+        '  "translation": "...", // The main translation (Vietnamese if input was English, English if input was Vietnamese)\n'
+        '  "summary": "...", // A short conceptual summary of the term or phrase\n'
+        '  "source_lang": "en" | "vi",\n'
+        '  "diagram_type": "venn" | "inequality" | "parabola" | "vectors" | "ellipse" | "trig" | "default",\n'
+        '  "theory": {\n'
+        '    "vi": "...", // Detailed explanation of the mathematical concept in Vietnamese with KaTeX/LaTeX formulas like $formula$\n'
+        '    "en": "..."  // Detailed explanation of the mathematical concept in English with KaTeX/LaTeX formulas like $formula$\n'
+        '  },\n'
+        '  "words": [\n'
+        "    {\n"
+        '      "word": "...", // Key vocabulary word in the source language\n'
+        '      "type": "...", // noun, verb, adj, etc.\n'
+        '      "pronunciation": "...",\n'
+        '      "vietnamese": "...", // The translation in the target language (keep key as "vietnamese" for compatibility)\n'
+        '      "example": "..." // Example sentence using this word in both languages or target language\n'
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        f"Input text:\n{text}"
     )
     payload = {
         "model": "llama-3.1-8b-instant",
@@ -1465,7 +1645,7 @@ async def translate(request: Request):
             {"role": "system", "content": "You are a JSON-only translation API. Output only the JSON object."},
             {"role": "user",   "content": prompt},
         ],
-        "max_tokens": 400, "temperature": 0.2,
+        "max_tokens": 500, "temperature": 0.2,
     }
 
     import re as _re
@@ -1500,7 +1680,189 @@ async def translate(request: Request):
         # Last resort: return error with the raw text
         return JSONResponse({"error": True, "raw": raw})
     except Exception as e:
-        return JSONResponse({"error": True, "raw": str(e)}, status_code=502)
+        # Fallback to local mock if Groq fails or returns 502/401/rate limits
+        return JSONResponse(get_mock_translation(text))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  AI MATHMAP PARSER
+# ═══════════════════════════════════════════════════════════════════════════════
+
+def parse_math_questions_local(text: str) -> dict:
+    import re
+    lines = [line.strip() for line in text.split("\n")]
+    questions = []
+    current_q = None
+    title = "MathMap được chuyển hóa từ file"
+    description = "Được tạo tự động từ tệp tin câu hỏi của bạn"
+    grade = "Lớp 11"
+    
+    for line in lines:
+        if not line:
+            continue
+        if line.startswith("Tiêu đề:") or line.startswith("Title:"):
+            title = line.split(":", 1)[1].strip()
+            continue
+        if line.startswith("Mô tả:") or line.startswith("Description:"):
+            description = line.split(":", 1)[1].strip()
+            continue
+        if line.startswith("Lớp:") or line.startswith("Grade:"):
+            grade = line.split(":", 1)[1].strip()
+            continue
+
+        q_match = re.match(r'^(?:Câu|Question)\s+(\d+)\s*:\s*(.*)', line, re.IGNORECASE)
+        if q_match:
+            if current_q:
+                questions.append(current_q)
+            current_q = {
+                "id": f"q-{len(questions) + 1}",
+                "type": "multiple_choice",
+                "order": len(questions) + 1,
+                "content_vi": q_match.group(2).strip(),
+                "content_en": "",
+                "options": [],
+                "correct_answer": "a",
+                "explanation_vi": "",
+                "points": 100,
+                "time_seconds": 30
+            }
+            continue
+
+        if current_q:
+            opt_match = re.match(r'^([A-D])\.\s*(.*)', line, re.IGNORECASE)
+            if opt_match:
+                letter = opt_match.group(1).lower()
+                text_val = opt_match.group(2).strip()
+                current_q["options"].append({
+                    "id": letter,
+                    "text_vi": text_val,
+                    "text_en": ""
+                })
+                continue
+            
+            ans_match = re.match(r'^(?:Đáp án|Answer)\s*:\s*([A-D])', line, re.IGNORECASE)
+            if ans_match:
+                current_q["correct_answer"] = ans_match.group(1).lower()
+                continue
+                
+            exp_match = re.match(r'^(?:Giải thích|Explanation)\s*:\s*(.*)', line, re.IGNORECASE)
+            if exp_match:
+                current_q["explanation_vi"] = exp_match.group(1).strip()
+                continue
+            
+            if not current_q["options"] and not current_q["explanation_vi"]:
+                current_q["content_vi"] += "\n" + line
+
+    if current_q:
+        questions.append(current_q)
+        
+    return {
+        "title": title,
+        "title_en": title,
+        "description": description,
+        "grade": grade,
+        "questions": questions
+    }
+
+@app.post("/api/mathmap/parse-file")
+async def mathmap_parse_file(request: Request):
+    d = await request.json()
+    text = (d.get("text") or "").strip()
+    if not text:
+        raise HTTPException(400, "text is required.")
+
+    # Try local template parser first
+    local_parsed = parse_math_questions_local(text)
+    if local_parsed["questions"]:
+        return JSONResponse(local_parsed)
+
+    # If local parser found nothing and GROQ key is empty, return local parsed (empty list) rather than failing
+    if not GROQ_KEY:
+        return JSONResponse(local_parsed)
+
+    # Prompting Llama to parse raw questions into structured JSON
+    prompt = (
+        "You are an expert math curriculum AI. Your task is to parse a text file containing math questions "
+        "and convert them into a structured JSON object representing a MathMap lesson or test.\n\n"
+        "Here are the rules to recognize the questions:\n"
+        "- Questions typically start with 'Câu [Số]:' or 'Question [No]:'\n"
+        "- Options are listed with A., B., C., D. prefixes\n"
+        "- The correct answer is indicated by 'Đáp án: [A/B/C/D]' or 'Answer: [A/B/C/D]'\n"
+        "- Optional explanations might start with 'Giải thích:' or 'Explanation:'\n\n"
+        "Identify the overall title and short description of this question set. Determine if each question is a "
+        "multiple_choice or standard question. Map the choices (A, B, C, D) to options arrays containing "
+        "id ('a', 'b', 'c', 'd') and text (both text_vi and text_en if translation is possible, or just text_vi).\n"
+        "Map the correct answer letter to a single lowercase character ('a', 'b', 'c', or 'd').\n\n"
+        "Return ONLY a valid JSON object matching this exact schema (no markdown formatting, no comments, no ellipses):\n"
+        "{\n"
+        '  "title": "...", // Overall title in Vietnamese\n'
+        '  "title_en": "...", // Title in English\n'
+        '  "description": "...", // Short description\n'
+        '  "grade": "Lớp 10" | "Lớp 11" | "Lớp 12", // Determine if Lớp 10, 11 or 12\n'
+        '  "questions": [\n'
+        "    {\n"
+        '      "id": "...", // unique id like q-1, q-2, etc.\n'
+        '      "type": "multiple_choice",\n'
+        '      "order": 1, // index starting from 1\n'
+        '      "content_vi": "...", // Question text in Vietnamese\n'
+        '      "content_en": "...", // Question text in English (translate if not present)\n'
+        '      "options": [\n'
+        '        {"id": "a", "text_vi": "...", "text_en": "..."},\n'
+        '        {"id": "b", "text_vi": "...", "text_en": "..."},\n'
+        '        {"id": "c", "text_vi": "...", "text_en": "..."},\n'
+        '        {"id": "d", "text_vi": "...", "text_en": "..."}\n'
+        "      ],\n"
+        '      "correct_answer": "a" | "b" | "c" | "d",\n'
+        '      "explanation_vi": "...", // Explanation in Vietnamese\n'
+        '      "explanation_en": "...", // Explanation in English\n'
+        '      "points": 100,\n'
+        '      "time_seconds": 30\n'
+        "    }\n"
+        "  ]\n"
+        "}\n\n"
+        f"Input raw text:\n{text}"
+    )
+
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [
+            {"role": "system", "content": "You are a JSON-only math content parser. Output only the JSON object, do not wrap in markdown code blocks."},
+            {"role": "user",   "content": prompt},
+        ],
+        "max_tokens": 1200, "temperature": 0.1,
+    }
+
+    import re as _re
+    client = await get_http_client()
+    try:
+        resp = await client.post(
+            f"{GROQ_BASE}/chat/completions",
+            headers=groq_headers(), json=payload,
+        )
+        resp.raise_for_status()
+        raw = resp.json()["choices"][0]["message"]["content"]
+
+        clean = raw.strip()
+        clean = _re.sub(r'^```(?:json)?\s*', '', clean)
+        clean = _re.sub(r'\s*```$', '', clean).strip()
+
+        try:
+            return JSONResponse(json.loads(clean))
+        except json.JSONDecodeError:
+            pass
+
+        m = _re.search(r'(\{[\s\S]*\})', clean)
+        if m:
+            try:
+                return JSONResponse(json.loads(m.group(1)))
+            except json.JSONDecodeError:
+                pass
+
+        return JSONResponse(local_parsed)
+    except Exception as e:
+        return JSONResponse(local_parsed)
+
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2096,6 +2458,15 @@ async def api_log_attempt(request: Request):
             "VALUES (?,?,?,?,?,?)",
             (uid, q_id, topic, difficulty, 1 if is_correct else 0, time_taken)
         )
+        
+        # Increment daily progress practice_count
+        _check_and_reset_daily_progress(db, uid)
+        db.execute("UPDATE daily_progress SET practice_count = practice_count + 1 WHERE user_id=?", (uid,))
+        
+        # If correct and medium/hard/very hard, increment mastery_count
+        if is_correct and difficulty in ["TH", "VD", "VDC"]:
+            db.execute("UPDATE daily_progress SET mastery_count = mastery_count + 1 WHERE user_id=?", (uid,))
+            
         db.commit()
 
         _refresh_mastery(db, uid, topic)
@@ -2299,6 +2670,288 @@ async def api_user_stats(request: Request):
             },
             "hexagon_stats": hexagon,
         })
+    finally:
+        db.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  HUMANE GAMIFICATION & GACHA
+# ═══════════════════════════════════════════════════════════════════════════════
+
+MATH_CARDS = [
+    {"id": "card_parabola_vertex", "name": "Đỉnh Parabol", "rarity": "Common", "formula": "I(-b/(2a), -\\Delta/(4a))", "description": "Tọa độ điểm cực trị của hàm số bậc hai y = ax^2 + bx + c."},
+    {"id": "card_cos_rule", "name": "Định lý Cosin", "rarity": "Common", "formula": "a^2 = b^2 + c^2 - 2bc \\cdot \\cos A", "description": "Mối quan hệ giữa các cạnh và góc của một tam giác."},
+    {"id": "card_sin_rule", "name": "Định lý Sin", "rarity": "Common", "formula": "a/\\sin A = b/\\sin B = c/\\sin C = 2R", "description": "Tỉ số giữa độ dài cạnh và sin của góc đối diện trong tam giác."},
+    {"id": "card_vector_sum", "name": "Quy tắc 3 Điểm", "rarity": "Common", "formula": "\\vec{AB} + \\vec{BC} = \\vec{AC}", "description": "Phép cộng vectơ nối tiếp điểm đầu và điểm cuối."},
+    {"id": "card_ellipse_eqn", "name": "Phương trình Elip", "rarity": "Rare", "formula": "\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1", "description": "Phương trình chính tắc của đường elip với a > b > 0."},
+    {"id": "card_am_gm", "name": "Bất đẳng thức Cauchy", "rarity": "Rare", "formula": "\\frac{a+b}{2} \\ge \\sqrt{ab}", "description": "Bất đẳng thức giữa trung bình cộng và trung bình nhân cho hai số không âm."},
+    {"id": "card_trig_identity", "name": "Đồng nhất lượng giác", "rarity": "Common", "formula": "\\sin^2 x + \\cos^2 x = 1", "description": "Hằng đẳng thức lượng giác cơ bản nhất trên đường tròn đơn vị."},
+    {"id": "card_derivative_x2", "name": "Đạo hàm x²", "rarity": "Common", "formula": "(x^2)' = 2x", "description": "Quy tắc cơ bản của đạo hàm hàm đa thức lũy thừa."},
+    {"id": "card_limits", "name": "Định lý Kẹp", "rarity": "Legendary", "formula": "g(x) \\le f(x) \\le h(x) \\implies \\lim f(x) = L", "description": "Định lý kẹp dùng để tính giới hạn của các hàm số phức tạp."},
+    {"id": "card_vieta_2", "name": "Hệ thức Vi-ét bậc hai", "rarity": "Rare", "formula": "x_1 + x_2 = -b/a, \\ x_1 \\cdot x_2 = c/a", "description": "Mối quan hệ giữa các nghiệm và các hệ số của phương trình bậc hai."}
+]
+
+def _check_and_reset_daily_progress(db, uid: int):
+    # Lấy ngày hiện tại ở timezone Việt Nam (GMT+7)
+    from datetime import datetime, timedelta, timezone as _timezone
+    tz_vn = _timezone(timedelta(hours=7))
+    today_str = datetime.now(tz_vn).strftime("%Y-%m-%d")
+
+    row = db.execute("SELECT * FROM daily_progress WHERE user_id=?", (uid,)).fetchone()
+    if not row:
+        db.execute(
+            "INSERT INTO daily_progress (user_id, last_reset, practice_count, mastery_count, socratic_count) VALUES (?, ?, 0, 0, 0)",
+            (uid, today_str)
+        )
+        db.commit()
+        return {"practice_count": 0, "mastery_count": 0, "socratic_count": 0, "daily_xp_goal": 30}
+    
+    if row["last_reset"] != today_str:
+        db.execute(
+            "UPDATE daily_progress SET last_reset=?, practice_count=0, mastery_count=0, socratic_count=0 WHERE user_id=?",
+            (today_str, uid)
+        )
+        db.commit()
+        return {"practice_count": 0, "mastery_count": 0, "socratic_count": 0, "daily_xp_goal": row["daily_xp_goal"] or 30}
+    
+    return {
+        "practice_count": row["practice_count"],
+        "mastery_count": row["mastery_count"],
+        "socratic_count": row["socratic_count"],
+        "daily_xp_goal": row["daily_xp_goal"] or 30
+    }
+
+@app.get("/api/gami/daily-progress")
+async def get_daily_progress(request: Request):
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        prog = _check_and_reset_daily_progress(db, uid)
+        return JSONResponse(prog)
+    finally:
+        db.close()
+
+@app.post("/api/gami/update-progress")
+async def update_daily_progress(request: Request):
+    uid = await resolve_user_id(request)
+    body = await request.json()
+    action_type = body.get("action_type") # "practice", "mastery", "socratic"
+    increment = int(body.get("increment", 1))
+
+    if action_type not in ["practice", "mastery", "socratic"]:
+        raise HTTPException(400, "Invalid action_type")
+
+    db = get_db()
+    try:
+        # Check and reset first
+        _check_and_reset_daily_progress(db, uid)
+        
+        # Update
+        column = f"{action_type}_count"
+        db.execute(
+            f"UPDATE daily_progress SET {column} = {column} + ? WHERE user_id=?",
+            (increment, uid)
+        )
+        db.commit()
+        
+        # Retrieve updated
+        prog = _check_and_reset_daily_progress(db, uid)
+        return JSONResponse(prog)
+    finally:
+        db.close()
+
+@app.post("/api/gami/buy-freeze")
+async def buy_streak_freeze(request: Request):
+    uid = await resolve_user_id(request)
+    body = await request.json()
+    cost = int(body.get("cost", 100))
+
+    db = get_db()
+    try:
+        total_xp = _get_user_xp(db, uid)
+        if total_xp < cost:
+            raise HTTPException(400, "Không đủ XP để mua đóng băng!")
+
+        # Deduct XP by adding a negative XP reward record (e.g. -100 XP)
+        db.execute(
+            "INSERT INTO test_results (user_id, test_key, section, score, total, accuracy, time_spent) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (uid, "freeze-purchase", "purchase", -cost, 0, 0, 0)
+        )
+        
+        # Increment freeze count
+        db.execute(
+            "UPDATE user_gamification SET freeze_count = freeze_count + 1 WHERE user_id=?",
+            (uid,)
+        )
+        db.commit()
+
+        # Get updated info
+        gami = db.execute("SELECT * FROM user_gamification WHERE user_id=?", (uid,)).fetchone()
+        new_xp = _get_user_xp(db, uid)
+
+        return JSONResponse({
+            "success": True,
+            "freeze_count": gami["freeze_count"] if gami else 0,
+            "total_xp": new_xp,
+            "level": _xp_to_level(new_xp),
+        })
+    finally:
+        db.close()
+
+@app.get("/api/gacha/collection")
+async def get_gacha_collection(request: Request):
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        rows = db.execute(
+            "SELECT card_id, owned_count, unlocked_at FROM user_cards WHERE user_id=?",
+            (uid,)
+        ).fetchall()
+        
+        collection = []
+        owned_ids = {r["card_id"]: r for r in rows}
+        
+        for card in MATH_CARDS:
+            owned = card["id"] in owned_ids
+            collection.append({
+                **card,
+                "owned": owned,
+                "owned_count": owned_ids[card["id"]]["owned_count"] if owned else 0,
+                "unlocked_at": owned_ids[card["id"]]["unlocked_at"] if owned else None
+            })
+            
+        return JSONResponse(collection)
+    finally:
+        db.close()
+
+@app.post("/api/gacha/open")
+async def open_gacha_chest(request: Request):
+    uid = await resolve_user_id(request)
+    body = await request.json()
+    cost = int(body.get("cost", 50)) # e.g. costs 50 XP to open, or 0 if milestone
+
+    db = get_db()
+    try:
+        if cost > 0:
+            total_xp = _get_user_xp(db, uid)
+            if total_xp < cost:
+                raise HTTPException(400, "Không đủ XP để mở rương!")
+            
+            # Deduct XP
+            db.execute(
+                "INSERT INTO test_results (user_id, test_key, section, score, total, accuracy, time_spent) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (uid, "gacha-open", "purchase", -cost, 0, 0, 0)
+            )
+
+        # Select a random card
+        import random
+        # Optional: weight by rarity (Common: 70%, Rare: 25%, Legendary: 5%)
+        # For simplicity and equal fun:
+        card = random.choice(MATH_CARDS)
+        card_id = card["id"]
+
+        # Insert or update
+        row = db.execute("SELECT * FROM user_cards WHERE user_id=? AND card_id=?", (uid, card_id)).fetchone()
+        if row:
+            db.execute(
+                "UPDATE user_cards SET owned_count = owned_count + 1 WHERE user_id=? AND card_id=?",
+                (uid, card_id)
+            )
+        else:
+            db.execute(
+                "INSERT INTO user_cards (user_id, card_id, owned_count) VALUES (?, ?, 1)",
+                (uid, card_id)
+            )
+        db.commit()
+
+        new_xp = _get_user_xp(db, uid)
+        return JSONResponse({
+            "card": card,
+            "total_xp": new_xp,
+            "level": _xp_to_level(new_xp)
+        })
+    finally:
+        db.close()
+
+
+@app.get("/api/leaderboard")
+async def get_leaderboard(request: Request):
+    school = request.query_params.get("school")
+    grade = request.query_params.get("grade")
+    
+    db = get_db()
+    try:
+        # Build query
+        query = """
+            SELECT
+                u.id           AS user_id,
+                u.username,
+                u.school,
+                u.grade,
+                COALESCE(SUM(best.best_score), 0) AS total_points,
+                COALESCE(SUM(best.best_total), 1) AS total_possible,
+                COUNT(best.user_id)              AS sections_done
+            FROM users u
+            LEFT JOIN (
+                SELECT
+                    user_id,
+                    test_key,
+                    section,
+                    MAX(score) AS best_score,
+                    total      AS best_total
+                FROM test_results
+                GROUP BY user_id, test_key, section
+            ) AS best ON best.user_id = u.id
+        """
+        
+        params = []
+        where_clauses = []
+        if school:
+            where_clauses.append("u.school = ?")
+            params.append(school)
+        if grade:
+            where_clauses.append("u.grade = ?")
+            params.append(grade)
+            
+        if where_clauses:
+            query += " WHERE " + " AND ".join(where_clauses)
+            
+        query += """
+            GROUP BY u.id
+            ORDER BY total_points DESC, sections_done DESC
+            LIMIT 50
+        """
+        
+        rows = db.execute(query, params).fetchall()
+        
+        result = []
+        for i, r in enumerate(rows):
+            tp = r["total_points"] or 0
+            tpo = r["total_possible"] or 1
+            uid_val = r["user_id"]
+            xp = _get_user_xp(db, uid_val)
+            
+            # Fetch streak
+            streak_row = db.execute("SELECT current_streak, longest_streak FROM user_gamification WHERE user_id=?", (uid_val,)).fetchone()
+            curr_str = streak_row["current_streak"] if streak_row else 0
+            long_str = streak_row["longest_streak"] if streak_row else 0
+            
+            result.append({
+                "rank": i + 1,
+                "user_id": uid_val,
+                "username": r["username"],
+                "school": r["school"] or "",
+                "grade": r["grade"] or "",
+                "total_points": tp,
+                "total_possible": tpo,
+                "sections_done": r["sections_done"],
+                "accuracy": round(tp / tpo * 100, 1) if tpo > 0 else 0,
+                "xp": xp,
+                "current_streak": curr_str,
+                "longest_streak": long_str,
+            })
+            
+        return JSONResponse(result)
     finally:
         db.close()
 

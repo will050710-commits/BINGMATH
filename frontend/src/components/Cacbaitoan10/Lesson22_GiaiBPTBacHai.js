@@ -234,7 +234,7 @@ export default function Lesson22_GiaiBPTBacHai() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="8Xw3Z_O_bZ0"
+            videoId="xdiBjypYFRQ"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ The Organic Chemistry Tutor (YouTube)", "Video by The Organic Chemistry Tutor (YouTube)")}
@@ -302,7 +302,7 @@ export default function Lesson22_GiaiBPTBacHai() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="8Xw3Z_O_bZ0"
+      videoId="xdiBjypYFRQ"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

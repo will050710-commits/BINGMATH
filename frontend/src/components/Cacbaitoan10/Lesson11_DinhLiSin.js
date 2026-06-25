@@ -255,7 +255,7 @@ export default function Lesson11_DinhLiSin() {
         <SH icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
         <div className="reveal" data-reveal>
           <LessonVideoPlayer
-            videoId="bEIre_g2X9A"
+            videoId="VjmFKle7xIw"
             subtitles={videoSubtitles}
             lang={lang}
             credit={t("Video từ Brian McLogan (YouTube)", "Video by Brian McLogan (YouTube)")}
@@ -362,7 +362,7 @@ export default function Lesson11_DinhLiSin() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="bEIre_g2X9A"
+      videoId="VjmFKle7xIw"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}

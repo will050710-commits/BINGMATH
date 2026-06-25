@@ -265,7 +265,7 @@ export default function Lesson2_TapHop() {
           <SectionHeader icon="🎬" title={t("Video Bài Giảng", "Lesson Video")} />
           <div className="reveal" data-reveal>
             <LessonVideoPlayer
-              videoId="tyDKR4Yw" 
+              videoId="tyDKR4FG3Yw" 
               subtitles={videoSubtitles}
               lang={lang}
               credit={t("Video từ Don't Memorise (YouTube)", "Video by Don't Memorise (YouTube)")}
@@ -391,7 +391,7 @@ export default function Lesson2_TapHop() {
       lessonTitle={lessonTitle}
       learningObjectives={learningObjectives}
       navItems={navItems}
-      videoId="tyDKR4Yw"
+      videoId="tyDKR4FG3Yw"
       videoSubtitles={videoSubtitles}
       mcQuestions={mcQuestions}
       tfCards={tfCards}
