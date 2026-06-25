@@ -11,6 +11,7 @@ import MathToolsPanel from "./MathToolsPanel";
 import { logQuizAttempt, getNextDifficulty } from "@/lib/api";
 import { useGamification } from "@/hooks/useGamification";
 import GamificationHUD from "@/components/GamificationHUD";
+import { renderDuoIcon } from "@/components/DuoIcons";
 
 // ─── PARTICLE BURST ──────────────────────────────────────────────────────────
 function ParticleBurst({ active }) {
@@ -606,7 +607,10 @@ export default function PremiumLessonEngine({
                 onMouseEnter={e => { if (activeSection !== id) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; } }}
                 onMouseLeave={e => { if (activeSection !== id) { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; } }}
               >
-                {icon} {t(labelVi, labelEn)}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  {renderDuoIcon(icon, { size: 15 })}
+                  {t(labelVi, labelEn)}
+                </span>
               </button>
             ))}
           </div>
@@ -697,10 +701,11 @@ export default function PremiumLessonEngine({
                         background: difficultyMode === "auto" ? "rgba(99, 102, 241, 0.8)" : "transparent",
                         color: difficultyMode === "auto" ? "white" : "rgba(255, 255, 255, 0.5)",
                         border: "none", borderRadius: 16, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all 0.25s",
-                        boxShadow: difficultyMode === "auto" ? "0 0 10px rgba(99, 102, 241, 0.4)" : "none"
+                        boxShadow: difficultyMode === "auto" ? "0 0 10px rgba(99, 102, 241, 0.4)" : "none",
+                        display: "inline-flex", alignItems: "center", gap: 5
                       }}
                     >
-                      🤖 {t("Tự động", "Auto")}
+                      {renderDuoIcon("🤖", { size: 14 })} {t("Tự động", "Auto")}
                     </button>
                     <button 
                       onClick={() => setDifficultyMode("manual")}
@@ -708,10 +713,11 @@ export default function PremiumLessonEngine({
                         background: difficultyMode === "manual" ? "rgba(34, 211, 238, 0.8)" : "transparent",
                         color: difficultyMode === "manual" ? "white" : "rgba(255, 255, 255, 0.5)",
                         border: "none", borderRadius: 16, padding: "4px 12px", fontSize: 11, fontWeight: 700, cursor: "pointer", transition: "all 0.25s",
-                        boxShadow: difficultyMode === "manual" ? "0 0 10px rgba(34, 211, 238, 0.4)" : "none"
+                        boxShadow: difficultyMode === "manual" ? "0 0 10px rgba(34, 211, 238, 0.4)" : "none",
+                        display: "inline-flex", alignItems: "center", gap: 5
                       }}
                     >
-                      🛠️ {t("Thủ công", "Manual")}
+                      {renderDuoIcon("🛠️", { size: 14 })} {t("Thủ công", "Manual")}
                     </button>
                   </div>
                 </div>
@@ -775,7 +781,7 @@ export default function PremiumLessonEngine({
                 </div>
                 {difficultyMode === "auto" && (
                   <div style={{ fontSize: 10.5, color: "rgba(99, 102, 241, 0.85)", display: "flex", alignItems: "center", gap: 5, padding: "2px 4px" }}>
-                    <span>⚡</span>
+                    <span>{renderDuoIcon("⚡", { size: 12 })}</span>
                     <span>
                       {t("Độ khó tự động điều chỉnh theo ELO của bạn.", "Difficulty automatically adjusts to your ELO.")}
                     </span>
@@ -798,7 +804,10 @@ export default function PremiumLessonEngine({
                     borderBottom: gameMode === mode ? "2px solid #6366f1" : "2px solid transparent",
                     fontWeight: 700, fontSize: 12.5, cursor: "pointer", transition: "all 0.2s",
                   }}>
-                    {icon} {label}
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      {renderDuoIcon(icon, { size: 16 })}
+                      {label}
+                    </span>
                   </button>
                 ))}
               </div>

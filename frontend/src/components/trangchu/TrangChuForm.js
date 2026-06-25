@@ -12,6 +12,7 @@ import MasteryRings from "./MasteryRings";
 import KnowledgeAlbum from "../stats/KnowledgeAlbum";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import { renderDuoIcon } from "@/components/DuoIcons";
 
 // Dynamically import EditProfileModal to reduce initial JS bundle size
 const EditProfileModal = dynamic(() => import("./EditProfileModal"), {
@@ -248,7 +249,7 @@ function FeatureSwipeCarousel({ features, router }) {
                       border: "1px solid rgba(255,255,255,0.07)",
                       boxShadow: isActive ? `0 0 20px ${f.glowColor}` : "none",
                     }}>
-                      {f.icon}
+                      {renderDuoIcon(f.icon, { size: 28 })}
                     </div>
                     <span style={{
                       fontSize: 9.5, fontWeight: 800, color: "#38bdf8",
@@ -537,9 +538,9 @@ export default function TrangChuForm() {
         {/* Personal info */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
           <div style={{ fontSize: 10, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Thông tin cá nhân</div>
-          {[["📱", "Điện thoại", user.phone || "—"], ["🏫", "Trường", user.school || "—"], ["📚", "Lớp", user.grade || "—"]].map(([ic, lb, val]) => (
+          {[["📞", "Điện thoại", user.phone || "—"], ["🏫", "Trường", user.school || "—"], ["📚", "Lớp", user.grade || "—"]].map(([ic, lb, val]) => (
             <div key={lb} style={{ display: "flex", gap: 7, fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 5, alignItems: "center" }}>
-              <span>{ic}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14 }}>{renderDuoIcon(ic, { size: 14 })}</span>
               <span style={{ color: "rgba(255,255,255,0.4)", minWidth: 60 }}>{lb}:</span>
               <span style={{ fontWeight: 500 }}>{val}</span>
             </div>
@@ -569,7 +570,7 @@ export default function TrangChuForm() {
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
           >
-            ✏️ Chỉnh sửa thông tin
+            <span style={{ display: "inline-flex", alignItems: "center" }}>{renderDuoIcon("✏️", { size: 12 })}</span> Chỉnh sửa thông tin
           </button>
         </div>
 
@@ -580,7 +581,7 @@ export default function TrangChuForm() {
             {[["📝", "Bài test", totalTests], ["🎮", "Lượt game", totalGames],
             ["📊", "TB test", avgTest != null ? `${avgTest}%` : "—"], ["⭐", "TB game", avgGame != null ? `${avgGame}%` : "—"]].map(([ic, lb, val]) => (
               <div key={lb} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "7px 9px" }}>
-                <div style={{ fontSize: 14 }}>{ic}</div>
+                <div style={{ fontSize: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", height: 16 }}>{renderDuoIcon(ic, { size: 16 })}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "white", lineHeight: 1.2 }}>{val}</div>
                 <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{lb}</div>
               </div>
@@ -599,7 +600,7 @@ export default function TrangChuForm() {
               ["🥇", "Xếp hạng toàn cầu", `#${competitiveStats.global_rank || 0}`],
             ].map(([ic, lb, val]) => (
               <div key={lb} style={{ background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.1)", borderRadius: 8, padding: "7px 9px" }}>
-                <div style={{ fontSize: 14 }}>{ic}</div>
+                <div style={{ fontSize: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", height: 16 }}>{renderDuoIcon(ic, { size: 16 })}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "#c084fc", lineHeight: 1.2 }}>{val}</div>
                 <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{lb}</div>
               </div>
@@ -771,17 +772,26 @@ export default function TrangChuForm() {
           <nav style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14.5 }}>
             <Link href="/Cacbaitoan" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
               className="nav-link-item">
-              📖 Bài học
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                {renderDuoIcon("📖", { size: 14 })}
+                Bài học
+              </span>
             </Link>
 
             <Link href="/DuoMCB" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
               className="nav-link-item">
-              🤖 AI Chat
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                {renderDuoIcon("🤖", { size: 14 })}
+                AI Chat
+              </span>
             </Link>
 
             <Link href="/cacbailam" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
               className="nav-link-item">
-              📝 Đề thi
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                {renderDuoIcon("📝", { size: 14 })}
+                Đề thi
+              </span>
             </Link>
 
             <Link href="/mrm" style={{ textDecoration: "none" }}>
@@ -794,7 +804,8 @@ export default function TrangChuForm() {
                 gap: 6, transition: "all 0.25s",
                 boxShadow: "0 0 15px rgba(99,102,241,0.3)"
               }}>
-                ⚔️ MRM Đấu Hạng
+                {renderDuoIcon("⚔️", { size: 14 })}
+                MRM Đấu Hạng
               </button>
             </Link>
 
@@ -877,8 +888,8 @@ export default function TrangChuForm() {
 
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <Link href="/Cacbaitoan" style={{ textDecoration: "none" }}>
-                    <button className="primary-hero-btn" style={{ padding: "14px 28px", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", borderRadius: 10, border: "none", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(99,102,241,0.35)", transition: "all 0.25s" }}>
-                      Bắt đầu học ngay 🚀
+                    <button className="primary-hero-btn" style={{ padding: "14px 28px", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", borderRadius: 10, border: "none", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(99,102,241,0.35)", transition: "all 0.25s", display: "flex", alignItems: "center", gap: 8 }}>
+                      Bắt đầu học ngay {renderDuoIcon("🚀", { size: 18 })}
                     </button>
                   </Link>
                   {ready && !user && (
@@ -1193,7 +1204,9 @@ export default function TrangChuForm() {
                   { icon: "☎️", label: "Hotline", value: "+84 336 290 219", href: "tel:+84336290219" },
                 ].map(({ icon, label, value, href }, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <span style={{ fontSize: 18, width: 24, textAlign: "center", flexShrink: 0 }}>{icon}</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, flexShrink: 0 }}>
+                      {renderDuoIcon(icon, { size: 18, color: "#38bdf8" })}
+                    </span>
                     <span style={{ fontWeight: 700, fontSize: 13.5, color: "#38bdf8", width: 68, flexShrink: 0 }}>{label}</span>
                     {href
                       ? <a href={href} style={{ fontSize: 13.5, color: "rgba(255,255,255,0.75)", textDecoration: "none", transition: "color 0.2s" }}

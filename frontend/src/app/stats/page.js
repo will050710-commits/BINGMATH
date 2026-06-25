@@ -17,6 +17,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/authContext";
 import { getUserStats } from "@/lib/api";
 import Link from "next/link";
+import { renderDuoIcon } from "@/components/DuoIcons";
 
 // ── Tiny inline chart helpers ─────────────────────────────────────────────────
 function HexagonChart({ data }) {
@@ -237,7 +238,7 @@ export default function StatsPage() {
           { label: "Minigames",     value: game_summary?.total_games, icon: "🎮" },
         ].map(({ label, value, icon }) => (
           <div key={label} className="stat-card" style={{ textAlign: "center", padding: "16px 12px" }}>
-            <div style={{ fontSize: 26 }}>{icon}</div>
+            <div style={{ fontSize: 26, display: "inline-flex", alignItems: "center", justifyContent: "center", height: 32 }}>{renderDuoIcon(icon, { size: 30 })}</div>
             <div style={{ fontSize: 22, fontWeight: 800, color: "#e2e8f0", marginTop: 4 }}>{value ?? "—"}</div>
             <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{label}</div>
           </div>
@@ -247,8 +248,11 @@ export default function StatsPage() {
       {/* ── Tabs ── */}
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {["overview", "topics", "badges"].map((t) => (
-          <button key={t} className={`tab-btn ${activeTab === t ? "active" : ""}`} onClick={() => setActiveTab(t)}>
-            {{ overview: "📊 Tổng quan", topics: "📚 Chủ đề", badges: "🎖️ Badges" }[t]}
+          <button key={t} className={`tab-btn ${activeTab === t ? "active" : ""}`} onClick={() => setActiveTab(t)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {t === "overview" && "📊"}
+            {t === "topics" && renderDuoIcon("📚", { size: 14 })}
+            {t === "badges" && "🎖️"}
+            {{ overview: " Tổng quan", topics: " Chủ đề", badges: " Badges" }[t]}
           </button>
         ))}
       </div>
@@ -393,7 +397,7 @@ export default function StatsPage() {
             {badges?.map((b) => (
               <div key={b.id} className={`badge-card earned`}
                 style={{ borderColor: TIER_COLOR[b.tier] || "#ffd700" }}>
-                <span style={{ fontSize: 32 }}>{b.icon}</span>
+                <span style={{ fontSize: 32, display: "inline-flex", alignItems: "center", justifyContent: "center", width: 36, height: 36 }}>{renderDuoIcon(b.icon, { size: 36 })}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[b.tier] || "#ffd700" }}>
                     {b.name_vi}
