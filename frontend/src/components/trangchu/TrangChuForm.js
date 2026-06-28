@@ -1219,8 +1219,8 @@ export default function TrangChuForm() {
               {[
                 { href: "/L10-test1-section1", key: "reading-test-1", label: "Test 1", grade: "Lớp 10", img: "/images/math10.webp" },
                 { href: "/L10-test2-section1", key: "reading-test-2", label: "Test 2", grade: "Lớp 10", img: "/images/math10.webp" },
-                { href: null, key: null, label: "Test 1", grade: "Lớp 11 (Coming soon)", img: "/images/math11.webp", disabled: true },
-                { href: null, key: null, label: "Test 1", grade: "Lớp 12 (Coming soon)", img: "/images/math12.webp", disabled: true },
+                { href: "/L11-test1-section1", key: "reading-test-L11-1", label: "Test 1", grade: "Lớp 11", img: "/images/math11.webp" },
+                { href: "/L12-test1-section1", key: "reading-test-L12-1", label: "Test 1", grade: "Lớp 12", img: "/images/math12.webp" },
               ].map((t, i) => {
                 const myScores = t.key ? Object.entries(bestScores).filter(([k]) => k.startsWith(t.key)) : [];
                 const scoreBadge = myScores.length > 0

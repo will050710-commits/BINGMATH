@@ -449,4 +449,59 @@ export const ANSWER_KEY = {
       "5-1": "3/5",
     },
   },
+
+  // ===========================
+  // ✅ L12 TEST 1 (reading-test-L12-1)
+  // ===========================
+  "reading-test-L12-1": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "B", p1q5: "C", p2q1: "C", p2q2: "B", p2q3: "B", p2q4: "C", p2q5: "B" },
+    section2: { 0: "FALSE", 1: "FALSE", 2: "TRUE", 3: "FALSE", 4: "FALSE" },
+    section3: { "1-0": "max f(0)=4, min f(2)=0", "1-1": "inc (-inf,0) U (2,+inf), dec (0,2)", "2-0": "max=2 at x=1, min=-1 at x=0,3", "2-1": "4 cm", "3-0": "VA: x=1, HA: y=2", "3-1": "local max y(0)=7, local min y(+-2)=-9", "4-0": "AB=(-1,2,0), AC=(-1,0,3)", "4-1": "|AB|=sqrt(5), cos=1/sqrt(70)", "5-0": "mean=7.7, S^2=1.81", "5-1": "S=1.35, IQR=2" }
+  },
+
+  // ===========================
+  // ✅ L12 TEST 2 (reading-test-L12-2)
+  // ===========================
+  "reading-test-L12-2": {
+    section1: { p1q1: "B", p1q2: "C", p1q3: "C", p1q4: "B", p1q5: "B", p2q1: "B", p2q2: "B", p2q3: "C", p2q4: "B", p2q5: "C" },
+    section2: { 0: "TRUE", 1: "FALSE", 2: "TRUE", 3: "FALSE", 4: "TRUE" },
+    section3: { "1-0": "dec (-inf,1) U (1,+inf); VA: x=1, HA: y=1", "1-1": "m=1", "2-0": "max=6 at x=4, min=2 at x=0", "2-1": "width=60m, length=30m, Area=1800m2", "3-0": "M=(1.5, 2, 0.5), BC=(3,-3,-1)", "3-1": "Not collinear (AB & AC not parallel)", "4-0": "AB=BC=2sqrt(3)", "4-1": "Yes, collinear (AB parallel to BC)", "5-0": "mean=163.2, S^2=17.36", "5-1": "S=4.17, IQR=7" }
+  },
+
+  // ===========================
+  // ✅ L12 TEST 3 (reading-test-L12-3)
+  // ===========================
+  "reading-test-L12-3": {
+    section1: { p1q1: "C", p1q2: "B", p1q3: "B", p1q4: "C", p1q5: "B", p2q1: "B", p2q2: "C", p2q3: "B", p2q4: "B", p2q5: "C" },
+    section2: { 0: "NOT GIVEN", 1: "FALSE", 2: "TRUE", 3: "TRUE", 4: "FALSE" },
+    section3: { "1-0": "local min at x=+-sqrt(2) (f=-1), local max at x=0 (f=3)", "1-1": "abs max=18 at x=3, abs min=-4 at x=-2", "2-0": "VA: x=+-2, HA: y=3", "2-1": "VA: x=-1, OA: y=x+1", "3-0": "AB=4, AC=3, AD=5, BD=sqrt(41)", "3-1": "G=(1, 0.75, 1.25)", "4-0": "mean=6.83, median=7, mode=7", "4-1": "S^2=2.47, S=1.57", "5-0": "Q1=15, Q2=19, Q3=24, IQR=9", "5-1": "No outliers (range 1.5 to 37.5)" }
+  },
+
+  // ===========================
+  // ✅ L12 TEST 4 (reading-test-L12-4)
+  // ===========================
+  "reading-test-L12-4": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "C", p1q4: "B", p1q5: "B", p2q1: "B", p2q2: "B", p2q3: "C", p2q4: "A", p2q5: "B" },
+    section2: { 0: "FALSE", 1: "FALSE", 2: "TRUE", 3: "NOT GIVEN", 4: "FALSE" },
+    section3: { "1-0": "F(x) = x^3 - x^2 + x + 5", "1-1": "x^4/2 - x^2/2 + 4x + C", "2-0": "44/3", "2-1": "1", "3-0": "1/6", "3-1": "32/3", "4-0": "2x - y + z - 3 = 0", "4-1": "2sqrt(6)/3", "5-0": "2/15", "5-1": "1/3" }
+  },
+
+  // ===========================
+  // ✅ L12 TEST 5 (reading-test-L12-5)
+  // ===========================
+  "reading-test-L12-5": {
+    section1: { p1q1: "B", p1q2: "C", p1q3: "B", p1q4: "B", p1q5: "C", p2q1: "C", p2q2: "B", p2q3: "C", p2q4: "B", p2q5: "B" },
+    section2: { 0: "TRUE", 1: "FALSE", 2: "TRUE", 3: "NOT GIVEN", 4: "FALSE" },
+    section3: { "1-0": "2", "1-1": "2", "2-0": "32/3", "2-1": "4/3", "3-0": "6x + 3y + 2z - 6 = 0", "3-1": "6/7", "4-0": "x=1+2t, y=2-t, z=3+t", "4-1": "(-5, 5, 0)", "5-0": "0.038", "5-1": "9/19" }
+  },
+
+  // ===========================
+  // ✅ L12 TEST 6 (reading-test-L12-6)
+  // ===========================
+  "reading-test-L12-6": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "C", p1q5: "B", p2q1: "B", p2q2: "B", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section2: { 0: "TRUE", 1: "TRUE", 2: "NOT GIVEN", 3: "FALSE", 4: "FALSE" },
+    section3: { "1-0": "F(x) = x^4 - 3x^2 + 2x + 3", "1-1": "1", "2-0": "1/2", "2-1": "e - 1", "3-0": "(x-1)^2 + (y+2)^2 + (z-3)^2 = 16", "3-1": "Center I(1,-2,3), r=4", "4-0": "15/56", "4-1": "3/8", "5-0": "0.117", "5-1": "0.162 (or 16.2%)" }
+  },
 };
+
