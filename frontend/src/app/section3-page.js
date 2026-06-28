@@ -55,14 +55,14 @@ const mathProblems = [
   },
   {
     id: 5,
-    source: "Grade 10 — End-of-Year Exam, Hai Ba Trung High School, 2023–2024",
+    source: "Grade 10 — KSCL Semester II, Thuan Thanh 1 High School, Bac Ninh, 2025–2026",
     label: "Problem 5",
     parts: [
-      "Given the vectors →a = (3, −1) and →b = (−2, 4).",
-      "a) Compute the dot product →a · →b and determine whether →a and →b are perpendicular.",
-      "b) Find the coordinates of the vector →c = 2→a − →b and compute its magnitude |→c|.",
+      "In triangle ABC, let a, b, c denote the sides opposite to angles A, B, C respectively. Given: a = 7, b = 5, c = 8.",
+      "a) Use the Law of Cosines to find cos(A). Is angle A acute or obtuse?",
+      "b) Use the Law of Sines to find sin(B). Hence find angle B (to the nearest degree).",
     ],
-    fields: ["Answer (a):", "Answer (b):"],
+    fields: ["Answer (a) — cos(A) and type:", "Answer (b) — sin(B) and B ≈"],
   },
 ];
 

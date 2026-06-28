@@ -10,11 +10,11 @@ const SECTION = "section3";
 const TEST_KEY = "reading-test-4";
 
 const mathProblems = [
-  { id:1, source:"Grade 10 — Semester II Exam, Le Quy Don High School, 2023–2024", label:"Problem 1", parts:["a) Solve: x² − 5x + 6 ≤ 0.", "b) Find the range of m such that x² − 2mx + m + 2 > 0 for all real x."], fields:["Answer (a):", "Answer (b):"] },
+  { id:1, source:"Grade 10 — KSCL Semester II, Nguyen Dang Dao High School, Bac Ninh, 2025–2026", label:"Problem 1", parts:["a) Solve: (x+2)(x−3) < 2x(x−1).", "b) Find the values of m such that the inequality x² + mx + m > 0 holds for all x ∈ ℝ."], fields:["Answer (a):", "Answer (b):"] },
   { id:2, source:"Grade 10 — Mid-term Exam, Chu Van An High School, 2022–2023", label:"Problem 2", parts:["a) How many ways can 8 students be seated in a row if 2 specific students must sit next to each other?", "b) Find the number of subsets of a set with 6 elements."], fields:["Answer (a):", "Answer (b):"] },
   { id:3, source:"Grade 10 — Final Exam, Nguyen Thi Minh Khai High School, 2023–2024", label:"Problem 3", parts:["Two fair dice are rolled.", "a) Find the probability that the product of the two outcomes is even.", "b) Find the probability that the sum equals 7."], fields:["Answer (a) — P(even product):", "Answer (b) — P(sum=7):"] },
   { id:4, source:"Grade 10 — Semester II Exam, Kim Lien High School, 2023–2024", label:"Problem 4", parts:["The circle (C): x² + y² − 6x − 8y = 0.", "a) Find the centre I and radius R.", "b) Does the point M(6, 2) lie inside, on, or outside (C)?"], fields:["Answer (a) — I and R:", "Answer (b):"] },
-  { id:5, source:"Grade 10 — End-of-Year Exam, Viet Duc High School, 2023–2024", label:"Problem 5", parts:["Given points A(−1, 2), B(3, 4), C(5, −2).", "a) Find the length of AB and the midpoint M of BC.", "b) Find the equation of the line through A perpendicular to BC."], fields:["Answer (a):", "Answer (b) — line equation:"] }
+  { id:5, source:"Grade 10 — KSCL Semester II, Thuan Thanh 1 High School, Bac Ninh, 2025–2026", label:"Problem 5", parts:["In triangle ABC: B = 30°, C = 105°, b = 4.", "a) Find angle A and then use the Law of Sines to find side a.", "b) Find the area of triangle ABC."], fields:["Answer (a) — A and a =", "Answer (b) — Area ="] }
 ];
 
 export default function Page() {

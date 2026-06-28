@@ -10,11 +10,11 @@ const SECTION = "section3";
 const TEST_KEY = "reading-test-6";
 
 const mathProblems = [
-  { id:1, source:"Grade 10 — Semester I Exam, Bui Thi Xuan High School, 2023–2024", label:"Problem 1", parts:["a) Solve: |2x − 3| ≤ 7.", "b) Find all real k so that the equation x² − (k+1)x + k = 0 has two equal roots."], fields:["Answer (a):", "Answer (b):"] },
+  { id:1, source:"Grade 10 — KSCL Semester II, Nguyen Dang Dao High School, Bac Ninh, 2025–2026", label:"Problem 1", parts:["a) Solve: x² − 3|x| − 4 ≤ 0.", "b) Find the values of m such that x² − 2(m+1)x + (m² + 2m − 3) = 0 has two roots both greater than 1."], fields:["Answer (a):", "Answer (b):"] },
   { id:2, source:"Grade 10 — Mid-term Exam, Phan Boi Chau High School, 2023–2024", label:"Problem 2", parts:["a) How many 4-digit numbers with distinct digits can be formed from {0,1,2,3,4,5}?", "b) A group of 10 people votes for a president, vice-president, and secretary. How many outcomes are possible?"], fields:["Answer (a):", "Answer (b):"] },
   { id:3, source:"Grade 10 — Semester II Exam, Luong The Vinh High School, 2023–2024", label:"Problem 3", parts:["A card is drawn at random from a standard 52-card deck.", "a) What is the probability it is a heart or a king?", "b) What is the probability it is neither an ace nor a face card?"], fields:["Answer (a):", "Answer (b):"] },
   { id:4, source:"Grade 10 — Final Exam, Gia Dinh High School, 2022–2023", label:"Problem 4", parts:["Line d passes through A(2, −1) and B(−1, 5).", "a) Write the equation of line d in the form ax + by + c = 0.", "b) Find the distance from point C(4, 3) to line d."], fields:["Answer (a):", "Answer (b):"] },
-  { id:5, source:"Grade 10 — End-of-Year Exam, Tran Dai Nghia High School, 2023–2024", label:"Problem 5", parts:["Given triangle ABC with A(1,1), B(5,1), C(3,5).", "a) Find the perimeter of triangle ABC.", "b) Find the equation of the circle circumscribed about triangle ABC."], fields:["Answer (a) — perimeter:", "Answer (b) — circle:"] }
+  { id:5, source:"Grade 10 — KSCL Semester II, Thuan Thanh 1 High School, Bac Ninh, 2025–2026", label:"Problem 5", parts:["In triangle ABC: AB = 6, AC = 8, angle BAC = 60°.", "a) Find BC using the Law of Cosines.", "b) Find the area of triangle ABC. Then find the radius R of the circumscribed circle using R = BC/(2·sin A)."], fields:["Answer (a) — BC =", "Answer (b) — Area and R ="] }
 ];
 
 export default function Page() {

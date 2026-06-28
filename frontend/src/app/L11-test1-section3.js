@@ -13,7 +13,7 @@ const mathProblems=[
   {id:2,source:"Grade 11 — Semester I Exam, Chu Van An High School, 2023–2024",label:"Problem 2",parts:["a) Evaluate: log₂(64) − log₃(1/9) + log₅(1).", "b) Solve: log₂(x+1) + log₂(x−1) = 3."],fields:["Answer (a):", "Answer (b):"]},
   {id:3,source:"Grade 11 — Mid-term Exam, Nguyen Hue High School, 2023–2024",label:"Problem 3",parts:["The sequence (uₙ) is defined by u₁=3, uₙ₊₁ = uₙ + 4.", "a) Write the general term formula uₙ.", "b) Find u₁₀ and the sum S₁₀."],fields:["Answer (a):", "Answer (b):"]},
   {id:4,source:"Grade 11 — Semester I Exam, Tran Hung Dao High School, 2023–2024",label:"Problem 4",parts:["Given the geometric sequence: 2, 6, 18, 54, ...", "a) Find the common ratio q and the general term uₙ.", "b) Find the sum of the first 8 terms S₈."],fields:["Answer (a):", "Answer (b) — S₈:"]},
-  {id:5,source:"Grade 11 — End-of-Year Exam, Nguyen Thi Minh Khai High School, 2023–2024",label:"Problem 5",parts:["a) Prove: if P: 'n is even' and Q: 'n² is even', then P⟺Q.", "b) Write the negation of: ∀x∈ℝ, x² + 1 > 0."],fields:["Answer (a) — proof outline:", "Answer (b):"]}
+  {id:5,source:"Grade 11 — KSCL Semester I, Thuan Thanh 2 High School, Bac Ninh, 2025–2026",label:"Problem 5",parts:["a) Given that sin α = 3/5 and π/2 < α < π. Find cos α and tan α.", "b) Solve the equation: 2sin(x) − √3 = 0 for x ∈ [0; 2π]."],fields:["Answer (a):", "Answer (b) — x ="]}
 ];
 
 export default function Page(){

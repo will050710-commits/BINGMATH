@@ -13,7 +13,7 @@ const mathProblems=[
   {id:2,source:"Grade 11 — Semester I Exam, Kim Lien High School, 2023–2024",label:"Problem 2",parts:["a) Compute: log₂(√32) + log₄(8) − log₈(2).", "b) Simplify: (a^(3/4) · b^(1/2)) / (a^(1/4) · b^(3/2)) where a,b > 0."],fields:["Answer (a):", "Answer (b):"]},
   {id:3,source:"Grade 11 — Mid-term Exam, Tran Phu High School, 2023–2024",label:"Problem 3",parts:["An arithmetic sequence has u₁=5 and u₄=17.", "a) Find the common difference d and write the general term uₙ.", "b) Find the value of n such that uₙ = 89."],fields:["Answer (a):", "Answer (b) — n:"]},
   {id:4,source:"Grade 11 — Semester I Exam, Quoc Hoc Hue High School, 2023–2024",label:"Problem 4",parts:["A geometric sequence has u₁=2 and common ratio q=3.", "a) Find u₅ and u₆.", "b) Find the smallest n such that uₙ > 1000."],fields:["Answer (a):", "Answer (b) — n:"]},
-  {id:5,source:"Grade 11 — End-of-Year Exam, Gia Dinh High School, 2023–2024",label:"Problem 5",parts:["a) Write the contrapositive of: 'If n is divisible by 6, then n is divisible by 2 and by 3'.", "b) Determine the truth value of: ∃x∈ℝ such that x² + x + 1 = 0."],fields:["Answer (a):", "Answer (b):"]}
+  {id:5,source:"Grade 11 — KSCL Semester I, Thuan Thanh 1 High School, Bac Ninh, 2025–2026",label:"Problem 5",parts:["a) Compute the exact value of: sin(30°)·cos(60°) + cos(30°)·sin(60°).", "b) Solve the equation: cos(2x) = 1/2 for x ∈ [0; 2π]. List all solutions."],fields:["Answer (a):", "Answer (b) — x ="]}
 ];
 
 export default function Page(){

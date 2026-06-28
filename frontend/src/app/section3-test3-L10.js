@@ -10,11 +10,11 @@ const SECTION = "section3";
 const TEST_KEY = "reading-test-3";
 
 const mathProblems = [
-  { id:1, source:"Grade 10 — Semester I Exam, Nguyen Trai High School, 2023–2024", label:"Problem 1", parts:["a) Solve the system of inequalities: 2x − 1 > 3 and x + 4 < 10.", "b) Find all integers x satisfying: −2 ≤ 3x − 1 < 8."], fields:["Answer (a):", "Answer (b):"] },
+  { id:1, source:"Grade 10 — KSCL Semester I, Nguyen Dang Dao High School, Bac Ninh, 2025–2026", label:"Problem 1", parts:["a) Solve the quadratic inequality: 3x² − 10x + 3 > 0.", "b) Find all values of m such that the equation x² − 2(m−1)x + m² − 5 = 0 has two negative roots."], fields:["Answer (a):", "Answer (b):"] },
   { id:2, source:"Grade 10 — Mid-term Exam, Ly Tu Trong High School, 2023–2024", label:"Problem 2", parts:["a) Given f(x) = x² − 3x + 2. Find the zeros of f(x).", "b) Determine the vertex and axis of symmetry of y = −x² + 4x − 3."], fields:["Answer (a):", "Answer (b):"] },
   { id:3, source:"Grade 10 — Semester I Exam, Tran Hung Dao High School, 2023–2024", label:"Problem 3", parts:["a) A committee of 3 is to be chosen from 5 men and 4 women. In how many ways can this be done if the committee must include at least 1 woman?", "b) How many 3-digit numbers can be formed using digits 1, 2, 3, 4, 5 with no repetition?"], fields:["Answer (a):", "Answer (b):"] },
   { id:4, source:"Grade 10 — Semester I Exam, Dinh Tien Hoang High School, 2022–2023", label:"Problem 4", parts:["Given triangle OAB in the coordinate plane with O(0,0), A(4,0), B(2,3).", "a) Find the coordinates of the centroid G of triangle OAB.", "b) Find the equation of the line passing through A and B."], fields:["Answer (a) — G:", "Answer (b) — line AB:"] },
-  { id:5, source:"Grade 10 — End-of-Year Exam, Nguyen Hue High School, 2022–2023", label:"Problem 5", parts:["Given →u = (1, −2) and →v = (3, 1).", "a) Compute |→u| and |→v|.", "b) Find the angle θ between →u and →v (to the nearest degree)."], fields:["Answer (a):", "Answer (b) — θ:"] }
+  { id:5, source:"Grade 10 — KSCL Semester II, Thuan Thanh 1 High School, Bac Ninh, 2025–2026", label:"Problem 5", parts:["In triangle ABC: a = 5, b = 7, C = 60°.", "a) Find side c using the Law of Cosines.", "b) Find the area of triangle ABC."], fields:["Answer (a) — c =", "Answer (b) — Area ="] }
 ];
 
 export default function Page() {

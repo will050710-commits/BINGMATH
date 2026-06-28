@@ -14,7 +14,7 @@ const mathProblems = [
   { id:2, source:"Grade 10 — Mid-term Exam, Nguyen Binh Khiem High School, 2023–2024", label:"Problem 2", parts:["a) Find the coefficient of x⁴ in the expansion of (x + 2)⁶.", "b) In how many ways can a captain and vice-captain be chosen from a team of 11 players?"], fields:["Answer (a):", "Answer (b):"] },
   { id:3, source:"Grade 10 — Semester II Exam, Quoc Hoc Hue High School, 2023–2024", label:"Problem 3", parts:["A box contains 3 red, 4 blue, and 5 green balls. Three balls are drawn at random.", "a) What is the probability all three are the same colour?", "b) What is the probability of drawing exactly 2 blue balls?"], fields:["Answer (a):", "Answer (b):"] },
   { id:4, source:"Grade 10 — Final Exam, Phan Dinh Phung High School, 2022–2023", label:"Problem 4", parts:["Given the line d: 3x − 4y + 12 = 0.", "a) Find the distance from the origin O(0,0) to d.", "b) Find the equation of the line parallel to d passing through P(1, 2)."], fields:["Answer (a):", "Answer (b):"] },
-  { id:5, source:"Grade 10 — End-of-Year Exam, Nguyen Du High School, 2023–2024", label:"Problem 5", parts:["Given →a = (2, 1) and →b = (−1, 3).", "a) Find →a + →b, →a − →b, and 3→a.", "b) Find →c such that →c = 2→a − 3→b."], fields:["Answer (a):", "Answer (b) — →c:"] }
+  { id:5, source:"Grade 10 — KSCL Semester II, Nguyen Dang Dao High School, Bac Ninh, 2025–2026", label:"Problem 5", parts:["In triangle ABC: a = 8, B = 45°, C = 75°.", "a) Find angle A. Then use the Law of Sines to express b in terms of a.", "b) Find the exact value of sin(75°) = sin(45° + 30°). Use it to find the area of triangle ABC."], fields:["Answer (a) — A and b =", "Answer (b) — Area ="] }
 ];
 
 export default function Page() {

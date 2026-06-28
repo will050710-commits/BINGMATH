@@ -33,14 +33,14 @@ const mathProblems = [
   },
   {
     id: 3,
-    source: "Grade 10 — End-of-Year Exam, Bui Thi Xuan High School, 2022–2023",
+    source: "Grade 10 — KSCL Semester II, Nguyen Dang Dao High School, Bac Ninh, 2025–2026",
     label: "Problem 3",
     parts: [
-      "A bag contains 4 red balls, 3 blue balls, and 2 green balls. One ball is drawn at random.",
-      "a) What is the probability that the ball drawn is red?",
-      "b) What is the probability that the ball drawn is NOT green?",
+      "Two fair six-sided dice are rolled simultaneously.",
+      "a) Find the probability that the sum of the two outcomes equals 8.",
+      "b) Find the probability that the two outcomes are different AND their sum is greater than 7.",
     ],
-    fields: ["Answer (a) — P(red):", "Answer (b) — P(not green):"],
+    fields: ["Answer (a) — P(sum=8):", "Answer (b) — P ="],
   },
   {
     id: 4,
@@ -55,14 +55,14 @@ const mathProblems = [
   },
   {
     id: 5,
-    source: "Grade 10 — End-of-Year Exam, Quoc Hoc Hue High School, 2023–2024",
+    source: "Grade 10 — KSCL Semester II, Thuan Thanh 1 High School, Bac Ninh, 2025–2026",
     label: "Problem 5",
     parts: [
-      "Given triangle ABC with A(0, 4), B(−3, 0), C(3, 0).",
-      "a) Show that triangle ABC is isosceles.",
-      "b) Find the equation of the circle passing through all three vertices of triangle ABC.",
+      "In triangle ABC: angle A = 45°, b = 6√2, c = 4.",
+      "a) Use the Law of Cosines to find side a.",
+      "b) Find angle B using the Law of Sines. Is triangle ABC acute, right-angled, or obtuse?",
     ],
-    fields: ["Answer (a):", "Answer (b) — circle equation:"],
+    fields: ["Answer (a) — a =", "Answer (b) — B ≈ and triangle type:"],
   },
 ];
 
