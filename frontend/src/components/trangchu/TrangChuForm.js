@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import GalaxyCanvas from "./GalaxyCanvas";
+import CosmosBackground from "./CosmosBackground";
 import { motion, AnimatePresence } from "framer-motion";
 import { clearTestSession } from "@/utils/testTimer";
 import { useAuth } from "@/context/authContext";
@@ -43,6 +43,93 @@ function FadeInTitle({ text, gradient = "linear-gradient(135deg, #ffffff 60%, #9
         </motion.span>
       ))}
     </motion.h1>
+  );
+}
+
+// ─── PREMIUM SECTION HEADING ──────────────────────────────────────────────────────────────
+function SectionHeading({ title, subtitle, badge, align = "center" }) {
+  return (
+    <div style={{
+      textAlign: align,
+      marginBottom: 44,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: align === "center" ? "center" : "flex-start",
+      /* Dark glass panel — blocks planet bleeding through */
+      background: "linear-gradient(135deg, rgba(2,8,24,0.82) 0%, rgba(4,12,36,0.78) 100%)",
+      backdropFilter: "blur(22px)",
+      WebkitBackdropFilter: "blur(22px)",
+      border: "1px solid rgba(255,255,255,0.055)",
+      borderRadius: 18,
+      padding: align === "center" ? "32px 56px 40px" : "28px 36px 36px",
+      boxShadow: "0 8px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04)",
+    }}>
+      {/* Badge pill */}
+      {badge && (
+        <div style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          background: "linear-gradient(135deg, rgba(99,102,241,0.18) 0%, rgba(56,189,248,0.18) 100%)",
+          border: "1px solid rgba(99,102,241,0.35)",
+          borderRadius: 100,
+          padding: "5px 16px",
+          fontSize: 11,
+          fontWeight: 800,
+          color: "#a5b4fc",
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+          marginBottom: 14,
+          boxShadow: "0 0 18px rgba(99,102,241,0.15)",
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#818cf8", display: "inline-block", boxShadow: "0 0 6px #818cf8" }} />
+          {badge}
+        </div>
+      )}
+
+      {/* Main title with gradient underline bar */}
+      <div style={{ position: "relative", display: "inline-block" }}>
+        <h2 style={{
+          fontSize: 34,
+          fontWeight: 900,
+          margin: 0,
+          lineHeight: 1.15,
+          background: "linear-gradient(135deg, #ffffff 30%, #a5b4fc 70%, #38bdf8 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+          letterSpacing: 0.3,
+        }}>
+          {title}
+        </h2>
+        {/* Glowing underline */}
+        <div style={{
+          position: "absolute",
+          bottom: -8,
+          left: align === "center" ? "50%" : 0,
+          transform: align === "center" ? "translateX(-50%)" : "none",
+          width: align === "center" ? "60%" : "80px",
+          height: 3,
+          borderRadius: 2,
+          background: "linear-gradient(90deg, transparent, #6366f1, #38bdf8, transparent)",
+          boxShadow: "0 0 12px rgba(99,102,241,0.6), 0 0 24px rgba(56,189,248,0.3)",
+        }} />
+      </div>
+
+      {/* Subtitle */}
+      {subtitle && (
+        <p style={{
+          marginTop: 22,
+          color: "rgba(255,255,255,0.48)",
+          fontSize: 15.5,
+          maxWidth: 560,
+          lineHeight: 1.6,
+          margin: "22px auto 0",
+        }}>
+          {subtitle}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -181,12 +268,11 @@ function FeatureSwipeCarousel({ features, router }) {
     <div className="reveal" data-reveal style={{ marginTop: 80, marginBottom: 60 }}>
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 44 }}>
-        <h2 style={{ fontSize: 32, fontWeight: 900, marginBottom: 8, letterSpacing: 0.5 }}>
-          Các Tính Năng Cốt Lõi
-        </h2>
-        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, maxWidth: 600, margin: "0 auto" }}>
-          Khám phá hệ sinh thái học tập toàn diện — kéo để xem thêm
-        </p>
+        <SectionHeading
+          badge="Hệ sinh thái học tập"
+          title="Các Tính Năng Cốt Lõi"
+          subtitle="Khám phá hệ sinh thái học tập toàn diện — kéo để xem thêm"
+        />
       </div>
 
       {/* Carousel viewport */}
@@ -742,8 +828,8 @@ export default function TrangChuForm() {
     <div style={{ width: "100%", minHeight: "100vh", background: "linear-gradient(160deg, #020c1b 0%, #030d1e 20%, #041226 50%, #03152d 80%, #020c1b 100%)", position: "relative", overflow: "hidden", color: "white" }}>
       {showEditModal && <EditProfileModal onClose={() => setShowEditModal(false)} />}
 
-      {/* ═══════ FULLSCREEN HUD GALAXY BACKGROUND ═══════ */}
-      <GalaxyCanvas />
+      {/* ═══════ FULLSCREEN 3D COSMOS BACKGROUND (Saturn-style) ═══════ */}
+      <CosmosBackground />
 
       {/* ═══════ HEADER / NAVBAR ═══════ */}
       <header className="reveal" data-reveal
@@ -909,14 +995,11 @@ export default function TrangChuForm() {
           {/* ═══════ GAMIFICATION HUB ═══════ */}
           {user && (
             <div className="reveal visible" style={{ marginTop: 20, marginBottom: 50 }}>
-              <div style={{ textAlign: "center", marginBottom: 30 }}>
-                <h2 style={{ fontSize: 32, fontWeight: 900, marginBottom: 8, letterSpacing: 0.5 }}>
-                  Thử Thách & Thành Tích Hàng Ngày
-                </h2>
-                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16 }}>
-                  Hoàn thành chỉ tiêu, mở khóa thẻ bài công thức và thăng hạng cùng trường lớp!
-                </p>
-              </div>
+              <SectionHeading
+                badge="Gamification"
+                title="Thử Thách & Thành Tích Hàng Ngày"
+                subtitle="Hoàn thành chỉ tiêu, mở khóa thẻ bài công thức và thăng hạng cùng trường lớp!"
+              />
 
               <div style={{
                 display: "grid",
@@ -1108,8 +1191,12 @@ export default function TrangChuForm() {
           <div className="reveal" data-reveal style={{ marginTop: 80 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
               <div>
-                <h2 style={{ fontSize: 28, fontWeight: 900 }}>Đề Kiểm Tra Mới Nhất</h2>
-                <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 14.5 }}>Hệ thống đề thi song ngữ SAT & IELTS tự luyện</p>
+                <SectionHeading
+                  badge="Đề thi song ngữ"
+                  title="Đề Kiểm Tra Mới Nhất"
+                  subtitle="Hệ thống đề thi song ngữ SAT & IELTS tự luyện"
+                  align="left"
+                />
               </div>
               <Link href="/cacbailam" style={{ color: "#38bdf8", fontWeight: 700, textDecoration: "none", fontSize: 14.5 }}
                 onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
