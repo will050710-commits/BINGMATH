@@ -1161,6 +1161,7 @@ export default function DuoMCBPage() {
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
@@ -1174,6 +1175,14 @@ export default function DuoMCBPage() {
 
   useEffect(() => { initSession(); }, []);
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+  // Close mobile sidebar when resizing to desktop
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth >= 769) setMobileMenuOpen(false);
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   async function initSession() {
     const sid = await createSession();
@@ -1325,8 +1334,17 @@ export default function DuoMCBPage() {
         </div>
       )}
 
+      {/* ── MOBILE SIDEBAR BACKDROP ── */}
+      {mobileMenuOpen && (
+        <div
+          className={styles.sidebarBackdrop}
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* ── SIDEBAR ── */}
-      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed}`}>
+      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : styles.sidebarClosed} ${mobileMenuOpen ? styles.sidebarMobileOpen : ""}`}>
         <div className={styles.sidebarTop}>
           <div className={styles.logo}>
             <span className={styles.logoIcon}></span>
@@ -1365,6 +1383,14 @@ export default function DuoMCBPage() {
       {/* ── MAIN ── */}
       <main className={styles.main}>
         <header className={styles.header}>
+          {/* Hamburger — only shows on mobile via CSS */}
+          <button
+            className={styles.mobileMenuBtn}
+            onClick={() => setMobileMenuOpen(o => !o)}
+            aria-label="Toggle menu"
+          >
+            ☰
+          </button>
           <span className={styles.headerTitle}>DuoMCB</span>
           <span className={styles.headerSub}>Bilingual AI Tutor</span>
           <div className={styles.headerActions}>

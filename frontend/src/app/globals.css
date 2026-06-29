@@ -1,8 +1,35 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE DESIGN TOKENS — Mobile-First
+═══════════════════════════════════════════════════════════ */
 :root {
   --background: #020c1b;
   --foreground: #ededed;
+
+  /* Spacing scale */
+  --space-xs:  4px;
+  --space-sm:  8px;
+  --space-md:  16px;
+  --space-lg:  24px;
+  --space-xl:  40px;
+  --space-2xl: 64px;
+
+  /* Responsive font scale using clamp(min, preferred, max) */
+  --text-xs:   clamp(10px, 2.5vw, 12px);
+  --text-sm:   clamp(12px, 3vw,   14px);
+  --text-base: clamp(14px, 3.5vw, 16px);
+  --text-md:   clamp(16px, 4vw,   20px);
+  --text-lg:   clamp(20px, 5vw,   28px);
+  --text-xl:   clamp(26px, 6vw,   36px);
+  --text-2xl:  clamp(32px, 8vw,   48px);
+  --text-hero: clamp(28px, 9vw,   56px);
+
+  /* Breakpoint reference (for use in JS if needed) */
+  --bp-xs: 480px;
+  --bp-sm: 768px;
+  --bp-md: 1024px;
+  --bp-lg: 1280px;
 }
 
 :root {
@@ -12,26 +39,81 @@
   --font-mono: monospace;
 }
 
-body {
-  background: linear-gradient(160deg, #020c1b 0%, #0a1628 15%, #0c2340 35%, #0e3158 50%, #0a3d5c 65%, #063d56 80%, #042f46 100%);
-  background-attachment: fixed;
-  color: var(--foreground);
-  font-family: var(--font-sans);
-  overflow-x: hidden;
-}
-
+/* ── Global reset ── */
 * {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-/* container chuẩn giữa trang */
+body {
+  background: linear-gradient(160deg, #020c1b 0%, #0a1628 15%, #0c2340 35%, #0e3158 50%, #0a3d5c 65%, #063d56 80%, #042f46 100%);
+  background-attachment: fixed;
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  /* Smooth text on all devices */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent text resize on orientation change */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* ── Responsive container ── */
 .container {
   max-width: 1200px;
   margin: auto;
-  padding: 0 24px;
+  padding: 0 clamp(16px, 5vw, 24px);
 }
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE UTILITY CLASSES
+══════════════════════════════════════════════════════════ */
+
+/* Touch-friendly minimum tap targets */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Hide on mobile, show on desktop */
+.hide-mobile   { display: none !important; }
+.show-mobile   { display: flex !important; }
+
+@media (min-width: 769px) {
+  .hide-mobile   { display: flex !important; }
+  .show-mobile   { display: none !important; }
+}
+
+/* Hide on desktop, show on mobile */
+.hide-desktop { display: flex !important; }
+@media (min-width: 769px) {
+  .hide-desktop { display: none !important; }
+}
+
+/* Responsive flex stacking */
+.flex-stack {
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 769px) {
+  .flex-stack { flex-direction: row; }
+}
+
+/* ── Mobile safe area (for notched phones) ── */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* ── Scrollbar thin on mobile ── */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar { width: 2px; height: 2px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+}
+
 
 /* ═══════════════════════════════════════════════════════════
    MRM / BMF GLOBAL ANIMATIONS
@@ -199,3 +281,54 @@ body {
     animation: none;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   RESPONSIVE HOMEPAGE HEADER & HERO OVERRIDES
+═══════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  header > div {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    padding: 8px 12px !important;
+    max-width: 100% !important;
+  }
+  header nav {
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    -webkit-overflow-scrolling: touch;
+    max-width: 65% !important;
+    gap: 4px !important;
+    padding: 4px 0 !important;
+    /* Hide scrollbar */
+    scrollbar-width: none;
+  }
+  header nav::-webkit-scrollbar {
+    display: none !important;
+  }
+  .nav-link-item {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    flex-shrink: 0 !important;
+  }
+  .nav-mrm-btn {
+    padding: 6px 10px !important;
+    font-size: 13px !important;
+    flex-shrink: 0 !important;
+  }
+  .mascot-container {
+    width: min(280px, 90vw) !important;
+    height: min(280px, 90vw) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  header nav {
+    max-width: 58% !important;
+  }
+  /* Remove labels on extremely small screens to fit cleanly if needed */
+  .nav-link-item span {
+    gap: 3px !important;
+  }
+}
+

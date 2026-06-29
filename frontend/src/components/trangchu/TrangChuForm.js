@@ -35,7 +35,18 @@ function FadeInTitle({ text, gradient = "linear-gradient(135deg, #ffffff 60%, #9
       variants={container}
       initial="hidden"
       animate="visible"
-      style={{ fontSize: 44, fontWeight: 900, marginBottom: 12, lineHeight: 1.1, background: gradient, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", display: "flex", flexWrap: "wrap", gap: "0 8px" }}
+      style={{
+        fontSize: "clamp(26px, 7vw, 44px)",
+        fontWeight: 900,
+        marginBottom: 12,
+        lineHeight: 1.1,
+        background: gradient,
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "0 8px"
+      }}
     >
       {words.map((word, idx) => (
         <motion.span key={idx} variants={child} style={{ display: "inline-block" }}>
@@ -61,8 +72,12 @@ function SectionHeading({ title, subtitle, badge, align = "center" }) {
       WebkitBackdropFilter: "blur(22px)",
       border: "1px solid rgba(255,255,255,0.055)",
       borderRadius: 18,
-      padding: align === "center" ? "32px 56px 40px" : "28px 36px 36px",
+      padding: align === "center"
+        ? "clamp(16px, 4vw, 32px) clamp(16px, 6vw, 56px) clamp(20px, 5vw, 40px)"
+        : "clamp(16px, 4vw, 28px) clamp(16px, 5vw, 36px) clamp(16px, 5vw, 36px)",
       boxShadow: "0 8px 40px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.04)",
+      width: "100%",
+      boxSizing: "border-box",
     }}>
       {/* Badge pill */}
       {badge && (
@@ -88,9 +103,9 @@ function SectionHeading({ title, subtitle, badge, align = "center" }) {
       )}
 
       {/* Main title with gradient underline bar */}
-      <div style={{ position: "relative", display: "inline-block" }}>
+      <div style={{ position: "relative", display: "inline-block", maxWidth: "100%" }}>
         <h2 style={{
-          fontSize: 34,
+          fontSize: "clamp(22px, 5vw, 34px)",
           fontWeight: 900,
           margin: 0,
           lineHeight: 1.15,
@@ -121,7 +136,7 @@ function SectionHeading({ title, subtitle, badge, align = "center" }) {
         <p style={{
           marginTop: 22,
           color: "rgba(255,255,255,0.48)",
-          fontSize: 15.5,
+          fontSize: "clamp(13px, 3.5vw, 15.5px)",
           maxWidth: 560,
           lineHeight: 1.6,
           margin: "22px auto 0",

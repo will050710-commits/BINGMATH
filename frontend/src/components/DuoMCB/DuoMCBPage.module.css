@@ -2,6 +2,7 @@
 .root {
   display: flex;
   height: 100vh;
+  height: 100dvh;
   background: #0f0f11;
   color: #f0f0f0;
   font-family: 'Sora', 'DM Sans', sans-serif;
@@ -14,12 +15,27 @@
   flex-direction: column;
   background: #18181d;
   border-right: 1px solid #2a2a32;
-  transition: width 0.3s ease;
+  transition: width 0.3s ease, transform 0.3s ease;
   overflow: hidden;
   flex-shrink: 0;
 }
 .sidebarOpen  { width: 260px; }
 .sidebarClosed { width: 64px; }
+
+/* On mobile: sidebar becomes an off-canvas drawer */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    z-index: 200;
+    width: 260px !important;
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+  }
+  .sidebarMobileOpen {
+    transform: translateX(0) !important;
+  }
+}
 
 .sidebarTop {
   display: flex;
@@ -102,6 +118,12 @@
 .welcomeSub { font-size: 15px; color: #9ca3af; max-width: 460px; line-height: 1.6; margin-bottom: 32px; }
 
 .suggestions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 600px; width: 100%; }
+
+@media (max-width: 480px) {
+  .suggestions { grid-template-columns: 1fr; max-width: 100%; }
+  .welcomeTitle { font-size: clamp(20px, 6vw, 28px); }
+  .welcomeSub { font-size: 13px; }
+}
 .suggestionCard {
   display: flex; align-items: flex-start; gap: 10px;
   background: #18181d; border: 1px solid #2a2a32;
@@ -113,7 +135,7 @@
 .suggestionIcon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
 
 /* Messages */
-.messages { display: flex; flex-direction: column; gap: 6px; padding: 0 24px; max-width: 820px; margin: 0 auto; width: 100%; }
+.messages { display: flex; flex-direction: column; gap: 6px; padding: 0 clamp(12px, 4vw, 24px); max-width: 820px; margin: 0 auto; width: 100%; }
 .msgRow { display: flex; align-items: flex-end; gap: 10px; animation: fadeUp 0.3s ease both; }
 .userRow { flex-direction: row-reverse; }
 .botRow  { flex-direction: row; }
@@ -143,13 +165,15 @@
 .dot:nth-child(3) { animation-delay: 0.4s; }
 
 /* ── Input bar ── */
-.inputBar { padding: 16px 24px 20px; background: #0f0f11; border-top: 1px solid #2a2a32; justify-content: center }
+.inputBar { padding: clamp(10px, 3vw, 16px) clamp(12px, 4vw, 24px) clamp(12px, 3vw, 20px); background: #0f0f11; border-top: 1px solid #2a2a32; justify-content: center }
 .inputWrapper {
   display: flex; align-items: center; gap: 8px;
   background: #18181d; border: 1px solid #2a2a32;
   border-radius: 14px; padding: 10px 14px;
   max-width: 820px; margin: 0 auto;
   transition: border-color 0.2s;
+  /* Full width on mobile */
+  width: 100%;
 }
 .inputWrapper:focus-within { border-color: #6366f1; }
 
@@ -699,3 +723,70 @@
   }
 }
 
+/* ── Global mobile overrides for DuoMCBPage ── */
+@media (max-width: 768px) {
+  /* Mobile hamburger toggle for sidebar */
+  .mobileMenuBtn {
+    display: flex !important;
+    align-items: center; justify-content: center;
+    background: #2a2a32; border: none; color: #9ca3af;
+    width: 36px; height: 36px; border-radius: 8px;
+    cursor: pointer; font-size: 16px;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .mobileMenuBtn:hover { background: #3f3f50; }
+
+  /* Sidebar overlay backdrop on mobile */
+  .sidebarBackdrop {
+    display: block !important;
+    position: fixed; inset: 0; z-index: 199;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(2px);
+    animation: fadeIn 0.2s ease;
+  }
+
+  /* Header adjusts for mobile */
+  .header {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+  .headerTitle { font-size: 14px; }
+  .headerSub { display: none; }
+
+  /* Bubble max width wider on small screens */
+  .bubble { max-width: 85%; }
+
+  /* Modal full width on mobile */
+  .modal {
+    width: 95%;
+    padding: 18px;
+    border-radius: 16px;
+  }
+  .videoModal {
+    width: 96%;
+    border-radius: 16px;
+  }
+
+  /* Tools dropdown: open upward fully visible */
+  .toolsMenu {
+    right: auto;
+    left: 0;
+    min-width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chatArea { padding: 16px 0; }
+  .messages { padding: 0 10px; }
+  .inputBar { padding: 10px 10px 14px; }
+  .inputWrapper { border-radius: 12px; padding: 8px 10px; }
+  .input { font-size: 13px; }
+  .toolsBtn { padding: 5px 7px; font-size: 11px; }
+}
+
+/* Hidden by default — only shown on mobile via JS */
+.mobileMenuBtn { display: none; }
+.sidebarBackdrop { display: none; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }

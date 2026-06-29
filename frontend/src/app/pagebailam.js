@@ -1,5 +1,6 @@
-/* eslint-disable react/no-unescaped-entities */
+﻿/* eslint-disable react/no-unescaped-entities */
 "use client";
+import styles from "./pagebailam.module.css";
 import {
   startTimer,
   getRemainingTime,
@@ -166,32 +167,24 @@ export default function Page() {
   const allQuestions = [...passage1Questions, ...passage2Questions];
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", background: "#f5f5f5" }}>
+    <div className={styles.root}>
 
-      <header style={{
-        background: "#ffffff",
-        borderBottom: "1px solid #e0e0e0",
-        padding: "16px 32px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-        flexShrink: 0,
-      }}>
-        <div>
-          <div style={{ fontWeight: "bold", fontSize: 20, color: "#0B4F5C", letterSpacing: 1 }}>DUOSTEAM</div>
-          <div style={{ color: "#555", fontSize: 14, marginTop: 2 }}>Bilingual Math Test 1 — Section 1: SAT Reading (Multiple Choice)</div>
+      <header className={styles.header}>
+        <div className={styles.headerInfo}>
+          <div className={styles.headerBrand}>DUOSTEAM</div>
+          <div className={styles.headerSub}>Bilingual Math Test 1 — Section 1: SAT Reading (Multiple Choice)</div>
         </div>
-        <div style={{ background: "#fff0f0", border: "1px solid #ffcccc", borderRadius: 8, padding: "8px 20px", fontWeight: 600, fontSize: 18, color: "#c00" }}>⏱ {time}</div>
+        <div className={styles.timer}>⏱ {time}</div>
       </header>
 
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+      <div className={styles.body}>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: 28 }}>
+        {/* PASSAGES */}
+        <div className={styles.passagePane}>
 
-          <div style={{ background: "#ffffff", borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: 28, marginBottom: 24 }}>
+          <div className={styles.passageCard}>
             <div style={{ display: "inline-block", background: "#0B4F5C", color: "white", fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 20, marginBottom: 12, letterSpacing: 1 }}>PASSAGE 1 — Questions 1–5</div>
-            <h3 style={{ fontSize: 20, fontWeight: "bold", color: "#0B4F5C", marginBottom: 16 }}>Growing Food in the City</h3>
+            <h3 style={{ fontSize: "clamp(16px, 4vw, 20px)", fontWeight: "bold", color: "#0B4F5C", marginBottom: 16 }}>Growing Food in the City</h3>
             <p style={{ color: "#333", lineHeight: 1.85, marginBottom: 12 }}>Urban agriculture — the practice of growing food within city limits — has gained considerable momentum in recent decades. From rooftop gardens in New York to community plots in Singapore, cities around the world are experimenting with ways to integrate food production into densely populated environments. Proponents argue that urban farming can strengthen food security, reduce transportation emissions, and reconnect residents with the origins of their food.</p>
             <p style={{ color: "#333", lineHeight: 1.85, marginBottom: 12 }}>Green infrastructure, particularly rooftop gardens and vertical farms, offers environmental co-benefits beyond food production. These installations can intercept rainfall, reducing stormwater runoff that strains municipal drainage systems. They also lower ambient temperatures through evapotranspiration — a process that mitigates the urban heat island effect, which occurs when impervious surfaces absorb and re-emit solar radiation as heat.</p>
             <p style={{ color: "#333", lineHeight: 1.85, marginBottom: 12 }}>Despite these promising attributes, urban agriculture faces substantial hurdles. Land in cities is expensive, and competition for rooftop or vacant lot space is fierce. Soil contamination from industrial history is a recurring concern, often requiring costly remediation before cultivation can begin. Start-up costs — for irrigation systems, grow lights, and structural reinforcement — can be prohibitive for community organisations operating on thin budgets.</p>
@@ -199,9 +192,9 @@ export default function Page() {
           </div>
 
           {/* PASSAGE 2 */}
-          <div style={{ background: "#ffffff", borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: 28 }}>
+          <div className={styles.passageCard} style={{ marginBottom: 0 }}>
             <div style={{ display: "inline-block", background: "#0B4F5C", color: "white", fontSize: 12, fontWeight: 700, padding: "3px 12px", borderRadius: 20, marginBottom: 12, letterSpacing: 1 }}>PASSAGE 2 — Questions 6–10</div>
-            <h3 style={{ fontSize: 20, fontWeight: "bold", color: "#0B4F5C", marginBottom: 16 }}>The Case for Later School Start Times</h3>
+            <h3 style={{ fontSize: "clamp(16px, 4vw, 20px)", fontWeight: "bold", color: "#0B4F5C", marginBottom: 16 }}>The Case for Later School Start Times</h3>
             <p style={{ color: "#333", lineHeight: 1.85, marginBottom: 12 }}>Sleep science has consistently shown that adolescents require between eight and ten hours of sleep per night for optimal cognitive function and emotional regulation. Yet surveys across numerous countries reveal that the average teenager sleeps far fewer hours — a deficit with measurable consequences for mental health, academic performance, and long-term physical well-being.</p>
             <p style={{ color: "#333", lineHeight: 1.85, marginBottom: 12 }}>Part of this shortfall is biological. During puberty, a hormonal shift delays the release of melatonin, the body's sleep-inducing hormone, pushing teenagers toward later bedtimes. Asking a 15-year-old to rise at 6 AM for a 7:30 school start is, in effect, fighting biology. The adolescent brain at that hour is still physiologically in sleep mode, regardless of willpower or caffeine.</p>
             <p style={{ color: "#333", lineHeight: 1.85, marginBottom: 12 }}>A growing body of evidence supports delaying school start times. Districts in the United States that shifted start times to 8:30 AM or later reported significant improvements in student attendance, graduation rates, and standardised test performance. Rates of traffic accidents among teen drivers also dropped — an unsurprising finding given the link between sleep deprivation and impaired reaction times.</p>
@@ -209,12 +202,13 @@ export default function Page() {
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", padding: 28, background: "#fafafa", borderLeft: "1px solid #e8e8e8" }}>
-          <div style={{ background: "#ffffff", borderRadius: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.08)", padding: 28 }}>
-            <h3 style={{ fontSize: 18, fontWeight: "bold", color: "#0B4F5C", marginBottom: 20 }}>Questions 1–10 (Multiple Choice)</h3>
+        {/* QUESTIONS */}
+        <div className={styles.questionsPane}>
+          <div className={styles.questionsCard}>
+            <h3 style={{ fontSize: "clamp(15px, 4vw, 18px)", fontWeight: "bold", color: "#0B4F5C", marginBottom: 20 }}>Questions 1–10 (Multiple Choice)</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {allQuestions.map((q) => (
-                <div key={q.id} style={{ background: "#f9f9f9", borderRadius: 10, padding: "16px 20px", boxShadow: "0 2px 6px rgba(0,0,0,0.05)" }}>
+                <div key={q.id} className={styles.questionItem}>
                   <p style={{ fontWeight: 600, color: "#333", marginBottom: 12, lineHeight: 1.5 }}>{q.text}</p>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {q.options.map((opt) => (
@@ -231,18 +225,7 @@ export default function Page() {
         </div>
       </div>
 
-      <footer style={{
-        background: "#ffffff",
-        borderTop: "1px solid #e0e0e0",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        gap: 16,
-        padding: "12px 32px",
-        height: 72,
-        flexShrink: 0,
-        boxShadow: "0 -2px 8px rgba(0,0,0,0.05)",
-      }}>
+      <footer className={styles.footer}>
         <NavCard href="section1-L10" label="SECTION 1" active />
         <NavCard href="section2-L10" label="SECTION 2"  />
         <NavCard href="section3-L10" label="SECTION 3"  />
@@ -254,17 +237,13 @@ export default function Page() {
 function NavCard({ href, label, active }) {
   return (
     <Link href={href} style={{ textDecoration: "none" }}>
-      <div style={{
-        border: `2px solid ${active ? "#0B4F5C" : "#d0d0d0"}`,
-        borderRadius: 8,
-        padding: "10px 24px",
-        color: active ? "#fff" : "#333",
-        fontWeight: 600,
-        fontSize: 14,
-        cursor: "pointer",
-        background: active ? "#0B4F5C" : "#f9f9f9",
-        transition: "all 0.2s ease",
-      }}
+      <div
+        className={styles.navCard}
+        style={{
+          border: `2px solid ${active ? "#0B4F5C" : "#d0d0d0"}`,
+          color: active ? "#fff" : "#333",
+          background: active ? "#0B4F5C" : "#f9f9f9",
+        }}
         onMouseEnter={e => { if (!active) { e.currentTarget.style.background = "#0B4F5C"; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = "#0B4F5C"; } }}
         onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "#f9f9f9"; e.currentTarget.style.color = "#333"; e.currentTarget.style.borderColor = "#d0d0d0"; } }}
       >
