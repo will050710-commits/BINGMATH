@@ -134,71 +134,83 @@ function MathMapCard({ map, selected, onSelect }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "flex", alignItems: "center", gap: 12,
-        padding: "10px 14px",
+        padding: "12px 18px",
         background: isActive
-          ? "rgba(34,211,238,0.12)"
-          : hovered ? "rgba(255,255,255,0.04)" : "transparent",
-        borderLeft: isActive ? "3px solid #22d3ee" : "3px solid transparent",
-        cursor: "pointer", transition: "all 0.15s",
-        borderRadius: "0 8px 8px 0",
+          ? "rgba(0, 210, 255, 0.12)"
+          : hovered ? "rgba(255,255,255,0.05)" : "rgba(10, 10, 24, 0.5)",
+        borderLeft: isActive ? "6px solid #00d2ff" : "6px solid transparent",
+        cursor: "pointer", transition: "all 0.2s cubic-bezier(0.2,0.8,0.2,1)",
+        borderRadius: "0 12px 12px 0",
+        transform: isActive
+          ? "skewX(-8deg) translateX(4px)"
+          : hovered ? "skewX(-8deg) translateX(2px)" : "skewX(-8deg)",
+        border: `1px solid ${isActive ? "rgba(0, 210, 255, 0.3)" : "rgba(255, 255, 255, 0.05)"}`,
+        boxShadow: isActive
+          ? "0 0 15px rgba(0, 210, 255, 0.15), 0 4px 12px rgba(0,0,0,0.3)"
+          : "0 2px 6px rgba(0,0,0,0.2)",
+        marginBottom: 6,
       }}
     >
-      {/* Thumbnail */}
-      <div style={{
-        width: 56, height: 56, borderRadius: 8,
-        background: map.thumbnail_color,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 22, flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-      }}>
-        {map.icon}
-      </div>
-
-      {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
+      {/* Skew back inner items to keep them straight */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", transform: "skewX(8deg)" }}>
+        {/* Thumbnail */}
         <div style={{
-          display: "flex", alignItems: "center", gap: 6, marginBottom: 3,
+          width: 48, height: 48, borderRadius: 10,
+          background: map.thumbnail_color,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 22, flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
         }}>
-          <span style={{ fontSize: 11, color: "#22d3ee", fontWeight: 700 }}>
-            {map.status === "ranked" ? "RANKED" : map.status.toUpperCase()}
-          </span>
-          <DiffBadge fmp={map.difficulty_fmp} />
+          {map.icon}
         </div>
-        <div style={{
-          fontSize: 13, fontWeight: 700, color: "white",
-          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          marginBottom: 2,
-        }}>
-          {map.title}
-        </div>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginBottom: 3 }}>
-          by <span style={{ color: "#93c5fd" }}>{map.creator}</span>
-          {" · "}{map.grade}
-          {" · "}{map.question_count} câu
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <StarRating rating={map.rating} />
-          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
-            🎮 {map.plays.toLocaleString()}
-          </span>
-        </div>
-      </div>
 
-      {/* Tags (hidden if not selected) */}
-      {isActive && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end" }}>
-          {map.tags.slice(0, 2).map(tag => (
-            <span key={tag} style={{
-              fontSize: 9, color: "#a78bfa",
-              background: "rgba(167,139,250,0.12)",
-              border: "1px solid rgba(167,139,250,0.25)",
-              borderRadius: 4, padding: "1px 5px",
-              whiteSpace: "nowrap",
-            }}>
-              {tag}
+        {/* Info */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6, marginBottom: 3,
+          }}>
+            <span style={{ fontSize: 10, color: "#00d2ff", fontWeight: 800, letterSpacing: 0.5 }}>
+              {map.status === "ranked" ? "RANKED" : map.status.toUpperCase()}
             </span>
-          ))}
+            <DiffBadge fmp={map.difficulty_fmp} />
+          </div>
+          <div style={{
+            fontSize: 13.5, fontWeight: 800, color: "white",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            marginBottom: 2,
+          }}>
+            {map.title}
+          </div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 3 }}>
+            by <span style={{ color: "#a5b4fc", fontWeight: 600 }}>{map.creator}</span>
+            {" · "}{map.grade}
+            {" · "}{map.question_count} câu
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <StarRating rating={map.rating} />
+            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>
+              🎮 {map.plays.toLocaleString()}
+            </span>
+          </div>
         </div>
-      )}
+
+        {/* Tags (hidden if not selected) */}
+        {isActive && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end", flexShrink: 0 }}>
+            {map.tags.slice(0, 2).map(tag => (
+              <span key={tag} style={{
+                fontSize: 9, color: "#a5b4fc",
+                background: "rgba(167,139,250,0.15)",
+                border: "1px solid rgba(167,139,250,0.3)",
+                borderRadius: 4, padding: "2px 6px",
+                whiteSpace: "nowrap",
+                fontWeight: 700
+              }}>
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

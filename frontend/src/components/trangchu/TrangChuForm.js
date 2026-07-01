@@ -855,41 +855,50 @@ export default function TrangChuForm() {
           position: "sticky",
           top: 0,
           zIndex: 300,
-          background: "rgba(10, 10, 26, 0.8)",
-          backdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-          boxShadow: "0 4px 30px rgba(0, 0, 0, 0.3)"
+          background: "rgba(6, 6, 16, 0.88)",
+          backdropFilter: "blur(20px)",
+          borderBottom: "2px solid rgba(167, 139, 250, 0.25)",
+          boxShadow: "0 4px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.15)"
         }}>
-        <div style={{ width: "1200px", maxWidth: "95%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0" }}>
+        <div style={{ width: "1200px", maxWidth: "95%", display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0" }}>
 
           {/* Logo & Owl Mascot */}
-          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
-            <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath" style={{ width: 32, height: 32, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
-            <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 1.5, background: "linear-gradient(135deg, #38bdf8, #818cf8)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10, transform: "skewX(-8deg)" }}>
+            <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
+            <span style={{ fontWeight: 950, fontSize: 22, color: "white", letterSpacing: 1.5, background: "linear-gradient(135deg, #00d2ff, #7c3aed)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
               DUOMATH
             </span>
           </Link>
 
-          <nav style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14.5 }}>
-            <Link href="/Cacbaitoan" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
-              className="nav-link-item">
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <nav style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14 }}>
+            <Link href="/Cacbaitoan" style={{ textDecoration: "none", color: "rgba(255,255,255,0.8)", padding: "8px 16px", borderRadius: 6, transition: "all 0.2s", fontWeight: 700, transform: "skewX(-8deg)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+              className="nav-link-item"
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(0, 210, 255, 0.12)"; e.currentTarget.style.borderColor = "rgba(0, 210, 255, 0.4)"; e.currentTarget.style.color = "#00d2ff"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
                 {renderDuoIcon("📖", { size: 14 })}
                 Bài học
               </span>
             </Link>
 
-            <Link href="/DuoMCB" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
-              className="nav-link-item">
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <Link href="/DuoMCB" style={{ textDecoration: "none", color: "rgba(255,255,255,0.8)", padding: "8px 16px", borderRadius: 6, transition: "all 0.2s", fontWeight: 700, transform: "skewX(-8deg)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+              className="nav-link-item"
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(167, 139, 250, 0.12)"; e.currentTarget.style.borderColor = "rgba(167, 139, 250, 0.4)"; e.currentTarget.style.color = "#a5b4fc"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
                 {renderDuoIcon("🤖", { size: 14 })}
                 AI Chat
               </span>
             </Link>
 
-            <Link href="/cacbailam" style={{ textDecoration: "none", color: "rgba(255,255,255,0.75)", padding: "8px 12px", borderRadius: 8, transition: "all 0.2s", fontWeight: 600 }}
-              className="nav-link-item">
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <Link href="/cacbailam" style={{ textDecoration: "none", color: "rgba(255,255,255,0.8)", padding: "8px 16px", borderRadius: 6, transition: "all 0.2s", fontWeight: 700, transform: "skewX(-8deg)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+              className="nav-link-item"
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(0, 210, 255, 0.12)"; e.currentTarget.style.borderColor = "rgba(0, 210, 255, 0.4)"; e.currentTarget.style.color = "#00d2ff"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
                 {renderDuoIcon("📝", { size: 14 })}
                 Đề thi
               </span>
@@ -898,24 +907,30 @@ export default function TrangChuForm() {
             <Link href="/mrm" style={{ textDecoration: "none" }}>
               <button className="nav-mrm-btn" style={{
                 color: "white",
-                padding: "8px 16px", borderRadius: 8,
-                background: "linear-gradient(135deg, #6366f1, #0ea5e9)",
-                border: "none", fontSize: 13.5, cursor: "pointer",
-                fontWeight: 700, display: "flex", alignItems: "center",
+                padding: "8px 20px", borderRadius: 6,
+                background: "linear-gradient(135deg, #7c3aed, #00d2ff)",
+                border: "1px solid rgba(0, 210, 255, 0.3)", fontSize: 13.5, cursor: "pointer",
+                fontWeight: 800, display: "flex", alignItems: "center",
                 gap: 6, transition: "all 0.25s",
-                boxShadow: "0 0 15px rgba(99,102,241,0.3)"
-              }}>
-                {renderDuoIcon("⚔️", { size: 14 })}
-                MRM Đấu Hạng
+                transform: "skewX(-8deg)",
+                boxShadow: "0 0 15px rgba(0,210,255,0.3)"
+              }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 25px rgba(0,210,255,0.6)"; e.currentTarget.style.transform = "skewX(-8deg) translateY(-1px)"; }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 15px rgba(0,210,255,0.3)"; e.currentTarget.style.transform = "skewX(-8deg)"; }}
+              >
+                <span style={{ display: "flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
+                  {renderDuoIcon("⚔️", { size: 14 })}
+                  MRM Đấu Hạng
+                </span>
               </button>
             </Link>
 
             {ready && !user && (
-              <Link href="/login">
-                <button style={{ background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 8, padding: "8px 16px", fontWeight: 600, fontSize: 13.5, cursor: "pointer", transition: "all 0.2s" }}
+              <Link href="/login" style={{ textDecoration: "none" }}>
+                <button style={{ background: "rgba(255,255,255,0.05)", color: "white", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "8px 18px", fontWeight: 700, fontSize: 13.5, cursor: "pointer", transition: "all 0.2s", transform: "skewX(-8deg)" }}
                   onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
-                  onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.08)"}>
-                  Đăng nhập
+                  onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
+                  <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>Đăng nhập</span>
                 </button>
               </Link>
             )}

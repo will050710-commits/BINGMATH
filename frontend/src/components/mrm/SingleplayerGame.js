@@ -298,74 +298,95 @@ export default function SingleplayerGame({ mapId }) {
   if (phase === "result") {
     const correctCount = answers.filter(a => a.correct).length;
     const accuracy = answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0;
-    const grade = accuracy >= 90 ? "S" : accuracy >= 70 ? "A" : accuracy >= 50 ? "B" : "C";
-    const gradeColor = grade === "S" ? "#fbbf24" : grade === "A" ? "#22d3ee" : grade === "B" ? "#a78bfa" : "#f87171";
+    
+    // osu! Style Grade System
+    const grade = accuracy === 100 ? "SS" 
+      : accuracy >= 95 ? "S" 
+      : accuracy >= 90 ? "A" 
+      : accuracy >= 80 ? "B" 
+      : accuracy >= 70 ? "C" 
+      : "D";
+      
+    const gradeColor = grade === "SS" ? "#facc15" 
+      : grade === "S" ? "#fbbf24" 
+      : grade === "A" ? "#22d3ee" 
+      : grade === "B" ? "#a78bfa" 
+      : grade === "C" ? "#ec4899" 
+      : "#ef4444";
 
     return (
       <div style={{
         minHeight: "100vh", display: "flex", flexDirection: "column",
-        background: "linear-gradient(135deg, #020617, #0a0a1a)",
+        background: "linear-gradient(135deg, #020208 0%, #0c0b1e 50%, #05040e 100%)",
         alignItems: "center", justifyContent: "center",
         fontFamily: "'Inter', sans-serif", color: "white", padding: 24,
       }}>
         {/* Grade badge */}
         <div style={{
-          width: 100, height: 100, borderRadius: "50%",
-          background: `radial-gradient(circle, ${gradeColor}33, ${gradeColor}11)`,
+          width: 120, height: 120, borderRadius: "50%",
+          background: `radial-gradient(circle, ${gradeColor}33, ${gradeColor}0b)`,
           border: `3px solid ${gradeColor}`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 48, fontWeight: 900, color: gradeColor,
-          marginBottom: 16,
-          boxShadow: `0 0 32px ${gradeColor}55`,
-        }}>{grade}</div>
-
-        <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
-          {accuracy >= 90 ? "Xuất sắc! 🎉" : accuracy >= 70 ? "Tốt lắm! 👍" : accuracy >= 50 ? "Cố gắng hơn nhé 💪" : "Chưa ổn, thử lại! 😅"}
+          fontSize: 54, fontWeight: 950, color: gradeColor,
+          marginBottom: 20,
+          boxShadow: `0 0 35px ${gradeColor}66, inset 0 0 20px ${gradeColor}33`,
+          transform: "skewX(-10deg)",
+        }}>
+          <span style={{ transform: "skewX(10deg)" }}>{grade}</span>
         </div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 28 }}>
-          {mapData.title}
+
+        <div style={{ fontSize: 24, fontWeight: 900, marginBottom: 4, letterSpacing: 0.5 }}>
+          {accuracy === 100 ? "Perfect Combo! 👑" : accuracy >= 90 ? "Xuất sắc! 🎉" : accuracy >= 70 ? "Tốt lắm! 👍" : accuracy >= 50 ? "Cố gắng hơn nhé 💪" : "Chưa ổn, thử lại! 😅"}
+        </div>
+        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginBottom: 32, fontWeight: 600 }}>
+          {mapData.icon} {mapData.title}
         </div>
 
         {/* Stats */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 28, width: "100%", maxWidth: 480 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 32, width: "100%", maxWidth: 480 }}>
           {[
             { label: "Điểm", value: score.toLocaleString(), color: "#fbbf24", icon: "💎" },
             { label: "Đúng", value: `${correctCount}/${answers.length}`, color: "#4ade80", icon: "✅" },
-            { label: "Combo", value: `x${maxCombo}`, color: "#22d3ee", icon: "⚡" },
+            { label: "Combo Max", value: `x${maxCombo}`, color: "#22d3ee", icon: "⚡" },
             { label: "Độ chính xác", value: `${accuracy}%`, color: "#a78bfa", icon: "🎯" },
           ].map(s => (
             <div key={s.label} style={{
-              textAlign: "center", padding: "16px 8px",
-              background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: 10,
+              textAlign: "center", padding: "18px 8px",
+              background: "rgba(10,10,24,0.7)", border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: 12,
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+              transform: "skewX(-6deg)"
             }}>
-              <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{s.label}</div>
+              <div style={{ transform: "skewX(6deg)" }}>
+                <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2, fontWeight: 600 }}>{s.label}</div>
+              </div>
             </div>
           ))}
         </div>
 
         {/* Answer review */}
         <div style={{
-          width: "100%", maxWidth: 480, marginBottom: 24,
-          background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: 12, overflow: "hidden",
+          width: "100%", maxWidth: 480, marginBottom: 32,
+          background: "rgba(10,10,24,0.6)", border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 14, overflow: "hidden",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.4)"
         }}>
-          <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(255,255,255,0.06)", fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.5)" }}>
-            Chi tiết từng câu
+          <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.08)", fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+            Chi tiết câu trả lời
           </div>
           {answers.map((a, i) => (
             <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "8px 14px",
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
               borderBottom: i < answers.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
             }}>
               <span style={{ fontSize: 16 }}>{a.correct ? "✅" : "❌"}</span>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", flex: 1 }}>Câu {i + 1}</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: a.correct ? "#4ade80" : "#f87171" }}>
+              <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.7)", flex: 1, fontWeight: 600 }}>Câu {i + 1}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 800, color: a.correct ? "#4ade80" : "#f87171" }}>
                 {a.correct ? `+${a.points}` : "0"} điểm
               </span>
-              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.3)" }}>{a.time}s</span>
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>{a.time}s</span>
             </div>
           ))}
         </div>
@@ -387,21 +408,30 @@ export default function SingleplayerGame({ mapId }) {
               setBlankInput("");
             }}
             style={{
-              padding: "12px 28px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-              background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
-              border: "none", color: "#000", cursor: "pointer",
-              boxShadow: "0 4px 16px rgba(34,211,238,0.4)",
+              padding: "12px 32px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
+              background: "linear-gradient(135deg, #00d2ff, #7c3aed)",
+              border: "1px solid rgba(0, 210, 255, 0.3)", color: "white", cursor: "pointer",
+              boxShadow: "0 4px 20px rgba(0,210,255,0.4)",
+              transform: "skewX(-8deg)",
+              transition: "all 0.2s"
             }}
+            onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(0,210,255,0.6)"; e.currentTarget.style.transform = "skewX(-8deg) scale(1.02)"; }}
+            onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,210,255,0.4)"; e.currentTarget.style.transform = "skewX(-8deg) scale(1)"; }}
           >
-            🔄 Chơi lại
+            <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>🔄 Chơi lại</span>
           </button>
-          <Link href="/mrm/singleplayer">
+          <Link href="/mrm/singleplayer" style={{ textDecoration: "none" }}>
             <button style={{
-              padding: "12px 24px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+              padding: "12px 28px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
+              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)",
               color: "white", cursor: "pointer",
-            }}>
-              ← Danh sách
+              transform: "skewX(-8deg)",
+              transition: "all 0.2s"
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+            >
+              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>← Danh sách</span>
             </button>
           </Link>
         </div>

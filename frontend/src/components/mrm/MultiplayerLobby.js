@@ -990,39 +990,46 @@ export default function MultiplayerLobby() {
           <div style={{ display: "flex", alignItems: "center", gap: 60, marginBottom: 40, flexWrap: "wrap", justifyContent: "center" }}>
             {/* Player */}
             <div style={{
-              width: 200, padding: "24px 16px", background: "rgba(167,139,250,0.06)",
-              border: "2px solid rgba(167,139,250,0.35)", borderRadius: 20, textAlign: "center",
-              boxShadow: "0 8px 32px rgba(167,139,250,0.15)",
+              width: 220, padding: "28px 20px", background: "rgba(10, 10, 24, 0.8)",
+              border: "2px solid rgba(0, 210, 255, 0.35)", borderRadius: 16, textAlign: "center",
+              boxShadow: "0 12px 32px rgba(0, 210, 255, 0.15), 0 0 20px rgba(0, 210, 255, 0.1)",
               animation: "slideInLeft 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+              transform: "skewX(-8deg)",
             }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>🎓</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "white", marginBottom: 4 }}>{playerUsername}</div>
-              <div style={{ fontSize: 13, color: getRankBadgeColor(playerRank), fontWeight: 700 }}>{playerRank}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>{playerElo} ELO</div>
+              <div style={{ transform: "skewX(8deg)" }}>
+                <div style={{ fontSize: 52, marginBottom: 12 }}>🎓</div>
+                <div style={{ fontSize: 19, fontWeight: 900, color: "white", marginBottom: 4 }}>{playerUsername}</div>
+                <div style={{ fontSize: 13, color: getRankBadgeColor(playerRank), fontWeight: 800 }}>{playerRank}</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 6, fontWeight: 700 }}>{playerElo} ELO</div>
+              </div>
             </div>
 
             {/* VS */}
             <div style={{
-              fontSize: 36, fontWeight: 900, color: "#f87171",
-              fontStyle: "italic", textShadow: "0 0 20px rgba(239,68,68,0.5)",
+              fontSize: 48, fontWeight: 950, color: "#ef4444",
+              fontStyle: "italic", textShadow: "0 0 25px rgba(239,68,68,0.6)",
               animation: "bounceIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1.2) both",
+              transform: "skewX(-10deg)",
             }}>VS</div>
 
             {/* Bot */}
             <div style={{
-              width: 200, padding: "24px 16px", background: "rgba(239,68,68,0.06)",
-              border: "2px solid rgba(239,68,68,0.35)", borderRadius: 20, textAlign: "center",
-              boxShadow: "0 8px 32px rgba(239,68,68,0.15)",
+              width: 220, padding: "28px 20px", background: "rgba(10, 10, 24, 0.8)",
+              border: "2px solid rgba(239,68,68,0.35)", borderRadius: 16, textAlign: "center",
+              boxShadow: "0 12px 32px rgba(239,68,68,0.15), 0 0 20px rgba(239,68,68,0.1)",
               animation: "slideInRight 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both",
+              transform: "skewX(-8deg)",
             }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>{botOpponent.avatar}</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: "white", marginBottom: 4 }}>{botOpponent.username}</div>
-              <div style={{ fontSize: 13, color: getRankBadgeColor(botOpponent.rank), fontWeight: 700 }}>{botOpponent.rank}</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>{botOpponent.elo} ELO</div>
+              <div style={{ transform: "skewX(8deg)" }}>
+                <div style={{ fontSize: 52, marginBottom: 12 }}>{botOpponent.avatar}</div>
+                <div style={{ fontSize: 19, fontWeight: 900, color: "white", marginBottom: 4 }}>{botOpponent.username}</div>
+                <div style={{ fontSize: 13, color: getRankBadgeColor(botOpponent.rank), fontWeight: 800 }}>{botOpponent.rank}</div>
+                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 6, fontWeight: 700 }}>{botOpponent.elo} ELO</div>
+              </div>
             </div>
           </div>
 
-          <h2 style={{ fontSize: 24, fontWeight: 900, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 2, animation: "flash 1.5s infinite" }}>
+          <h2 style={{ fontSize: 22, fontWeight: 900, color: "#a5b4fc", textTransform: "uppercase", letterSpacing: 2, animation: "flash 1.5s infinite" }}>
             Trận đấu chuẩn bị bắt đầu...
           </h2>
         </div>
@@ -1037,21 +1044,22 @@ export default function MultiplayerLobby() {
         }} className="slide-active">
           {/* Header section with Big HP (Tim lớn) */}
           <div style={{
-            display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 600,
-            marginBottom: 32, alignItems: "center", background: "rgba(255,255,255,0.03)",
-            border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "12px 20px"
+            display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 640,
+            marginBottom: 36, alignItems: "center", background: "rgba(10,10,24,0.6)",
+            border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px 24px",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.3)"
           }}>
             <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#a78bfa" }}>{playerUsername}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#00d2ff" }}>{playerUsername}</div>
               <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <span key={i} style={{ fontSize: 20, filter: i < playerBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
                 ))}
               </div>
             </div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "rgba(255,255,255,0.3)", fontStyle: "italic" }}>CHỌN CHỦ ĐỀ</div>
+            <div style={{ fontSize: 18, fontWeight: 950, color: "rgba(255,255,255,0.25)", fontStyle: "italic", letterSpacing: 1 }}>CHỌN CHỦ ĐỀ</div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#f87171" }}>{botOpponent.username}</div>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "#ef4444" }}>{botOpponent.username}</div>
               <div style={{ display: "flex", gap: 4, marginTop: 4, justifyContent: "flex-end" }}>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <span key={i} style={{ fontSize: 20, filter: i < botBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
@@ -1060,11 +1068,11 @@ export default function MultiplayerLobby() {
             </div>
           </div>
 
-          <div style={{ textAlign: "center", marginBottom: 32 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 800, color: "white", marginBottom: 8 }}>
+          <div style={{ textAlign: "center", marginBottom: 36 }}>
+            <h2 style={{ fontSize: 24, fontWeight: 900, color: "white", marginBottom: 8 }}>
               {chooser === "player" ? "Đến lượt bạn chọn chủ đề!" : `${botOpponent.username} đang chọn chủ đề...`}
             </h2>
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+            <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.5)" }}>
               {chooser === "player"
                 ? "Lựa chọn 1 lá bài toán học từ Forum để bắt đầu đấu tay đôi"
                 : "Chờ đối thủ lựa chọn chủ đề toán học"
@@ -1087,30 +1095,32 @@ export default function MultiplayerLobby() {
                     handleSelectCard(card);
                   }}
                   style={{
-                    background: isSelected ? "rgba(167, 139, 250, 0.15)" : "rgba(15, 23, 42, 0.8)",
-                    border: isSelected ? "2px solid #a78bfa" : "1px solid rgba(255, 255, 255, 0.1)",
-                    borderRadius: 16, padding: "28px 20px", textAlign: "center",
+                    background: isSelected ? "rgba(167, 139, 250, 0.12)" : "rgba(10, 10, 24, 0.8)",
+                    border: isSelected ? "2px solid #a5b4fc" : "1px solid rgba(255, 255, 255, 0.08)",
+                    borderRadius: 16, padding: "32px 20px", textAlign: "center",
                     cursor: chooser === "player" && !selectedCard ? "pointer" : "default",
-                    boxShadow: isSelected ? "0 0 32px rgba(167, 139, 250, 0.3)" : "0 8px 16px rgba(0,0,0,0.3)",
-                    transition: "all 0.25s",
-                    transform: isSelected ? "scale(1.05)" : "none",
+                    boxShadow: isSelected ? "0 0 25px rgba(167, 139, 250, 0.25)" : "0 8px 16px rgba(0,0,0,0.3)",
+                    transition: "all 0.25s cubic-bezier(0.2,0.8,0.2,1)",
+                    transform: isSelected ? "scale(1.04) skewX(-8deg)" : "skewX(-8deg)",
                   }}
                   onMouseEnter={e => {
                     if (chooser === "player" && !selectedCard) {
-                      e.currentTarget.style.borderColor = "rgba(167, 139, 250, 0.6)";
-                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.borderColor = "rgba(167, 139, 250, 0.5)";
+                      e.currentTarget.style.transform = "translateY(-4px) skewX(-8deg)";
                     }
                   }}
                   onMouseLeave={e => {
                     if (chooser === "player" && !selectedCard) {
-                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.1)";
-                      e.currentTarget.style.transform = "none";
+                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
+                      e.currentTarget.style.transform = "skewX(-8deg)";
                     }
                   }}
                 >
-                  <div style={{ fontSize: 48, marginBottom: 16 }}>{card.icon}</div>
-                  <h3 style={{ fontSize: 16, fontWeight: 800, color: "white", marginBottom: 8 }}>{card.title}</h3>
-                  <p style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 1.4 }}>{card.desc}</p>
+                  <div style={{ transform: "skewX(8deg)" }}>
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>{card.icon}</div>
+                    <h3 style={{ fontSize: 16, fontWeight: 900, color: "white", marginBottom: 8 }}>{card.title}</h3>
+                    <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>{card.desc}</p>
+                  </div>
                 </div>
               );
             })}
@@ -1400,29 +1410,44 @@ export default function MultiplayerLobby() {
           {/* Actions */}
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
             <button onClick={startMatching} style={{
-              padding: "14px 36px", borderRadius: 10, fontSize: 14, fontWeight: 700,
+              padding: "14px 36px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
               background: "linear-gradient(135deg, #a78bfa, #6d28d9)",
-              border: "none", color: "white", cursor: "pointer",
+              border: "1px solid rgba(167, 139, 250, 0.4)", color: "white", cursor: "pointer",
               boxShadow: "0 4px 16px rgba(167,139,250,0.4)",
-            }}>
-              ⚡ Tìm trận tiếp
+              transform: "skewX(-8deg)",
+              transition: "all 0.2s"
+            }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(167,139,250,0.6)"; e.currentTarget.style.transform = "skewX(-8deg) scale(1.02)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(167,139,250,0.4)"; e.currentTarget.style.transform = "skewX(-8deg) scale(1)"; }}
+            >
+              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>⚡ Tìm trận tiếp</span>
             </button>
             <button onClick={() => setGameState("lobby")} style={{
-              padding: "14px 32px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)",
+              padding: "14px 32px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
+              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)",
               color: "white", cursor: "pointer",
-            }}>
-              Quay lại Lobby
+              transform: "skewX(-8deg)",
+              transition: "all 0.2s"
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
+            >
+              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>Quay lại Lobby</span>
             </button>
             <button onClick={() => {
               setSelectedReportUser(botOpponent.username);
               setShowReportModal(true);
             }} style={{
-              padding: "14px 32px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-              background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
+              padding: "14px 32px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
+              background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
               color: "#f87171", cursor: "pointer",
-            }}>
-              🚩 Báo cáo đối thủ
+              transform: "skewX(-8deg)",
+              transition: "all 0.2s"
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.2)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.12)"}
+            >
+              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>🚩 Báo cáo đối thủ</span>
             </button>
           </div>
         </div>

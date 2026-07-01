@@ -111,18 +111,20 @@ function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, inde
         animation: `btnExpand 0.5s ${delay} cubic-bezier(0.2,0.8,0.2,1) both`,
         width: 220,
         background: hovered
-          ? `linear-gradient(135deg, ${color}33, ${color}22)`
-          : "rgba(15, 23, 42, 0.8)",
-        backdropFilter: "blur(16px)",
-        border: `2px solid ${hovered ? color : color + "55"}`,
-        borderRadius: 20,
-        padding: "28px 24px",
+          ? `linear-gradient(135deg, ${color}28, rgba(12, 12, 28, 0.95))`
+          : "rgba(10, 10, 24, 0.8)",
+        backdropFilter: "blur(20px)",
+        border: `2px solid ${hovered ? color : "rgba(255, 255, 255, 0.08)"}`,
+        borderRadius: 16,
+        padding: "32px 24px",
         cursor: "pointer",
         transition: "all 0.3s cubic-bezier(0.2,0.8,0.2,1)",
-        transform: hovered ? "translateY(-8px) scale(1.04)" : "translateY(0) scale(1)",
+        transform: hovered
+          ? "translateY(-8px) scale(1.04) skewX(-8deg)"
+          : "translateY(0) scale(1) skewX(-8deg)",
         boxShadow: hovered
-          ? `0 24px 48px ${color}44, 0 0 32px ${color}22`
-          : `0 8px 24px rgba(0,0,0,0.4)`,
+          ? `0 20px 40px ${color}33, 0 0 30px ${color}22`
+          : `0 8px 24px rgba(0,0,0,0.5)`,
         textAlign: "center",
         position: "relative",
         overflow: "hidden",
@@ -131,43 +133,48 @@ function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, inde
       {/* Shine overlay */}
       <div style={{
         position: "absolute", inset: 0,
-        background: `linear-gradient(135deg, ${color}18 0%, transparent 60%)`,
-        borderRadius: 18,
+        background: `linear-gradient(135deg, ${color}22 0%, transparent 60%)`,
+        borderRadius: 14,
         opacity: hovered ? 1 : 0,
         transition: "opacity 0.3s",
+        transform: "skewX(8deg)",
       }} />
 
-      <div style={{ fontSize: 52, marginBottom: 12, display: "block", lineHeight: 1 }}>
-        {icon}
-      </div>
-      <div style={{
-        fontSize: 20, fontWeight: 800, color: "white",
-        marginBottom: 4, letterSpacing: 0.5,
-      }}>
-        {label}
-      </div>
-      <div style={{
-        fontSize: 12, color: color, fontWeight: 600,
-        marginBottom: 10, opacity: 0.9,
-      }}>
-        {labelEn}
-      </div>
-      <div style={{
-        fontSize: 12, color: "rgba(255,255,255,0.6)",
-        lineHeight: 1.5,
-      }}>
-        {desc}
-      </div>
-      <div style={{
-        marginTop: 16,
-        background: hovered ? color : color + "33",
-        color: hovered ? "white" : color,
-        borderRadius: 10,
-        padding: "8px 16px",
-        fontSize: 13, fontWeight: 700,
-        transition: "all 0.3s",
-      }}>
-        {hovered ? "→ Vào ngay!" : "Chọn →"}
+      {/* Skew back inner items to keep them straight */}
+      <div style={{ transform: "skewX(8deg)" }}>
+        <div style={{ fontSize: 52, marginBottom: 16, display: "block", lineHeight: 1 }}>
+          {icon}
+        </div>
+        <div style={{
+          fontSize: 20, fontWeight: 900, color: "white",
+          marginBottom: 4, letterSpacing: 0.5,
+        }}>
+          {label}
+        </div>
+        <div style={{
+          fontSize: 12, color: color, fontWeight: 700,
+          marginBottom: 12, opacity: 0.95, textTransform: "uppercase", letterSpacing: 0.5
+        }}>
+          {labelEn}
+        </div>
+        <div style={{
+          fontSize: 12.5, color: "rgba(255,255,255,0.6)",
+          lineHeight: 1.6, minHeight: 60, display: "flex", alignItems: "center", justifyContent: "center"
+        }}>
+          {desc}
+        </div>
+        <div style={{
+          marginTop: 18,
+          background: hovered ? color : "rgba(255,255,255,0.05)",
+          color: hovered ? "white" : "rgba(255,255,255,0.7)",
+          borderRadius: 8,
+          padding: "10px 16px",
+          fontSize: 13, fontWeight: 800,
+          transition: "all 0.2s",
+          border: `1px solid ${hovered ? "transparent" : "rgba(255,255,255,0.15)"}`
+        }}>
+          {hovered ? "→ Vào ngay!" : "Chọn →"}
+        </div>
       </div>
     </div>
   );
