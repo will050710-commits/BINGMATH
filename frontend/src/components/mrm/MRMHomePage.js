@@ -120,8 +120,8 @@ function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, inde
         cursor: "pointer",
         transition: "all 0.3s cubic-bezier(0.2,0.8,0.2,1)",
         transform: hovered
-          ? "translateY(-8px) scale(1.04) skewX(-8deg)"
-          : "translateY(0) scale(1) skewX(-8deg)",
+          ? "translateY(-8px) scale(1.04)"
+          : "translateY(0) scale(1)",
         boxShadow: hovered
           ? `0 20px 40px ${color}33, 0 0 30px ${color}22`
           : `0 8px 24px rgba(0,0,0,0.5)`,
@@ -137,11 +137,9 @@ function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, inde
         borderRadius: 14,
         opacity: hovered ? 1 : 0,
         transition: "opacity 0.3s",
-        transform: "skewX(8deg)",
       }} />
 
-      {/* Skew back inner items to keep them straight */}
-      <div style={{ transform: "skewX(8deg)" }}>
+      <div>
         <div style={{ fontSize: 52, marginBottom: 16, display: "block", lineHeight: 1 }}>
           {icon}
         </div>

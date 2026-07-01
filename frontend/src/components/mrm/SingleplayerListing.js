@@ -87,26 +87,30 @@ const MOCK_LEADERBOARD = [
 const GRADE_OPTIONS = ["Tất cả", "Lớp 10", "Lớp 11", "Lớp 12"];
 const STATUS_OPTIONS = ["Tất cả", "ranked", "qualified", "pending"];
 const SORT_OPTIONS = ["Lượt chơi", "Đánh giá", "Độ khó (Thấp→Cao)", "Độ khó (Cao→Thấp)", "Mới nhất"];
+const getDiffColor = (fmp) => {
+  if (fmp < 4) return "#a3e635"; // Easy - Lime green
+  if (fmp < 6) return "#facc15"; // Normal - Vibrant yellow
+  if (fmp < 8) return "#f97316"; // Hard - Warm amber/orange
+  return "#ff66aa"; // Insane - Intense neon pink/magenta
+};
 
-// ── Difficulty badge ───────────────────────────────────────────────────────
 function DiffBadge({ fmp }) {
-  const tier = fmp < 4 ? { label: "Easy", color: "#4ade80" }
-    : fmp < 6 ? { label: "Normal", color: "#facc15" }
-    : fmp < 8 ? { label: "Hard", color: "#f97316" }
-    : { label: "Insane", color: "#ef4444" };
+  const color = getDiffColor(fmp);
+  const label = fmp < 4 ? "Easy" : fmp < 6 ? "Normal" : fmp < 8 ? "Hard" : "Insane";
   return (
     <span style={{
-      fontSize: 10, fontWeight: 700, color: tier.color,
-      background: tier.color + "22",
-      border: `1px solid ${tier.color}55`,
+      fontSize: 10, fontWeight: 800, color: color,
+      background: color + "1a",
+      border: `1px solid ${color}44`,
       borderRadius: 4, padding: "2px 6px",
+      textTransform: "uppercase",
+      letterSpacing: 0.5
     }}>
-      {tier.label} {fmp.toFixed(1)}★
+      {label} {fmp.toFixed(1)}★
     </span>
   );
 }
 
-// ── Star rating display ────────────────────────────────────────────────────
 function StarRating({ rating }) {
   return (
     <span style={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -122,13 +126,14 @@ function StarRating({ rating }) {
   );
 }
 
-// ── MathMap card (list item) ───────────────────────────────────────────────
 function MathMapCard({ map, selected, onSelect }) {
   const [hovered, setHovered] = useState(false);
   const isActive = selected === map.id;
+  const diffColor = getDiffColor(map.difficulty_fmp);
 
   return (
     <div
+      id={`map-card-${map.id}`}
       onClick={() => onSelect(map.id)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -136,29 +141,29 @@ function MathMapCard({ map, selected, onSelect }) {
         display: "flex", alignItems: "center", gap: 12,
         padding: "12px 18px",
         background: isActive
-          ? "rgba(0, 210, 255, 0.12)"
-          : hovered ? "rgba(255,255,255,0.05)" : "rgba(10, 10, 24, 0.5)",
-        borderLeft: isActive ? "6px solid #00d2ff" : "6px solid transparent",
-        cursor: "pointer", transition: "all 0.2s cubic-bezier(0.2,0.8,0.2,1)",
+          ? `linear-gradient(90deg, ${diffColor}22 0%, rgba(15, 15, 30, 0.85) 100%)`
+          : hovered ? "rgba(255,255,255,0.06)" : "rgba(10, 10, 24, 0.65)",
+        borderLeft: `6px solid ${isActive ? diffColor : "transparent"}`,
+        cursor: "pointer", transition: "all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1)",
         borderRadius: "0 12px 12px 0",
         transform: isActive
-          ? "skewX(-8deg) translateX(4px)"
-          : hovered ? "skewX(-8deg) translateX(2px)" : "skewX(-8deg)",
-        border: `1px solid ${isActive ? "rgba(0, 210, 255, 0.3)" : "rgba(255, 255, 255, 0.05)"}`,
+          ? "skewX(-5deg) scale(1.04) translateX(-8px)"
+          : hovered ? "skewX(-5deg) translateX(4px)" : "skewX(-5deg)",
+        border: `1px solid ${isActive ? diffColor : "rgba(255, 255, 255, 0.05)"}`,
         boxShadow: isActive
-          ? "0 0 15px rgba(0, 210, 255, 0.15), 0 4px 12px rgba(0,0,0,0.3)"
-          : "0 2px 6px rgba(0,0,0,0.2)",
-        marginBottom: 6,
+          ? `0 0 18px ${diffColor}55, 0 4px 15px rgba(0,0,0,0.5)`
+          : hovered ? "0 4px 12px rgba(0,0,0,0.3)" : "0 2px 6px rgba(0,0,0,0.3)",
+        marginBottom: 8,
       }}
     >
-      {/* Skew back inner items to keep them straight */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", transform: "skewX(8deg)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", transform: "skewX(5deg)" }}>
         {/* Thumbnail */}
         <div style={{
           width: 48, height: 48, borderRadius: 10,
-          background: map.thumbnail_color,
+          background: `linear-gradient(135deg, ${diffColor} 0%, rgba(10, 10, 24, 0.85) 100%)`,
+          border: `1px solid ${diffColor}aa`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 22, flexShrink: 0, boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+          fontSize: 22, flexShrink: 0, boxShadow: `0 2px 8px ${diffColor}33`,
         }}>
           {map.icon}
         </div>
@@ -168,7 +173,7 @@ function MathMapCard({ map, selected, onSelect }) {
           <div style={{
             display: "flex", alignItems: "center", gap: 6, marginBottom: 3,
           }}>
-            <span style={{ fontSize: 10, color: "#00d2ff", fontWeight: 800, letterSpacing: 0.5 }}>
+            <span style={{ fontSize: 10, color: isActive ? diffColor : "#22d3ee", fontWeight: 800, letterSpacing: 0.5 }}>
               {map.status === "ranked" ? "RANKED" : map.status.toUpperCase()}
             </span>
             <DiffBadge fmp={map.difficulty_fmp} />
@@ -320,19 +325,89 @@ export default function SingleplayerListing() {
       return 0;
     });
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeEl = document.activeElement;
+      if (activeEl && (activeEl.tagName === "INPUT" || activeEl.tagName === "TEXTAREA" || activeEl.isContentEditable)) {
+        return;
+      }
+
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        e.preventDefault();
+        
+        const currentIndex = filteredMaps.findIndex(m => m.id === selectedMap);
+        if (currentIndex === -1) return;
+
+        let nextIndex = currentIndex;
+        if (e.key === "ArrowUp" && currentIndex > 0) {
+          nextIndex = currentIndex - 1;
+        } else if (e.key === "ArrowDown" && currentIndex < filteredMaps.length - 1) {
+          nextIndex = currentIndex + 1;
+        }
+
+        if (nextIndex !== currentIndex) {
+          const nextMap = filteredMaps[nextIndex];
+          setSelectedMap(nextMap.id);
+
+          setTimeout(() => {
+            const cardEl = document.getElementById(`map-card-${nextMap.id}`);
+            if (cardEl) {
+              cardEl.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+          }, 30);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [filteredMaps, selectedMap]);
+
+  const bgStyle = selectedMapData
+    ? (selectedMapData.bg_image || selectedMapData.background_image
+        ? { backgroundImage: `url(${selectedMapData.bg_image || selectedMapData.background_image})`, backgroundSize: "cover", backgroundPosition: "center" }
+        : { background: selectedMapData.thumbnail_color })
+    : {};
+
   return (
     <div style={{
-      width: "100%", minHeight: "100vh",
-      background: "linear-gradient(135deg, #020617 0%, #0a0a1a 100%)",
+      width: "100%", height: "100vh",
+      background: "#050508",
       display: "flex", flexDirection: "column",
+      overflow: "hidden",
+      position: "relative",
+      fontFamily: "'Exo 2', sans-serif",
     }}>
+      {/* Blurred background image layer matching selected map */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        ...bgStyle,
+        opacity: 0.25,
+        filter: "blur(12px) brightness(0.45)",
+        transition: "background-image 0.7s ease-in-out, background 0.7s ease-in-out, filter 0.7s",
+        zIndex: 0,
+        pointerEvents: "none",
+      }} />
+
+      {/* Gradient Overlay for depth */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        background: "linear-gradient(135deg, #080810 0%, rgba(13, 17, 29, 0.88) 50%, rgba(18, 10, 26, 0.94) 100%)",
+        zIndex: 1,
+        pointerEvents: "none",
+      }} />
+
       {/* ─── HEADER ─── */}
       <header style={{
         display: "flex", alignItems: "center", gap: 16,
         padding: "14px 24px",
-        background: "rgba(2,6,23,0.85)", backdropFilter: "blur(12px)",
+        background: "rgba(2,6,23,0.8)", backdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(34,211,238,0.12)",
         flexWrap: "wrap",
+        position: "relative",
+        zIndex: 10,
       }}>
         <Link href="/mrm" style={{ textDecoration: "none" }}>
           <span style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: 2 }}>
@@ -401,6 +476,8 @@ export default function SingleplayerListing() {
         display: "flex", alignItems: "center", gap: 12, padding: "10px 24px",
         background: "rgba(15,23,42,0.6)", borderBottom: "1px solid rgba(255,255,255,0.05)",
         flexWrap: "wrap",
+        position: "relative",
+        zIndex: 9,
       }}>
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
           BỘ LỌC:
@@ -456,132 +533,297 @@ export default function SingleplayerListing() {
       </div>
 
       {/* ─── MAIN 2-COLUMN LAYOUT ─── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", zIndex: 8 }}>
 
-        {/* LEFT: Detail panel (selected map) */}
-        <div style={{
-          width: 340, flexShrink: 0,
-          background: "rgba(2,6,23,0.9)",
-          borderRight: "1px solid rgba(255,255,255,0.06)",
-          overflowY: "auto", display: "flex", flexDirection: "column",
+        {/* LEFT COLUMN: Map details (Top) & Leaderboard (Bottom) */}
+        <div className="no-scrollbar" style={{
+          width: 380, flexShrink: 0,
+          background: "rgba(2,6,23,0.92)",
+          borderRight: "1px solid rgba(255,255,255,0.08)",
+          display: "flex", flexDirection: "column",
+          height: "100%",
+          overflow: "hidden",
         }}>
-          {selectedMapData && (
-            <>
-              {/* Map hero thumbnail */}
-              <div style={{
-                height: 180, background: selectedMapData.thumbnail_color,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 72, position: "relative",
-              }}>
-                {selectedMapData.icon}
+          {/* Top part: Map details */}
+          <div className="no-scrollbar" style={{
+            flex: "0 0 auto",
+            maxHeight: "42%",
+            overflowY: "auto",
+            borderBottom: "1px solid rgba(255,255,255,0.08)",
+          }}>
+            {selectedMapData && (
+              <>
+                {/* Map hero thumbnail */}
                 <div style={{
-                  position: "absolute", inset: 0,
-                  background: "linear-gradient(to bottom, transparent 40%, rgba(2,6,23,0.9) 100%)",
-                }} />
-                {/* Status badge */}
-                <div style={{
-                  position: "absolute", top: 12, left: 12,
-                  background: selectedMapData.status === "ranked" ? "rgba(34,211,238,0.9)" : "rgba(251,191,36,0.9)",
-                  color: "#000", fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 4,
+                  height: 160,
+                  background: `linear-gradient(135deg, ${getDiffColor(selectedMapData.difficulty_fmp)}bb 0%, #1a0b2e 60%, #0e1017 100%)`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 72, position: "relative",
+                  borderBottom: `2px solid ${getDiffColor(selectedMapData.difficulty_fmp)}55`,
                 }}>
-                  {selectedMapData.status.toUpperCase()}
+                  <span style={{
+                    zIndex: 2,
+                    textShadow: `0 0 20px ${getDiffColor(selectedMapData.difficulty_fmp)}, 0 0 40px rgba(255, 255, 255, 0.4)`,
+                    color: "white",
+                    fontWeight: 900,
+                  }}>
+                    {selectedMapData.icon}
+                  </span>
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    background: "linear-gradient(to bottom, transparent 30%, rgba(2,6,23,0.92) 100%)",
+                    zIndex: 1,
+                  }} />
+                  {/* Status badge */}
+                  <div style={{
+                    position: "absolute", top: 12, left: 12,
+                    background: selectedMapData.status === "ranked" ? "rgba(34,211,238,0.9)" : "rgba(251,191,36,0.9)",
+                    color: "#000", fontSize: 10, fontWeight: 800, padding: "3px 8px", borderRadius: 4,
+                    zIndex: 3,
+                  }}>
+                    {selectedMapData.status.toUpperCase()}
+                  </div>
                 </div>
-              </div>
 
-              {/* Map info */}
-              <div style={{ padding: 16 }}>
-                <div style={{ fontSize: 16, fontWeight: 800, color: "white", marginBottom: 4 }}>
+                {/* Map info */}
+                <div style={{ padding: "0 16px 16px 16px" }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "white", marginBottom: 2 }}>
+                    {selectedMapData.title}
+                  </div>
+                  <div style={{ fontSize: 12, color: "#93c5fd", marginBottom: 10, fontStyle: "italic" }}>
+                    {selectedMapData.title_en}
+                  </div>
+
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+                    <DiffBadge fmp={selectedMapData.difficulty_fmp} />
+                    <span style={{ fontSize: 10, color: "#bae6fd", background: "rgba(14,165,233,0.1)", border: "1px solid rgba(14,165,233,0.25)", borderRadius: 4, padding: "2px 6px" }}>
+                      {selectedMapData.grade}
+                    </span>
+                    <span style={{ fontSize: 10, color: "#d1fae5", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 4, padding: "2px 6px" }}>
+                      {selectedMapData.question_count} câu
+                    </span>
+                  </div>
+
+                  {/* Stats row */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 10 }}>
+                    {[
+                      ["by", selectedMapData.creator],
+                      ["🎮 Plays", selectedMapData.plays.toLocaleString()],
+                      ["⏱ Avg time", `${selectedMapData.time_avg}s/câu`],
+                      ["🎵 BGM", selectedMapData.bgm],
+                    ].map(([k, v]) => (
+                      <div key={k} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "6px 8px" }}>
+                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>{k}</div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "white", marginTop: 1 }}>{v}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Tags & Rating */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {selectedMapData.tags.slice(0, 2).map(tag => (
+                        <span key={tag} style={{
+                          fontSize: 9, color: "#a78bfa",
+                          background: "rgba(167,139,250,0.1)",
+                          border: "1px solid rgba(167,139,250,0.25)",
+                          borderRadius: 4, padding: "2px 6px",
+                        }}>{tag}</span>
+                      ))}
+                    </div>
+                    <StarRating rating={selectedMapData.rating} />
+                  </div>
+
+                  {/* Action buttons */}
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <Link href={`/mrm/singleplayer/${selectedMap}`} style={{ flex: 1, textDecoration: "none" }}>
+                      <button style={{
+                        width: "100%", padding: "10px 0",
+                        background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
+                        color: "#000", border: "none", borderRadius: 8,
+                        fontSize: 13, fontWeight: 800, cursor: "pointer",
+                        boxShadow: "0 4px 14px rgba(34,211,238,0.3)",
+                        transition: "all 0.2s",
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+                      >
+                        ▶ Chơi ngay
+                      </button>
+                    </Link>
+                    <button
+                      onClick={() => handleDownloadMap(selectedMapData)}
+                      style={{
+                        padding: "10px 12px",
+                        background: "rgba(34,211,238,0.1)",
+                        border: "1px solid rgba(34,211,238,0.3)",
+                        color: "#22d3ee", borderRadius: 8,
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      title="Download MathMap"
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,211,238,0.2)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,211,238,0.1)"; }}
+                    >
+                      ⬇
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Bottom part: Leaderboard */}
+          <div className="no-scrollbar" style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}>
+            {/* LB Header */}
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <div style={{ fontSize: 13, fontWeight: 800, color: "white", marginBottom: 6 }}>
+                🏆 Bảng xếp hạng (Top 25)
+              </div>
+              {selectedMapData && (
+                <div style={{ fontSize: 11, color: "#22d3ee", marginBottom: 8, fontWeight: 600 }}>
                   {selectedMapData.title}
                 </div>
-                <div style={{ fontSize: 12, color: "#93c5fd", marginBottom: 12, fontStyle: "italic" }}>
-                  {selectedMapData.title_en}
-                </div>
-
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
-                  <DiffBadge fmp={selectedMapData.difficulty_fmp} />
-                  <span style={{ fontSize: 10, color: "#bae6fd", background: "rgba(14,165,233,0.1)", border: "1px solid rgba(14,165,233,0.25)", borderRadius: 4, padding: "2px 6px" }}>
-                    {selectedMapData.grade}
-                  </span>
-                  <span style={{ fontSize: 10, color: "#d1fae5", background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", borderRadius: 4, padding: "2px 6px" }}>
-                    {selectedMapData.question_count} câu
-                  </span>
-                </div>
-
-                {/* Stats row */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-                  {[
-                    ["by", selectedMapData.creator],
-                    ["🎮 Plays", selectedMapData.plays.toLocaleString()],
-                    ["⏱ Avg time", `${selectedMapData.time_avg}s/câu`],
-                    ["🎵 BGM", selectedMapData.bgm],
-                  ].map(([k, v]) => (
-                    <div key={k} style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "7px 10px" }}>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{k}</div>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: "white", marginTop: 1 }}>{v}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Tags */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 16 }}>
-                  {selectedMapData.tags.map(tag => (
-                    <span key={tag} style={{
-                      fontSize: 10, color: "#a78bfa",
-                      background: "rgba(167,139,250,0.1)",
-                      border: "1px solid rgba(167,139,250,0.25)",
-                      borderRadius: 5, padding: "3px 8px",
-                    }}>{tag}</span>
-                  ))}
-                </div>
-
-                {/* Rating */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <StarRating rating={selectedMapData.rating} />
-                </div>
-
-                {/* Action buttons */}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <Link href={`/mrm/singleplayer/${selectedMap}`} style={{ flex: 1, textDecoration: "none" }}>
-                  <button style={{
-                    width: "100%", padding: "12px 0",
-                    background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
-                    color: "#000", border: "none", borderRadius: 10,
-                    fontSize: 14, fontWeight: 800, cursor: "pointer",
-                    boxShadow: "0 4px 16px rgba(34,211,238,0.4)",
-                    transition: "all 0.2s",
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
-                  >
-                    ▶ Chơi ngay
-                  </button>
-                  </Link>
-                  <button
-                    onClick={() => handleDownloadMap(selectedMapData)}
-                    style={{
-                      padding: "12px 14px",
-                      background: "rgba(34,211,238,0.1)",
-                      border: "1px solid rgba(34,211,238,0.3)",
-                      color: "#22d3ee", borderRadius: 10,
-                      fontSize: 13, fontWeight: 700, cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                    title="Download MathMap"
-                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,211,238,0.2)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,211,238,0.1)"; }}
-                  >
-                    ⬇
-                  </button>
-                </div>
+              )}
+              {/* Scope toggle */}
+              <div style={{ display: "flex", gap: 4 }}>
+                {["Global", "Theo lớp", "Bạn bè"].map(s => (
+                  <button key={s} onClick={() => setLbScope(s)} style={{
+                    flex: 1, padding: "5px 0", borderRadius: 6, fontSize: 10,
+                    cursor: "pointer", fontWeight: lbScope === s ? 700 : 400,
+                    background: lbScope === s ? "rgba(34,211,238,0.2)" : "rgba(255,255,255,0.04)",
+                    border: lbScope === s ? "1px solid rgba(34,211,238,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                    color: lbScope === s ? "#22d3ee" : "rgba(255,255,255,0.5)",
+                    transition: "all 0.15s",
+                  }}>{s}</button>
+                ))}
               </div>
-            </>
+            </div>
+
+            {/* LB Rows (Top 25 with small Facebook avatar fallbacks next to username) */}
+            <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
+              {getLeaderboardForMap(selectedMap).slice(0, 25).map((entry, i) => {
+                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+                const rankColor = i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : i === 2 ? "#cd7f32" : "rgba(255,255,255,0.4)";
+                const avatarUrl = entry.avatar_url || entry.profile_url || "https://www.gravatar.com/avatar/?d=mp";
+                return (
+                  <div key={entry.username + "_" + i} style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "10px 14px",
+                    borderBottom: "1px solid rgba(255,255,255,0.04)",
+                    background: i < 3 ? `rgba(${i === 0 ? "251,191,36" : i === 1 ? "148,163,184" : "205,127,50"},0.04)` : "transparent",
+                    transition: "background 0.15s",
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = i < 3
+                        ? `rgba(${i === 0 ? "251,191,36" : i === 1 ? "148,163,184" : "205,127,50"},0.04)`
+                        : "transparent";
+                    }}
+                  >
+                    <div style={{ width: 24, textAlign: "center", flexShrink: 0 }}>
+                      {medal
+                        ? <span style={{ fontSize: 18 }}>{medal}</span>
+                        : <span style={{ fontSize: 13, fontWeight: 700, color: rankColor }}>{entry.rank}</span>
+                      }
+                    </div>
+
+                    {/* Avatar + Username */}
+                    <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8 }}>
+                      <img
+                        src={avatarUrl}
+                        alt={entry.username}
+                        style={{
+                          width: 22, height: 22,
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                          border: "1px solid rgba(255,255,255,0.15)",
+                          flexShrink: 0,
+                        }}
+                        onError={(e) => {
+                          e.currentTarget.src = "https://www.gravatar.com/avatar/?d=mp";
+                        }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 12, fontWeight: 700, color: "white",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {entry.username}
+                        </div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
+                          {entry.grade}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: "right", flexShrink: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 800, color: i < 3 ? rankColor : "#22d3ee" }}>
+                        {entry.score.toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
+                        {entry.accuracy}%
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: "10px 14px",
+              borderTop: "1px solid rgba(255,255,255,0.06)",
+              fontSize: 10, color: "rgba(255,255,255,0.3)", textAlign: "center",
+              flexShrink: 0,
+            }}>
+              🔄 Live Updates · Anti-cheat Replay
+            </div>
+          </div>
+        </div>
+
+        {/* SPACER FOR CENTRAL GAP (osu!-style spacer with dynamic map background) */}
+        <div style={{
+          flex: 1,
+          position: "relative",
+          pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}>
+          {selectedMapData && (selectedMapData.bg_image || selectedMapData.background_image) && (
+            <div style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `url(${selectedMapData.bg_image || selectedMapData.background_image})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.35,
+              maskImage: "linear-gradient(to right, transparent, rgba(0,0,0,1) 30%, rgba(0,0,0,1) 70%, transparent)",
+              WebkitMaskImage: "linear-gradient(to right, transparent, rgba(0,0,0,1) 30%, rgba(0,0,0,1) 70%, transparent)",
+              transition: "background-image 0.6s ease-in-out",
+            }} />
           )}
         </div>
 
-        {/* CENTER: Map list */}
-        <div style={{
-          flex: 1, overflowY: "auto",
-          background: "rgba(5,10,20,0.6)",
+        {/* RIGHT COLUMN: Map list (occupies 35% from the right side, padded for overlap) */}
+        <div className="no-scrollbar" style={{
+          width: "calc(35vw + 30px)",
+          minWidth: 410,
+          flexShrink: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+          marginLeft: -30,
+          position: "relative",
+          zIndex: 5,
         }}>
           {filteredMaps.length === 0 ? (
             <div style={{ textAlign: "center", padding: "80px 20px", color: "rgba(255,255,255,0.4)" }}>
@@ -590,7 +832,14 @@ export default function SingleplayerListing() {
               <div style={{ fontSize: 13, marginTop: 6 }}>Thử tìm kiếm với từ khóa khác</div>
             </div>
           ) : (
-            <div style={{ padding: "8px 0" }}>
+            <div style={{
+              marginLeft: 30,
+              padding: "16px 28px 16px 20px",
+              background: "rgba(10, 10, 24, 0.4)",
+              backdropFilter: "blur(4px)",
+              borderLeft: "1px solid rgba(255, 255, 255, 0.05)",
+              minHeight: "100%",
+            }}>
               {filteredMaps.map((map, i) => (
                 <MathMapCard
                   key={map.id}
@@ -601,98 +850,6 @@ export default function SingleplayerListing() {
               ))}
             </div>
           )}
-        </div>
-
-        {/* RIGHT: Leaderboard */}
-        <div style={{
-          width: 300, flexShrink: 0,
-          background: "rgba(2,6,23,0.9)",
-          borderLeft: "1px solid rgba(255,255,255,0.06)",
-          display: "flex", flexDirection: "column",
-        }}>
-          {/* LB Header */}
-          <div style={{ padding: "14px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "white", marginBottom: 8 }}>
-              🏆 Bảng xếp hạng
-            </div>
-            {selectedMapData && (
-              <div style={{ fontSize: 11, color: "#22d3ee", marginBottom: 8, fontWeight: 600 }}>
-                {selectedMapData.title}
-              </div>
-            )}
-            {/* Scope toggle */}
-            <div style={{ display: "flex", gap: 4 }}>
-              {["Global", "Theo lớp", "Bạn bè"].map(s => (
-                <button key={s} onClick={() => setLbScope(s)} style={{
-                  flex: 1, padding: "5px 0", borderRadius: 6, fontSize: 10,
-                  cursor: "pointer", fontWeight: lbScope === s ? 700 : 400,
-                  background: lbScope === s ? "rgba(34,211,238,0.2)" : "rgba(255,255,255,0.04)",
-                  border: lbScope === s ? "1px solid rgba(34,211,238,0.4)" : "1px solid rgba(255,255,255,0.08)",
-                  color: lbScope === s ? "#22d3ee" : "rgba(255,255,255,0.5)",
-                  transition: "all 0.15s",
-                }}>{s}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* LB Rows */}
-          <div style={{ flex: 1, overflowY: "auto" }}>
-            {getLeaderboardForMap(selectedMap).map((entry, i) => {
-              const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
-              const rankColor = i === 0 ? "#fbbf24" : i === 1 ? "#94a3b8" : i === 2 ? "#cd7f32" : "rgba(255,255,255,0.4)";
-              return (
-                <div key={entry.username + "_" + i} style={{
-                  display: "flex", alignItems: "center", gap: 10,
-                  padding: "10px 14px",
-                  borderBottom: "1px solid rgba(255,255,255,0.04)",
-                  background: i < 3 ? `rgba(${i === 0 ? "251,191,36" : i === 1 ? "148,163,184" : "205,127,50"},0.04)` : "transparent",
-                  transition: "background 0.15s",
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = i < 3
-                      ? `rgba(${i === 0 ? "251,191,36" : i === 1 ? "148,163,184" : "205,127,50"},0.04)`
-                      : "transparent";
-                  }}
-                >
-                  <div style={{ width: 24, textAlign: "center" }}>
-                    {medal
-                      ? <span style={{ fontSize: 18 }}>{medal}</span>
-                      : <span style={{ fontSize: 13, fontWeight: 700, color: rankColor }}>{entry.rank}</span>
-                    }
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 12, fontWeight: 700, color: "white",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>
-                      {entry.username}
-                    </div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
-                      {entry.grade}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: i < 3 ? rankColor : "#22d3ee" }}>
-                      {entry.score.toLocaleString()}
-                    </div>
-                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>
-                      {entry.accuracy}%
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Footer */}
-          <div style={{
-            padding: "10px 14px",
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            fontSize: 10, color: "rgba(255,255,255,0.3)", textAlign: "center",
-          }}>
-            🔄 Cập nhật theo thời gian thực · Anti-cheat Replay system
-          </div>
         </div>
       </div>
     </div>

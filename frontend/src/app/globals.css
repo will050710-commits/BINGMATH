@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════
@@ -330,5 +331,14 @@ body {
   .nav-link-item span {
     gap: 3px !important;
   }
+}
+
+/* ── Hide scrollbars utility class ── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none !important;
+}
+.no-scrollbar {
+  -ms-overflow-style: none !important;  /* IE and Edge */
+  scrollbar-width: none !important;  /* Firefox */
 }
 
