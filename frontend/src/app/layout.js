@@ -21,9 +21,38 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "DuoMath",
-  description: "Bilingual Math Learning Platform",
-  themeColor: "#020c1b",
+  title: "DuoMath — Học Toán Song Ngữ",
+  description: "Nền tảng học toán song ngữ Anh-Việt cho học sinh chuyên STEM. Đề thi thử SAT & IELTS, mini-games, đấu hạng realtime và AI chatbot toán học.",
+  keywords: ["toán học", "song ngữ", "STEM", "SAT", "IELTS", "học sinh", "lớp 10", "lớp 11", "lớp 12"],
+  authors: [{ name: "DuoMath Team" }],
+  creator: "DuoMath",
+  publisher: "DuoMath",
+  applicationName: "DuoMath",
+  // PWA manifest
+  manifest: "/manifest.json",
+  // Apple PWA meta tags
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "DuoMath",
+  },
+  // Open Graph for social sharing
+  openGraph: {
+    title: "DuoMath — Học Toán Song Ngữ",
+    description: "Học toán STEM song ngữ Anh-Việt, luyện SAT & IELTS cùng AI",
+    type: "website",
+    locale: "vi_VN",
+  },
+  // Icons
+  icons: {
+    icon: "/images/duosteamicon-removebg-preview.webp",
+    apple: "/images/duosteamicon-removebg-preview.webp",
+    shortcut: "/images/duosteamicon-removebg-preview.webp",
+  },
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#020c1b" },
+    { media: "(prefers-color-scheme: light)", color: "#0ea5e9" },
+  ],
 };
 
 export const viewport = {

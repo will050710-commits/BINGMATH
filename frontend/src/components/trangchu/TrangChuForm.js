@@ -13,6 +13,7 @@ import KnowledgeAlbum from "../stats/KnowledgeAlbum";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import { renderDuoIcon } from "@/components/DuoIcons";
+import AppDownloadSection from "./AppDownloadSection";
 
 // Dynamically import EditProfileModal to reduce initial JS bundle size
 const EditProfileModal = dynamic(() => import("./EditProfileModal"), {
@@ -1282,6 +1283,9 @@ export default function TrangChuForm() {
               })}
             </div>
           </div>
+
+          {/* ═══════ APP DOWNLOAD SECTION ═══════ */}
+          <AppDownloadSection />
 
           {/* ═══════ BRANDING FOOTER ═══════ */}
           <div className="reveal" data-reveal style={{ marginTop: 80 }}>
