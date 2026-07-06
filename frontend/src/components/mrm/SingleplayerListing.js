@@ -13,64 +13,168 @@ const MOCK_MATHMAPS = [
     creator: "NguyenVanA", grade: "Lớp 11", difficulty_fmp: 7.8, plays: 14200, rating: 4.9,
     tags: ["#ĐạiSố11", "#PhuongTrinhBacHai", "#NangCao"],
     status: "ranked", question_count: 12, time_avg: 30, bgm: "Dramatic Theme",
-    thumbnail_color: "linear-gradient(135deg, #0ea5e9, #6366f1)",
-    icon: "📐",
+    thumbnail_color: "linear-gradient(135deg, #0ea5e9, #6366f1)", icon: "📐",
+  },
+  {
+    id: "mm001b", title: "Phương trình bậc hai — Luyện tập", title_en: "Quadratic Equations — Practice",
+    creator: "TranMinhK", grade: "Lớp 10", difficulty_fmp: 5.5, plays: 3890, rating: 4.3,
+    tags: ["#ĐạiSố10", "#PhuongTrinhBacHai", "#TrungBinh"],
+    status: "ranked", question_count: 5, time_avg: 25, bgm: "Electronic Beat",
+    thumbnail_color: "linear-gradient(135deg, #38bdf8, #818cf8)", icon: "📐",
+  },
+  {
+    id: "mm001c", title: "Hệ số Vieta & Phương trình bậc hai", title_en: "Vieta's Formulas & Quadratic",
+    creator: "LePhuocH", grade: "Lớp 11", difficulty_fmp: 8.2, plays: 2100, rating: 4.7,
+    tags: ["#ĐạiSố11", "#Vieta", "#NangCao"],
+    status: "ranked", question_count: 5, time_avg: 40, bgm: "Boss Battle",
+    thumbnail_color: "linear-gradient(135deg, #1d4ed8, #7c3aed)", icon: "📐",
   },
   {
     id: "mm002", title: "Hình học phẳng cơ bản", title_en: "Basic Plane Geometry",
     creator: "TranThiB", grade: "Lớp 10", difficulty_fmp: 4.2, plays: 9870, rating: 4.6,
     tags: ["#HinhHoc10", "#CoBan", "#TamGiac"],
     status: "ranked", question_count: 10, time_avg: 20, bgm: "Calm Study",
-    thumbnail_color: "linear-gradient(135deg, #10b981, #059669)",
-    icon: "📏",
+    thumbnail_color: "linear-gradient(135deg, #10b981, #059669)", icon: "📏",
+  },
+  {
+    id: "mm002b", title: "Tam giác và các đường đặc biệt", title_en: "Triangles & Special Lines",
+    creator: "VoThiL", grade: "Lớp 10", difficulty_fmp: 5.8, plays: 4670, rating: 4.5,
+    tags: ["#HinhHoc10", "#TamGiac", "#DuongTrungTuyen"],
+    status: "ranked", question_count: 5, time_avg: 25, bgm: "Chill Lofi",
+    thumbnail_color: "linear-gradient(135deg, #34d399, #10b981)", icon: "📏",
+  },
+  {
+    id: "mm002c", title: "Tứ giác và hình học phẳng", title_en: "Quadrilaterals & Plane Geometry",
+    creator: "NguyenTuanM", grade: "Lớp 10", difficulty_fmp: 4.8, plays: 5120, rating: 4.4,
+    tags: ["#HinhHoc10", "#TuGiac", "#HinhBinhHanh"],
+    status: "qualified", question_count: 5, time_avg: 20, bgm: "Calm Study",
+    thumbnail_color: "linear-gradient(135deg, #6ee7b7, #34d399)", icon: "📏",
   },
   {
     id: "mm003", title: "Đạo hàm & Ứng dụng", title_en: "Derivatives & Applications",
     creator: "LeVanC", grade: "Lớp 12", difficulty_fmp: 8.5, plays: 7340, rating: 4.7,
     tags: ["#GiaiTich12", "#DaoHam", "#CucTri", "#SieuNangCao"],
     status: "ranked", question_count: 15, time_avg: 45, bgm: "Epic Boss Battle",
-    thumbnail_color: "linear-gradient(135deg, #f59e0b, #ef4444)",
-    icon: "∫",
+    thumbnail_color: "linear-gradient(135deg, #f59e0b, #ef4444)", icon: "∫",
+  },
+  {
+    id: "mm003b", title: "Cực trị hàm số", title_en: "Extrema of Functions",
+    creator: "DinhAnhN", grade: "Lớp 12", difficulty_fmp: 7.5, plays: 3280, rating: 4.6,
+    tags: ["#GiaiTich12", "#CucTri", "#BangBienThien"],
+    status: "ranked", question_count: 5, time_avg: 40, bgm: "Electronic Beat",
+    thumbnail_color: "linear-gradient(135deg, #fbbf24, #f97316)", icon: "∫",
+  },
+  {
+    id: "mm003c", title: "Đạo hàm hàm hợp", title_en: "Chain Rule & Composite Functions",
+    creator: "TrinhBaO", grade: "Lớp 12", difficulty_fmp: 9.0, plays: 1950, rating: 4.8,
+    tags: ["#GiaiTich12", "#HamHop", "#SieuKho"],
+    status: "ranked", question_count: 5, time_avg: 50, bgm: "Boss Battle",
+    thumbnail_color: "linear-gradient(135deg, #dc2626, #f59e0b)", icon: "∫",
   },
   {
     id: "mm004", title: "Lượng giác - Tổng hợp", title_en: "Trigonometry Comprehensive",
     creator: "PhamThiD", grade: "Lớp 11", difficulty_fmp: 6.3, plays: 11560, rating: 4.4,
     tags: ["#LuongGiac11", "#SinCos", "#TongHop"],
     status: "ranked", question_count: 10, time_avg: 25, bgm: "Electronic Beat",
-    thumbnail_color: "linear-gradient(135deg, #8b5cf6, #6d28d9)",
-    icon: "θ",
+    thumbnail_color: "linear-gradient(135deg, #8b5cf6, #6d28d9)", icon: "θ",
+  },
+  {
+    id: "mm004b", title: "Phương trình lượng giác cơ bản", title_en: "Basic Trigonometric Equations",
+    creator: "PhamQuynhP", grade: "Lớp 11", difficulty_fmp: 6.9, plays: 5870, rating: 4.5,
+    tags: ["#LuongGiac11", "#PhuongTrinh", "#TrungBinh"],
+    status: "ranked", question_count: 5, time_avg: 30, bgm: "Dramatic Theme",
+    thumbnail_color: "linear-gradient(135deg, #a78bfa, #7c3aed)", icon: "θ",
+  },
+  {
+    id: "mm004c", title: "Công thức lượng giác nâng cao", title_en: "Advanced Trigonometric Formulas",
+    creator: "HoangMinhQ", grade: "Lớp 11", difficulty_fmp: 8.0, plays: 3100, rating: 4.6,
+    tags: ["#LuongGiac11", "#CongThuc", "#NangCao"],
+    status: "ranked", question_count: 5, time_avg: 45, bgm: "Electronic Beat",
+    thumbnail_color: "linear-gradient(135deg, #c4b5fd, #8b5cf6)", icon: "θ",
   },
   {
     id: "mm005", title: "Xác suất & Thống kê", title_en: "Probability & Statistics",
     creator: "HoangVanE", grade: "Lớp 12", difficulty_fmp: 5.1, plays: 6200, rating: 4.2,
     tags: ["#XacSuat12", "#ThongKe", "#TrungBinh"],
     status: "qualified", question_count: 8, time_avg: 20, bgm: "Chill Lofi",
-    thumbnail_color: "linear-gradient(135deg, #ec4899, #db2777)",
-    icon: "σ",
+    thumbnail_color: "linear-gradient(135deg, #ec4899, #db2777)", icon: "σ",
+  },
+  {
+    id: "mm005b", title: "Xác suất có điều kiện", title_en: "Conditional Probability",
+    creator: "LeThanhR", grade: "Lớp 12", difficulty_fmp: 6.5, plays: 2980, rating: 4.3,
+    tags: ["#XacSuat12", "#CoĐieuKien", "#TrungBinh"],
+    status: "qualified", question_count: 5, time_avg: 30, bgm: "Calm Study",
+    thumbnail_color: "linear-gradient(135deg, #f472b6, #ec4899)", icon: "σ",
+  },
+  {
+    id: "mm005c", title: "Chỉnh hợp, Tổ hợp & Hoán vị", title_en: "Permutations & Combinations",
+    creator: "VuHoaS", grade: "Lớp 11", difficulty_fmp: 5.8, plays: 4540, rating: 4.4,
+    tags: ["#XacSuat11", "#ToHop", "#HoanVi"],
+    status: "ranked", question_count: 5, time_avg: 25, bgm: "Electronic Beat",
+    thumbnail_color: "linear-gradient(135deg, #fb7185, #f43f5e)", icon: "σ",
   },
   {
     id: "mm006", title: "Dãy số - Cấp số cộng & nhân", title_en: "Sequences: AP & GP",
     creator: "NguyenThiF", grade: "Lớp 11", difficulty_fmp: 6.8, plays: 8900, rating: 4.5,
     tags: ["#DaySo11", "#CapSoCong", "#CapSoNhan"],
     status: "ranked", question_count: 12, time_avg: 30, bgm: "Orchestral",
-    thumbnail_color: "linear-gradient(135deg, #06b6d4, #0891b2)",
-    icon: "∑",
+    thumbnail_color: "linear-gradient(135deg, #06b6d4, #0891b2)", icon: "∑",
+  },
+  {
+    id: "mm006b", title: "Tổng cấp số và ứng dụng", title_en: "Sum of Series & Applications",
+    creator: "BuiKhanhT", grade: "Lớp 11", difficulty_fmp: 7.2, plays: 3650, rating: 4.5,
+    tags: ["#DaySo11", "#TongCapSo", "#TrungBinh"],
+    status: "ranked", question_count: 5, time_avg: 35, bgm: "Calm Study",
+    thumbnail_color: "linear-gradient(135deg, #22d3ee, #06b6d4)", icon: "∑",
+  },
+  {
+    id: "mm006c", title: "Giới hạn dãy số", title_en: "Limits of Sequences",
+    creator: "NguyenKhoa", grade: "Lớp 12", difficulty_fmp: 8.8, plays: 2100, rating: 4.7,
+    tags: ["#GiaiTich12", "#GioiHan", "#NangCao"],
+    status: "ranked", question_count: 5, time_avg: 50, bgm: "Boss Battle",
+    thumbnail_color: "linear-gradient(135deg, #0284c7, #0ea5e9)", icon: "∑",
   },
   {
     id: "mm007", title: "Mệnh đề & Tập hợp", title_en: "Logic & Set Theory",
     creator: "BuiVanG", grade: "Lớp 10", difficulty_fmp: 3.5, plays: 5600, rating: 4.0,
     tags: ["#MenhDe10", "#TapHop", "#CoBan"],
     status: "ranked", question_count: 8, time_avg: 15, bgm: "Pixel Game",
-    thumbnail_color: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
-    icon: "∈",
+    thumbnail_color: "linear-gradient(135deg, #22d3ee, #0ea5e9)", icon: "∈",
+  },
+  {
+    id: "mm007b", title: "Logic mệnh đề — Phép suy luận", title_en: "Propositional Logic & Inference",
+    creator: "TranVanU", grade: "Lớp 10", difficulty_fmp: 4.0, plays: 4320, rating: 4.1,
+    tags: ["#MenhDe10", "#LogicToHoc", "#CoBan"],
+    status: "ranked", question_count: 5, time_avg: 20, bgm: "Calm Study",
+    thumbnail_color: "linear-gradient(135deg, #67e8f9, #22d3ee)", icon: "∈",
+  },
+  {
+    id: "mm007c", title: "Tập hợp số và quan hệ", title_en: "Number Sets & Relations",
+    creator: "LyThiV", grade: "Lớp 10", difficulty_fmp: 3.8, plays: 5940, rating: 4.0,
+    tags: ["#TapHop10", "#SoHoc", "#CoBan"],
+    status: "qualified", question_count: 5, time_avg: 15, bgm: "Pixel Game",
+    thumbnail_color: "linear-gradient(135deg, #a5f3fc, #22d3ee)", icon: "∈",
   },
   {
     id: "mm008", title: "Tích phân xác định", title_en: "Definite Integrals",
     creator: "NguyenVanA", grade: "Lớp 12", difficulty_fmp: 9.2, plays: 4100, rating: 4.8,
     tags: ["#GiaiTich12", "#TichPhan", "#SieuKho"],
     status: "ranked", question_count: 10, time_avg: 60, bgm: "Final Boss",
-    thumbnail_color: "linear-gradient(135deg, #dc2626, #991b1b)",
-    icon: "∮",
+    thumbnail_color: "linear-gradient(135deg, #dc2626, #991b1b)", icon: "∮",
+  },
+  {
+    id: "mm008b", title: "Tích phân — Phương pháp tính", title_en: "Integration — Techniques",
+    creator: "TranDucW", grade: "Lớp 12", difficulty_fmp: 9.5, plays: 1680, rating: 4.9,
+    tags: ["#GiaiTich12", "#TichPhan", "#PhuongPhap"],
+    status: "ranked", question_count: 5, time_avg: 60, bgm: "Final Boss",
+    thumbnail_color: "linear-gradient(135deg, #b91c1c, #dc2626)", icon: "∮",
+  },
+  {
+    id: "mm008c", title: "Ứng dụng tích phân", title_en: "Applications of Integration",
+    creator: "PhanDangX", grade: "Lớp 12", difficulty_fmp: 9.8, plays: 1230, rating: 4.9,
+    tags: ["#GiaiTich12", "#UngDungTichPhan", "#SieuKho"],
+    status: "ranked", question_count: 5, time_avg: 60, bgm: "Final Boss",
+    thumbnail_color: "linear-gradient(135deg, #7f1d1d, #dc2626)", icon: "∮",
   },
 ];
 
@@ -229,6 +333,7 @@ export default function SingleplayerListing() {
   const [selectedMap, setSelectedMap] = useState("mm001");
   const [lbScope, setLbScope] = useState("Global");
   const [showFilters, setShowFilters] = useState(false);
+  const [bgOpacity, setBgOpacity] = useState(30); // 0-100, default 30%
 
   const handleDownloadMap = (map) => {
     if (!map) return;
@@ -383,9 +488,9 @@ export default function SingleplayerListing() {
         position: "absolute",
         inset: 0,
         ...bgStyle,
-        opacity: 0.25,
+        opacity: bgOpacity / 100,
         filter: "blur(12px) brightness(0.45)",
-        transition: "background-image 0.7s ease-in-out, background 0.7s ease-in-out, filter 0.7s",
+        transition: "background-image 0.7s ease-in-out, background 0.7s ease-in-out, filter 0.7s, opacity 0.3s",
         zIndex: 0,
         pointerEvents: "none",
       }} />
@@ -460,6 +565,20 @@ export default function SingleplayerListing() {
             📥 Nhập JSON Map
           </button>
         </div>
+
+        <Link href="/mrm/settings" style={{ textDecoration: "none" }}>
+          <button style={{
+            padding: "8px 14px", borderRadius: 8, fontSize: 13,
+            background: "rgba(167,139,250,0.08)",
+            border: "1px solid rgba(167,139,250,0.25)",
+            color: "#a78bfa", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: 5,
+            transition: "all 0.2s",
+          }}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(167,139,250,0.16)"}
+            onMouseLeave={e => e.currentTarget.style.background = "rgba(167,139,250,0.08)"}
+          >⚙️ Keybinds</button>
+        </Link>
 
         <Link href="/" style={{ textDecoration: "none" }}>
           <button style={{
@@ -634,9 +753,110 @@ export default function SingleplayerListing() {
                     <StarRating rating={selectedMapData.rating} />
                   </div>
 
+                  {/* ── osu!-style Background Dim Slider ── */}
+                  <div style={{
+                    margin: "0 0 12px 0",
+                    padding: "12px 14px",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 10,
+                  }}>
+                    {/* Header row */}
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 13 }}>🌫️</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.7)", letterSpacing: 0.3 }}>
+                          Background Dim
+                        </span>
+                      </div>
+                      <span style={{
+                        fontSize: 13, fontWeight: 900,
+                        color: bgOpacity > 60 ? "#f87171" : bgOpacity > 30 ? "#fbbf24" : "#4ade80",
+                        background: bgOpacity > 60 ? "rgba(248,113,113,0.12)" : bgOpacity > 30 ? "rgba(251,191,36,0.12)" : "rgba(74,222,128,0.12)",
+                        border: `1px solid ${bgOpacity > 60 ? "rgba(248,113,113,0.3)" : bgOpacity > 30 ? "rgba(251,191,36,0.3)" : "rgba(74,222,128,0.3)"}`,
+                        borderRadius: 6, padding: "2px 8px", minWidth: 40, textAlign: "center",
+                      }}>
+                        {bgOpacity}%
+                      </span>
+                    </div>
+
+                    {/* Live preview strip */}
+                    <div style={{
+                      width: "100%", height: 40, borderRadius: 8, marginBottom: 10,
+                      overflow: "hidden", position: "relative",
+                      background: selectedMapData.thumbnail_color,
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}>
+                      {/* Dim overlay */}
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        background: `rgba(0,0,0,${bgOpacity / 100})`,
+                        transition: "background 0.1s",
+                      }} />
+                      {/* Icon + label */}
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        padding: "0 12px",
+                      }}>
+                        <span style={{
+                          fontSize: 18,
+                          opacity: Math.max(0.15, 1 - bgOpacity / 100),
+                          transition: "opacity 0.1s",
+                        }}>{selectedMapData.icon}</span>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+                          color: `rgba(255,255,255,${Math.max(0.2, 1 - bgOpacity / 130)})`,
+                        }}>PREVIEW</span>
+                      </div>
+                    </div>
+
+                    {/* Slider */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", minWidth: 14 }}>0</span>
+                      <div style={{ flex: 1, position: "relative" }}>
+                        <input
+                          type="range" min={0} max={100} value={bgOpacity}
+                          onChange={e => setBgOpacity(Number(e.target.value))}
+                          style={{
+                            width: "100%", cursor: "pointer",
+                            accentColor: bgOpacity > 60 ? "#f87171" : bgOpacity > 30 ? "#fbbf24" : "#4ade80",
+                            height: 4,
+                          }}
+                        />
+                      </div>
+                      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", minWidth: 22 }}>100</span>
+                    </div>
+
+                    {/* Quick presets */}
+                    <div style={{ display: "flex", gap: 5, marginTop: 8, justifyContent: "center" }}>
+                      {[[0,"Off","#4ade80"],[25,"25%","#86efac"],[50,"50%","#fbbf24"],[75,"75%","#fb923c"],[100,"100%","#f87171"]].map(([v,label,color]) => (
+                        <button
+                          key={v}
+                          onClick={() => setBgOpacity(v)}
+                          style={{
+                            flex: 1, padding: "3px 0", borderRadius: 5, fontSize: 9, fontWeight: 700,
+                            cursor: "pointer",
+                            background: bgOpacity === v ? `${color}22` : "rgba(255,255,255,0.04)",
+                            border: `1px solid ${bgOpacity === v ? color : "rgba(255,255,255,0.08)"}`,
+                            color: bgOpacity === v ? color : "rgba(255,255,255,0.4)",
+                            transition: "all 0.15s",
+                          }}
+                        >{label}</button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Action buttons */}
                   <div style={{ display: "flex", gap: 8 }}>
-                    <Link href={`/mrm/singleplayer/${selectedMap}`} style={{ flex: 1, textDecoration: "none" }}>
+                    <Link
+                      href={`/mrm/singleplayer/${selectedMap}`}
+                      style={{ flex: 1, textDecoration: "none" }}
+                      onClick={() => {
+                        // Persist opacity so SingleplayerGame can read it
+                        try { localStorage.setItem("duomath_bg_opacity", String(bgOpacity / 100)); } catch(e) {}
+                      }}
+                    >
                       <button style={{
                         width: "100%", padding: "10px 0",
                         background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",

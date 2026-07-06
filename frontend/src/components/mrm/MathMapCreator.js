@@ -474,7 +474,7 @@ export default function MathMapCreator() {
   const [metadata, setMetadata] = useState({
     title: "", title_en: "", grade: "Lớp 11",
     bgm: "dramatic01", tags: [],
-    description: "",
+    description: "", bgOpacity: 0.3,
   });
 
   const [questions, setQuestions] = useState([newQuestion(1)]);
@@ -763,8 +763,11 @@ export default function MathMapCreator() {
       thumbnail_color: "linear-gradient(135deg, #a78bfa, #6d28d9)",
       icon: "📐",
       bgm_url: metadata.bgm === "custom" ? customBgmData : metadata.bgm,
+      bgmId: metadata.bgm,
       customBgmName: customBgmName || "",
       thumbnail_url: customBgData || "",
+      bgImageUrl: customBgData || "",
+      bgOpacity: metadata.bgOpacity ?? 0.3,
       customBgName: customBgName || "",
     };
     const result = submitMap(mapData);
@@ -1113,6 +1116,65 @@ export default function MathMapCreator() {
                     </div>
                   </div>
                 </div>
+
+                {/* Background Opacity Slider */}
+                {customBgData && (
+                  <div style={{ marginTop: 12 }}>
+                    <label style={{ fontSize: 12, fontWeight: 600, color: "#93c5fd", marginBottom: 8, display: "block" }}>
+                      🌫️ Độ mờ nền (Background Opacity)
+                    </label>
+
+                    {/* Live preview strip */}
+                    <div style={{
+                      width: "100%", height: 64, borderRadius: 10, marginBottom: 12,
+                      overflow: "hidden", position: "relative",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                    }}>
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        backgroundImage: `url(${customBgData})`,
+                        backgroundSize: "cover", backgroundPosition: "center",
+                        opacity: metadata.bgOpacity ?? 0.3,
+                        transition: "opacity 0.1s",
+                      }} />
+                      <div style={{
+                        position: "absolute", inset: 0,
+                        background: `rgba(3,2,10,${1 - (metadata.bgOpacity ?? 0.3)})`,
+                      }} />
+                      <div style={{
+                        position: "absolute", inset: 0, display: "flex",
+                        alignItems: "center", justifyContent: "center",
+                        fontSize: 11, color: "rgba(255,255,255,0.8)", fontWeight: 700,
+                        letterSpacing: 0.5,
+                      }}>
+                        🎮 Xem trước — Opacity: {Math.round((metadata.bgOpacity ?? 0.3) * 100)}%
+                      </div>
+                    </div>
+
+                    {/* Slider row */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", minWidth: 24 }}>0%</span>
+                      <input
+                        type="range" min={0} max={100}
+                        value={Math.round((metadata.bgOpacity ?? 0.3) * 100)}
+                        onChange={e => updateMeta("bgOpacity", Number(e.target.value) / 100)}
+                        style={{ flex: 1, accentColor: "#22d3ee", cursor: "pointer" }}
+                      />
+                      <span style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", minWidth: 30 }}>100%</span>
+                      <span style={{
+                        fontSize: 12, fontWeight: 800, color: "#22d3ee",
+                        background: "rgba(34,211,238,0.12)", borderRadius: 6,
+                        padding: "3px 10px", border: "1px solid rgba(34,211,238,0.25)",
+                        minWidth: 44, textAlign: "center",
+                      }}>
+                        {Math.round((metadata.bgOpacity ?? 0.3) * 100)}%
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 6 }}>
+                      Giá trị này sẽ được áp dụng khi user chơi bản đồ (cả Single & Multiplayer).
+                    </div>
+                  </div>
+                )}
 
                 {/* Tags */}
                 <div>

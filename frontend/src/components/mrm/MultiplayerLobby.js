@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/authContext";
 import ReportUserModal from "@/components/ReportUserModal";
 import { getQuestionsForCard } from "@/data/multiplayerQuestions";
+import { MOCK_MATHMAPS } from "@/data/mockMathmaps";
+
 
 // ── Constants & Configs ──────────────────────────────────────────────────
 const BOTS = [
@@ -24,6 +26,15 @@ const INITIAL_ROOMS = [
   { id: "r005", host: "Sigma_Boy", map: "Dãy số - Cấp số cộng & nhân", grade: "Lớp 11", diff: 6.8, players: 1, maxPlayers: 2, status: "waiting", elo: "1600+" },
 ];
 
+const ALL_FORUM_CARDS = [
+  { id: "fc1", title: "Phương trình bậc hai", enTitle: "Quadratic Equations", desc: "Chuyên đề Delta và Hệ thức Vi-ét", icon: "📐", diff: 7.8, color: "#f97316" },
+  { id: "fc2", title: "Đạo hàm & Cực trị", enTitle: "Derivatives & Extrema", desc: "Khảo sát sự biến thiên và cực đại cực tiểu", icon: "📈", diff: 8.5, color: "#ef4444" },
+  { id: "fc3", title: "Hình học phẳng Oxyz", enTitle: "Coordinate Geometry", desc: "Hệ tọa độ, vector và phương trình đường thẳng", icon: "🌐", diff: 6.3, color: "#38bdf8" },
+  { id: "fc4", title: "Dãy số & Cấp số", enTitle: "Sequences & Series", desc: "Tìm số hạng tổng quát và tính tổng S_n", icon: "🔢", diff: 5.5, color: "#4ade80" },
+  { id: "fc5", title: "Lượng giác tổng hợp", enTitle: "Trigonometry", desc: "Công thức sin, cos, tan và các bài toán ứng dụng", icon: "∿", diff: 7.0, color: "#a78bfa" },
+  { id: "fc6", title: "Xác suất & Tổ hợp", enTitle: "Probability & Combinatorics", desc: "Hoán vị, tổ hợp, chỉnh hợp và xác suất biến cố", icon: "🎲", diff: 6.8, color: "#fbbf24" },
+];
+
 function getRankTitle(elo) {
   if (elo < 1200) return "Bronze I";
   if (elo < 1400) return "Silver III";
@@ -33,32 +44,230 @@ function getRankTitle(elo) {
   return "Diamond III";
 }
 
-function getRankBadgeColor(rank) {
+function getRankColor(rank) {
+  if (!rank) return "#94a3b8";
   if (rank.startsWith("Bronze")) return "#cd7f32";
   if (rank.startsWith("Silver")) return "#94a3b8";
   if (rank.startsWith("Gold")) return "#fbbf24";
   if (rank.startsWith("Platinum")) return "#38bdf8";
+  if (rank.startsWith("Diamond")) return "#c084fc";
   return "#e0f2fe";
 }
 
-function DiffBadge({ fmp }) {
-  const tier =
-    fmp < 4 ? { label: "Easy", color: "#4ade80" }
-    : fmp < 6 ? { label: "Normal", color: "#facc15" }
-    : fmp < 8 ? { label: "Hard", color: "#f97316" }
-    : { label: "Insane", color: "#ef4444" };
+function getRankGradient(rank) {
+  if (!rank) return "linear-gradient(135deg, #475569, #334155)";
+  if (rank.startsWith("Bronze")) return "linear-gradient(135deg, #92400e, #cd7f32)";
+  if (rank.startsWith("Silver")) return "linear-gradient(135deg, #475569, #94a3b8)";
+  if (rank.startsWith("Gold")) return "linear-gradient(135deg, #b45309, #fbbf24)";
+  if (rank.startsWith("Platinum")) return "linear-gradient(135deg, #0369a1, #38bdf8)";
+  if (rank.startsWith("Diamond")) return "linear-gradient(135deg, #7e22ce, #c084fc)";
+  return "linear-gradient(135deg, #1e293b, #334155)";
+}
+
+function getDiffColor(diff) {
+  if (diff < 4) return { label: "Easy", color: "#4ade80", bg: "rgba(74,222,128,0.15)" };
+  if (diff < 6) return { label: "Normal", color: "#fbbf24", bg: "rgba(251,191,36,0.15)" };
+  if (diff < 8) return { label: "Hard", color: "#f97316", bg: "rgba(249,115,22,0.15)" };
+  return { label: "Insane", color: "#ef4444", bg: "rgba(239,68,68,0.15)" };
+}
+
+function getPerformanceGrade(wins, total, maxCombo) {
+  if (total === 0) return "D";
+  const wr = wins / total;
+  if (wr >= 0.9 && maxCombo >= 4) return "S";
+  if (wr >= 0.7) return "A";
+  if (wr >= 0.5) return "B";
+  if (wr >= 0.3) return "C";
+  return "D";
+}
+
+// ── Sub-components ─────────────────────────────────────────────────────────
+
+function RankBadge({ rank, size = 36 }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: "50%",
+      background: getRankGradient(rank),
+      display: "flex", alignItems: "center", justifyContent: "center",
+      border: `2px solid ${getRankColor(rank)}66`,
+      boxShadow: `0 0 12px ${getRankColor(rank)}44`,
+      fontSize: size * 0.4, fontWeight: 900, color: "white",
+      flexShrink: 0,
+      textShadow: "0 1px 3px rgba(0,0,0,0.5)",
+    }}>
+      {rank?.startsWith("Diamond") ? "◆" :
+       rank?.startsWith("Platinum") ? "✦" :
+       rank?.startsWith("Gold") ? "★" :
+       rank?.startsWith("Silver") ? "⬡" : "●"}
+    </div>
+  );
+}
+
+function DiffStars({ diff }) {
+  const { label, color, bg } = getDiffColor(diff);
+  const stars = Math.min(5, Math.round(diff / 2));
   return (
     <span style={{
-      fontSize: 10, fontWeight: 700, color: tier.color,
-      background: tier.color + "22",
-      border: `1px solid ${tier.color}55`,
-      borderRadius: 4, padding: "2px 6px",
+      display: "inline-flex", alignItems: "center", gap: 4,
+      fontSize: 10, fontWeight: 700, color,
+      background: bg, border: `1px solid ${color}44`,
+      borderRadius: 20, padding: "2px 8px",
     }}>
-      {tier.label} {fmp.toFixed(1)}★
+      {"★".repeat(stars)}{"☆".repeat(5 - stars)} {label} {diff.toFixed(1)}
     </span>
   );
 }
 
+// The horizontal damage bar replacing hearts
+function DamageBar({ playerHP, botHP, maxHP = 5, playerUsername, botUsername, playerBigHP, botBigHP }) {
+  // damage position: 0.5 = center (even), >0.5 = player winning, <0.5 = bot winning
+  const playerRatio = playerHP / (playerHP + botHP);
+  const markerPos = playerRatio * 100;
+
+  return (
+    <div style={{ width: "100%", padding: "0 28px", boxSizing: "border-box" }}>
+      {/* Player names row */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#38bdf8" }}>
+          {playerUsername}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <span key={i} style={{ marginLeft: 3, fontSize: 9, color: i < playerBigHP ? "#fbbf24" : "#334155" }}>◆</span>
+          ))}
+        </span>
+        <span style={{ fontSize: 11, fontWeight: 700, color: "#f87171" }}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <span key={i} style={{ marginRight: 3, fontSize: 9, color: i < botBigHP ? "#fbbf24" : "#334155" }}>◆</span>
+          ))}
+          {botUsername}
+        </span>
+      </div>
+      {/* Bar */}
+      <div style={{
+        position: "relative", width: "100%", height: 12, borderRadius: 6,
+        background: "rgba(255,255,255,0.06)",
+        border: "1px solid rgba(255,255,255,0.1)",
+        overflow: "hidden",
+      }}>
+        {/* Player fill (left) */}
+        <div style={{
+          position: "absolute", left: 0, top: 0, bottom: 0,
+          width: `${markerPos}%`,
+          background: "linear-gradient(90deg, #0ea5e9, #38bdf8)",
+          transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+          borderRadius: "6px 0 0 6px",
+        }} />
+        {/* Bot fill (right) */}
+        <div style={{
+          position: "absolute", right: 0, top: 0, bottom: 0,
+          width: `${100 - markerPos}%`,
+          background: "linear-gradient(90deg, #ef4444, #f87171)",
+          transition: "width 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+          borderRadius: "0 6px 6px 0",
+        }} />
+        {/* Center divider */}
+        <div style={{
+          position: "absolute", left: "50%", top: -1, bottom: -1,
+          width: 2, background: "rgba(255,255,255,0.3)",
+          transform: "translateX(-50%)",
+        }} />
+        {/* Moving marker */}
+        <div style={{
+          position: "absolute", top: "50%", left: `${markerPos}%`,
+          width: 16, height: 16, borderRadius: "50%",
+          background: "white",
+          border: "2px solid rgba(0,0,0,0.3)",
+          transform: "translate(-50%, -50%)",
+          transition: "left 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+          boxShadow: "0 0 8px rgba(255,255,255,0.6)",
+          zIndex: 2,
+        }} />
+      </div>
+      {/* HP numbers */}
+      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 3 }}>
+        <span style={{ fontSize: 10, color: "#38bdf8", fontWeight: 700 }}>{playerHP} HP</span>
+        <span style={{ fontSize: 10, color: "#f87171", fontWeight: 700 }}>{botHP} HP</span>
+      </div>
+    </div>
+  );
+}
+
+function GradeDisplay({ grade }) {
+  const gradeStyles = {
+    S: { color: "#fbbf24", glow: "#fbbf24", label: "S", sub: "Xuất sắc!" },
+    A: { color: "#4ade80", glow: "#4ade80", label: "A", sub: "Giỏi!" },
+    B: { color: "#38bdf8", glow: "#38bdf8", label: "B", sub: "Khá tốt" },
+    C: { color: "#f97316", glow: "#f97316", label: "C", sub: "Cần cố gắng" },
+    D: { color: "#f87171", glow: "#ef4444", label: "D", sub: "Thất bại" },
+  };
+  const g = gradeStyles[grade] || gradeStyles.D;
+  return (
+    <div style={{
+      width: 100, height: 100, borderRadius: "50%",
+      border: `4px solid ${g.color}`,
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      boxShadow: `0 0 30px ${g.glow}66, 0 0 60px ${g.glow}22`,
+      background: `radial-gradient(circle, ${g.color}11, transparent)`,
+    }}>
+      <div style={{ fontSize: 40, fontWeight: 900, color: g.color, lineHeight: 1 }}>{g.label}</div>
+      <div style={{ fontSize: 9, color: g.color, fontWeight: 600, marginTop: 2 }}>{g.sub}</div>
+    </div>
+  );
+}
+
+function MathParticles() {
+  const SYMBOLS = ["∑", "∫", "π", "√", "∞", "Δ", "∂", "∇", "⊕", "≈", "≠", "±", "×", "÷", "α", "β", "θ", "λ", "∿", "∏"];
+  const [particles, setParticles] = useState([]);
+  useEffect(() => {
+    const p = Array.from({ length: 25 }, (_, i) => ({
+      id: i,
+      symbol: SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
+      left: `${Math.random() * 100}%`,
+      dur: `${10 + Math.random() * 16}s`,
+      delay: `${Math.random() * 12}s`,
+      size: `${12 + Math.random() * 20}px`,
+      opacity: 0.04 + Math.random() * 0.1,
+    }));
+    setParticles(p);
+  }, []);
+  return (
+    <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {particles.map(p => (
+        <div key={p.id} style={{
+          position: "absolute", left: p.left, bottom: "-5%",
+          fontSize: p.size, color: "#a78bfa", opacity: p.opacity,
+          animation: `mrmParticleFloat ${p.dur} ${p.delay} linear infinite`,
+          userSelect: "none", fontFamily: "monospace", fontWeight: 700,
+        }}>{p.symbol}</div>
+      ))}
+    </div>
+  );
+}
+
+function OrbBackground() {
+  const orbs = [
+    { w: 320, h: 280, left: "-8%", top: "-5%", color1: "#4c1d95", color2: "#7c3aed", dur: "18s", delay: "0s" },
+    { w: 250, h: 220, right: "-6%", top: "10%", color1: "#1e3a5f", color2: "#0ea5e9", dur: "22s", delay: "3s" },
+    { w: 200, h: 180, left: "35%", bottom: "-8%", color1: "#7c2d12", color2: "#ea580c", dur: "16s", delay: "7s" },
+    { w: 160, h: 140, left: "60%", top: "40%", color1: "#14532d", color2: "#22c55e", dur: "20s", delay: "5s" },
+  ];
+  return (
+    <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
+      {orbs.map((o, i) => (
+        <div key={i} style={{
+          position: "absolute",
+          width: o.w, height: o.h,
+          left: o.left, right: o.right, top: o.top, bottom: o.bottom,
+          background: `radial-gradient(ellipse, ${o.color1}55 0%, ${o.color2}22 50%, transparent 70%)`,
+          borderRadius: "50%",
+          animation: `orbFloat ${o.dur} ${o.delay} ease-in-out infinite alternate`,
+          filter: "blur(40px)",
+        }} />
+      ))}
+    </div>
+  );
+}
+
+// ── Main Component ──────────────────────────────────────────────────────────
 export default function MultiplayerLobby() {
   const { user } = useAuth();
   const router = useRouter();
@@ -85,12 +294,13 @@ export default function MultiplayerLobby() {
   const [chooser, setChooser] = useState(null); // "player" | "bot"
   const [selectedCard, setSelectedCard] = useState(null);
   const [activeQuestions, setActiveQuestions] = useState([]);
-  const [forumCards] = useState([
-    { id: "fc1", title: "Phương trình bậc hai nâng cao", desc: "Chuyên đề Delta và Hệ thức Vi-ét", icon: "📐" },
-    { id: "fc2", title: "Đạo hàm & Cực trị hàm số", desc: "Khảo sát sự biến thiên và cực đại cực tiểu", icon: "📈" },
-    { id: "fc3", title: "Hình học phẳng Oxyz", desc: "Hệ tọa độ, vector và phương trình đường thẳng", icon: "🌐" },
-    { id: "fc4", title: "Dãy số & Cấp số cộng", desc: "Tìm số hạng tổng quát và tính tổng S_n", icon: "🔢" },
-  ]);
+  const [forumCards] = useState(ALL_FORUM_CARDS);
+
+  // ─── NEW: Discard Phase ────────────────────────────────────────────────
+  const [gamePhase, setGamePhase] = useState("discarding"); // "discarding" | "picking"
+  const [discardedCards, setDiscardedCards] = useState([]);
+  const [availableCards, setAvailableCards] = useState(ALL_FORUM_CARDS);
+  const DISCARD_COUNT = 2;
 
   // ─── Battle States ─────────────────────────────────────────────────────
   const [currentQ, setCurrentQ] = useState(0);
@@ -105,7 +315,7 @@ export default function MultiplayerLobby() {
   const [playerSubmitted, setPlayerSubmitted] = useState(false);
   const [botSubmitted, setBotSubmitted] = useState(false);
 
-  const [playerCorrect, setPlayerCorrect] = useState(null); // null | true | false
+  const [playerCorrect, setPlayerCorrect] = useState(null);
   const [botCorrect, setBotCorrect] = useState(null);
   const [feedMessages, setFeedMessages] = useState([]);
   const [evaluating, setEvaluating] = useState(false);
@@ -119,9 +329,39 @@ export default function MultiplayerLobby() {
   // ─── ELO Delta state ───────────────────────────────────────────────────
   const [eloDelta, setEloDelta] = useState(0);
 
+  // ─── NEW: Match History ────────────────────────────────────────────────
+  const [matchHistory, setMatchHistory] = useState([
+    { opponent: "MathGod_2k7", result: "W", eloDelta: +25, map: "Phương trình bậc hai", grade: "A" },
+    { opponent: "TrigWhiz", result: "L", eloDelta: -15, map: "Lượng giác tổng hợp", grade: "C" },
+    { opponent: "PiMaster", result: "W", eloDelta: +22, map: "Đạo hàm & Cực trị", grade: "S" },
+    { opponent: "Sigma_Boy", result: "L", eloDelta: -15, map: "Dãy số & Cấp số", grade: "D" },
+    { opponent: "QuadraticKing", result: "W", eloDelta: +30, map: "Xác suất & Tổ hợp", grade: "A" },
+  ]);
+
+  // ─── NEW: Round stats for grade ────────────────────────────────────────
+  const [roundCorrect, setRoundCorrect] = useState(0);
+  const [roundTotal, setRoundTotal] = useState(0);
+
+  // ─── NEW: Combo flash ──────────────────────────────────────────────────
+  const [comboFlash, setComboFlash] = useState(false);
+
   // ─── Report User States ────────────────────────────────────────────────
   const [showReportModal, setShowReportModal] = useState(false);
   const [selectedReportUser, setSelectedReportUser] = useState("");
+
+  // ─── Map Background / Media States ────────────────────────────────────
+  const [mapBgImage, setMapBgImage] = useState(null);
+  const [mapBgOpacity, setMapBgOpacity] = useState(0.3);
+  const [showBgPanel, setShowBgPanel] = useState(false);
+  const bgPanelTimerRef = useRef(null);
+
+  const showOpacityPanel = useCallback((bgUrl, opacity) => {
+    setMapBgImage(bgUrl);
+    setMapBgOpacity(opacity);
+    setShowBgPanel(true);
+    clearTimeout(bgPanelTimerRef.current);
+    bgPanelTimerRef.current = setTimeout(() => setShowBgPanel(false), 5000);
+  }, []);
 
   // ─── Web Audio API BGM Synthesizer ──────────────────────────────────────
   const [isMuted, setIsMuted] = useState(false);
@@ -131,7 +371,7 @@ export default function MultiplayerLobby() {
     if (isMuted || synthRef.current || typeof window === "undefined") return;
     try {
       const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const notes = [130.81, 146.83, 164.81, 196.00, 220.00]; // Pentatonic bass C3-D3-E3-G3-A3
+      const notes = [130.81, 146.83, 164.81, 196.00, 220.00];
       const leadNotes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
       const bassPattern = [0, 3, 4, 3, 2, 3, 2, 1];
       const leadPattern = [0, 2, 3, 4, 3, 2, 5, 4];
@@ -139,7 +379,6 @@ export default function MultiplayerLobby() {
 
       const scheduler = () => {
         const time = ctx.currentTime;
-        // Bass note
         const bassOsc = ctx.createOscillator();
         const bassGain = ctx.createGain();
         bassOsc.type = "triangle";
@@ -151,7 +390,6 @@ export default function MultiplayerLobby() {
         bassOsc.start(time);
         bassOsc.stop(time + 0.3);
 
-        // Lead note on alternate steps
         if (stepIndex % 2 === 0) {
           const leadOsc = ctx.createOscillator();
           const leadGain = ctx.createGain();
@@ -164,36 +402,23 @@ export default function MultiplayerLobby() {
           leadOsc.start(time);
           leadOsc.stop(time + 0.2);
         }
-
         stepIndex++;
       };
 
-      const timer = setInterval(scheduler, 250); // 120 BPM
+      const timer = setInterval(scheduler, 250);
       synthRef.current = {
-        stop: () => {
-          clearInterval(timer);
-          ctx.close();
-          synthRef.current = null;
-        }
+        stop: () => { clearInterval(timer); ctx.close(); synthRef.current = null; }
       };
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   }, [isMuted]);
 
   const stopBgm = useCallback(() => {
-    if (synthRef.current) {
-      synthRef.current.stop();
-    }
+    if (synthRef.current) synthRef.current.stop();
   }, []);
 
-  // Listen to gameState changes to control BGM
   useEffect(() => {
-    if (["faceoff", "card_choosing", "playing"].includes(gameState)) {
-      startBgm();
-    } else {
-      stopBgm();
-    }
+    if (["faceoff", "card_choosing", "playing"].includes(gameState)) startBgm();
+    else stopBgm();
     return () => stopBgm();
   }, [gameState, startBgm, stopBgm]);
 
@@ -205,12 +430,11 @@ export default function MultiplayerLobby() {
   const playerUsername = user?.username || user?.email?.split("@")[0] || "Bạn";
   const playerRank = getRankTitle(playerElo);
 
-  // ─── Hydration & LocalStorage persistence ─────────────────────────────
+  // ─── Hydration & LocalStorage ──────────────────────────────────────────
   useEffect(() => {
     const savedElo = localStorage.getItem("duomath_player_elo");
     const savedWins = localStorage.getItem("duomath_player_wins");
     const savedLosses = localStorage.getItem("duomath_player_losses");
-
     if (savedElo) setPlayerElo(parseInt(savedElo, 10));
     if (savedWins || savedLosses) {
       setPlayerStats({
@@ -231,16 +455,13 @@ export default function MultiplayerLobby() {
     if (gameState !== "lobby" || tab !== "browse") return;
     const interval = setInterval(() => {
       setOnlineCount(prev => prev + (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 4));
-      setRooms(prev => {
-        return prev.map(r => {
-          if (Math.random() > 0.75) {
-            const nextPlayers = r.players === 1 ? 2 : 1;
-            const nextStatus = nextPlayers === 2 ? "in_game" : "waiting";
-            return { ...r, players: nextPlayers, status: nextStatus };
-          }
-          return r;
-        });
-      });
+      setRooms(prev => prev.map(r => {
+        if (Math.random() > 0.75) {
+          const nextPlayers = r.players === 1 ? 2 : 1;
+          return { ...r, players: nextPlayers, status: nextPlayers === 2 ? "in_game" : "waiting" };
+        }
+        return r;
+      }));
     }, 4500);
     return () => clearInterval(interval);
   }, [gameState, tab]);
@@ -257,10 +478,7 @@ export default function MultiplayerLobby() {
           const matchedBot = BOTS[Math.floor(Math.random() * BOTS.length)];
           setBotOpponent(matchedBot);
           setGameState("faceoff");
-
-          setTimeout(() => {
-            startCardChoosingPhase(matchedBot, true);
-          }, 2500);
+          setTimeout(() => startCardChoosingPhase(matchedBot, true), 2500);
         }
         return next;
       });
@@ -284,24 +502,23 @@ export default function MultiplayerLobby() {
         clearInterval(interval);
         setCountdown(null);
         setJoiningRoomId(null);
-
         const botTemplate = BOTS.find(b => b.username === room.host) || BOTS[0];
         setBotOpponent(botTemplate);
         setGameState("faceoff");
-
-        setTimeout(() => {
-          startCardChoosingPhase(botTemplate, true);
-        }, 2500);
+        setTimeout(() => startCardChoosingPhase(botTemplate, true), 2500);
       } else {
         setCountdown(c);
       }
     }, 1000);
   };
 
-  // ─── Card Choosing Phase Initialization ────────────────────────────────
+  // ─── Card Choosing Phase Initialization ───────────────────────────────
   const startCardChoosingPhase = (bot, isFirstRound = false) => {
     setGameState("card_choosing");
     setSelectedCard(null);
+    setDiscardedCards([]);
+    setAvailableCards(ALL_FORUM_CARDS);
+    setGamePhase("discarding");
     if (isFirstRound) {
       setPlayerBigHP(3);
       setBotBigHP(3);
@@ -311,25 +528,48 @@ export default function MultiplayerLobby() {
     }
   };
 
+  const handleDiscardCard = (card) => {
+    if (discardedCards.length >= DISCARD_COUNT) return;
+    const newDiscarded = [...discardedCards, card.id];
+    setDiscardedCards(newDiscarded);
+    if (newDiscarded.length >= DISCARD_COUNT) {
+      // Move to picking phase
+      setGamePhase("picking");
+      setAvailableCards(ALL_FORUM_CARDS.filter(c => !newDiscarded.includes(c.id)));
+    }
+  };
+
   const handleSelectCard = (card) => {
     setSelectedCard(card);
-    setTimeout(() => {
-      initializeMatch(botOpponent, card);
-    }, 2000);
+    setTimeout(() => initializeMatch(botOpponent, card), 2000);
   };
 
   // Bot card selection simulation
   useEffect(() => {
-    if (gameState === "card_choosing" && chooser === "bot" && !selectedCard) {
-      const timer = setTimeout(() => {
-        const randomCard = forumCards[Math.floor(Math.random() * forumCards.length)];
-        handleSelectCard(randomCard);
-      }, 2500);
-      return () => clearTimeout(timer);
+    if (gameState === "card_choosing" && chooser === "bot") {
+      if (gamePhase === "discarding") {
+        // Bot discards 2 random cards
+        const timer = setTimeout(() => {
+          const shuffled = [...ALL_FORUM_CARDS].sort(() => Math.random() - 0.5);
+          const botDiscarded = shuffled.slice(0, DISCARD_COUNT).map(c => c.id);
+          setDiscardedCards(botDiscarded);
+          setGamePhase("picking");
+          setAvailableCards(ALL_FORUM_CARDS.filter(c => !botDiscarded.includes(c.id)));
+        }, 1800);
+        return () => clearTimeout(timer);
+      } else if (gamePhase === "picking" && !selectedCard) {
+        const timer = setTimeout(() => {
+          const remaining = ALL_FORUM_CARDS.filter(c => !discardedCards.includes(c.id));
+          const randomCard = remaining[Math.floor(Math.random() * remaining.length)];
+          handleSelectCard(randomCard);
+        }, 2000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [gameState, chooser, selectedCard, forumCards]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState, chooser, selectedCard, gamePhase]);
 
-  // ─── Initialize Battle Arena (5 Hearts Round) ─────────────────────────
+  // ─── Initialize Battle Arena ───────────────────────────────────────────
   const initializeMatch = (bot, card) => {
     const questions = getQuestionsForCard(card);
     setActiveQuestions(questions);
@@ -340,12 +580,34 @@ export default function MultiplayerLobby() {
     setScore(0);
     setCombo(0);
     setMaxCombo(0);
+    setRoundCorrect(0);
+    setRoundTotal(0);
     setEvaluating(false);
-    setFeedMessages([`Chủ đề: ${card ? card.title : "Tổng hợp"} - Trận đấu bắt đầu!`]);
+    setFeedMessages([`${card ? card.enTitle : "Mixed"} — Match Start!`]);
     loadQuestion(0, bot, questions);
+
+    // ── Load map media: look up card's matching MathMap for bgImage + bgm
+    if (card) {
+      // Find map in MOCK_MATHMAPS that matches this card topic
+      const matchKey = Object.keys(MOCK_MATHMAPS).find(k => {
+        const m = MOCK_MATHMAPS[k];
+        return m.bgmId && (
+          k.startsWith(card.id.replace('fc','mm').slice(0,4)) ||
+          (m.title_en && card.enTitle && m.title_en.toLowerCase().includes(card.enTitle.split(' ')[0].toLowerCase()))
+        );
+      });
+      const mapMeta = matchKey ? MOCK_MATHMAPS[matchKey] : null;
+      const bgUrl = mapMeta?.bgImageUrl || mapMeta?.thumbnail_url || null;
+      const opacity = mapMeta?.bgOpacity ?? 0.3;
+      if (bgUrl) {
+        showOpacityPanel(bgUrl, opacity);
+      } else {
+        setMapBgImage(null);
+      }
+    }
   };
 
-  // ─── Load Question & Bot Timer ────────────────────────────────────────
+  // ─── Load Question & Bot Timer ─────────────────────────────────────────
   const loadQuestion = (qIdx, bot, questions = activeQuestions) => {
     setPlayerSelected(null);
     setBotSelected(null);
@@ -377,45 +639,32 @@ export default function MultiplayerLobby() {
     }, botDelay);
   };
 
-  // ─── Simulate Bot Answering ───────────────────────────────────────────
+  // ─── Simulate Bot Answering ────────────────────────────────────────────
   const simulateBotAnswer = (qIdx, bot, questions = activeQuestions) => {
     const isBotCorrect = Math.random() < bot.accuracy;
     const currentQuestion = questions[qIdx];
     if (!currentQuestion) return;
     let chosenOption;
-
     if (isBotCorrect) {
       chosenOption = currentQuestion.correct;
     } else {
       const wrongs = [0, 1, 2, 3].filter(x => x !== currentQuestion.correct);
       chosenOption = wrongs[Math.floor(Math.random() * wrongs.length)];
     }
-
     setBotAnswerTime(Date.now());
     setBotSelected(chosenOption);
     setBotSubmitted(true);
   };
 
-  // ─── Time expired handler ─────────────────────────────────────────────
   const handleTimeExpired = () => {
     setEvaluating(true);
     let pSelected = playerSelected;
     let bSelected = botSelected;
-
-    if (pSelected === null) {
-      pSelected = -1;
-      setPlayerSelected(-1);
-      setPlayerSubmitted(true);
-    }
-    if (bSelected === null) {
-      bSelected = -1;
-      setBotSelected(-1);
-      setBotSubmitted(true);
-    }
+    if (pSelected === null) { pSelected = -1; setPlayerSelected(-1); setPlayerSubmitted(true); }
+    if (bSelected === null) { bSelected = -1; setBotSelected(-1); setBotSubmitted(true); }
     evaluateAnswers(pSelected, bSelected);
   };
 
-  // ─── Player selects answer ────────────────────────────────────────────
   const handlePlayerAnswer = (optionIdx) => {
     if (playerSubmitted || evaluating) return;
     setPlayerAnswerTime(Date.now());
@@ -423,7 +672,6 @@ export default function MultiplayerLobby() {
     setPlayerSubmitted(true);
   };
 
-  // ─── Auto Evaluate when both submit ───────────────────────────────────
   useEffect(() => {
     if (playerSubmitted && botSubmitted && !evaluating && gameState === "playing") {
       setEvaluating(true);
@@ -431,9 +679,10 @@ export default function MultiplayerLobby() {
       clearTimeout(botTimerRef.current);
       evaluateAnswers(playerSelected, botSelected);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playerSubmitted, botSubmitted, evaluating, gameState, playerSelected, botSelected]);
 
-  // ─── Evaluation details (Speed-First tiebreaker logic) ──────────────────
+  // ─── Evaluation ────────────────────────────────────────────────────────
   const evaluateAnswers = (pSelected, bSelected) => {
     const currentQuestion = activeQuestions[currentQ];
     if (!currentQuestion) return;
@@ -442,59 +691,60 @@ export default function MultiplayerLobby() {
 
     setPlayerCorrect(isPlayerCorrect);
     setBotCorrect(isBotCorrect);
+    setRoundTotal(prev => prev + 1);
+    if (isPlayerCorrect) setRoundCorrect(prev => prev + 1);
 
     let nextPlayerHP = playerHP;
     let nextBotHP = botHP;
     const logs = [];
 
     if (isPlayerCorrect && isBotCorrect) {
-      // Both correct -> Speed-First tiebreaker
       const pTime = playerAnswerTime || Infinity;
       const bTime = botAnswerTime || Infinity;
       if (pTime < bTime) {
         nextBotHP = Math.max(0, botHP - 1);
         setBotHP(nextBotHP);
-        logs.push(`⚡ Bạn đúng & NHANH HƠN! Gây 1 ST lên ${botOpponent.username}.`);
+        logs.push(`⚡ Faster! +DAMAGE on ${botOpponent?.username} / Bạn nhanh hơn!`);
         setCombo(prev => {
           const nextC = prev + 1;
           setMaxCombo(m => Math.max(m, nextC));
+          setComboFlash(true);
+          setTimeout(() => setComboFlash(false), 600);
           return nextC;
         });
         setScore(prev => prev + 100 + combo * 10);
       } else if (bTime < pTime) {
         nextPlayerHP = Math.max(0, playerHP - 1);
         setPlayerHP(nextPlayerHP);
-        logs.push(`🔥 ${botOpponent.username} đúng & NHANH HƠN! Bạn mất 1 HP.`);
+        logs.push(`🔥 ${botOpponent?.username} faster! Bạn mất 1 HP.`);
         setCombo(0);
       } else {
-        logs.push(`🤝 Cả hai đều đúng và nhanh ngang nhau! Không ai mất HP.`);
+        logs.push(`🤝 Tie — Both Correct / Cả hai đều đúng!`);
       }
     } else if (isPlayerCorrect && !isBotCorrect) {
-      // Only player correct
       nextBotHP = Math.max(0, botHP - 1);
       setBotHP(nextBotHP);
-      logs.push(`🎯 Bạn đúng, đối thủ sai! Gây 1 ST.`);
+      logs.push(`🎯 Correct! Damage dealt / Gây sát thương!`);
       setCombo(prev => {
         const nextC = prev + 1;
         setMaxCombo(m => Math.max(m, nextC));
+        setComboFlash(true);
+        setTimeout(() => setComboFlash(false), 600);
         return nextC;
       });
       setScore(prev => prev + 100 + combo * 10);
     } else if (!isPlayerCorrect && isBotCorrect) {
-      // Only bot correct
       nextPlayerHP = Math.max(0, playerHP - 1);
       setPlayerHP(nextPlayerHP);
-      logs.push(`🔥 Bạn sai, đối thủ đúng! Bạn mất 1 HP.`);
+      logs.push(`🔥 Wrong! ${botOpponent?.username} hits you / Bạn sai, mất HP.`);
       setCombo(0);
     } else {
-      // Both incorrect
-      logs.push(`💨 Cả hai cùng sai! Không ai bị trừ HP.`);
+      logs.push(`💨 Both miss! No damage / Cả hai cùng sai!`);
       setCombo(0);
     }
 
     setFeedMessages(logs);
 
-    // Timeout evaluation before next step
     setTimeout(() => {
       if (nextPlayerHP <= 0 || nextBotHP <= 0 || currentQ === activeQuestions.length - 1) {
         endDuelRound(nextPlayerHP, nextBotHP);
@@ -508,18 +758,15 @@ export default function MultiplayerLobby() {
     }, 2800);
   };
 
-  // ─── End Duel Round (HP check & Big HP update) ─────────────────────────
+  // ─── End Duel Round ─────────────────────────────────────────────────────
   const endDuelRound = (finalPlayerHP, finalBotHP) => {
     clearInterval(questionTimerRef.current);
     clearTimeout(botTimerRef.current);
 
     let roundWinner = null;
-    if (finalPlayerHP > 0 && finalBotHP === 0) {
-      roundWinner = "player";
-    } else if (finalPlayerHP === 0 && finalBotHP > 0) {
-      roundWinner = "bot";
-    } else {
-      // Compare remaining HP, then score
+    if (finalPlayerHP > 0 && finalBotHP === 0) roundWinner = "player";
+    else if (finalPlayerHP === 0 && finalBotHP > 0) roundWinner = "bot";
+    else {
       if (finalPlayerHP > finalBotHP) roundWinner = "player";
       else if (finalBotHP > finalPlayerHP) roundWinner = "bot";
       else roundWinner = score > 300 ? "player" : "bot";
@@ -531,11 +778,11 @@ export default function MultiplayerLobby() {
     if (roundWinner === "player") {
       nextBotBigHP = Math.max(0, botBigHP - 1);
       setBotBigHP(nextBotBigHP);
-      setFeedMessages([`🎉 Bạn đã THẮNG ván đấu này! ${botOpponent.username} mất 1 Tim lớn.`]);
+      setFeedMessages(["🏆 Round Win! Set point taken / Bạn thắng ván này!"]);
     } else {
       nextPlayerBigHP = Math.max(0, playerBigHP - 1);
       setPlayerBigHP(nextPlayerBigHP);
-      setFeedMessages([`😢 Bạn đã THUA ván đấu này! Bạn mất 1 Tim lớn.`]);
+      setFeedMessages(["💔 Round Lost! / Bạn thua ván này!"]);
     }
 
     setTimeout(() => {
@@ -547,15 +794,13 @@ export default function MultiplayerLobby() {
     }, 3000);
   };
 
-  // ─── End Match (Match outcome & ELO update) ────────────────────────────
+  // ─── End Match ─────────────────────────────────────────────────────────
   const endMatch = (finalPlayerBigHP, finalBotBigHP) => {
     setGameState("ended");
     clearInterval(questionTimerRef.current);
     clearTimeout(botTimerRef.current);
 
     const won = finalPlayerBigHP > 0 && finalBotBigHP === 0;
-
-    // ELO Updates
     const delta = won ? 25 : -15;
     const nextElo = Math.max(1000, playerElo + delta);
     const nextWins = won ? playerStats.wins + 1 : playerStats.wins;
@@ -565,54 +810,78 @@ export default function MultiplayerLobby() {
     setPlayerElo(nextElo);
     setPlayerStats({ wins: nextWins, losses: nextLosses });
     saveStatsToStorage(nextWins, nextLosses, nextElo);
+
+    // Add to match history
+    const currentCard = selectedCard || ALL_FORUM_CARDS[0];
+    const grade = getPerformanceGrade(roundCorrect, roundTotal, maxCombo);
+    setMatchHistory(prev => [{
+      opponent: botOpponent?.username || "Unknown",
+      result: won ? "W" : "L",
+      eloDelta: delta,
+      map: currentCard?.title || "Mixed",
+      grade,
+    }, ...prev.slice(0, 4)]);
   };
+
+  // percentile for display
+  const percentile = Math.min(99, Math.round(((playerElo - 1000) / 1200) * 100));
 
   return (
     <div style={{
       width: "100%", minHeight: "100vh",
-      background: "linear-gradient(135deg, #020617 0%, #0a0a1a 40%, #150a2e 100%)",
-      display: "flex", flexDirection: "column", fontFamily: "'Inter', sans-serif",
+      background: "linear-gradient(135deg, #05020f 0%, #0a0520 40%, #110830 100%)",
+      display: "flex", flexDirection: "column",
+      fontFamily: "'Inter', 'Outfit', sans-serif",
       color: "white",
+      position: "relative",
     }}>
-      {/* ─── LOBBY / NON-GAME SCREEN ─── */}
+      <OrbBackground />
+      <MathParticles />
+
+      {/* ─── LOBBY SCREEN ─── */}
       {gameState === "lobby" && (
-        <div className="slide-active">
+        <div className="mrm-slide-in" style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
           {/* HEADER */}
           <header style={{
             display: "flex", alignItems: "center", gap: 16,
-            padding: "14px 28px",
-            background: "rgba(2,6,23,0.85)", backdropFilter: "blur(12px)",
-            borderBottom: "1px solid rgba(167,139,250,0.15)",
-            flexWrap: "wrap",
+            padding: "12px 28px",
+            background: "rgba(5,2,15,0.85)", backdropFilter: "blur(16px)",
+            borderBottom: "1px solid rgba(167,139,250,0.12)",
+            flexWrap: "wrap", flexShrink: 0,
           }}>
             <Link href="/mrm" style={{ textDecoration: "none" }}>
-              <span style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: 2 }}>
-                DUO<span style={{ color: "#22d3ee" }}>MATH</span>
+              <span style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: 2, fontFamily: "monospace" }}>
+                DUO<span style={{ color: "#a78bfa" }}>MATH</span>
               </span>
             </Link>
             <span style={{ color: "rgba(255,255,255,0.2)" }}>›</span>
-            <span style={{ fontSize: 14, color: "#a78bfa", fontWeight: 600 }}>
-              ⚔️ Multiplayer — Ranked Lobby
+            <span style={{ fontSize: 13, color: "#a78bfa", fontWeight: 700 }}>
+              Ranked Play
             </span>
+
+            {/* Live players count */}
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6,
+              background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)",
+              borderRadius: 20, padding: "4px 12px",
+            }}>
+              <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e", animation: "mrmPulse 2s infinite" }} />
+              <span style={{ fontSize: 11, color: "#4ade80", fontWeight: 700 }}>{onlineCount} online</span>
+            </div>
 
             <div style={{ flex: 1 }} />
 
-            {/* Player ELO card */}
+            {/* Player rank card */}
             <div style={{
               display: "flex", alignItems: "center", gap: 10,
-              background: "rgba(167,139,250,0.08)",
-              border: `1px solid ${getRankBadgeColor(playerRank)}44`,
-              borderRadius: 10, padding: "8px 14px",
+              background: "rgba(167,139,250,0.06)",
+              border: `1px solid ${getRankColor(playerRank)}33`,
+              borderRadius: 12, padding: "8px 14px",
             }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: "50%",
-                background: `linear-gradient(135deg, ${getRankBadgeColor(playerRank)}, #6d28d9)`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 16,
-              }}>🎓</div>
+              <RankBadge rank={playerRank} size={34} />
               <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "white" }}>{playerUsername}</div>
-                <div style={{ fontSize: 10, color: getRankBadgeColor(playerRank) }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "white" }}>{playerUsername}</div>
+                <div style={{ fontSize: 10, color: getRankColor(playerRank), fontWeight: 700 }}>
                   {playerRank} · {playerElo} ELO
                 </div>
               </div>
@@ -620,164 +889,168 @@ export default function MultiplayerLobby() {
 
             <Link href="/" style={{ textDecoration: "none" }}>
               <button style={{
-                padding: "8px 16px", borderRadius: 8, fontSize: 13,
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "rgba(255,255,255,0.7)", cursor: "pointer",
+                padding: "8px 16px", borderRadius: 8, fontSize: 12,
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "rgba(255,255,255,0.6)", cursor: "pointer",
               }}>← Trang chủ</button>
             </Link>
           </header>
 
-          {/* TAB BAR */}
+          {/* TAB BAR — osu! pill style */}
           <div style={{
-            display: "flex", gap: 0,
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(10,10,26,0.8)",
-            padding: "0 28px",
+            display: "flex", gap: 8,
+            background: "rgba(5,2,15,0.8)", backdropFilter: "blur(12px)",
+            padding: "12px 28px",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+            flexShrink: 0,
           }}>
             {[
-              { key: "browse", label: "🔍 Tìm phòng" },
-              { key: "create", label: "➕ Tạo phòng" },
-              { key: "ranked", label: "⚡ Quick Ranked" },
+              { key: "browse", icon: "🔍", label: "Browse Rooms", enLabel: "Tìm phòng" },
+              { key: "create", icon: "➕", label: "Create", enLabel: "Tạo phòng" },
+              { key: "ranked", icon: "⚡", label: "Quick Match", enLabel: "Xếp hạng nhanh" },
             ].map(t => (
               <button key={t.key} onClick={() => setTab(t.key)} style={{
-                padding: "14px 22px", border: "none", cursor: "pointer",
-                background: "transparent",
-                fontSize: 13, fontWeight: tab === t.key ? 700 : 400,
-                color: tab === t.key ? "#a78bfa" : "rgba(255,255,255,0.5)",
-                borderBottom: tab === t.key ? "2px solid #a78bfa" : "2px solid transparent",
-                marginBottom: -1, transition: "all 0.2s",
-              }}>{t.label}</button>
+                padding: "8px 18px", border: "none", cursor: "pointer",
+                background: tab === t.key
+                  ? "linear-gradient(135deg, rgba(167,139,250,0.25), rgba(109,40,217,0.2))"
+                  : "rgba(255,255,255,0.03)",
+                fontSize: 12, fontWeight: tab === t.key ? 800 : 500,
+                color: tab === t.key ? "#a78bfa" : "rgba(255,255,255,0.45)",
+                borderRadius: 20,
+                border: tab === t.key ? "1px solid rgba(167,139,250,0.4)" : "1px solid rgba(255,255,255,0.06)",
+                transition: "all 0.2s",
+              }}>
+                {t.icon} {t.label}
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", marginLeft: 4 }}>({t.enLabel})</span>
+              </button>
             ))}
           </div>
 
-          {/* MAIN CONTENT */}
-          <div style={{ display: "flex", gap: 0, overflow: "hidden", minHeight: "calc(100vh - 110px)" }}>
-            {/* LEFT SIDEBAR: Tab contents */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "20px 28px" }}>
+          {/* MAIN CONTENT — 3 PANEL LAYOUT */}
+          <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+
+            {/* CENTER: Tab content */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+
+              {/* BROWSE TAB */}
               {tab === "browse" && (
                 <>
-                  <div style={{ marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
-                      {rooms.filter(r => r.status === "waiting").length} phòng đang chờ đối thủ
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
+                      {rooms.filter(r => r.status === "waiting").length} ROOMS OPEN
                     </div>
-                    <button onClick={() => {
-                      setRooms(INITIAL_ROOMS);
-                      setFeedMessages(["Danh sách phòng đã được làm mới!"]);
-                    }} style={{
-                      padding: "6px 14px", borderRadius: 8, fontSize: 12, cursor: "pointer",
-                      background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.3)",
-                      color: "#a78bfa", fontWeight: 600, transition: "all 0.2s"
-                    }}
-                      onMouseEnter={e => e.currentTarget.style.background = "rgba(167,139,250,0.2)"}
-                      onMouseLeave={e => e.currentTarget.style.background = "rgba(167,139,250,0.1)"}
-                    >🔄 Làm mới</button>
+                    <button onClick={() => setRooms(INITIAL_ROOMS)} style={{
+                      padding: "5px 14px", borderRadius: 20, fontSize: 11, cursor: "pointer",
+                      background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.25)",
+                      color: "#a78bfa", fontWeight: 700,
+                    }}>
+                      ↻ Refresh
+                    </button>
                   </div>
 
-                  {rooms.map(room => (
-                    <div key={room.id} style={{
-                      display: "flex", alignItems: "center", gap: 14,
-                      padding: "14px 18px",
-                      background: "rgba(15,23,42,0.65)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                      borderRadius: 12, marginBottom: 10,
-                      opacity: room.status === "in_game" ? 0.5 : 1,
-                      transition: "all 0.2s",
-                    }}
-                      onMouseEnter={e => room.status === "waiting" && (e.currentTarget.style.borderColor = "rgba(167,139,250,0.35)")}
-                      onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"}
-                    >
-                      {/* Host avatar */}
-                      <div style={{
-                        width: 44, height: 44, borderRadius: "50%",
-                        background: "linear-gradient(135deg, #a78bfa, #6d28d9)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 18, flexShrink: 0,
-                      }}>⚔️</div>
+                  {rooms.map(room => {
+                    const dc = getDiffColor(room.diff);
+                    return (
+                      <div key={room.id} style={{
+                        display: "flex", alignItems: "center", gap: 14,
+                        padding: "14px 18px",
+                        background: room.status === "in_game"
+                          ? "rgba(10,5,25,0.4)"
+                          : "rgba(15,10,35,0.65)",
+                        border: `1px solid ${room.status === "in_game" ? "rgba(255,255,255,0.04)" : "rgba(167,139,250,0.1)"}`,
+                        borderLeft: `3px solid ${room.status === "in_game" ? "#334155" : dc.color}`,
+                        borderRadius: 12, marginBottom: 8,
+                        opacity: room.status === "in_game" ? 0.55 : 1,
+                        transition: "all 0.2s",
+                      }}
+                        onMouseEnter={e => room.status === "waiting" && (e.currentTarget.style.background = "rgba(167,139,250,0.08)")}
+                        onMouseLeave={e => e.currentTarget.style.background = room.status === "in_game" ? "rgba(10,5,25,0.4)" : "rgba(15,10,35,0.65)"}
+                      >
+                        {/* Host avatar circle */}
+                        <div style={{
+                          width: 46, height: 46, borderRadius: "50%",
+                          background: "linear-gradient(135deg, #4c1d95, #7c3aed)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 20, flexShrink: 0,
+                          border: "2px solid rgba(167,139,250,0.3)",
+                        }}>
+                          {BOTS.find(b => b.username === room.host)?.avatar || "⚔️"}
+                        </div>
 
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
-                          <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>{room.host}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                            <span style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{room.host}</span>
+                            <button
+                              onClick={e => { e.stopPropagation(); setSelectedReportUser(room.host); setShowReportModal(true); }}
+                              style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", fontSize: 11, padding: "0 2px" }}
+                              title="Report"
+                            >🚩</button>
+                            <DiffStars diff={room.diff} />
+                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>{room.grade}</span>
+                          </div>
+                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.55)", marginBottom: 4 }}>
+                            📐 {room.map}
+                          </div>
+                          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
+                              👥 {room.players}/{room.maxPlayers}
+                            </span>
+                            <span style={{
+                              fontSize: 10, fontWeight: 700,
+                              color: room.elo === "Tất cả" ? "#4ade80" : "#fbbf24",
+                            }}>ELO {room.elo}</span>
+                          </div>
+                        </div>
+
+                        {room.status === "waiting" ? (
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedReportUser(room.host);
-                              setShowReportModal(true);
-                            }}
+                            onClick={() => handleJoinRoom(room)}
+                            disabled={joiningRoomId !== null}
                             style={{
-                              background: "none", border: "none", color: "#ef4444",
-                              cursor: "pointer", fontSize: 11, padding: "0 4px",
-                              marginLeft: 2, display: "inline-flex", alignItems: "center",
+                              padding: "10px 22px", borderRadius: 8, fontSize: 12, fontWeight: 800,
+                              background: joiningRoomId === room.id
+                                ? "rgba(167,139,250,0.2)"
+                                : "linear-gradient(135deg, #a78bfa, #7c3aed)",
+                              border: "none", color: "white",
+                              cursor: joiningRoomId ? "default" : "pointer",
+                              transition: "all 0.2s", flexShrink: 0,
+                              boxShadow: joiningRoomId !== room.id ? "0 4px 16px rgba(167,139,250,0.35)" : "none",
                             }}
-                            title="Báo cáo người dùng"
                           >
-                            🚩
+                            {joiningRoomId === room.id ? `Vào... ${countdown}` : "JOIN"}
                           </button>
-                          <DiffBadge fmp={room.diff} />
-                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>{room.grade}</span>
-                        </div>
-                        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 3 }}>
-                          📐 {room.map}
-                        </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)" }}>
-                            👥 {room.players}/{room.maxPlayers}
-                          </span>
-                          <span style={{ fontSize: 10, color: room.elo === "Tất cả" ? "#4ade80" : "#fbbf24" }}>
-                            ELO: {room.elo}
-                          </span>
-                        </div>
+                        ) : (
+                          <span style={{
+                            padding: "8px 14px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+                            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                            color: "#f87171", flexShrink: 0,
+                          }}>PLAYING</span>
+                        )}
                       </div>
-
-                      {/* Status / Join */}
-                      {room.status === "waiting" ? (
-                        <button
-                          onClick={() => handleJoinRoom(room)}
-                          disabled={joiningRoomId !== null}
-                          style={{
-                            padding: "10px 22px", borderRadius: 8, fontSize: 13, fontWeight: 700,
-                            background: joiningRoomId === room.id
-                              ? "rgba(167,139,250,0.3)"
-                              : "linear-gradient(135deg, #a78bfa, #6d28d9)",
-                            border: "none", color: "white", cursor: joiningRoomId ? "default" : "pointer",
-                            transition: "all 0.2s", flexShrink: 0,
-                            boxShadow: joiningRoomId !== room.id ? "0 4px 16px rgba(167,139,250,0.4)" : "none",
-                          }}
-                        >
-                          {joiningRoomId === room.id ? `Đang vào ${countdown}...` : "Tham gia"}
-                        </button>
-                      ) : (
-                        <span style={{
-                          padding: "8px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                          background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
-                          color: "#f87171", flexShrink: 0,
-                        }}>Đang đấu</span>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </>
               )}
 
+              {/* CREATE TAB */}
               {tab === "create" && (
-                <div style={{ maxWidth: 500, background: "rgba(15,23,42,0.5)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: 28 }}>
-                  <div style={{ fontSize: 18, fontWeight: 800, color: "white", marginBottom: 20 }}>
-                    ➕ Tạo phòng đấu mới
+                <div style={{ maxWidth: 480 }}>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: "white", marginBottom: 20 }}>
+                    Create Room / <span style={{ color: "#a78bfa" }}>Tạo phòng mới</span>
                   </div>
                   {[
-                    { label: "Chọn MathMap", options: ["Phương trình bậc hai nâng cao", "Lượng giác - Tổng hợp", "Đạo hàm & Ứng dụng", "Hình học phẳng cơ bản"] },
-                    { label: "Yêu cầu ELO tối thiểu", options: ["Tất cả", "1200+", "1400+", "1600+", "1800+", "2000+"] },
-                    { label: "Chế độ", options: ["Ranked (Tính ELO)", "Bạn bè (Private - Chỉ đấu tập)"] },
+                    { label: "MathMap / Chủ đề", options: ["Phương trình bậc hai nâng cao", "Lượng giác - Tổng hợp", "Đạo hàm & Ứng dụng", "Hình học phẳng"] },
+                    { label: "Min ELO Requirement / ELO tối thiểu", options: ["Tất cả", "1200+", "1400+", "1600+", "1800+", "2000+"] },
+                    { label: "Mode", options: ["Ranked (Tính ELO)", "Friendly (Practice)"] },
                   ].map(field => (
-                    <div key={field.label} style={{ marginBottom: 16 }}>
-                      <label style={{ fontSize: 12, color: "rgba(255,255,255,0.5)", fontWeight: 600, display: "block", marginBottom: 6 }}>
+                    <div key={field.label} style={{ marginBottom: 14 }}>
+                      <label style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 700, display: "block", marginBottom: 5 }}>
                         {field.label}
                       </label>
                       <select style={{
-                        width: "100%", padding: "12px 14px",
-                        background: "rgba(15,23,42,0.85)",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 8, color: "white", fontSize: 13, cursor: "pointer",
-                        outline: "none"
+                        width: "100%", padding: "11px 14px",
+                        background: "rgba(10,5,30,0.8)", border: "1px solid rgba(167,139,250,0.2)",
+                        borderRadius: 8, color: "white", fontSize: 13, cursor: "pointer", outline: "none",
                       }}>
                         {field.options.map(o => <option key={o} value={o}>{o}</option>)}
                       </select>
@@ -785,90 +1058,92 @@ export default function MultiplayerLobby() {
                   ))}
                   <button onClick={() => {
                     setTab("browse");
-                    const newRoomId = `r_${Date.now()}`;
                     const newRoom = {
-                      id: newRoomId,
-                      host: playerUsername,
-                      map: "Phương trình bậc hai nâng cao",
-                      grade: "Lớp 11",
-                      diff: 7.8,
-                      players: 1,
-                      maxPlayers: 2,
-                      status: "waiting",
-                      elo: `${playerElo - 50}+`
+                      id: `r_${Date.now()}`, host: playerUsername, map: "Phương trình bậc hai nâng cao",
+                      grade: "Lớp 11", diff: 7.8, players: 1, maxPlayers: 2, status: "waiting",
+                      elo: `${playerElo - 50}+`,
                     };
                     setRooms(prev => [newRoom, ...prev]);
                     setTimeout(() => handleJoinRoom(newRoom), 100);
                   }} style={{
                     width: "100%", padding: "14px 0", marginTop: 8, borderRadius: 10,
                     background: "linear-gradient(135deg, #a78bfa, #6d28d9)",
-                    border: "none", color: "white", fontSize: 15, fontWeight: 800,
+                    border: "none", color: "white", fontSize: 14, fontWeight: 900,
                     cursor: "pointer", boxShadow: "0 4px 20px rgba(167,139,250,0.4)",
                     transition: "all 0.2s",
                   }}
                     onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
                     onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
                   >
-                    ⚔️ Tạo phòng và chờ đấu
+                    ⚔️ Create & Wait for Opponent
                   </button>
                 </div>
               )}
 
+              {/* RANKED TAB */}
               {tab === "ranked" && (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "40px 20px" }}>
-                  <div style={{
-                    fontSize: 72, marginBottom: 20,
-                    filter: "drop-shadow(0 0 32px rgba(167,139,250,0.6))",
-                    animation: "pulse 2s ease-in-out infinite",
-                  }}>⚔️</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: "white", marginBottom: 8 }}>
-                    Quick Ranked Match
-                  </div>
-                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginBottom: 6, textAlign: "center" }}>
-                    Hệ thống sẽ tự động ghép bạn với đối thủ có ELO tương đương
-                  </div>
-                  <div style={{
-                    fontSize: 12, color: "#a78bfa", marginBottom: 30,
-                    background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.3)",
-                    borderRadius: 8, padding: "6px 16px",
-                  }}>
-                    ELO hiện tại: {playerElo} · {playerRank}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "30px 20px" }}>
+                  {/* Rank display */}
+                  <div style={{ marginBottom: 28, textAlign: "center" }}>
+                    <RankBadge rank={playerRank} size={80} />
+                    <div style={{ fontSize: 22, fontWeight: 900, color: "white", marginTop: 12 }}>{playerRank}</div>
+                    <div style={{ fontSize: 13, color: getRankColor(playerRank), marginTop: 4 }}>{playerElo} Rating</div>
                   </div>
 
-                  <div style={{
-                    display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
-                    gap: 12, marginBottom: 30, width: "100%", maxWidth: 400,
-                  }}>
+                  {/* Stats grid */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 24, width: "100%", maxWidth: 380 }}>
                     {[
-                      { label: "Thắng", value: playerStats.wins, color: "#4ade80" },
-                      { label: "Thua", value: playerStats.losses, color: "#f87171" },
-                      { label: "Tỷ lệ", value: (playerStats.wins + playerStats.losses > 0 ? Math.round((playerStats.wins / (playerStats.wins + playerStats.losses)) * 100) : 0) + "%", color: "#fbbf24" },
-                    ].map(stat => (
-                      <div key={stat.label} style={{
-                        textAlign: "center", padding: "14px",
-                        background: "rgba(15,23,42,0.6)", borderRadius: 10,
+                      { label: "Wins", value: playerStats.wins, color: "#4ade80" },
+                      { label: "Losses", value: playerStats.losses, color: "#f87171" },
+                      {
+                        label: "Win Rate",
+                        value: (playerStats.wins + playerStats.losses > 0
+                          ? Math.round(playerStats.wins / (playerStats.wins + playerStats.losses) * 100)
+                          : 0) + "%",
+                        color: "#fbbf24",
+                      },
+                    ].map(s => (
+                      <div key={s.label} style={{
+                        textAlign: "center", padding: "14px 8px",
+                        background: "rgba(10,5,30,0.6)", borderRadius: 10,
                         border: "1px solid rgba(255,255,255,0.06)",
                       }}>
-                        <div style={{ fontSize: 22, fontWeight: 800, color: stat.color }}>{stat.value}</div>
-                        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{stat.label}</div>
+                        <div style={{ fontSize: 22, fontWeight: 900, color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>{s.label}</div>
                       </div>
                     ))}
                   </div>
 
+                  {/* Percentile bar */}
+                  <div style={{ width: "100%", maxWidth: 380, marginBottom: 28 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 5 }}>
+                      <span>Skill Percentile / Phân vị kỹ năng</span>
+                      <span style={{ color: "#a78bfa" }}>Top {100 - percentile}%</span>
+                    </div>
+                    <div style={{ height: 6, background: "rgba(255,255,255,0.08)", borderRadius: 6 }}>
+                      <div style={{
+                        width: `${percentile}%`, height: "100%",
+                        background: `linear-gradient(90deg, ${getRankColor(playerRank)}, #a78bfa)`,
+                        borderRadius: 6, transition: "width 1s ease",
+                      }} />
+                    </div>
+                  </div>
+
                   <button onClick={startMatching} style={{
-                    padding: "16px 56px", borderRadius: 12,
-                    background: "linear-gradient(135deg, #a78bfa, #6d28d9)",
-                    border: "none", color: "white", fontSize: 16, fontWeight: 800,
-                    cursor: "pointer", boxShadow: "0 4px 24px rgba(167,139,250,0.5)",
-                    transition: "all 0.25s",
+                    padding: "16px 64px", borderRadius: 12,
+                    background: "linear-gradient(135deg, #a78bfa 0%, #7c3aed 50%, #4c1d95 100%)",
+                    border: "none", color: "white", fontSize: 16, fontWeight: 900,
+                    cursor: "pointer",
+                    boxShadow: "0 0 40px rgba(167,139,250,0.5), 0 4px 24px rgba(167,139,250,0.4)",
+                    transition: "all 0.25s", letterSpacing: 1,
                   }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.04)"; e.currentTarget.style.boxShadow = "0 8px 32px rgba(167,139,250,0.6)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 4px 24px rgba(167,139,250,0.5)"; }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05)"; e.currentTarget.style.boxShadow = "0 0 60px rgba(167,139,250,0.7), 0 8px 32px rgba(167,139,250,0.5)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; e.currentTarget.style.boxShadow = "0 0 40px rgba(167,139,250,0.5), 0 4px 24px rgba(167,139,250,0.4)"; }}
                   >
-                    ⚡ Tìm trận ngay
+                    ⚡ FIND MATCH
                   </button>
-                  <div style={{ marginTop: 10, fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
-                    Thời gian ghép trận ước tính: ~4 giây
+                  <div style={{ marginTop: 8, fontSize: 11, color: "rgba(255,255,255,0.2)" }}>
+                    Est. ~4s queue time
                   </div>
                 </div>
               )}
@@ -876,418 +1151,742 @@ export default function MultiplayerLobby() {
 
             {/* RIGHT SIDEBAR */}
             <div style={{
-              width: 280, flexShrink: 0,
-              background: "rgba(2,6,23,0.95)",
-              borderLeft: "1px solid rgba(255,255,255,0.06)",
-              display: "flex", flexDirection: "column", padding: 18, gap: 16,
+              width: 270, flexShrink: 0,
+              background: "rgba(5,2,15,0.9)", backdropFilter: "blur(16px)",
+              borderLeft: "1px solid rgba(255,255,255,0.05)",
+              display: "flex", flexDirection: "column", padding: 16, gap: 14,
               overflowY: "auto",
             }}>
+              {/* Rating Display */}
               <div style={{
-                background: "rgba(167,139,250,0.06)",
+                background: "linear-gradient(135deg, rgba(167,139,250,0.08), rgba(109,40,217,0.05))",
                 border: "1px solid rgba(167,139,250,0.15)",
-                borderRadius: 10, padding: 14,
+                borderRadius: 12, padding: 14,
               }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 10 }}>
-                  ⚔️ Luật chơi Speed-First
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", marginBottom: 10, letterSpacing: 1 }}>
+                  ◆ RATING DISPLAY
                 </div>
-                {[
-                  "2 người chơi cùng giải một bộ câu hỏi từ thẻ chủ đề toán học.",
-                  "Nếu cả hai cùng đúng: Người trả lời NHANH hơn gây sát thương 1 HP.",
-                  "Nếu chỉ một người đúng: Người trả lời sai bị trừ 1 HP.",
-                  "Nếu cả hai cùng sai: Không ai bị trừ HP.",
-                  "Đấu 3 vòng chọn bài. Mỗi vòng có 5 HP. Ai hết 3 Tim lớn trước sẽ bị loại."
-                ].map((step, i) => (
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
+                  <RankBadge rank={playerRank} size={40} />
+                  <div>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: "white", lineHeight: 1 }}>{playerElo}</div>
+                    <div style={{ fontSize: 10, color: getRankColor(playerRank), marginTop: 2 }}>{playerRank}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", marginBottom: 4 }}>
+                  Top {100 - percentile}% of active players
+                </div>
+                <div style={{ height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 4 }}>
+                  <div style={{
+                    width: `${percentile}%`, height: "100%",
+                    background: `linear-gradient(90deg, ${getRankColor(playerRank)}, #a78bfa)`,
+                    borderRadius: 4,
+                  }} />
+                </div>
+              </div>
+
+              {/* Match History */}
+              <div style={{
+                background: "rgba(251,191,36,0.05)",
+                border: "1px solid rgba(251,191,36,0.12)",
+                borderRadius: 12, padding: 14,
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", marginBottom: 10, letterSpacing: 1 }}>
+                  ◆ MATCH HISTORY
+                </div>
+                {matchHistory.slice(0, 5).map((m, i) => (
                   <div key={i} style={{
-                    display: "flex", gap: 8, marginBottom: 8, fontSize: 11,
-                    color: "rgba(255,255,255,0.6)", alignItems: "flex-start",
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 0",
+                    borderBottom: i < 4 ? "1px solid rgba(255,255,255,0.04)" : "none",
                   }}>
-                    <span style={{ color: "#a78bfa", fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
-                    {step}
+                    {/* Grade badge */}
+                    <div style={{
+                      width: 24, height: 24, borderRadius: 6,
+                      background: m.grade === "S" ? "rgba(251,191,36,0.2)" : m.grade === "A" ? "rgba(74,222,128,0.15)" : m.grade === "B" ? "rgba(56,189,248,0.15)" : "rgba(239,68,68,0.15)",
+                      border: `1px solid ${m.grade === "S" ? "#fbbf24" : m.grade === "A" ? "#4ade80" : m.grade === "B" ? "#38bdf8" : "#f87171"}44`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 11, fontWeight: 900, flexShrink: 0,
+                      color: m.grade === "S" ? "#fbbf24" : m.grade === "A" ? "#4ade80" : m.grade === "B" ? "#38bdf8" : "#f87171",
+                    }}>{m.grade}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: m.result === "W" ? "#4ade80" : "#f87171", display: "flex", alignItems: "center", gap: 4 }}>
+                        {m.result === "W" ? "WIN" : "LOSS"}
+                        <span style={{ fontWeight: 700, color: m.eloDelta > 0 ? "#4ade80" : "#f87171", fontSize: 10 }}>
+                          {m.eloDelta > 0 ? `+${m.eloDelta}` : m.eloDelta}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 9, color: "rgba(255,255,255,0.35)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        vs {m.opponent}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
 
+              {/* Season info */}
               <div style={{
-                background: "rgba(251,191,36,0.06)",
-                border: "1px solid rgba(251,191,36,0.15)",
-                borderRadius: 10, padding: 14,
+                background: "rgba(14,165,233,0.05)",
+                border: "1px solid rgba(14,165,233,0.12)",
+                borderRadius: 12, padding: 14,
               }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#fbbf24", marginBottom: 8 }}>
-                  🏆 Mùa giải hiện tại
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#38bdf8", marginBottom: 8, letterSpacing: 1 }}>
+                  ◆ SEASON 1
                 </div>
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>
-                  Mùa 1 · Kết thúc sau
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", marginBottom: 4 }}>Kết thúc sau</div>
+                <div style={{ fontSize: 22, fontWeight: 900, color: "#38bdf8" }}>14 ngày</div>
+              </div>
+
+              {/* Rules */}
+              <div style={{
+                background: "rgba(167,139,250,0.04)",
+                border: "1px solid rgba(167,139,250,0.1)",
+                borderRadius: 12, padding: 14,
+              }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", marginBottom: 10, letterSpacing: 1 }}>
+                  ◆ HOW TO PLAY
                 </div>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "#fbbf24" }}>14 ngày</div>
-                <div style={{ marginTop: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "rgba(255,255,255,0.4)", marginBottom: 4 }}>
-                    <span>Tiến độ rank</span>
-                    <span>{playerRank}</span>
+                {[
+                  "Discard 2 maps from pool of 6 / Bỏ 2 lá khỏi bộ 6",
+                  "Lower ELO picks the map / ELO thấp hơn chọn trước",
+                  "Answer faster to deal damage / Trả lời nhanh hơn để gây sát thương",
+                  "Win 3 sets to claim victory / Thắng 3 set để chiến thắng",
+                ].map((s, i) => (
+                  <div key={i} style={{
+                    display: "flex", gap: 7, marginBottom: 7, fontSize: 10,
+                    color: "rgba(255,255,255,0.5)", alignItems: "flex-start",
+                  }}>
+                    <span style={{ color: "#a78bfa", fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
+                    {s}
                   </div>
-                  <div style={{ height: 4, background: "rgba(255,255,255,0.1)", borderRadius: 4 }}>
-                    <div style={{ width: `${Math.min(100, Math.max(10, ((playerElo - 1000) / 1200) * 100))}%`, height: "100%", background: "linear-gradient(90deg, #fbbf24, #f59e0b)", borderRadius: 4 }} />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── MATCHMAKER ACTIVE SEARCH SCREEN ─── */}
+      {/* ─── MATCHMAKING SCREEN ─── */}
       {gameState === "matching" && (
-        <div style={{
+        <div className="mrm-slide-in" style={{
+          position: "relative", zIndex: 1,
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          background: "radial-gradient(circle, #0f0728 0%, #030010 100%)",
-        }} className="slide-active">
-          <div style={{ position: "relative", width: 160, height: 160, marginBottom: 30 }}>
-            <div style={{
-              position: "absolute", inset: 0, borderRadius: "50%",
-              border: "2px solid rgba(167,139,250,0.3)",
-              animation: "pingRadar 2s cubic-bezier(0, 0, 0.2, 1) infinite",
-            }} />
-            <div style={{
-              position: "absolute", inset: 20, borderRadius: "50%",
-              border: "2px solid rgba(167,139,250,0.5)",
-              animation: "pingRadar 2s cubic-bezier(0, 0, 0.2, 1) 0.6s infinite",
-            }} />
-            <div style={{
-              position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 60, filter: "drop-shadow(0 0 24px #a78bfa)",
-            }}>⚔️</div>
+          minHeight: "100vh", padding: 24,
+        }}>
+          {/* Dual player cards */}
+          <div style={{ display: "flex", alignItems: "center", gap: 48, marginBottom: 48 }}>
+            {/* Your card */}
+            <div className="mrm-slide-left" style={{
+              background: "rgba(10,5,30,0.8)", border: "2px solid rgba(56,189,248,0.35)",
+              borderRadius: 16, padding: "24px 20px", textAlign: "center", width: 180,
+              boxShadow: "0 0 30px rgba(56,189,248,0.15), 0 12px 32px rgba(0,0,0,0.5)",
+            }}>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>🎓</div>
+              <RankBadge rank={playerRank} size={36} />
+              <div style={{ fontSize: 14, fontWeight: 900, color: "white", marginTop: 8 }}>{playerUsername}</div>
+              <div style={{ fontSize: 11, color: getRankColor(playerRank), marginTop: 2 }}>{playerRank}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>{playerElo} Rating</div>
+            </div>
+
+            {/* Center pulsing radar */}
+            <div style={{ position: "relative", width: 120, height: 120, flexShrink: 0 }}>
+              {[0, 1, 2].map(i => (
+                <div key={i} style={{
+                  position: "absolute", inset: i * 16, borderRadius: "50%",
+                  border: "1.5px solid rgba(167,139,250,0.4)",
+                  animation: `mrmRadar 2.4s ${i * 0.6}s cubic-bezier(0, 0, 0.2, 1) infinite`,
+                }} />
+              ))}
+              <div style={{
+                position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: 36, filter: "drop-shadow(0 0 16px #a78bfa)",
+              }}>⚡</div>
+            </div>
+
+            {/* Opponent ??? card */}
+            <div className="mrm-slide-right" style={{
+              background: "rgba(10,5,30,0.8)", border: "2px solid rgba(239,68,68,0.25)",
+              borderRadius: 16, padding: "24px 20px", textAlign: "center", width: 180,
+              boxShadow: "0 0 30px rgba(239,68,68,0.1), 0 12px 32px rgba(0,0,0,0.5)",
+              opacity: 0.7,
+            }}>
+              <div style={{ fontSize: 44, marginBottom: 10 }}>❓</div>
+              <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.1)", margin: "0 auto 8px" }} />
+              <div style={{ fontSize: 14, fontWeight: 900, color: "rgba(255,255,255,0.6)" }}>???</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 2 }}>Searching...</div>
+            </div>
           </div>
 
-          <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8, letterSpacing: 0.5 }}>
-            Đang ghép trận...
-          </h2>
-          <p style={{ fontSize: 14, color: "#a78bfa", marginBottom: 4, fontWeight: 600 }}>
-            ELO tìm kiếm: {playerElo - 100 - matchTimer * 20} ~ {playerElo + 100 + matchTimer * 20} ELO
-          </p>
-          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 40 }}>
-            Thời gian trôi qua: {matchTimer} giây
-          </p>
+          <div style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 6 }}>Searching for Opponent</div>
+          <div style={{ fontSize: 13, color: "#a78bfa", fontWeight: 700, marginBottom: 4 }}>
+            ELO Range: {playerElo - 100 - matchTimer * 20} ~ {playerElo + 100 + matchTimer * 20}
+          </div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 36 }}>
+            {matchTimer}s elapsed — Đang tìm đối thủ...
+          </div>
 
           <button onClick={cancelMatching} style={{
-            padding: "12px 36px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-            background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
+            padding: "12px 32px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+            background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
             color: "#f87171", cursor: "pointer", transition: "all 0.15s",
           }}
-            onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.25)"}
-            onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.12)"}
+            onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.2)"}
+            onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.1)"}
           >
-            Hủy tìm trận
+            ✕ Cancel / Hủy tìm trận
           </button>
         </div>
       )}
 
       {/* ─── FACEOFF SCREEN ─── */}
       {gameState === "faceoff" && botOpponent && (
-        <div style={{
+        <div className="mrm-slide-in" style={{
+          position: "relative", zIndex: 1,
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          background: "linear-gradient(135deg, #090514 0%, #020106 100%)",
-          padding: 24,
-        }} className="slide-active">
-          <div style={{ display: "flex", alignItems: "center", gap: 60, marginBottom: 40, flexWrap: "wrap", justifyContent: "center" }}>
+          minHeight: "100vh", padding: 24,
+          background: "radial-gradient(ellipse at center, rgba(109,40,217,0.15) 0%, transparent 70%)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 56, flexWrap: "wrap", justifyContent: "center", marginBottom: 36 }}>
             {/* Player */}
-            <div style={{
-              width: 220, padding: "28px 20px", background: "rgba(10, 10, 24, 0.8)",
-              border: "2px solid rgba(0, 210, 255, 0.35)", borderRadius: 16, textAlign: "center",
-              boxShadow: "0 12px 32px rgba(0, 210, 255, 0.15), 0 0 20px rgba(0, 210, 255, 0.1)",
-              animation: "slideInLeft 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both",
-              transform: "skewX(-8deg)",
+            <div className="mrm-slide-left" style={{
+              width: 220, padding: "32px 20px",
+              background: "rgba(8,5,25,0.85)", borderRadius: 16,
+              border: "2px solid rgba(56,189,248,0.4)",
+              boxShadow: "0 0 40px rgba(56,189,248,0.2), 0 16px 40px rgba(0,0,0,0.6)",
+              textAlign: "center",
+              transform: "skewX(-6deg)",
             }}>
-              <div style={{ transform: "skewX(8deg)" }}>
-                <div style={{ fontSize: 52, marginBottom: 12 }}>🎓</div>
-                <div style={{ fontSize: 19, fontWeight: 900, color: "white", marginBottom: 4 }}>{playerUsername}</div>
-                <div style={{ fontSize: 13, color: getRankBadgeColor(playerRank), fontWeight: 800 }}>{playerRank}</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 6, fontWeight: 700 }}>{playerElo} ELO</div>
+              <div style={{ transform: "skewX(6deg)" }}>
+                <div style={{ fontSize: 56, marginBottom: 14 }}>🎓</div>
+                <RankBadge rank={playerRank} size={44} />
+                <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginTop: 10 }}>{playerUsername}</div>
+                <div style={{ fontSize: 12, color: getRankColor(playerRank), fontWeight: 800, marginTop: 2 }}>{playerRank}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>{playerElo} Rating</div>
               </div>
             </div>
 
             {/* VS */}
-            <div style={{
-              fontSize: 48, fontWeight: 950, color: "#ef4444",
-              fontStyle: "italic", textShadow: "0 0 25px rgba(239,68,68,0.6)",
-              animation: "bounceIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1.2) both",
-              transform: "skewX(-10deg)",
+            <div className="mrm-bounce-in" style={{
+              fontSize: 52, fontWeight: 950, color: "#ef4444",
+              fontStyle: "italic", textShadow: "0 0 30px rgba(239,68,68,0.7)",
+              transform: "skewX(-10deg)", letterSpacing: -2,
             }}>VS</div>
 
             {/* Bot */}
-            <div style={{
-              width: 220, padding: "28px 20px", background: "rgba(10, 10, 24, 0.8)",
-              border: "2px solid rgba(239,68,68,0.35)", borderRadius: 16, textAlign: "center",
-              boxShadow: "0 12px 32px rgba(239,68,68,0.15), 0 0 20px rgba(239,68,68,0.1)",
-              animation: "slideInRight 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both",
-              transform: "skewX(-8deg)",
+            <div className="mrm-slide-right" style={{
+              width: 220, padding: "32px 20px",
+              background: "rgba(8,5,25,0.85)", borderRadius: 16,
+              border: "2px solid rgba(239,68,68,0.4)",
+              boxShadow: "0 0 40px rgba(239,68,68,0.2), 0 16px 40px rgba(0,0,0,0.6)",
+              textAlign: "center",
+              transform: "skewX(-6deg)",
             }}>
-              <div style={{ transform: "skewX(8deg)" }}>
-                <div style={{ fontSize: 52, marginBottom: 12 }}>{botOpponent.avatar}</div>
-                <div style={{ fontSize: 19, fontWeight: 900, color: "white", marginBottom: 4 }}>{botOpponent.username}</div>
-                <div style={{ fontSize: 13, color: getRankBadgeColor(botOpponent.rank), fontWeight: 800 }}>{botOpponent.rank}</div>
-                <div style={{ fontSize: 12, color: "rgba(255,255,255,0.45)", marginTop: 6, fontWeight: 700 }}>{botOpponent.elo} ELO</div>
+              <div style={{ transform: "skewX(6deg)" }}>
+                <div style={{ fontSize: 56, marginBottom: 14 }}>{botOpponent.avatar}</div>
+                <RankBadge rank={botOpponent.rank} size={44} />
+                <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginTop: 10 }}>{botOpponent.username}</div>
+                <div style={{ fontSize: 12, color: getRankColor(botOpponent.rank), fontWeight: 800, marginTop: 2 }}>{botOpponent.rank}</div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>{botOpponent.elo} Rating</div>
               </div>
             </div>
           </div>
 
-          <h2 style={{ fontSize: 22, fontWeight: 900, color: "#a5b4fc", textTransform: "uppercase", letterSpacing: 2, animation: "flash 1.5s infinite" }}>
-            Trận đấu chuẩn bị bắt đầu...
-          </h2>
+          <div style={{
+            fontSize: 14, fontWeight: 900, color: "#a5b4fc", letterSpacing: 3,
+            textTransform: "uppercase", animation: "mrmFlash 1.5s infinite",
+          }}>
+            Match Starting... / Trận đấu sắp bắt đầu
+          </div>
         </div>
       )}
 
-      {/* ─── CARD CHOOSING PHASE SCREEN ─── */}
+      {/* ─── CARD CHOOSING / DISCARD PHASE ─── */}
       {gameState === "card_choosing" && botOpponent && (
-        <div style={{
-          flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          background: "radial-gradient(circle, #0e0728 0%, #030010 100%)",
-          padding: 24,
-        }} className="slide-active">
-          {/* Header section with Big HP (Tim lớn) */}
+        <div className="mrm-slide-in" style={{
+          position: "relative", zIndex: 1,
+          flex: 1, display: "flex", flexDirection: "column",
+          minHeight: "100vh",
+        }}>
+          {/* TOP: Big HP bar — diamond style */}
           <div style={{
-            display: "flex", justifyContent: "space-between", width: "100%", maxWidth: 640,
-            marginBottom: 36, alignItems: "center", background: "rgba(10,10,24,0.6)",
-            border: "1px solid rgba(255,255,255,0.08)", borderRadius: 14, padding: "14px 24px",
-            boxShadow: "0 8px 24px rgba(0,0,0,0.3)"
+            background: "rgba(5,2,15,0.9)", backdropFilter: "blur(16px)",
+            borderBottom: "1px solid rgba(255,255,255,0.06)",
+            padding: "14px 28px",
           }}>
-            <div style={{ textAlign: "left" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#00d2ff" }}>{playerUsername}</div>
-              <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <span key={i} style={{ fontSize: 20, filter: i < playerBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
-                ))}
-              </div>
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 950, color: "rgba(255,255,255,0.25)", fontStyle: "italic", letterSpacing: 1 }}>CHỌN CHỦ ĐỀ</div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 13, fontWeight: 800, color: "#ef4444" }}>{botOpponent.username}</div>
-              <div style={{ display: "flex", gap: 4, marginTop: 4, justifyContent: "flex-end" }}>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <span key={i} style={{ fontSize: 20, filter: i < botBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ textAlign: "center", marginBottom: 36 }}>
-            <h2 style={{ fontSize: 24, fontWeight: 900, color: "white", marginBottom: 8 }}>
-              {chooser === "player" ? "Đến lượt bạn chọn chủ đề!" : `${botOpponent.username} đang chọn chủ đề...`}
-            </h2>
-            <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.5)" }}>
-              {chooser === "player"
-                ? "Lựa chọn 1 lá bài toán học từ Forum để bắt đầu đấu tay đôi"
-                : "Chờ đối thủ lựa chọn chủ đề toán học"
-              }
-            </p>
-          </div>
-
-          {/* Cards Grid */}
-          <div style={{
-            display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: 20, width: "100%", maxWidth: 880, marginBottom: 40,
-          }}>
-            {forumCards.map(card => {
-              const isSelected = selectedCard && selectedCard.id === card.id;
-              return (
-                <div
-                  key={card.id}
-                  onClick={() => {
-                    if (chooser !== "player" || selectedCard) return;
-                    handleSelectCard(card);
-                  }}
-                  style={{
-                    background: isSelected ? "rgba(167, 139, 250, 0.12)" : "rgba(10, 10, 24, 0.8)",
-                    border: isSelected ? "2px solid #a5b4fc" : "1px solid rgba(255, 255, 255, 0.08)",
-                    borderRadius: 16, padding: "32px 20px", textAlign: "center",
-                    cursor: chooser === "player" && !selectedCard ? "pointer" : "default",
-                    boxShadow: isSelected ? "0 0 25px rgba(167, 139, 250, 0.25)" : "0 8px 16px rgba(0,0,0,0.3)",
-                    transition: "all 0.25s cubic-bezier(0.2,0.8,0.2,1)",
-                    transform: isSelected ? "scale(1.04) skewX(-8deg)" : "skewX(-8deg)",
-                  }}
-                  onMouseEnter={e => {
-                    if (chooser === "player" && !selectedCard) {
-                      e.currentTarget.style.borderColor = "rgba(167, 139, 250, 0.5)";
-                      e.currentTarget.style.transform = "translateY(-4px) skewX(-8deg)";
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (chooser === "player" && !selectedCard) {
-                      e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.08)";
-                      e.currentTarget.style.transform = "skewX(-8deg)";
-                    }
-                  }}
-                >
-                  <div style={{ transform: "skewX(8deg)" }}>
-                    <div style={{ fontSize: 48, marginBottom: 16 }}>{card.icon}</div>
-                    <h3 style={{ fontSize: 16, fontWeight: 900, color: "white", marginBottom: 8 }}>{card.title}</h3>
-                    <p style={{ fontSize: 11.5, color: "rgba(255,255,255,0.45)", lineHeight: 1.45 }}>{card.desc}</p>
-                  </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>{playerUsername}</div>
+                <div style={{ display: "flex", gap: 5, marginTop: 3 }}>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <span key={i} style={{
+                      fontSize: 16, transition: "all 0.4s",
+                      color: i < playerBigHP ? "#fbbf24" : "#1e293b",
+                      filter: i < playerBigHP ? "drop-shadow(0 0 6px #fbbf24)" : "none",
+                    }}>◆</span>
+                  ))}
                 </div>
-              );
-            })}
+              </div>
+
+              <div style={{
+                fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.2)",
+                letterSpacing: 2, textTransform: "uppercase",
+              }}>
+                {gamePhase === "discarding"
+                  ? (chooser === "player" ? "DISCARD PHASE — You" : `DISCARD PHASE — ${botOpponent.username}`)
+                  : (chooser === "player" ? "PICK PHASE — You" : `PICK PHASE — ${botOpponent.username}`)}
+              </div>
+
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#f87171" }}>{botOpponent.username}</div>
+                <div style={{ display: "flex", gap: 5, marginTop: 3, justifyContent: "flex-end" }}>
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <span key={i} style={{
+                      fontSize: 16, transition: "all 0.4s",
+                      color: i < botBigHP ? "#fbbf24" : "#1e293b",
+                      filter: i < botBigHP ? "drop-shadow(0 0 6px #fbbf24)" : "none",
+                    }}>◆</span>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          {selectedCard && (
+          {/* CONTENT */}
+          <div style={{
+            flex: 1, display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            padding: "24px",
+          }}>
+            {/* Phase header */}
+            <div style={{ textAlign: "center", marginBottom: 28 }}>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                background: gamePhase === "discarding"
+                  ? "rgba(239,68,68,0.12)" : "rgba(167,139,250,0.12)",
+                border: `1px solid ${gamePhase === "discarding" ? "rgba(239,68,68,0.3)" : "rgba(167,139,250,0.3)"}`,
+                borderRadius: 20, padding: "5px 16px", fontSize: 11, fontWeight: 800,
+                color: gamePhase === "discarding" ? "#f87171" : "#a78bfa",
+                marginBottom: 12,
+              }}>
+                {gamePhase === "discarding" ? "🗑️ DISCARD PHASE" : "🎯 PICK PHASE"}
+              </div>
+              <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 6 }}>
+                {gamePhase === "discarding"
+                  ? (chooser === "player" ? "Chọn 2 lá bài để loại bỏ" : `${botOpponent.username} đang loại bỏ bài...`)
+                  : (chooser === "player" ? "Chọn 1 chủ đề để chiến đấu!" : `${botOpponent.username} đang chọn...`)}
+              </h2>
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
+                {gamePhase === "discarding"
+                  ? (chooser === "player"
+                    ? `Discard ${DISCARD_COUNT - discardedCards.length} more map(s) / Còn ${DISCARD_COUNT - discardedCards.length} lá cần bỏ`
+                    : "Wait for opponent to discard / Chờ đối thủ bỏ bài")
+                  : (chooser === "player"
+                    ? "Pick the topic for this round / Chọn chủ đề cho vòng này"
+                    : "Waiting for pick... / Chờ đối thủ chọn")
+                }
+              </p>
+            </div>
+
+            {/* Card Grid — 6 cards */}
             <div style={{
-              padding: "12px 24px", background: "rgba(34, 197, 94, 0.15)",
-              border: "1px solid rgba(34, 197, 94, 0.4)", borderRadius: 10,
-              color: "#4ade80", fontSize: 14, fontWeight: 700,
-              animation: "pulse 1.5s infinite"
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
+              gap: 16, width: "100%", maxWidth: 1060, marginBottom: 24,
             }}>
-              Chủ đề "{selectedCard.title}" đã được chọn! Chuẩn bị đấu...
+              {ALL_FORUM_CARDS.map(card => {
+                const isDiscarded = discardedCards.includes(card.id);
+                const isUnavailable = gamePhase === "picking" && discardedCards.includes(card.id);
+                const isSelected = selectedCard && selectedCard.id === card.id;
+                const canDiscard = gamePhase === "discarding" && chooser === "player" && discardedCards.length < DISCARD_COUNT && !isDiscarded;
+                const canPick = gamePhase === "picking" && chooser === "player" && !isDiscarded && !selectedCard;
+
+                return (
+                  <div
+                    key={card.id}
+                    onClick={() => {
+                      if (canPick) handleSelectCard(card);
+                    }}
+                    style={{
+                      position: "relative",
+                      background: isDiscarded || isUnavailable
+                        ? "rgba(15,10,30,0.3)"
+                        : isSelected
+                        ? `linear-gradient(135deg, ${card.color}22, ${card.color}11)`
+                        : "rgba(12,8,28,0.85)",
+                      border: isDiscarded || isUnavailable
+                        ? "1px solid rgba(255,255,255,0.03)"
+                        : isSelected
+                        ? `2px solid ${card.color}`
+                        : `1px solid ${card.color}33`,
+                      borderRadius: 14,
+                      padding: "24px 16px",
+                      textAlign: "center",
+                      cursor: (canDiscard || canPick) ? "pointer" : "default",
+                      opacity: isDiscarded ? 0.3 : 1,
+                      transform: isSelected ? "scale(1.04) skewX(-5deg)" : "skewX(-5deg)",
+                      transition: "all 0.25s cubic-bezier(0.2,0.8,0.2,1)",
+                      boxShadow: isSelected ? `0 0 24px ${card.color}44, 0 8px 24px rgba(0,0,0,0.4)` : "0 8px 20px rgba(0,0,0,0.3)",
+                      filter: isUnavailable ? "grayscale(0.8)" : "none",
+                    }}
+                    onMouseEnter={e => {
+                      if ((canDiscard || canPick) && !isSelected) {
+                        e.currentTarget.style.borderColor = card.color + "88";
+                        e.currentTarget.style.transform = "translateY(-4px) skewX(-5deg)";
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isSelected) {
+                        e.currentTarget.style.borderColor = card.color + "33";
+                        e.currentTarget.style.transform = "skewX(-5deg)";
+                      }
+                    }}
+                  >
+                    <div style={{ transform: "skewX(5deg)" }}>
+                      {/* Discard X button */}
+                      {canDiscard && (
+                        <button
+                          onClick={e => { e.stopPropagation(); handleDiscardCard(card); }}
+                          style={{
+                            position: "absolute", top: 8, right: 8,
+                            width: 22, height: 22, borderRadius: "50%",
+                            background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.5)",
+                            color: "#f87171", fontSize: 11, fontWeight: 900,
+                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                            lineHeight: 1, transition: "all 0.15s",
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.5)"; e.currentTarget.style.transform = "scale(1.2)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.2)"; e.currentTarget.style.transform = "scale(1)"; }}
+                        >
+                          ✕
+                        </button>
+                      )}
+
+                      {/* Discarded overlay icon */}
+                      {isDiscarded && (
+                        <div style={{
+                          position: "absolute", top: 8, right: 8,
+                          width: 22, height: 22, borderRadius: "50%",
+                          background: "rgba(239,68,68,0.3)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          fontSize: 11, color: "#f87171", fontWeight: 900,
+                        }}>✕</div>
+                      )}
+
+                      <div style={{ fontSize: 36, marginBottom: 10 }}>{card.icon}</div>
+                      <div style={{ fontSize: 9, color: card.color, fontWeight: 700, marginBottom: 3, letterSpacing: 1 }}>
+                        {card.enTitle.toUpperCase()}
+                      </div>
+                      <h3 style={{ fontSize: 13, fontWeight: 900, color: "white", marginBottom: 6 }}>{card.title}</h3>
+                      <DiffStars diff={card.diff} />
+                      <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.4, marginTop: 8 }}>{card.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {selectedCard && (
+              <div style={{
+                padding: "10px 24px", background: "rgba(34,197,94,0.12)",
+                border: "1px solid rgba(34,197,94,0.4)", borderRadius: 20,
+                color: "#4ade80", fontSize: 13, fontWeight: 800,
+                animation: "mrmPulse 1.5s infinite",
+              }}>
+                ✓ "{selectedCard.enTitle}" selected — Loading match...
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── PLAYING ARENA ─── */}
+      {gameState === "playing" && botOpponent && (
+        <div className="mrm-slide-in" style={{
+          position: "relative", zIndex: 1,
+          flex: 1, display: "flex", flexDirection: "column",
+          minHeight: "100vh",
+          background: "linear-gradient(160deg, #03020a, #08051a)",
+        }}>
+          {/* ── Map Background Image Layer ── */}
+          {mapBgImage && (
+            <div style={{
+              position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+              backgroundImage: `url(${mapBgImage})`,
+              backgroundSize: "cover", backgroundPosition: "center",
+              opacity: mapBgOpacity,
+              transition: "opacity 0.5s ease",
+            }} />
+          )}
+
+          {/* ── Opacity Adjustment Panel (5s toast) ── */}
+          {showBgPanel && mapBgImage && (
+            <div style={{
+              position: "fixed", top: 80, right: 20, zIndex: 999,
+              background: "rgba(5,8,20,0.92)", backdropFilter: "blur(16px)",
+              border: "1px solid rgba(34,211,238,0.3)",
+              borderRadius: 14, padding: "14px 18px", width: 280,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.6), 0 0 16px rgba(34,211,238,0.15)",
+              animation: "mrmSlideIn 0.3s ease-out both",
+            }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#22d3ee", letterSpacing: 0.5 }}>
+                  🖼️ MAP BACKGROUND
+                </div>
+                <button
+                  onClick={() => { setShowBgPanel(false); clearTimeout(bgPanelTimerRef.current); }}
+                  style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", cursor: "pointer", fontSize: 14 }}
+                >✕</button>
+              </div>
+
+              {/* Mini preview strip */}
+              <div style={{
+                width: "100%", height: 54, borderRadius: 8, marginBottom: 10, overflow: "hidden",
+                backgroundImage: `url(${mapBgImage})`,
+                backgroundSize: "cover", backgroundPosition: "center",
+                opacity: mapBgOpacity, border: "1px solid rgba(255,255,255,0.1)",
+                position: "relative",
+              }}>
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: `rgba(3,2,10,${1 - mapBgOpacity})`,
+                }} />
+                <div style={{
+                  position: "absolute", inset: 0, display: "flex",
+                  alignItems: "center", justifyContent: "center",
+                  fontSize: 10, color: "rgba(255,255,255,0.7)", fontWeight: 700,
+                }}>
+                  Preview — {Math.round(mapBgOpacity * 100)}%
+                </div>
+              </div>
+
+              {/* Opacity Slider */}
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", minWidth: 18 }}>0%</span>
+                <input
+                  type="range" min={0} max={100} value={Math.round(mapBgOpacity * 100)}
+                  onChange={e => setMapBgOpacity(Number(e.target.value) / 100)}
+                  style={{ flex: 1, accentColor: "#22d3ee", height: 4, cursor: "pointer" }}
+                />
+                <span style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", minWidth: 24 }}>100%</span>
+              </div>
+
+              {/* Value badge */}
+              <div style={{ textAlign: "center", marginTop: 6 }}>
+                <span style={{
+                  fontSize: 12, fontWeight: 800, color: "#22d3ee",
+                  background: "rgba(34,211,238,0.12)", borderRadius: 6,
+                  padding: "2px 10px", border: "1px solid rgba(34,211,238,0.25)",
+                }}>
+                  Opacity: {Math.round(mapBgOpacity * 100)}%
+                </span>
+              </div>
+
+              {/* Auto-close timer bar */}
+              <div style={{
+                marginTop: 10, height: 2, borderRadius: 2,
+                background: "rgba(255,255,255,0.08)", overflow: "hidden",
+              }}>
+                <div style={{
+                  height: "100%", width: "100%",
+                  background: "linear-gradient(90deg, #22d3ee, #0ea5e9)",
+                  animation: "mrmTimerBar 5s linear forwards",
+                  transformOrigin: "left",
+                }} />
+              </div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", textAlign: "right", marginTop: 3 }}>
+                Tự đóng sau 5s
+              </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* ─── 1V1 DUEL PLAYING ARENA ─── */}
-      {gameState === "playing" && botOpponent && (
-        <div style={{
-          flex: 1, display: "flex", flexDirection: "column",
-          background: "linear-gradient(135deg, #02020a, #0b0718)",
-        }} className="slide-active">
-          {/* TOP BAR / HEAD-TO-HEAD HP */}
+          {/* TOP HUD */}
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 160px 1fr",
-            padding: "16px 28px", borderBottom: "1px solid rgba(255,255,255,0.06)",
-            background: "rgba(2,2,8,0.9)", backdropFilter: "blur(12px)",
+            background: "rgba(3,2,10,0.95)", backdropFilter: "blur(16px)",
+            borderBottom: "1px solid rgba(255,255,255,0.04)",
+            position: "relative", zIndex: 2,
           }}>
-            {/* Player panel (Left) */}
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div style={{ fontSize: 28 }}>🎓</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: "white" }}>{playerUsername}</span>
-                  <div style={{ display: "flex", gap: 1.5 }}>
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <span key={i} style={{ fontSize: 11, filter: i < playerBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
-                    ))}
+            {/* Player & bot info row */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "1fr 120px 1fr",
+              padding: "12px 24px", gap: 16, alignItems: "center",
+            }}>
+              {/* Player panel */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{
+                  width: 40, height: 40, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 18, border: "2px solid rgba(14,165,233,0.4)",
+                  boxShadow: "0 0 12px rgba(14,165,233,0.3)",
+                }}>🎓</div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{playerUsername}</span>
+                    {playerSubmitted && (
+                      <span style={{ fontSize: 10, color: "#4ade80", fontWeight: 700, background: "rgba(74,222,128,0.1)", borderRadius: 4, padding: "1px 5px" }}>✓</span>
+                    )}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 2 }}>
+                    <span style={{ fontSize: 10, color: playerSubmitted ? "#4ade80" : "#a78bfa" }}>
+                      {playerSubmitted ? "Answered" : "Thinking..."}
+                    </span>
+                    {combo > 1 && (
+                      <span style={{
+                        fontSize: 10, fontWeight: 900, color: "#fbbf24",
+                        background: "rgba(251,191,36,0.15)", borderRadius: 4, padding: "1px 5px",
+                        animation: comboFlash ? "mrmComboFlash 0.3s ease" : "none",
+                      }}>
+                        {combo}x COMBO
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i} style={{
-                      fontSize: 16,
-                      filter: i < playerHP ? "none" : "grayscale(1) opacity(0.2)",
-                      transition: "all 0.3s",
-                    }}>❤️</span>
-                  ))}
-                </div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontSize: 10, display: "block", color: "rgba(255,255,255,0.4)" }}>TRẠNG THÁI</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: playerSubmitted ? "#4ade80" : "#a78bfa" }}>
-                  {playerSubmitted ? "✓ Đã trả lời" : "⚡ Đang nghĩ..."}
-                </span>
+
+              {/* Center timer + sound */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                <div style={{
+                  width: 52, height: 52, borderRadius: "50%",
+                  border: `3px solid ${timeLeft < 10 ? "#ef4444" : "#a78bfa"}`,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 17, fontWeight: 900, color: timeLeft < 10 ? "#ef4444" : "white",
+                  boxShadow: `0 0 16px ${timeLeft < 10 ? "rgba(239,68,68,0.4)" : "rgba(167,139,250,0.3)"}`,
+                  background: timeLeft < 10 ? "rgba(239,68,68,0.08)" : "transparent",
+                  transition: "all 0.3s",
+                }}>
+                  {timeLeft}
+                </div>
+                <button onClick={() => {
+                  if (isMuted) setIsMuted(false);
+                  else { setIsMuted(true); stopBgm(); }
+                }} style={{
+                  background: "none", border: "none", color: "rgba(255,255,255,0.4)",
+                  cursor: "pointer", fontSize: 13,
+                }}>{isMuted ? "🔇" : "🔊"}</button>
+                {mapBgImage && (
+                  <button onClick={() => {
+                    setShowBgPanel(true);
+                    clearTimeout(bgPanelTimerRef.current);
+                    bgPanelTimerRef.current = setTimeout(() => setShowBgPanel(false), 5000);
+                  }} style={{
+                    background: showBgPanel ? "rgba(34,211,238,0.15)" : "none",
+                    border: showBgPanel ? "1px solid rgba(34,211,238,0.3)" : "none",
+                    borderRadius: 6, color: "#22d3ee",
+                    cursor: "pointer", fontSize: 12, padding: "2px 6px",
+                    transition: "all 0.2s",
+                  }} title="Điều chỉnh nền bản đồ">🖼️ BG</button>
+                )}
+              </div>
+
+              {/* Bot panel */}
+              <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "flex-end" }}>
+                <div style={{ flex: 1, textAlign: "right" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
+                    {botSubmitted && (
+                      <span style={{ fontSize: 10, color: "#4ade80", fontWeight: 700, background: "rgba(74,222,128,0.1)", borderRadius: 4, padding: "1px 5px" }}>✓</span>
+                    )}
+                    <span style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{botOpponent.username}</span>
+                  </div>
+                  <span style={{ fontSize: 10, color: botSubmitted ? "#4ade80" : "#f87171" }}>
+                    {botSubmitted ? "Answered" : "Thinking..."}
+                  </span>
+                </div>
+                <div style={{
+                  width: 40, height: 40, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 18, border: "2px solid rgba(239,68,68,0.4)",
+                  boxShadow: "0 0 12px rgba(239,68,68,0.3)",
+                }}>{botOpponent.avatar}</div>
               </div>
             </div>
 
-            {/* Timer & Sound (Center) */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
-              <button onClick={() => {
-                if (isMuted) {
-                  setIsMuted(false);
-                } else {
-                  setIsMuted(true);
-                  stopBgm();
-                }
-              }} style={{
-                background: "none", border: "none", color: "rgba(255,255,255,0.6)",
-                cursor: "pointer", fontSize: 16
-              }}>
-                {isMuted ? "🔇" : "🔊"}
-              </button>
-              <div style={{
-                width: 48, height: 48, borderRadius: "50%",
-                border: `3px solid ${timeLeft < 10 ? "#ef4444" : "#a78bfa"}`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 16, fontWeight: 900, color: timeLeft < 10 ? "#ef4444" : "white",
-                boxShadow: `0 0 16px ${timeLeft < 10 ? "rgba(239,68,68,0.3)" : "rgba(167,139,250,0.3)"}`,
-              }}>
-                {timeLeft}
-              </div>
-            </div>
-
-            {/* Bot panel (Right) */}
-            <div style={{ display: "flex", alignItems: "center", gap: 14, justifyContent: "flex-end", textAlign: "right" }}>
-              <div style={{ textAlign: "left" }}>
-                <span style={{ fontSize: 10, display: "block", color: "rgba(255,255,255,0.4)", textAlign: "right" }}>TRẠNG THÁI</span>
-                <span style={{ fontSize: 12, fontWeight: 700, color: botSubmitted ? "#4ade80" : "#ef4444" }}>
-                  {botSubmitted ? "✓ Đã trả lời" : "⚡ Đang nghĩ..."}
-                </span>
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, justifyContent: "flex-end" }}>
-                  <div style={{ display: "flex", gap: 1.5 }}>
-                    {Array.from({ length: 3 }).map((_, i) => (
-                      <span key={i} style={{ fontSize: 11, filter: i < botBigHP ? "none" : "grayscale(1) opacity(0.2)" }}>❤️</span>
-                    ))}
-                  </div>
-                  <span style={{ fontSize: 14, fontWeight: 800, color: "white" }}>{botOpponent.username}</span>
-                </div>
-                <div style={{ display: "flex", gap: 3, marginTop: 4, justifyContent: "flex-end" }}>
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <span key={i} style={{
-                      fontSize: 16,
-                      filter: i < botHP ? "none" : "grayscale(1) opacity(0.2)",
-                      transition: "all 0.3s",
-                    }}>❤️</span>
-                  ))}
-                </div>
-              </div>
-              <div style={{ fontSize: 28 }}>{botOpponent.avatar}</div>
+            {/* DAMAGE BAR — full width */}
+            <div style={{ paddingBottom: 10 }}>
+              <DamageBar
+                playerHP={playerHP} botHP={botHP} maxHP={5}
+                playerUsername={playerUsername} botUsername={botOpponent.username}
+                playerBigHP={playerBigHP} botBigHP={botBigHP}
+              />
             </div>
           </div>
 
-          {/* COMBINED ROUND FEEDS */}
+          {/* FEED BAR */}
           <div style={{
-            background: "rgba(15,23,42,0.4)", borderBottom: "1px solid rgba(255,255,255,0.04)",
-            padding: "8px 24px", minHeight: 40, display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 12, color: "#cbd5e1", gap: 16,
+            background: "rgba(10,5,25,0.5)",
+            borderBottom: "1px solid rgba(255,255,255,0.03)",
+            padding: "7px 28px", minHeight: 36,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 12, gap: 14,
           }}>
             {feedMessages.map((msg, i) => (
               <span key={i} style={{
-                color: msg.includes("⚡") || msg.includes("🎯") || msg.includes("🎉") ? "#4ade80" : msg.includes("🔥") || msg.includes("😢") ? "#f87171" : "#cbd5e1",
-                fontWeight: 600, animation: "fadeInUp 0.3s ease-out both"
+                color: msg.includes("⚡") || msg.includes("🎯") || msg.includes("🏆") || msg.includes("Correct")
+                  ? "#4ade80"
+                  : msg.includes("🔥") || msg.includes("💔") || msg.includes("Wrong")
+                  ? "#f87171"
+                  : "#94a3b8",
+                fontWeight: 700, animation: "mrmFadeUp 0.3s ease both",
               }}>{msg}</span>
             ))}
           </div>
 
-          {/* QUESTION BOX */}
+          {/* QUESTION AREA */}
           <div style={{
             flex: 1, display: "flex", flexDirection: "column",
             alignItems: "center", justifyContent: "center",
-            padding: "24px 20px", maxWidth: 720, margin: "0 auto", width: "100%",
+            padding: "24px 20px", maxWidth: 760, margin: "0 auto", width: "100%",
           }}>
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 700, marginBottom: 12 }}>
-              CÂU HỎI {currentQ + 1} / {activeQuestions.length}
+            {/* Q progress */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, width: "100%" }}>
+              <div style={{ flex: 1, height: 3, background: "rgba(255,255,255,0.08)", borderRadius: 4 }}>
+                <div style={{
+                  width: `${((currentQ + 1) / activeQuestions.length) * 100}%`, height: "100%",
+                  background: "linear-gradient(90deg, #a78bfa, #38bdf8)",
+                  borderRadius: 4, transition: "width 0.4s ease",
+                }} />
+              </div>
+              <span style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 700, flexShrink: 0 }}>
+                {currentQ + 1}/{activeQuestions.length}
+              </span>
+              {/* Bilingual map label */}
+              <span style={{ fontSize: 10, color: "#a78bfa", fontWeight: 700, flexShrink: 0 }}>
+                {selectedCard?.enTitle || "Math"}
+              </span>
             </div>
 
+            {/* Question card */}
             <div style={{
-              width: "100%", background: "rgba(15,23,42,0.7)",
+              width: "100%",
+              background: "rgba(10,6,26,0.75)", backdropFilter: "blur(8px)",
               border: "1px solid rgba(167,139,250,0.2)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4), inset 0 0 16px rgba(167,139,250,0.05)",
-              borderRadius: 16, padding: "28px 24px", marginBottom: 24,
-              fontSize: 18, fontWeight: 700, lineHeight: 1.6, textAlign: "center",
-              color: "white",
+              boxShadow: "0 8px 40px rgba(0,0,0,0.5), inset 0 0 20px rgba(167,139,250,0.04)",
+              borderRadius: 16, padding: "28px 28px",
+              fontSize: 18, fontWeight: 700, lineHeight: 1.6, textAlign: "center", color: "white",
+              marginBottom: 20,
             }}>
               {activeQuestions[currentQ]?.text}
             </div>
 
-            {/* OPTIONS */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, width: "100%", marginBottom: 16 }}>
+            {/* Options */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, width: "100%", marginBottom: 14 }}>
               {(activeQuestions[currentQ]?.options ?? []).map((opt, i) => {
-                let bg = "rgba(15,23,42,0.75)";
-                let border = "rgba(255,255,255,0.08)";
+                let bg = "rgba(10,6,26,0.7)";
+                let border = "rgba(255,255,255,0.07)";
                 let color = "white";
+                let glow = "none";
 
                 if (evaluating) {
                   if (i === activeQuestions[currentQ].correct) {
-                    bg = "rgba(34,197,94,0.18)"; border = "rgba(34,197,94,0.6)"; color = "#4ade80";
+                    bg = "rgba(34,197,94,0.15)"; border = "rgba(34,197,94,0.5)"; color = "#4ade80";
+                    glow = "0 0 12px rgba(34,197,94,0.2)";
                   } else if (i === playerSelected && i !== activeQuestions[currentQ].correct) {
-                    bg = "rgba(239,68,68,0.18)"; border = "rgba(239,68,68,0.6)"; color = "#f87171";
+                    bg = "rgba(239,68,68,0.15)"; border = "rgba(239,68,68,0.5)"; color = "#f87171";
                   }
                 } else if (playerSelected === i) {
-                  bg = "rgba(167,139,250,0.18)"; border = "rgba(167,139,250,0.6)"; color = "#a78bfa";
+                  bg = "rgba(167,139,250,0.15)"; border = "rgba(167,139,250,0.5)"; color = "#a78bfa";
+                  glow = "0 0 12px rgba(167,139,250,0.2)";
                 }
 
                 return (
@@ -1296,17 +1895,24 @@ export default function MultiplayerLobby() {
                     onClick={() => handlePlayerAnswer(i)}
                     disabled={playerSubmitted || evaluating}
                     style={{
-                      padding: "16px 20px", borderRadius: 12, fontSize: 14,
-                      fontWeight: playerSelected === i || (evaluating && i === activeQuestions[currentQ].correct) ? 700 : 400,
+                      padding: "16px 18px", borderRadius: 12, fontSize: 14,
+                      fontWeight: (playerSelected === i || (evaluating && i === activeQuestions[currentQ].correct)) ? 700 : 400,
                       background: bg, border: `2px solid ${border}`, color,
                       cursor: playerSubmitted || evaluating ? "default" : "pointer",
                       transition: "all 0.18s", textAlign: "left",
+                      boxShadow: glow,
                     }}
-                    onMouseEnter={e => { if (!playerSubmitted && !evaluating) e.currentTarget.style.borderColor = "rgba(167,139,250,0.5)"; }}
-                    onMouseLeave={e => { if (!playerSubmitted && !evaluating) e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; }}
+                    onMouseEnter={e => { if (!playerSubmitted && !evaluating) { e.currentTarget.style.borderColor = "rgba(167,139,250,0.45)"; e.currentTarget.style.background = "rgba(167,139,250,0.08)"; } }}
+                    onMouseLeave={e => { if (!playerSubmitted && !evaluating) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; e.currentTarget.style.background = "rgba(10,6,26,0.7)"; } }}
                   >
-                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginRight: 6 }}>
-                      {["A", "B", "C", "D"][i]}.
+                    <span style={{
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      width: 22, height: 22, borderRadius: 6,
+                      background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)",
+                      fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.5)",
+                      marginRight: 10, flexShrink: 0,
+                    }}>
+                      {["A", "B", "C", "D"][i]}
                     </span>
                     {opt}
                   </button>
@@ -1314,146 +1920,150 @@ export default function MultiplayerLobby() {
               })}
             </div>
 
-            {/* BOT ACTION FEEDBACK */}
+            {/* Evaluating feedback */}
             {evaluating && (
               <div style={{
-                marginTop: 10, fontSize: 13, display: "flex", gap: 12, color: "rgba(255,255,255,0.5)",
-                background: "rgba(15,23,42,0.6)", borderRadius: 10, padding: "8px 18px",
-                border: "1px solid rgba(255,255,255,0.05)",
+                width: "100%",
+                background: "rgba(10,6,26,0.7)", borderRadius: 10, padding: "10px 18px",
+                border: "1px solid rgba(255,255,255,0.05)", fontSize: 12,
+                display: "flex", gap: 12, color: "rgba(255,255,255,0.5)", alignItems: "center", flexWrap: "wrap",
               }}>
-                <span>💡 Đối thủ chọn: <strong>{["A", "B", "C", "D"][botSelected] || "—"}</strong> ({botCorrect ? "Đúng" : "Sai"})</span>
-                <span>•</span>
-                <span>Giải thích: {activeQuestions[currentQ]?.explain}</span>
+                <span>
+                  💡 Opponent ({botOpponent.username}) chose: <strong style={{ color: "white" }}>{["A", "B", "C", "D"][botSelected] || "—"}</strong>
+                  {" "}({botCorrect ? <span style={{ color: "#4ade80" }}>Correct</span> : <span style={{ color: "#f87171" }}>Wrong</span>})
+                </span>
+                <span style={{ color: "rgba(255,255,255,0.2)" }}>|</span>
+                <span style={{ color: "#a78bfa" }}>Explanation: {activeQuestions[currentQ]?.explain}</span>
               </div>
             )}
           </div>
 
           {/* LEAVE BUTTON */}
-          <div style={{ display: "flex", justifyContent: "center", padding: "16px 0", background: "rgba(2,2,8,0.3)" }}>
+          <div style={{ display: "flex", justifyContent: "center", padding: "12px 0", background: "rgba(3,2,10,0.4)" }}>
             <button onClick={() => {
-              if (confirm("Bạn có chắc muốn bỏ chạy? Bạn sẽ bị xử thua trận và trừ ELO.")) {
-                endMatch(0, 3);
-              }
+              if (confirm("Rời trận sẽ bị xử thua và trừ ELO. Chắc chưa?")) endMatch(0, 3);
             }} style={{
-              padding: "8px 24px", borderRadius: 8, fontSize: 12, fontWeight: 700,
-              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
-              color: "rgba(255,255,255,0.5)", cursor: "pointer", transition: "all 0.15s"
-            }}>🏳️ Rời trận đấu</button>
+              padding: "7px 20px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+              background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
+              color: "rgba(255,255,255,0.4)", cursor: "pointer",
+            }}>🏳️ Surrender / Rời trận</button>
           </div>
         </div>
       )}
 
-      {/* ─── DUEL RESULT / ENDED SCREEN ─── */}
+      {/* ─── RESULT / ENDED SCREEN ─── */}
       {gameState === "ended" && botOpponent && (
-        <div style={{
+        <div className="mrm-slide-in" style={{
+          position: "relative", zIndex: 1,
           flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-          background: "linear-gradient(135deg, #090514 0%, #020106 100%)",
-          padding: 24,
-        }} className="slide-active">
-          {/* Trophy / Broken Sword Icon */}
-          <div style={{
-            fontSize: 80, marginBottom: 20,
-            filter: `drop-shadow(0 0 32px ${eloDelta > 0 ? "rgba(251,191,36,0.6)" : "rgba(239,68,68,0.4)"})`,
-            animation: "pulse 2s ease-in-out infinite",
-          }}>
-            {eloDelta > 0 ? "🏆" : "⚔️"}
+          minHeight: "100vh", padding: 24,
+          background: eloDelta > 0
+            ? "radial-gradient(ellipse at center, rgba(251,191,36,0.08) 0%, rgba(5,2,15,1) 60%)"
+            : "radial-gradient(ellipse at center, rgba(239,68,68,0.08) 0%, rgba(5,2,15,1) 60%)",
+        }}>
+          {/* Grade circle */}
+          <div style={{ marginBottom: 20 }}>
+            <GradeDisplay grade={getPerformanceGrade(roundCorrect, roundTotal, maxCombo)} />
           </div>
 
+          {/* Win/Loss */}
           <h1 style={{
-            fontSize: 40, fontWeight: 900,
-            background: eloDelta > 0 ? "linear-gradient(135deg, #fbbf24, #f59e0b)" : "linear-gradient(135deg, #ef4444, #f87171)",
+            fontSize: 44, fontWeight: 900,
+            background: eloDelta > 0
+              ? "linear-gradient(135deg, #fbbf24, #f59e0b)"
+              : "linear-gradient(135deg, #ef4444, #f87171)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-            marginBottom: 6,
+            marginBottom: 4, letterSpacing: 2,
           }}>
-            {eloDelta > 0 ? "CHIẾN THẮNG!" : "THẤT BẠI"}
+            {eloDelta > 0 ? "VICTORY" : "DEFEAT"}
           </h1>
-          <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", marginBottom: 30 }}>
-            Đối đầu với {botOpponent.username} ({botOpponent.elo} ELO)
+          <p style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 28 }}>
+            vs {botOpponent.username} ({botOpponent.elo} Rating)
           </p>
 
-          {/* ELO Delta card */}
+          {/* ELO delta card */}
           <div style={{
-            background: "rgba(15,23,42,0.6)", border: "1px solid rgba(255,255,255,0.06)",
-            borderRadius: 16, padding: "24px 36px", textAlign: "center", marginBottom: 36,
-            minWidth: 260,
+            background: "rgba(10,6,26,0.75)", backdropFilter: "blur(12px)",
+            border: `1px solid ${eloDelta > 0 ? "rgba(251,191,36,0.2)" : "rgba(239,68,68,0.2)"}`,
+            borderRadius: 16, padding: "20px 36px", textAlign: "center", marginBottom: 24,
+            minWidth: 280,
           }}>
             <div style={{
-              fontSize: 32, fontWeight: 900,
+              fontSize: 38, fontWeight: 900,
               color: eloDelta > 0 ? "#4ade80" : "#f87171",
               marginBottom: 4,
             }}>
-              {eloDelta > 0 ? `+${eloDelta}` : eloDelta} ELO
+              {eloDelta > 0 ? `+${eloDelta}` : eloDelta} Rating
             </div>
-            <div style={{ fontSize: 13, color: "white", fontWeight: 700, marginBottom: 8 }}>
-              Rank: {playerRank}
+            <div style={{ fontSize: 13, color: "white", fontWeight: 800, marginBottom: 6 }}>
+              {playerRank} · {playerElo} ELO
             </div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)" }}>
-              ELO mới: {playerElo}
+            <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
+              <RankBadge rank={playerRank} size={28} />
             </div>
           </div>
 
-          {/* Stats details */}
+          {/* Performance stats */}
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10,
-            width: "100%", maxWidth: 360, marginBottom: 40,
+            display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10,
+            width: "100%", maxWidth: 440, marginBottom: 32,
           }}>
-            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>TIM LỚN CỦA BẠN</div>
-              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: "#fbbf24" }}>{playerBigHP} / 3</div>
-            </div>
-            <div style={{ background: "rgba(255,255,255,0.03)", borderRadius: 10, padding: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)" }}>ĐỐI THỦ TIM LỚN</div>
-              <div style={{ fontSize: 16, fontWeight: 700, marginTop: 2, color: "#ef4444" }}>{botBigHP} / 3</div>
-            </div>
+            {[
+              { label: "Accuracy", value: roundTotal > 0 ? Math.round(roundCorrect / roundTotal * 100) + "%" : "0%", color: "#38bdf8" },
+              { label: "Max Combo", value: `${maxCombo}x`, color: "#fbbf24" },
+              { label: "Your Sets", value: `${playerBigHP}/3`, color: "#a78bfa" },
+              { label: "Opp. Sets", value: `${botBigHP}/3`, color: "#f87171" },
+            ].map(s => (
+              <div key={s.label} style={{
+                background: "rgba(255,255,255,0.03)", borderRadius: 10,
+                padding: "12px 8px", textAlign: "center",
+                border: "1px solid rgba(255,255,255,0.05)",
+              }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)", marginTop: 3 }}>{s.label}</div>
+              </div>
+            ))}
           </div>
 
-          {/* Actions */}
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "center" }}>
+          {/* Action buttons */}
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button onClick={startMatching} style={{
-              padding: "14px 36px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
+              padding: "13px 36px", borderRadius: 8, fontSize: 14, fontWeight: 900,
               background: "linear-gradient(135deg, #a78bfa, #6d28d9)",
-              border: "1px solid rgba(167, 139, 250, 0.4)", color: "white", cursor: "pointer",
-              boxShadow: "0 4px 16px rgba(167,139,250,0.4)",
-              transform: "skewX(-8deg)",
-              transition: "all 0.2s"
+              border: "1px solid rgba(167,139,250,0.4)", color: "white", cursor: "pointer",
+              boxShadow: "0 4px 20px rgba(167,139,250,0.4)",
+              transform: "skewX(-6deg)", transition: "all 0.2s",
             }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 24px rgba(167,139,250,0.6)"; e.currentTarget.style.transform = "skewX(-8deg) scale(1.02)"; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 16px rgba(167,139,250,0.4)"; e.currentTarget.style.transform = "skewX(-8deg) scale(1)"; }}
+              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 6px 28px rgba(167,139,250,0.6)"; e.currentTarget.style.transform = "skewX(-6deg) scale(1.02)"; }}
+              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 20px rgba(167,139,250,0.4)"; e.currentTarget.style.transform = "skewX(-6deg)"; }}
             >
-              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>⚡ Tìm trận tiếp</span>
+              <span style={{ display: "inline-block", transform: "skewX(6deg)" }}>⚡ Play Again</span>
             </button>
             <button onClick={() => setGameState("lobby")} style={{
-              padding: "14px 32px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
-              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.15)",
-              color: "white", cursor: "pointer",
-              transform: "skewX(-8deg)",
-              transition: "all 0.2s"
+              padding: "13px 28px", borderRadius: 8, fontSize: 14, fontWeight: 800,
+              background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)",
+              color: "white", cursor: "pointer", transform: "skewX(-6deg)", transition: "all 0.2s",
             }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.12)"}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
               onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}
             >
-              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>Quay lại Lobby</span>
+              <span style={{ display: "inline-block", transform: "skewX(6deg)" }}>Lobby</span>
             </button>
-            <button onClick={() => {
-              setSelectedReportUser(botOpponent.username);
-              setShowReportModal(true);
-            }} style={{
-              padding: "14px 32px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
-              background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)",
-              color: "#f87171", cursor: "pointer",
-              transform: "skewX(-8deg)",
-              transition: "all 0.2s"
+            <button onClick={() => { setSelectedReportUser(botOpponent.username); setShowReportModal(true); }} style={{
+              padding: "13px 24px", borderRadius: 8, fontSize: 14, fontWeight: 800,
+              background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
+              color: "#f87171", cursor: "pointer", transform: "skewX(-6deg)", transition: "all 0.2s",
             }}
-              onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.2)"}
-              onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.12)"}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.18)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}
             >
-              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>🚩 Báo cáo đối thủ</span>
+              <span style={{ display: "inline-block", transform: "skewX(6deg)" }}>🚩 Report</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Report User Modal */}
+      {/* Report Modal */}
       {showReportModal && (
         <ReportUserModal
           targetUsername={selectedReportUser}
@@ -1461,29 +2071,67 @@ export default function MultiplayerLobby() {
         />
       )}
 
+      {/* ── CSS Animations ── */}
       <style>{`
-        .slide-active {
-          animation: slideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@700;800;900&display=swap');
+
+        .mrm-slide-in {
+          animation: mrmSlideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
-        @keyframes slideIn {
-          from { transform: translateY(12px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
+        .mrm-slide-left {
+          animation: mrmSlideLeft 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
         }
-        @keyframes pingRadar {
-          0% { transform: scale(0.6); opacity: 1; }
-          100% { transform: scale(1.4); opacity: 0; }
+        .mrm-slide-right {
+          animation: mrmSlideRight 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
         }
-        @keyframes slideInLeft { from { transform: translateX(-100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes slideInRight { from { transform: translateX(100px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes bounceIn { from { transform: scale(0.3); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        @keyframes pulse {
-          0%, 100% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.05); opacity: 0.8; }
+        .mrm-bounce-in {
+          animation: mrmBounceIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1.3) 0.2s both;
         }
-        @keyframes fadeInUp {
+
+        @keyframes mrmSlideIn {
+          from { transform: translateY(14px); opacity: 0; }
+          to   { transform: translateY(0);   opacity: 1; }
+        }
+        @keyframes mrmSlideLeft {
+          from { transform: translateX(-80px) skewX(-6deg); opacity: 0; }
+          to   { transform: translateX(0)     skewX(-6deg); opacity: 1; }
+        }
+        @keyframes mrmSlideRight {
+          from { transform: translateX(80px) skewX(-6deg); opacity: 0; }
+          to   { transform: translateX(0)    skewX(-6deg); opacity: 1; }
+        }
+        @keyframes mrmBounceIn {
+          from { transform: scale(0.3) skewX(-10deg); opacity: 0; }
+          to   { transform: scale(1)   skewX(-10deg); opacity: 1; }
+        }
+        @keyframes mrmRadar {
+          0%   { transform: scale(0.5); opacity: 0.9; }
+          100% { transform: scale(1.5); opacity: 0; }
+        }
+        @keyframes mrmPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50%       { opacity: 0.75; transform: scale(1.03); }
+        }
+        @keyframes mrmFlash {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.45; }
+        }
+        @keyframes mrmFadeUp {
           from { transform: translateY(8px); opacity: 0; }
-          to { transform: translateY(0); opacity: 1; }
+          to   { transform: translateY(0);   opacity: 1; }
+        }
+        @keyframes mrmParticleFloat {
+          0%   { transform: translateY(0)     rotate(0deg);   opacity: var(--op, 0.06); }
+          100% { transform: translateY(-110vh) rotate(360deg); opacity: 0; }
+        }
+        @keyframes orbFloat {
+          0%   { transform: translate(0, 0)     scale(1); }
+          100% { transform: translate(30px, 20px) scale(1.08); }
+        }
+        @keyframes mrmComboFlash {
+          0%   { transform: scale(1); }
+          50%  { transform: scale(1.4); }
+          100% { transform: scale(1); }
         }
       `}</style>
     </div>

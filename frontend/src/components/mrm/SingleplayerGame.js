@@ -5,8 +5,95 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMathMapStore } from "@/context/MathMapStore";
 import { useAuth } from "@/context/authContext";
-
 import { MOCK_MATHMAPS } from "@/data/mockMathmaps";
+
+// ── BGM synthesizer ──────────────────────────────────────────────────────────
+function useBgmPlayer(bgmId, customBgmUrl) {
+  const audioCtxRef = useRef(null);
+  const oscillatorsRef = useRef([]);
+  const audioElRef = useRef(null);
+
+  useEffect(() => {
+    // Clean up previous
+    oscillatorsRef.current.forEach(o => { try { o.stop(); } catch(e) {} });
+    oscillatorsRef.current = [];
+    if (audioElRef.current) { audioElRef.current.pause(); audioElRef.current = null; }
+
+    if (customBgmUrl) {
+      // Play custom MP3 from base64 data URL
+      const audio = new Audio(customBgmUrl);
+      audio.loop = true;
+      audio.volume = 0.35;
+      audio.play().catch(() => {});
+      audioElRef.current = audio;
+      return;
+    }
+
+    if (!bgmId || bgmId === 'none') return;
+
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtxRef.current = ctx;
+
+      const masterGain = ctx.createGain();
+      masterGain.gain.value = 0.18;
+      masterGain.connect(ctx.destination);
+
+      // BGM patterns by ID
+      const patterns = {
+        dramatic01: [261.6, 329.6, 392, 523.3],
+        electronic01: [440, 550, 660, 880],
+        calm01: [220, 277.2, 329.6, 369.9],
+        boss01: [110, 138.6, 164.8, 220],
+        lofi01: [196, 220, 246.9, 261.6],
+      };
+      const freqs = patterns[bgmId] || patterns.calm01;
+      let time = ctx.currentTime;
+
+      const scheduleNotes = () => {
+        freqs.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = bgmId === 'boss01' ? 'sawtooth' : bgmId === 'electronic01' ? 'square' : 'sine';
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0, time + i * 0.5);
+          gain.gain.linearRampToValueAtTime(0.6, time + i * 0.5 + 0.05);
+          gain.gain.linearRampToValueAtTime(0, time + i * 0.5 + 0.45);
+          osc.connect(gain);
+          gain.connect(masterGain);
+          osc.start(time + i * 0.5);
+          osc.stop(time + i * 0.5 + 0.5);
+          oscillatorsRef.current.push(osc);
+        });
+        time += freqs.length * 0.5;
+      };
+
+      // Schedule 8 loops
+      for (let loop = 0; loop < 8; loop++) scheduleNotes();
+    } catch(e) {}
+
+    return () => {
+      oscillatorsRef.current.forEach(o => { try { o.stop(); } catch(e) {} });
+      oscillatorsRef.current = [];
+      if (audioElRef.current) { audioElRef.current.pause(); audioElRef.current = null; }
+      if (audioCtxRef.current) { try { audioCtxRef.current.close(); } catch(e) {} }
+    };
+  }, [bgmId, customBgmUrl]);
+}
+
+// ── Background image layer ────────────────────────────────────────────────────
+function MapBgLayer({ bgImageUrl, bgOpacity }) {
+  if (!bgImageUrl) return null;
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+      backgroundImage: `url(${bgImageUrl})`,
+      backgroundSize: "cover", backgroundPosition: "center",
+      opacity: typeof bgOpacity === "number" ? bgOpacity : 0.3,
+      transition: "opacity 0.5s",
+    }} />
+  );
+}
 
 
 // Default fallback for unknown map IDs
@@ -108,7 +195,52 @@ export default function SingleplayerGame({ mapId }) {
   const timerRef = useRef(null);
   const router = useRouter();
 
-  const question = questions[currentQ];
+  // Read user-chosen opacity from listing slider (stored in localStorage)
+  const [activeBgOpacity] = useState(() => {
+    try {
+      const stored = localStorage.getItem("duomath_bg_opacity");
+      if (stored !== null) {
+        const val = parseFloat(stored);
+        // Clear it so it doesn't persist unexpectedly
+        localStorage.removeItem("duomath_bg_opacity");
+        return isNaN(val) ? (mapData.bgOpacity ?? 0.3) : val;
+      }
+    } catch(e) {}
+    return mapData.bgOpacity ?? 0.3;
+  });
+
+  // Start BGM when playing phase begins
+  useBgmPlayer(
+    phase === 'playing' ? (mapData.bgmId || null) : null,
+    phase === 'playing' ? (mapData.bgm_url || mapData.bgmFile || null) : null
+  );
+
+  const question = questions[currentQ];  // ─── Read keybind from localStorage (set in MRM Settings) ────────────────
+  const pauseKey = useRef("Escape");
+  useEffect(() => {
+    try {
+      const k = localStorage.getItem("duomath_pause_key");
+      if (k) pauseKey.current = k;
+    } catch(e) {}
+  }, []);
+
+  const [isPaused, setIsPaused] = useState(false);
+
+  // Toggle pause with keybind
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (phase !== "playing") return;
+      // Ignore if user is typing in input
+      if (["INPUT","TEXTAREA"].includes(e.target.tagName)) return;
+      if (e.key === pauseKey.current) {
+        e.preventDefault();
+        setIsPaused(prev => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [phase]);
+
   const isLastQ = currentQ === questions.length - 1;
 
   const bgmLabel = mapData.bgm === "custom" 
@@ -147,9 +279,10 @@ export default function SingleplayerGame({ mapId }) {
   }, [currentQ, question]); // eslint-disable-line
 
   useEffect(() => {
-    if (phase === "playing") startTimer();
+    if (phase === "playing" && !isPaused) startTimer();
+    if (isPaused) clearInterval(timerRef.current);
     return () => clearInterval(timerRef.current);
-  }, [phase, currentQ]); // eslint-disable-line
+  }, [phase, currentQ, isPaused]); // eslint-disable-line
 
   // ─── Answer handling ─────────────────────────────────────────────────────
   const handleAnswer = (optionIdx, timeout = false) => {
@@ -231,8 +364,9 @@ export default function SingleplayerGame({ mapId }) {
         minHeight: "100vh", display: "flex", flexDirection: "column",
         background: "linear-gradient(135deg, #020617, #0a0a1a)",
         alignItems: "center", justifyContent: "center",
-        fontFamily: "'Inter', sans-serif", color: "white",
+        fontFamily: "'Inter', sans-serif", color: "white", position: "relative",
       }}>
+        <MapBgLayer bgImageUrl={mapData.bgImageUrl || mapData.thumbnail_url} bgOpacity={activeBgOpacity} />
         <div style={{
           width: 96, height: 96, borderRadius: 20,
           background: mapData.thumbnail_color,
@@ -319,8 +453,9 @@ export default function SingleplayerGame({ mapId }) {
         minHeight: "100vh", display: "flex", flexDirection: "column",
         background: "linear-gradient(135deg, #020208 0%, #0c0b1e 50%, #05040e 100%)",
         alignItems: "center", justifyContent: "center",
-        fontFamily: "'Inter', sans-serif", color: "white", padding: 24,
+        fontFamily: "'Inter', sans-serif", color: "white", padding: 24, position: "relative",
       }}>
+        <MapBgLayer bgImageUrl={mapData.bgImageUrl || mapData.thumbnail_url} bgOpacity={activeBgOpacity * 0.6} />
         {/* Grade badge */}
         <div style={{
           width: 120, height: 120, borderRadius: "50%",
@@ -448,14 +583,141 @@ export default function SingleplayerGame({ mapId }) {
     <div style={{
       minHeight: "100vh", display: "flex", flexDirection: "column",
       background: "linear-gradient(135deg, #020617, #0a0a1a)",
-      fontFamily: "'Inter', sans-serif", color: "white",
+      fontFamily: "'Inter', sans-serif", color: "white", position: "relative",
     }}>
+      <MapBgLayer bgImageUrl={mapData.bgImageUrl || mapData.thumbnail_url} bgOpacity={activeBgOpacity} />
+
+      {/* ─── PAUSE OVERLAY ─── */}
+      {isPaused && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 999,
+          background: "rgba(2,6,23,0.88)", backdropFilter: "blur(20px)",
+          display: "flex", flexDirection: "column",
+          alignItems: "center", justifyContent: "center", gap: 0,
+        }}>
+          {/* Big pause icon */}
+          <div style={{
+            fontSize: 72, marginBottom: 12,
+            animation: "mrmPulse 2s infinite",
+          }}>⏸</div>
+
+          <div style={{
+            fontSize: 32, fontWeight: 900, color: "white",
+            letterSpacing: 4, textTransform: "uppercase", marginBottom: 6,
+          }}>TẠM DỪNG</div>
+
+          <div style={{
+            fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 40,
+            fontWeight: 600,
+          }}>
+            Nhấn <kbd style={{
+              background: "rgba(255,255,255,0.1)",
+              border: "1px solid rgba(255,255,255,0.25)",
+              borderRadius: 5, padding: "2px 8px", fontSize: 12,
+              fontFamily: "monospace",
+            }}>{pauseKey.current}</kbd> để tiếp tục
+          </div>
+
+          {/* Stats while paused */}
+          <div style={{
+            display: "flex", gap: 20, marginBottom: 40,
+          }}>
+            {[
+              { label: "Câu", val: `${currentQ + 1}/${questions.length}`, color: "#22d3ee" },
+              { label: "Điểm", val: score.toLocaleString(), color: "#fbbf24" },
+              { label: "HP", val: `${hp}/${MAX_HP}`, color: "#f87171" },
+              { label: "Combo", val: `x${combo}`, color: "#a78bfa" },
+            ].map(s => (
+              <div key={s.label} style={{
+                textAlign: "center",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 12, padding: "14px 20px",
+              }}>
+                <div style={{ fontSize: 20, fontWeight: 900, color: s.color }}>{s.val}</div>
+                <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 4, fontWeight: 700, letterSpacing: 0.5 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Action buttons */}
+          <div style={{ display: "flex", gap: 12 }}>
+            <button
+              onClick={() => setIsPaused(false)}
+              style={{
+                padding: "14px 36px", borderRadius: 10, fontSize: 15, fontWeight: 800,
+                background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
+                color: "#000", border: "none", cursor: "pointer",
+                boxShadow: "0 4px 20px rgba(34,211,238,0.4)",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.transform = "scale(1.04)"}
+              onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+            >
+              ▶ Tiếp tục
+            </button>
+
+            <button
+              onClick={() => {
+                setIsPaused(false);
+                setPhase("intro");
+                setCurrentQ(0); setHp(MAX_HP); setScore(0);
+                setCombo(0); setMaxCombo(0); setSelected(null);
+                setShowExplain(false); setAnswers([]); setSwapUsed(false);
+                setBlankInput("");
+              }}
+              style={{
+                padding: "14px 28px", borderRadius: 10, fontSize: 15, fontWeight: 800,
+                background: "rgba(251,191,36,0.12)",
+                color: "#fbbf24", border: "1px solid rgba(251,191,36,0.35)",
+                cursor: "pointer", transition: "all 0.2s",
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = "rgba(251,191,36,0.22)"}
+              onMouseLeave={e => e.currentTarget.style.background = "rgba(251,191,36,0.12)"}
+            >
+              🔄 Chơi lại
+            </button>
+
+            <Link href="/mrm/singleplayer" style={{ textDecoration: "none" }}>
+              <button
+                style={{
+                  padding: "14px 28px", borderRadius: 10, fontSize: 15, fontWeight: 800,
+                  background: "rgba(239,68,68,0.12)",
+                  color: "#f87171", border: "1px solid rgba(239,68,68,0.35)",
+                  cursor: "pointer", transition: "all 0.2s",
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.22)"}
+                onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.12)"}
+              >
+                ✕ Thoát
+              </button>
+            </Link>
+          </div>
+
+          {/* Settings link */}
+          <div style={{ marginTop: 28 }}>
+            <Link href="/mrm/settings" style={{ textDecoration: "none" }}>
+              <span style={{
+                fontSize: 12, color: "rgba(255,255,255,0.3)",
+                cursor: "pointer", transition: "color 0.2s",
+              }}
+                onMouseEnter={e => e.currentTarget.style.color = "#22d3ee"}
+                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.3)"}
+              >
+                ⚙️ Cài đặt phím tắt
+              </span>
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* ─── TOP BAR ─── */}
       <div style={{
         display: "flex", alignItems: "center", gap: 12,
         padding: "12px 20px",
         background: "rgba(2,6,23,0.9)", backdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(255,255,255,0.06)",
+        position: "relative", zIndex: 10,
       }}>
         {/* HP */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -476,6 +738,26 @@ export default function SingleplayerGame({ mapId }) {
         </div>
 
         <div style={{ flex: 1 }} />
+
+        {/* Pause button */}
+        <button
+          id="sp-pause-btn"
+          onClick={() => setIsPaused(p => !p)}
+          title={`Tạm dừng (${pauseKey.current})`}
+          style={{
+            background: isPaused ? "rgba(34,211,238,0.15)" : "rgba(255,255,255,0.06)",
+            border: `1px solid ${isPaused ? "rgba(34,211,238,0.4)" : "rgba(255,255,255,0.12)"}`,
+            borderRadius: 8, color: isPaused ? "#22d3ee" : "rgba(255,255,255,0.55)",
+            cursor: "pointer", fontSize: 14, padding: "5px 10px",
+            display: "flex", alignItems: "center", gap: 5,
+            transition: "all 0.2s",
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = "rgba(34,211,238,0.15)"}
+          onMouseLeave={e => { if (!isPaused) e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+        >
+          {isPaused ? "▶" : "⏸"}
+          <span style={{ fontSize: 10, opacity: 0.6 }}>{pauseKey.current}</span>
+        </button>
 
         {/* Score & Combo */}
         <div style={{ textAlign: "right", position: "relative" }}>
