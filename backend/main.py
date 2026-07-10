@@ -304,19 +304,28 @@ def cached_system_prompt(variant: str = "text") -> str:
     if variant == "image":
         return (
             _SOCRATIC_BASE
-            + "\n\n## CHẾ ĐỘ HIỆN TẠI: NHẬN DIỆN ẢNH (Vision Mode)"
+            + "\n\n## CHẾ ĐỘ HIỆN TẠI: NHẬN DIỆN ẢNH VÀ GỢI Ý ĐA GÓC NHÌN (Vision Socratic Mode)"
             + "\nBạn đang phân tích một bức ảnh đề toán. Hãy:\n"
             + "1. Mô tả ngắn gọn bài toán bạn nhận ra từ ảnh.\n"
             + "2. Xác định dạng toán (loại bài, chương trình lớp mấy).\n"
-            + "3. Áp dụng Giai đoạn 1-2 của Socratic method (KHÔNG giải thẳng).\n"
-            + "Nếu ảnh không rõ hoặc không phải bài toán → thông báo lịch sự và hỏi lại.\n"
+            + "3. BẮT BUỘC gợi ý lời giải dưới dạng **nhiều góc nhìn/hướng tiếp cận khác nhau** (đưa ra tối thiểu 2 hướng tiếp cận như Đại số, Hình học, hoặc Mẹo trắc nghiệm nhanh).\n"
+            + "4. Với mỗi hướng tiếp cận, hãy đưa ra câu hỏi gợi mở hoặc công thức dẫn dắt (Socratic method) để học sinh tự làm, tuyệt đối không giải thẳng.\n"
+            + "Ví dụ cấu trúc trình bày gợi ý:\n"
+            + "  - **Hướng tiếp cận 1: Đại số (Algebraic)**: [nội dung gợi ý + câu hỏi]\n"
+            + "  - **Hướng tiếp cận 2: Hình học/Đồ thị (Geometric)**: [nội dung gợi ý + câu hỏi]\n"
+            + "Nếu ảnh không rõ hoặc không phải bài toán -> thông báo lịch sự và hỏi lại.\n"
             + _LATEX_RULES
         )
     # Default: "text" — Socratic hint mode
     return (
         _SOCRATIC_BASE
-        + "\n\n## CHẾ ĐỘ HIỆN TẠI: GỢI Ý SOCRATIC (Hint Mode)"
-        + "\nÁp dụng Giai đoạn 1 và 2. Nếu học sinh hỏi thẳng đáp án, hãy hướng dẫn họ tự tìm ra thay vì đưa kết quả."
+        + "\n\n## CHẾ ĐỘ HIỆN TẠI: GỢI Ý SOCRATIC ĐA GÓC NHÌN (Socratic Hint Mode)"
+        + "\nBạn cần giúp học sinh giải bài toán bằng cách gợi ý hướng đi dưới dạng **nhiều góc nhìn/hướng tiếp cận khác nhau**:\n"
+        + "1. Đưa ra tối thiểu 2 đến 3 hướng tiếp cận khác nhau để giải bài toán (Ví dụ: Đại số, Hình học, Đánh giá nhanh/Mẹo trắc nghiệm).\n"
+        + "2. Với mỗi hướng đi, đặt câu hỏi gợi mở hoặc nhắc lại công thức cốt lõi để học sinh tự suy nghĩ tiếp. Tuyệt đối không cho đáp án thẳng.\n"
+        + "Ví dụ cấu trúc trình bày gợi ý:\n"
+        + "  - **Hướng tiếp cận 1: Đại số (Algebraic)**: [nội dung gợi ý + câu hỏi]\n"
+        + "  - **Hướng tiếp cận 2: Hình học/Đồ thị (Geometric)**: [nội dung gợi ý + câu hỏi]\n"
         + _LATEX_RULES
     )
 
