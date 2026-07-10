@@ -2,10 +2,66 @@
 import { useState, useEffect, useRef } from "react";
 import styles from "./DuoMCBPage.module.css";
 import Image from "next/image";
-import { createSession, chat } from "./duoServer";
+import { createSession, chat, generateVideo } from "./duoServer";
 import Link from "next/link";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+
+const isClient = typeof window !== "undefined";
+
+function getDB() {
+  if (!isClient) return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    const request = window.indexedDB.open("duomcb_db", 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains("sessions")) {
+        db.createObjectStore("sessions");
+      }
+    };
+    request.onsuccess = (e) => resolve(e.target.result);
+    request.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function dbSet(key, value) {
+  if (!isClient) return;
+  const db = await getDB();
+  if (!db) return;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("sessions", "readwrite");
+    const store = tx.objectStore("sessions");
+    const req = store.put(value, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbGet(key) {
+  if (!isClient) return null;
+  const db = await getDB();
+  if (!db) return null;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("sessions", "readonly");
+    const store = tx.objectStore("sessions");
+    const req = store.get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbDelete(key) {
+  if (!isClient) return;
+  const db = await getDB();
+  if (!db) return;
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("sessions", "readwrite");
+    const store = tx.objectStore("sessions");
+    const req = store.delete(key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
 
 const SUGGESTED = [
   { icon: "📝", text: "Solve x² - 5x + 6 = 0 step by step" },
@@ -23,14 +79,16 @@ const TOOLS = [
 // ── LaTeX & Markdown Parser Helper Functions ──────────────────────────────
 function parseMathAndText(text) {
   if (!text) return [];
+  // Normalize escaped backslashes (e.g. \\frac -> \frac) which are common in JSON LLM outputs
+  const cleanedText = text.replace(/\\\\/g, "\\");
   const tokens = [];
   let index = 0;
   
-  while (index < text.length) {
-    const nextBlock = text.indexOf("$$", index);
-    const nextBlockBracket = text.indexOf("\\[", index);
-    const nextInline = text.indexOf("$", index);
-    const nextInlineParen = text.indexOf("\\(", index);
+  while (index < cleanedText.length) {
+    const nextBlock = cleanedText.indexOf("$$", index);
+    const nextBlockBracket = cleanedText.indexOf("\\[", index);
+    const nextInline = cleanedText.indexOf("$", index);
+    const nextInlineParen = cleanedText.indexOf("\\(", index);
     
     const finders = [
       { type: "block_dollar", index: nextBlock, startLen: 2, endDelim: "$$" },
@@ -40,25 +98,25 @@ function parseMathAndText(text) {
     ].filter(f => f.index !== -1).sort((a, b) => a.index - b.index);
     
     if (finders.length === 0) {
-      tokens.push({ type: "text", content: text.substring(index) });
+      tokens.push({ type: "text", content: cleanedText.substring(index) });
       break;
     }
     
     const first = finders[0];
     
     if (first.index > index) {
-      tokens.push({ type: "text", content: text.substring(index, first.index) });
+      tokens.push({ type: "text", content: cleanedText.substring(index, first.index) });
     }
     
     const searchStart = first.index + first.startLen;
-    const endIdx = text.indexOf(first.endDelim, searchStart);
+    const endIdx = cleanedText.indexOf(first.endDelim, searchStart);
     
     if (endIdx === -1) {
-      tokens.push({ type: "text", content: text.substring(first.index) });
+      tokens.push({ type: "text", content: cleanedText.substring(first.index) });
       break;
     }
     
-    const mathContent = text.substring(searchStart, endIdx);
+    const mathContent = cleanedText.substring(searchStart, endIdx);
     const isBlock = first.type.startsWith("block");
     tokens.push({ type: "math", content: mathContent, isBlock });
     
@@ -159,7 +217,6 @@ function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sa
   const metrics = ctx.measureText(text);
   const w = metrics.width + 10;
   const h = 15;
-  
   const candidates = [
     { ox: 10, oy: -8, align: "left", baseline: "middle" },
     { ox: -10, oy: -8, align: "right", baseline: "middle" },
@@ -167,6 +224,11 @@ function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sa
     { ox: 0, oy: 14, align: "center", baseline: "top" },
     { ox: 10, oy: 8, align: "left", baseline: "middle" },
     { ox: -10, oy: 8, align: "right", baseline: "middle" },
+    // Expanded offsets to handle high density labels
+    { ox: 0, oy: -26, align: "center", baseline: "bottom" },
+    { ox: 0, oy: 26, align: "center", baseline: "top" },
+    { ox: 22, oy: -8, align: "left", baseline: "middle" },
+    { ox: -22, oy: -8, align: "right", baseline: "middle" },
   ];
   
   let best = null;
@@ -199,8 +261,8 @@ function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sa
   }
   
   if (!best) {
-    const tx = px + 10;
-    const ty = py - 8 + labelBoxes.length * 4;
+    const tx = px + 12;
+    const ty = py - 8 + labelBoxes.length * 16; // 16px instead of 4px step to prevent overlapping stacked texts
     best = { tx, ty, align: "left", baseline: "middle", bx: tx, by: ty - h / 2 };
   }
   
@@ -407,9 +469,220 @@ function drawPetalTile(ctx, cx2, cy2, size, t, squareSide, lang = "vi") {
   }
 }
 
-function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
+function convertLegacyToInstructions(data) {
   const type = data.type || "other";
   const viz = data.viz || {};
+  const instructions = [];
+  
+  if (type === "quadratic" || type === "calculus") {
+    const xRange = viz.xRange || [-4, 6];
+    const yRange = viz.yRange || [-3, 8];
+    const { a = 1, b = 0, c = 0 } = viz;
+    instructions.push({ cmd: "setup", xRange, yRange });
+    instructions.push({ cmd: "grid" });
+    instructions.push({ cmd: "axes" });
+    
+    instructions.push({
+      cmd: "function",
+      expr: `${a}*x*x + (${b})*x + (${c})`,
+      color: "#00d8fe",
+      label: `y = ${a}x² + ${b}x + ${c}`,
+      startAt: 0.2,
+      endAt: 0.7,
+      glow: true
+    });
+    
+    if (type === "calculus" && viz.from != null && viz.to != null) {
+      instructions.push({
+        cmd: "shape",
+        type: "polygon",
+        pts: [
+          [viz.from, 0],
+          ...Array.from({ length: 41 }, (_, idx) => {
+            const mx = viz.from + (idx / 40) * (viz.to - viz.from);
+            return [mx, a*mx*mx + b*mx + c];
+          }),
+          [viz.to, 0]
+        ],
+        color: "#6366f1",
+        fill: true,
+        label: viz.area ? `S ≈ ${viz.area}` : null,
+        startAt: 0.7,
+        endAt: 0.95
+      });
+    }
+    
+    if (viz.roots && viz.roots.length) {
+      viz.roots.forEach((root, idx) => {
+        instructions.push({
+          cmd: "point",
+          x: root,
+          y: 0,
+          color: "#f59e0b",
+          label: `x=${Number.isInteger(root) ? root : root.toFixed(2)}`,
+          startAt: 0.72 + idx * 0.05
+        });
+      });
+    }
+    
+    if (viz.vertex) {
+      instructions.push({
+        cmd: "point",
+        x: viz.vertex[0],
+        y: viz.vertex[1],
+        color: "#a78bfa",
+        label: `(${Number.isInteger(viz.vertex[0]) ? viz.vertex[0] : viz.vertex[0].toFixed(1)}, ${Number.isInteger(viz.vertex[1]) ? viz.vertex[1] : viz.vertex[1].toFixed(1)})`,
+        startAt: 0.82
+      });
+      instructions.push({
+        cmd: "camera",
+        targetX: viz.vertex[0],
+        targetY: viz.vertex[1],
+        zoom: 1.6,
+        startAt: 0.8
+      });
+    }
+  } else if (type === "linear" || type === "system") {
+    const xRange = viz.xRange || [-5, 5];
+    const yRange = viz.yRange || [-5, 8];
+    instructions.push({ cmd: "setup", xRange, yRange });
+    instructions.push({ cmd: "grid" });
+    instructions.push({ cmd: "axes" });
+    
+    const lines = viz.lines || [];
+    const lineColors = ["#00d8fe", "#f59e0b", "#a78bfa", "#4ade80"];
+    lines.forEach((line, idx) => {
+      instructions.push({
+        cmd: "function",
+        expr: `${line.m}*x + (${line.b})`,
+        color: lineColors[idx % lineColors.length],
+        label: line.label,
+        startAt: 0.2 + idx * 0.15,
+        endAt: 0.65 + idx * 0.15,
+        glow: true
+      });
+    });
+    
+    if (viz.intersection) {
+      const { x: ix, y: iy } = viz.intersection;
+      instructions.push({
+        cmd: "point",
+        x: ix,
+        y: iy,
+        color: "#4ade80",
+        label: `(${Number.isInteger(ix) ? ix : ix.toFixed(1)}, ${Number.isInteger(iy) ? iy : iy.toFixed(1)})`,
+        startAt: 0.78
+      });
+      instructions.push({
+        cmd: "camera",
+        targetX: ix,
+        targetY: iy,
+        zoom: 1.5,
+        startAt: 0.78
+      });
+    }
+  } else if (type === "trigonometry") {
+    const xRange = viz.xRange || [0, 6.28];
+    const yRange = viz.yRange || [-1.6, 1.6];
+    instructions.push({ cmd: "setup", xRange, yRange });
+    instructions.push({ cmd: "grid" });
+    instructions.push({ cmd: "axes" });
+    
+    const fn = viz.fn || "sin";
+    const amp = viz.amplitude || 1;
+    const period = viz.period || Math.PI * 2;
+    const phase = viz.phase || 0;
+    instructions.push({
+      cmd: "function",
+      expr: `${amp}*Math.${fn}((2*Math.PI/(${period}))*x + (${phase}))`,
+      color: "#00d8fe",
+      label: `y = ${amp}${fn}(x)`,
+      startAt: 0.22,
+      endAt: 0.77,
+      glow: true
+    });
+  } else if (type === "geometry") {
+    const shapes = viz.shapes || [];
+    const titleLower = (data.title || "").toLowerCase();
+    const isPetalTile = titleLower.includes("viên gạch") || titleLower.includes("cánh hoa") ||
+      titleLower.includes("parabol") || titleLower.includes("petal") || titleLower.includes("tile") ||
+      titleLower.includes("gạch") || titleLower.includes("hoa");
+      
+    if (isPetalTile || shapes.length === 0) {
+      instructions.push({ cmd: "setup", xRange: [-2, 2], yRange: [-2, 2] });
+      instructions.push({
+        cmd: "shape",
+        type: "petal_tile",
+        startAt: 0.1,
+        endAt: 0.9
+      });
+    } else {
+      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+      shapes.forEach(s => {
+        if (s.t === "circle") { minX = Math.min(minX, s.cx - s.r); maxX = Math.max(maxX, s.cx + s.r); minY = Math.min(minY, s.cy - s.r); maxY = Math.max(maxY, s.cy + s.r); }
+        else if (s.t === "triangle" && s.pts) { for (const [px, py] of s.pts) { minX = Math.min(minX, px); maxX = Math.max(maxX, px); minY = Math.min(minY, py); maxY = Math.max(maxY, py); } }
+        else if (s.t === "rect") { minX = Math.min(minX, s.x); maxX = Math.max(maxX, s.x + s.w); minY = Math.min(minY, s.y); maxY = Math.max(maxY, s.y + s.h); }
+      });
+      const margin = Math.max((maxX - minX), (maxY - minY)) * 0.3 + 1;
+      instructions.push({ cmd: "setup", xRange: [minX - margin, maxX + margin], yRange: [minY - margin, maxY + margin] });
+      
+      const shapeColors = ["#00d8fe", "#f59e0b", "#a78bfa", "#4ade80", "#f87171"];
+      shapes.forEach((s, idx) => {
+        const color = s.color || shapeColors[idx % shapeColors.length];
+        if (s.t === "circle") {
+          instructions.push({
+            cmd: "shape",
+            type: "circle",
+            cx: s.cx,
+            cy: s.cy,
+            r: s.r,
+            color,
+            label: s.r ? `r=${s.r}` : null,
+            fill: true,
+            startAt: 0.15 + idx * 0.12,
+            endAt: 0.6 + idx * 0.12
+          });
+        } else if (s.t === "triangle" || s.t === "polygon") {
+          instructions.push({
+            cmd: "shape",
+            type: s.t,
+            pts: s.pts,
+            color,
+            label: s.labels ? s.labels.join("") : null,
+            fill: true,
+            startAt: 0.15 + idx * 0.12,
+            endAt: 0.6 + idx * 0.12
+          });
+        } else if (s.t === "rect") {
+          instructions.push({
+            cmd: "shape",
+            type: "rect",
+            x: s.x,
+            y: s.y,
+            w: s.w,
+            h: s.h,
+            color,
+            fill: true,
+            startAt: 0.15 + idx * 0.12,
+            endAt: 0.6 + idx * 0.12
+          });
+        }
+      });
+    }
+  } else {
+    instructions.push({ cmd: "setup", xRange: [-2, 2], yRange: [-2, 2] });
+    instructions.push({
+      cmd: "shape",
+      type: "generic_pulse",
+      startAt: 0.05,
+      endAt: 0.95
+    });
+  }
+  
+  return instructions;
+}
+
+function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
   const pad = { top: 44, bottom: 36, left: 42, right: 14 };
   const plotW = panelW - pad.left - pad.right;
   const plotH = panelH - pad.top - pad.bottom;
@@ -417,277 +690,344 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
   resetLabelBoxes();
   ctx.save();
 
-  if (type === "quadratic" || type === "calculus") {
-    const xRange = viz.xRange || [-4, 6];
-    const yRange = viz.yRange || [-3, 8];
-    const { cx, cy } = mkToCanvas(xRange, yRange, pad, plotW, plotH);
-    drawAxes(ctx, xRange, yRange, pad, plotW, plotH, Math.min(1, t / 0.25));
+  // Dark Manim-like background
+  ctx.fillStyle = "#0c0c0b";
+  ctx.fillRect(0, 0, panelW, panelH);
 
-    const { a = 1, b = 0, c = 0 } = viz;
-
-    const curveT = Math.min(1, Math.max(0, (t - 0.2) / 0.5));
-    if (curveT > 0) {
-      const totalPts = 120;
-      const drawPts = Math.floor(totalPts * curveT);
-      ctx.save();
-      ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
-      ctx.strokeStyle = "#00d8fe"; ctx.lineWidth = 2.5;
-      ctx.shadowColor = "#00d8fe"; ctx.shadowBlur = 10;
-      ctx.beginPath();
-      let started = false;
-      for (let i = 0; i <= drawPts; i++) {
-        const mx = xRange[0] + (i / totalPts) * (xRange[1] - xRange[0]);
-        const my = a * mx * mx + b * mx + c;
-        if (!started) { ctx.moveTo(cx(mx), cy(my)); started = true; } else ctx.lineTo(cx(mx), cy(my));
-      }
-      ctx.stroke();
-      ctx.restore();
-
-      if (type === "calculus" && viz.from != null && viz.to != null && curveT > 0.8) {
-        const areaT = Math.min(1, (t - 0.7) / 0.25);
-        const from = viz.from; const to = viz.to;
-        ctx.save(); ctx.globalAlpha = areaT * 0.3;
-        ctx.fillStyle = "#6366f1";
-        ctx.beginPath(); ctx.moveTo(cx(from), cy(0));
-        for (let i = 0; i <= 80; i++) {
-          const mx = from + (i / 80) * (to - from);
-          const my = a * mx * mx + b * mx + c;
-          ctx.lineTo(cx(mx), cy(Math.max(yRange[0], Math.min(yRange[1], my))));
-        }
-        ctx.lineTo(cx(to), cy(0)); ctx.closePath(); ctx.fill();
-        ctx.globalAlpha = areaT; ctx.strokeStyle = "#a78bfa"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
-        ctx.beginPath(); ctx.moveTo(cx(from), cy(0)); ctx.lineTo(cx(from), cy(a * from * from + b * from + c)); ctx.stroke();
-        ctx.beginPath(); ctx.moveTo(cx(to), cy(0)); ctx.lineTo(cx(to), cy(a * to * to + b * to + c)); ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-        if (viz.area != null) {
-          drawAvoidanceText(ctx, `S ≈ ${viz.area}`, cx((from + to) / 2), cy(0), "#c4b5fd", "bold 12px 'Sora',sans-serif");
-        }
-      }
-    }
-
-    const rootT = Math.min(1, Math.max(0, (t - 0.72) / 0.18));
-    if (rootT > 0 && viz.roots && viz.roots.length) {
-      for (const root of viz.roots) {
-        if (root < xRange[0] || root > xRange[1]) continue;
-        ctx.save(); ctx.globalAlpha = rootT;
-        ctx.fillStyle = "#f59e0b"; ctx.shadowColor = "#f59e0b"; ctx.shadowBlur = 12;
-        ctx.beginPath(); ctx.arc(cx(root), cy(0), 5.5, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
-        const fmtRoot = Number.isInteger(root) ? root : root.toFixed(2);
-        registerAvoidanceBox(cx(root) - 6, cy(0) - 6, 12, 12);
-        drawAvoidanceText(ctx, `x=${fmtRoot}`, cx(root), cy(0), "#fbbf24", "bold 12px 'Sora',sans-serif");
-      }
-    }
-
-    const vtxT = Math.min(1, Math.max(0, (t - 0.82) / 0.18));
-    if (vtxT > 0 && viz.vertex) {
-      const [vx, vy] = viz.vertex;
-      ctx.save(); ctx.globalAlpha = vtxT;
-      ctx.fillStyle = "#a78bfa"; ctx.shadowColor = "#a78bfa"; ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.arc(cx(vx), cy(vy), 5.5, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      const fvx = Number.isInteger(vx) ? vx : vx.toFixed(2);
-      const fvy = Number.isInteger(vy) ? vy : vy.toFixed(2);
-      registerAvoidanceBox(cx(vx) - 6, cy(vy) - 6, 12, 12);
-      drawAvoidanceText(ctx, `(${fvx},${fvy})`, cx(vx), cy(vy), "#c4b5fd", "bold 11px 'Sora',sans-serif");
-    }
-
-  } else if (type === "linear" || type === "system") {
-    const xRange = viz.xRange || [-5, 5];
-    const yRange = viz.yRange || [-5, 8];
-    const { cx, cy } = mkToCanvas(xRange, yRange, pad, plotW, plotH);
-    drawAxes(ctx, xRange, yRange, pad, plotW, plotH, Math.min(1, t / 0.25));
-
-    const lineColors = ["#00d8fe", "#f59e0b", "#a78bfa", "#4ade80"];
-    const lines = viz.lines || [];
-
-    ctx.save();
-    ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
-    lines.forEach((line, idx) => {
-      const lT = Math.min(1, Math.max(0, (t - 0.2 - idx * 0.18) / 0.45));
-      if (lT <= 0) return;
-      const color = lineColors[idx % lineColors.length];
-      const totalPts = 60; const drawPts = Math.floor(totalPts * lT);
-      ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 2.5;
-      ctx.shadowColor = color; ctx.shadowBlur = 8;
-      ctx.beginPath(); let s2 = false;
-      for (let i = 0; i <= drawPts; i++) {
-        const mx = xRange[0] + (i / totalPts) * (xRange[1] - xRange[0]);
-        const my = line.m * mx + line.b;
-        if (!s2) { ctx.moveTo(cx(mx), cy(my)); s2 = true; } else ctx.lineTo(cx(mx), cy(my));
-      }
-      ctx.stroke(); ctx.restore();
-    });
-    ctx.restore();
-
-    lines.forEach((line, idx) => {
-      const lT = Math.min(1, Math.max(0, (t - 0.2 - idx * 0.18) / 0.45));
-      if (lT <= 0.75 || !line.label) return;
-      const color = lineColors[idx % lineColors.length];
-      const midMx = (xRange[0] + xRange[1]) / 2;
-      const midMy = line.m * midMx + line.b;
-      if (midMy >= yRange[0] && midMy <= yRange[1]) {
-        drawAvoidanceText(ctx, line.label, cx(midMx), cy(midMy), color, "bold 11px 'Sora',sans-serif");
-      }
-    });
-
-    if (viz.intersection && t > 0.78) {
-      const { x: ix, y: iy } = viz.intersection;
-      ctx.save(); ctx.globalAlpha = Math.min(1, (t - 0.78) / 0.18);
-      ctx.fillStyle = "#4ade80"; ctx.shadowColor = "#4ade80"; ctx.shadowBlur = 14;
-      ctx.beginPath(); ctx.arc(cx(ix), cy(iy), 7, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      const fix = Number.isInteger(ix) ? ix : ix.toFixed(2);
-      const fiy = Number.isInteger(iy) ? iy : iy.toFixed(2);
-      registerAvoidanceBox(cx(ix) - 8, cy(iy) - 8, 16, 16);
-      drawAvoidanceText(ctx, `(${fix}, ${fiy})`, cx(ix), cy(iy), "#4ade80", "bold 12px 'Sora',sans-serif");
-    }
-
-  } else if (type === "trigonometry") {
-    const xRange = viz.xRange || [0, 6.28];
-    const yRange = viz.yRange || [-1.6, 1.6];
-    const { cx, cy } = mkToCanvas(xRange, yRange, pad, plotW, plotH);
-    drawAxes(ctx, xRange, yRange, pad, plotW, plotH, Math.min(1, t / 0.25));
-
-    const fn = viz.fn || "sin";
-    const amp = viz.amplitude || 1;
-    const period = viz.period || Math.PI * 2;
-    const phase = viz.phase || 0;
-    const curveT = Math.min(1, Math.max(0, (t - 0.22) / 0.55));
-    if (curveT > 0) {
-      const totalPts = 150; const drawPts = Math.floor(totalPts * curveT);
-      ctx.save(); ctx.strokeStyle = "#00d8fe"; ctx.lineWidth = 2.5;
-      ctx.shadowColor = "#00d8fe"; ctx.shadowBlur = 10;
-      ctx.beginPath(); let st = false;
-      for (let i = 0; i <= drawPts; i++) {
-        const mx = xRange[0] + (i / totalPts) * (xRange[1] - xRange[0]);
-        const raw = fn === "cos" ? Math.cos((2 * Math.PI / period) * mx + phase)
-          : fn === "tan" ? Math.tan((2 * Math.PI / period) * mx + phase)
-          : Math.sin((2 * Math.PI / period) * mx + phase);
-        const my = amp * raw;
-        if (Math.abs(my) > 2.5) { ctx.stroke(); ctx.beginPath(); st = false; continue; }
-        if (!st) { ctx.moveTo(cx(mx), cy(my)); st = true; } else ctx.lineTo(cx(mx), cy(my));
-      }
-      ctx.stroke(); ctx.restore();
-
-      if (curveT > 0.7 && yRange[0] <= 0 && yRange[1] >= 0) {
-        ctx.save(); ctx.globalAlpha = Math.min(1, (curveT - 0.7) / 0.3);
-        ctx.font = "10px monospace"; ctx.fillStyle = "#6b7280"; ctx.textAlign = "center";
-        const piVals = [["π/2", Math.PI / 2], ["π", Math.PI], ["3π/2", 3 * Math.PI / 2], ["2π", 2 * Math.PI]];
-        for (const [lbl, val] of piVals) {
-          if (val >= xRange[0] && val <= xRange[1]) ctx.fillText(lbl, cx(val), cy(0) + 13);
-        }
-        ctx.restore();
-      }
-    }
-
-  } else if (type === "geometry") {
-    const shapes = viz.shapes || [];
-    const titleLower = (data.title || "").toLowerCase();
-    const isPetalTile = titleLower.includes("viên gạch") || titleLower.includes("cánh hoa") ||
-      titleLower.includes("parabol") || titleLower.includes("petal") || titleLower.includes("tile") ||
-      titleLower.includes("gạch") || titleLower.includes("hoa");
-
-    const rectShape = shapes.find(s => s.t === "rect");
-    const squareSide = rectShape ? Math.max(rectShape.w, rectShape.h) : 4;
-
-    if (isPetalTile || shapes.length === 0) {
-      const cx2 = panelW / 2;
-      const cy2 = panelH / 2;
-      const size = Math.min(panelW - 80, panelH - 80);
-      drawPetalTile(ctx, cx2, cy2, size, t, squareSide, lang);
-      ctx.restore();
-      return;
-    }
-
-    // Generic geometry shapes
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    for (const s of shapes) {
-      if (s.t === "circle") { minX = Math.min(minX, s.cx - s.r); maxX = Math.max(maxX, s.cx + s.r); minY = Math.min(minY, s.cy - s.r); maxY = Math.max(maxY, s.cy + s.r); }
-      else if (s.t === "triangle" && s.pts) { for (const [px, py] of s.pts) { minX = Math.min(minX, px); maxX = Math.max(maxX, px); minY = Math.min(minY, py); maxY = Math.max(maxY, py); } }
-      else if (s.t === "rect") { minX = Math.min(minX, s.x); maxX = Math.max(maxX, s.x + s.w); minY = Math.min(minY, s.y); maxY = Math.max(maxY, s.y + s.h); }
-    }
-    const margin = Math.max((maxX - minX), (maxY - minY)) * 0.3 + 1;
-    const xRange = [minX - margin, maxX + margin];
-    const yRange = [minY - margin, maxY + margin];
-    const { cx, cy } = mkToCanvas(xRange, yRange, pad, plotW, plotH);
-    const shapeColors = ["#00d8fe", "#f59e0b", "#a78bfa", "#4ade80", "#f87171"];
-
-    ctx.save();
-    ctx.beginPath(); ctx.rect(pad.left, pad.top, plotW, plotH); ctx.clip();
-    shapes.forEach((s, idx) => {
-      const sT = Math.min(1, Math.max(0, (t - 0.15 - idx * 0.12) / 0.45));
-      if (sT <= 0) return;
-      const color = s.color || shapeColors[idx % shapeColors.length];
-      ctx.save(); ctx.globalAlpha = sT; ctx.strokeStyle = color; ctx.lineWidth = 2.5;
-      ctx.shadowColor = color; ctx.shadowBlur = 12;
-
-      if (s.t === "circle") {
-        const endAngle = Math.PI * 2 * sT;
-        ctx.beginPath(); ctx.arc(cx(s.cx), cy(s.cy), Math.abs(cx(s.cx + s.r) - cx(s.cx)), 0, endAngle); ctx.stroke();
-        ctx.restore();
-        if (sT > 0.8) {
-          ctx.save(); ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.setLineDash([4, 4]);
-          ctx.beginPath(); ctx.moveTo(cx(s.cx), cy(s.cy)); ctx.lineTo(cx(s.cx + s.r), cy(s.cy)); ctx.stroke();
-          ctx.restore();
-          registerAvoidanceBox(cx(s.cx) - 4, cy(s.cy) - 4, 8, 8);
-          const fmtR = Number.isInteger(s.r) ? s.r : s.r.toFixed(2);
-          drawAvoidanceText(ctx, `r=${fmtR}`, cx(s.cx + s.r / 2), cy(s.cy), color);
-          ctx.save(); ctx.fillStyle = color;
-          ctx.beginPath(); ctx.arc(cx(s.cx), cy(s.cy), 3.5, 0, Math.PI * 2); ctx.fill();
-          ctx.restore();
-        }
-      } else if (s.t === "triangle" && s.pts && s.pts.length === 3) {
-        const numSides = Math.floor(3 * sT);
-        ctx.beginPath(); ctx.moveTo(cx(s.pts[0][0]), cy(s.pts[0][1]));
-        for (let i = 1; i <= numSides; i++) ctx.lineTo(cx(s.pts[i % 3][0]), cy(s.pts[i % 3][1]));
-        if (sT >= 1) ctx.closePath();
-        ctx.stroke(); ctx.restore();
-        if (sT > 0.9) {
-          const labels = s.labels || ["A", "B", "C"];
-          for (let i = 0; i < 3; i++) {
-            const [px, py] = s.pts[i];
-            registerAvoidanceBox(cx(px) - 6, cy(py) - 6, 12, 12);
-            drawAvoidanceText(ctx, labels[i], cx(px), cy(py), color, "bold 13px 'Sora',sans-serif");
-          }
-          if (s.sides) {
-            for (let i = 0; i < Math.min(s.sides.length, 3); i++) {
-              const p1 = s.pts[i], p2 = s.pts[(i + 1) % 3];
-              drawAvoidanceText(ctx, s.sides[i], cx((p1[0] + p2[0]) / 2), cy((p1[1] + p2[1]) / 2), "#9ca3af", "11px 'Sora',sans-serif");
-            }
-          }
-        }
-      } else if (s.t === "rect") {
-        const rw = Math.abs(cx(s.x + s.w) - cx(s.x));
-        const rh = Math.abs(cy(s.y) - cy(s.y + s.h));
-        const rx = cx(s.x); const ry = cy(s.y + s.h);
-        ctx.beginPath(); ctx.rect(rx, ry, rw * sT, rh); ctx.stroke();
-        ctx.restore();
-        if (sT > 0.85) {
-          ctx.save(); ctx.globalAlpha = sT * 0.15; ctx.fillStyle = color;
-          ctx.fillRect(rx, ry, rw, rh); ctx.restore();
-          registerAvoidanceBox(rx - 4, ry - 4, rw + 8, rh + 8);
-          const fw = Number.isInteger(s.w) ? s.w : s.w.toFixed(1);
-          const fh = Number.isInteger(s.h) ? s.h : s.h.toFixed(1);
-          drawAvoidanceText(ctx, fw, rx + rw / 2, ry + rh, "#9ca3af", "11px 'Sora',sans-serif");
-          drawAvoidanceText(ctx, fh, rx, ry + rh / 2, "#9ca3af", "11px 'Sora',sans-serif");
-        }
-      } else {
-        ctx.restore();
-      }
-    });
-    ctx.restore();
-
-    if (viz.labels && t > 0.7) {
-      for (const lbl of viz.labels) {
-        drawAvoidanceText(ctx, lbl.text, cx(lbl.x), cy(lbl.y), "#9ca3af", "12px 'Sora',sans-serif");
-      }
-    }
-
+  // Parse instructions
+  let instructions = [];
+  if (data.viz && Array.isArray(data.viz.instructions)) {
+    instructions = data.viz.instructions;
   } else {
-    drawGenericViz(ctx, data, panelW, panelH, t, lang);
+    instructions = convertLegacyToInstructions(data);
   }
+
+  // Find setup command to know bounds
+  const setupCmd = instructions.find(inst => inst.cmd === "setup") || { xRange: [-5, 5], yRange: [-5, 5] };
+  const xRange = setupCmd.xRange || [-5, 5];
+  const yRange = setupCmd.yRange || [-5, 5];
+
+  const xMid = (xRange[0] + xRange[1]) / 2;
+  const yMid = (yRange[0] + yRange[1]) / 2;
+
+  // Active camera center and zoom interpolation
+  let camX = xMid;
+  let camY = yMid;
+  let camZoom = 1.0;
+
+  const camInsts = instructions.filter(inst => inst.cmd === "camera");
+  camInsts.sort((a, b) => a.startAt - b.startAt);
+
+  let lastCamX = xMid;
+  let lastCamY = yMid;
+  let lastCamZoom = 1.0;
+
+  for (const inst of camInsts) {
+    const { targetX, targetY, zoom: instZoom = 1.0, startAt, endAt = startAt + 0.2 } = inst;
+    if (t >= startAt) {
+      const factor = Math.min(1, (t - startAt) / (endAt - startAt));
+      const ease = factor * factor * (3 - 2 * factor); // smoothstep
+      camX = lastCamX + (targetX - lastCamX) * ease;
+      camY = lastCamY + (targetY - lastCamY) * ease;
+      camZoom = lastCamZoom + (instZoom - lastCamZoom) * ease;
+      
+      if (t >= endAt) {
+        lastCamX = targetX;
+        lastCamY = targetY;
+        lastCamZoom = instZoom;
+      }
+    }
+  }
+
+  // Camera-aware mapping coordinates
+  const cx = (x) => {
+    const dx = x - camX;
+    const x_rel = camX + dx * camZoom;
+    return pad.left + ((x_rel - xRange[0]) / (xRange[1] - xRange[0])) * plotW;
+  };
+
+  const cy = (y) => {
+    const dy = y - camY;
+    const y_rel = camY + dy * camZoom;
+    return pad.top + plotH - ((y_rel - yRange[0]) / (yRange[1] - yRange[0])) * plotH;
+  };
+
+  // Safe evaluate helper
+  const safeEvaluate = (expr, xVal) => {
+    const sanitized = expr
+      .replace(/Math\./g, "")
+      .replace(/sin/g, "Math.sin")
+      .replace(/cos/g, "Math.cos")
+      .replace(/tan/g, "Math.tan")
+      .replace(/exp/g, "Math.exp")
+      .replace(/log/g, "Math.log")
+      .replace(/pow/g, "Math.pow")
+      .replace(/sqrt/g, "Math.sqrt")
+      .replace(/pi/g, "Math.PI")
+      .replace(/PI/g, "Math.PI")
+      .replace(/e/g, "Math.E");
+    try {
+      const fn = new Function("x", `return ${sanitized};`);
+      return fn(xVal);
+    } catch {
+      return 0;
+    }
+  };
+
+  // Run each instruction
+  instructions.forEach(inst => {
+    const cmd = inst.cmd;
+
+    if (cmd === "grid") {
+      const xStep = Math.max(1, Math.round((xRange[1] - xRange[0]) / 8));
+      const yStep = Math.max(1, Math.round((yRange[1] - yRange[0]) / 6));
+      ctx.save();
+      ctx.globalAlpha = (inst.alpha || 0.22) * Math.min(1, t / 0.25);
+      ctx.strokeStyle = inst.color || "#4b5563";
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.rect(pad.left, pad.top, plotW, plotH);
+      ctx.clip();
+      
+      for (let xi = Math.ceil(xRange[0]/xStep)*xStep; xi <= xRange[1]; xi += xStep) {
+        ctx.beginPath(); ctx.moveTo(cx(xi), pad.top); ctx.lineTo(cx(xi), pad.top + plotH); ctx.stroke();
+      }
+      for (let yi = Math.ceil(yRange[0]/yStep)*yStep; yi <= yRange[1]; yi += yStep) {
+        ctx.beginPath(); ctx.moveTo(pad.left, cy(yi)); ctx.lineTo(pad.left + plotW, cy(yi)); ctx.stroke();
+      }
+      ctx.restore();
+
+    } else if (cmd === "axes") {
+      ctx.save();
+      ctx.globalAlpha = (inst.alpha || 1.0) * Math.min(1, t / 0.25);
+      ctx.strokeStyle = inst.color || "#6b7280";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.rect(pad.left, pad.top, plotW, plotH);
+      ctx.clip();
+      
+      const yZero = cy(0);
+      if (yZero >= pad.top && yZero <= pad.top + plotH) {
+        ctx.beginPath(); ctx.moveTo(pad.left, yZero); ctx.lineTo(pad.left + plotW, yZero); ctx.stroke();
+      }
+      const xZero = cx(0);
+      if (xZero >= pad.left && xZero <= pad.left + plotW) {
+        ctx.beginPath(); ctx.moveTo(xZero, pad.top); ctx.lineTo(xZero, pad.top + plotH); ctx.stroke();
+      }
+      ctx.restore();
+
+      // Draw axis labels
+      ctx.save();
+      ctx.fillStyle = "#9ca3af";
+      ctx.font = "12px sans-serif";
+      const { xLabel = "x", yLabel = "y" } = inst;
+      
+      // X label near the right end of X axis
+      const yZeroText = Math.max(pad.top + 10, Math.min(pad.top + plotH - 10, yZero));
+      ctx.fillText(xLabel, pad.left + plotW - 15, yZeroText - 10);
+      
+      // Y label near the top end of Y axis
+      const xZeroText = Math.max(pad.left + 10, Math.min(pad.left + plotW - 20, xZero));
+      ctx.fillText(yLabel, xZeroText + 10, pad.top + 15);
+      ctx.restore();
+
+    } else if (cmd === "function") {
+      const { expr, color = "#00d8fe", width = 2.5, glow = true, label, startAt = 0.2, endAt = startAt + 0.5, domain } = inst;
+      const curveT = Math.min(1, Math.max(0, (t - startAt) / (endAt - startAt)));
+      if (curveT > 0) {
+        const startX = domain ? domain[0] : xRange[0];
+        const endX = domain ? domain[1] : xRange[1];
+        const totalPts = 120;
+        const drawPts = Math.floor(totalPts * curveT);
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(pad.left, pad.top, plotW, plotH);
+        ctx.clip();
+        
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        if (glow) {
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 10;
+        }
+        ctx.beginPath();
+        let started = false;
+        for (let i = 0; i <= drawPts; i++) {
+          const mx = startX + (i / totalPts) * (endX - startX);
+          const my = safeEvaluate(expr, mx);
+          const sx = cx(mx);
+          const sy = cy(my);
+          if (isNaN(sy) || !isFinite(sy) || sy < pad.top || sy > pad.top + plotH) {
+            started = false;
+            continue;
+          }
+          if (!started) { ctx.moveTo(sx, sy); started = true; }
+          else { ctx.lineTo(sx, sy); }
+        }
+        ctx.stroke();
+        ctx.restore();
+        
+        if (curveT >= 0.8 && label) {
+          const midMx = domain ? (domain[0] + domain[1]) / 2 : (xRange[0] + xRange[1]) / 2;
+          const midMy = safeEvaluate(expr, midMx);
+          if (midMy >= yRange[0] && midMy <= yRange[1]) {
+            drawAvoidanceText(ctx, label, cx(midMx), cy(midMy), color);
+          }
+        }
+      }
+
+    } else if (cmd === "point") {
+      const { x, y, color = "#fbbf24", label, glow = true, startAt = 0.7, showDot = true } = inst;
+      const ptT = Math.min(1, Math.max(0, (t - startAt) / 0.15));
+      if (ptT > 0) {
+        if (showDot) {
+          ctx.save();
+          ctx.globalAlpha = ptT;
+          ctx.fillStyle = color;
+          if (glow) {
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 12;
+          }
+          ctx.beginPath(); ctx.arc(cx(x), cy(y), 5.5, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+        
+        if (ptT > 0.8 && label) {
+          registerAvoidanceBox(cx(x) - 6, cy(y) - 6, 12, 12);
+          drawAvoidanceText(ctx, label, cx(x), cy(y), color);
+        }
+      }
+
+    } else if (cmd === "text") {
+      const { x, y, text: txt, color = "#9ca3af", size = 12, align = "center", startAt = 0.2 } = inst;
+      const textT = Math.min(1, Math.max(0, (t - startAt) / 0.15));
+      if (textT > 0 && txt) {
+        ctx.save();
+        ctx.globalAlpha = textT;
+        ctx.fillStyle = color;
+        ctx.font = `${size}px sans-serif`;
+        ctx.textAlign = align;
+        ctx.fillText(txt, cx(x), cy(y));
+        ctx.restore();
+      }
+
+    } else if (cmd === "line") {
+      const { p1, p2, color = "#faf9f5", width = 2.0, isVector = false, isPhoton = false, label, startAt = 0.2, endAt = startAt + 0.4, dashed = false, dashPattern = [4, 4] } = inst;
+      const lineT = Math.min(1, Math.max(0, (t - startAt) / (endAt - startAt)));
+      if (lineT > 0) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        if (dashed) {
+          ctx.setLineDash(dashPattern);
+        }
+        ctx.beginPath();
+        ctx.rect(pad.left, pad.top, plotW, plotH);
+        ctx.clip();
+        
+        const x1 = p1[0], y1 = p1[1];
+        const x2 = p2[0], y2 = p2[1];
+        const currX2 = x1 + (x2 - x1) * lineT;
+        const currY2 = y1 + (y2 - y1) * lineT;
+        const sx1 = cx(x1), sy1 = cy(y1);
+        const sx2 = cx(currX2), sy2 = cy(currY2);
+        
+        if (isPhoton) {
+          const dx = sx2 - sx1; const dy = sy2 - sy1;
+          const len = Math.sqrt(dx*dx + dy*dy);
+          const waves = 9.0; const amp = 6.0;
+          const ux = dx / (len || 1); const uy = dy / (len || 1);
+          const nx = -uy; const ny = ux;
+          ctx.beginPath();
+          for (let i = 0; i <= 80 * lineT; i++) {
+            const u = i / 80;
+            const px = sx1 + dx * u + nx * amp * Math.sin(u * waves * 2 * Math.PI);
+            const py = sy1 + dy * u + ny * amp * Math.sin(u * waves * 2 * Math.PI);
+            if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+          }
+          ctx.stroke();
+        } else {
+          ctx.beginPath(); ctx.moveTo(sx1, sy1); ctx.lineTo(sx2, sy2); ctx.stroke();
+          
+          if (isVector && lineT >= 1.0) {
+            const dx = sx2 - sx1; const dy = sy2 - sy1;
+            const angle = Math.atan2(dy, dx);
+            const arrowSize = 8;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(sx2, sy2);
+            ctx.lineTo(sx2 - arrowSize * Math.cos(angle - Math.PI/6), sy2 - arrowSize * Math.sin(angle - Math.PI/6));
+            ctx.lineTo(sx2 - arrowSize * Math.cos(angle + Math.PI/6), sy2 - arrowSize * Math.sin(angle + Math.PI/6));
+            ctx.closePath(); ctx.fill();
+          }
+        }
+        ctx.restore();
+        
+        if (lineT >= 0.8 && label) {
+          drawAvoidanceText(ctx, label, (sx1 + sx2) / 2, (sy1 + sy2) / 2, color);
+        }
+      }
+
+    } else if (cmd === "shape") {
+      const { type: shapeType, color = "#6366f1", fill = false, label, startAt = 0.2, endAt = startAt + 0.4 } = inst;
+      const shapeT = Math.min(1, Math.max(0, (t - startAt) / (endAt - startAt)));
+      if (shapeT > 0) {
+        ctx.save();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.rect(pad.left, pad.top, plotW, plotH);
+        ctx.clip();
+        
+        if (shapeType === "circle") {
+          const { cx: scx, cy: scy, r: sr } = inst;
+          const baseRad = Math.abs(cx(scx + sr) - cx(scx));
+          ctx.beginPath(); ctx.arc(cx(scx), cy(scy), baseRad, 0, Math.PI * 2 * shapeT); ctx.stroke();
+          if (fill && shapeT >= 1.0) {
+            ctx.fillStyle = color; ctx.globalAlpha = 0.15; ctx.fill();
+          }
+          ctx.restore();
+          if (shapeT >= 0.8 && label) drawAvoidanceText(ctx, label, cx(scx), cy(scy), color);
+
+        } else if (shapeType === "rect") {
+          const { x: rx, y: ry, w: rw, h: rh } = inst;
+          const screenW = cx(rx + rw) - cx(rx); const screenH = cy(ry) - cy(ry + rh);
+          const sx = cx(rx); const sy = cy(ry + rh);
+          ctx.beginPath(); ctx.rect(sx, sy, screenW * shapeT, screenH); ctx.stroke();
+          if (fill && shapeT >= 1.0) {
+            ctx.fillStyle = color; ctx.globalAlpha = 0.15; ctx.fillRect(sx, sy, screenW, screenH);
+          }
+          ctx.restore();
+          if (shapeT >= 0.8 && label) drawAvoidanceText(ctx, label, sx + screenW / 2, sy + screenH / 2, color);
+
+        } else if ((shapeType === "triangle" || shapeType === "polygon") && inst.pts) {
+          const pts = inst.pts; const n = pts.length;
+          ctx.beginPath(); ctx.moveTo(cx(pts[0][0]), cy(pts[0][1]));
+          const drawSides = Math.floor(n * shapeT);
+          for (let i = 1; i <= drawSides; i++) ctx.lineTo(cx(pts[i % n][0]), cy(pts[i % n][1]));
+          if (shapeT >= 1.0) ctx.closePath();
+          ctx.stroke();
+          if (fill && shapeT >= 1.0) {
+            ctx.fillStyle = color; ctx.globalAlpha = 0.15; ctx.fill();
+          }
+          ctx.restore();
+          if (shapeT >= 0.8 && label) {
+            let avgX = 0, avgY = 0; pts.forEach(([px, py]) => { avgX += px; avgY += py; });
+            drawAvoidanceText(ctx, label, cx(avgX / n), cy(avgY / n), color);
+          }
+        } else if (shapeType === "petal_tile") {
+          ctx.restore();
+          const size = Math.min(panelW - 80, panelH - 80);
+          drawPetalTile(ctx, panelW / 2, panelH / 2, size, t, 4, lang);
+        } else if (shapeType === "generic_pulse") {
+          ctx.restore();
+          drawGenericViz(ctx, data, panelW, panelH, t, lang);
+        } else {
+          ctx.restore();
+        }
+      }
+    }
+  });
 
   // "VISUALIZATION" label
   if (t > 0.05) {
@@ -726,6 +1066,7 @@ function drawGenericViz(ctx, data, panelW, panelH, t, lang = "vi") {
 // ── Inline Video Player (renders in chat message, not a modal overlay) ──
 function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   const canvasRef = useRef(null);
+  const videoRef = useRef(null);
   const animRef = useRef(null);
   const progressFillRef = useRef(null);
   // ── Use a ref for isPlaying so the animation loop never needs it as a
@@ -737,6 +1078,10 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   const [progress, setProgress] = useState(0);
   const [loadingSteps, setLoadingSteps] = useState(true);
   const [videoData, setVideoData] = useState(null);
+  const [videoUrl, setVideoUrl] = useState(null);
+  const [loadingVideo, setLoadingVideo] = useState(false);
+  const [loadingVideoText, setLoadingVideoText] = useState("Đang kết xuất chuyển động...");
+  const [videoDuration, setVideoDuration] = useState(16);
   const frameRef = useRef(0);
   const progressTickRef = useRef(0); // throttle counter
   const totalFrames = 480;
@@ -746,7 +1091,29 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
     const next = typeof val === "function" ? val(isPlayingRef.current) : val;
     isPlayingRef.current = next;
     setIsPlayingState(next);
+    if (videoRef.current) {
+      if (next) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+      }
+    }
   }
+
+  const handleSeek = (e) => {
+    const pct = parseFloat(e.target.value);
+    setProgress(pct);
+    if (progressFillRef.current) {
+      progressFillRef.current.style.width = `${pct}%`;
+    }
+    
+    if (videoUrl && videoRef.current) {
+      const dur = videoRef.current.duration || videoDuration;
+      videoRef.current.currentTime = (pct / 100) * dur;
+    } else {
+      frameRef.current = Math.floor((pct / 100) * totalFrames);
+    }
+  };
 
   useEffect(() => {
     async function fetchData() {
@@ -754,127 +1121,168 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
       try {
         const { chat: chatFn } = await import("./duoServer");
 
-        // ── Stage 1: Fetch EN and VI solutions in PARALLEL ─────────────────
-        const makeStepPrompt = (lang) => {
-          const langInstr = lang === "en"
-            ? "Respond ONLY in English."
-            : "Trả lời HOÀN TOÀN bằng tiếng Việt.";
-          const endLine = lang === "en"
-            ? 'End with "✓ Answer: [final answer]".'
-            : 'Kết thúc bằng "✓ Đáp án: [kết quả cuối]".';
-          const base = imageBase64
-            ? `You are a math tutor. Analyze the math problem in the provided image and give a COMPLETE, detailed step-by-step solution. ${langInstr}
-Use LaTeX for ALL math expressions: inline $like this$, block $$like this$$.
-Format as a numbered list (up to 10 steps). ${endLine}
-ONLY output the solution steps. No preamble, no JSON, no code blocks.`
-            : `You are a math tutor. Solve this math problem COMPLETELY step-by-step: "${question}"
-${langInstr}
-Use LaTeX for ALL math expressions: inline $like this$, block $$like this$$.
-Format as a numbered list (up to 10 steps). ${endLine}
-ONLY output the solution steps. No preamble, no JSON, no code blocks.`;
-          return base;
-        };
+        const vizSchemaDoc = `Format the JSON visualization data as a sequence of drawing instructions to represent the math problem visually.
+We support a set of visual commands in the "instructions" array:
+1. {"cmd": "setup", "xRange": [min, max], "yRange": [min, max]} -> Sets up the coordinate bounds. Always run this first.
+2. {"cmd": "grid"} -> Draws Cartesian coordinates grid.
+3. {"cmd": "axes", "xLabel": "TEXT", "yLabel": "TEXT"} -> Draws coordinate X and Y axes with custom labels (e.g. xLabel="t (h)", yLabel="v (km/h)").
+4. {"cmd": "function", "expr": "MATH_EXPR_IN_JS", "color": "HEX", "label": "TEXT", "glow": true, "startAt": float, "endAt": float, "domain": [min, max]} -> Plots a function f(x) curve. Use standard JavaScript Math operators or x (e.g. "x*x - 2*x", "Math.sin(x)"). Use "domain" (e.g. [0, 3]) to restrict the drawing domain of the function instead of drawing infinitely.
+5. {"cmd": "point", "x": float, "y": float, "color": "HEX", "label": "TEXT", "glow": true, "startAt": float, "showDot": bool} -> Draws a point at (x, y). Set "showDot": false to only show the label without the circular bullet.
+6. {"cmd": "line", "p1": [x,y], "p2": [x,y], "color": "HEX", "width": float, "isVector": bool, "isPhoton": bool, "label": "TEXT", "startAt": float, "endAt": float, "dashed": bool, "dashPattern": [4, 4]} -> Draws a line. Set "dashed": true for dashed guidelines.
+7. {"cmd": "text", "x": float, "y": float, "text": "TEXT", "color": "HEX", "size": int, "align": "center|left|right", "startAt": float} -> Draws an arbitrary text label at coordinates (x, y) to mark ticks or write variables.
+8. {"cmd": "shape", "type": "rect|circle|triangle|polygon|petal_tile|generic_pulse", "color": "HEX", "fill": bool, "label": "TEXT", "startAt": float, "endAt": float, ...dims} -> Draws geometric shapes.
+9. {"cmd": "camera", "targetX": float, "targetY": float, "zoom": float, "startAt": float, "endAt": float} -> Smoothly pans/zooms camera to focus on a coordinate.
 
-        const [solutionDataEN, solutionDataVI] = await Promise.all([
-          chatFn(sessionId, makeStepPrompt("en"), { image: imageBase64 || null, mode: "raw_solution" }),
-          chatFn(sessionId, makeStepPrompt("vi"), { image: imageBase64 || null, mode: "raw_solution" }),
-        ]);
+Example viz object:
+{"instructions": [
+  {"cmd": "setup", "xRange": [-1, 4], "yRange": [-1, 11]},
+  {"cmd": "grid"},
+  {"cmd": "axes", "xLabel": "t (h)", "yLabel": "v (km/h)"},
+  {"cmd": "function", "expr": "-0.75*x*x + 3*x + 6", "domain": [0, 3], "color": "#00d8fe", "label": "v = -0.75t² + 3t + 6", "startAt": 0.2, "glow": true},
+  {"cmd": "line", "p1": [2, 0], "p2": [2, 9], "color": "#9ca3af", "dashed": true, "startAt": 0.7},
+  {"cmd": "line", "p1": [0, 9], "p2": [2, 9], "color": "#9ca3af", "dashed": true, "startAt": 0.7},
+  {"cmd": "point", "x": 2, "y": 9, "color": "#fbbf24", "label": "I(2; 9)", "startAt": 0.75},
+  {"cmd": "text", "x": 2, "y": -0.5, "text": "2", "startAt": 0.75},
+  {"cmd": "text", "x": -0.3, "y": 9, "text": "9", "startAt": 0.75},
+  {"cmd": "text", "x": -0.3, "y": 6, "text": "6", "startAt": 0.75},
+  {"cmd": "camera", "targetX": 2, "targetY": 9, "zoom": 1.5, "startAt": 0.75}
+]}`;
 
-        const parseSteps = (reply) =>
-          (reply || "")
-            .split("\n")
-            .map(l => l.replace(/^\d+[.)\s]+/, "").trim())
-            .filter(l => l.length > 2)
-            .slice(0, 10);
+        const prompt = imageBase64
+          ? `You are an expert math tutor and visualizer.
+Analyze the math problem in the provided image and generate both:
+1. Detailed step-by-step solution in Vietnamese (up to 10 steps).
+2. Detailed step-by-step solution in English (up to 10 steps).
+3. A sequence of drawing instructions to represent the problem visually.
 
-        const rawStepsEN = parseSteps(solutionDataEN?.reply);
-        const rawStepsVI = parseSteps(solutionDataVI?.reply);
-        // Use the English steps for viz-context classification
-        const solutionReply = solutionDataEN?.reply || solutionDataVI?.reply || "";
+Return ONLY a single valid JSON object with the following schema:
+{
+  "type": "custom",
+  "title": "SHORT_TITLE_OF_THE_PROBLEM",
+  "stepsVI": ["Bước 1...", "Bước 2..."],
+  "stepsEN": ["Step 1...", "Step 2..."],
+  "viz": {
+    "instructions": [VIZ_COMMANDS]
+  }
+}
 
-        // Stage 2: Visualization JSON
-        // We also pass rawSteps as context to help the AI classify the viz type
-        const rawSteps = rawStepsEN.length > 0 ? rawStepsEN : rawStepsVI;
-        const solutionContext = rawSteps.slice(0, 3).join(" | ");
-        const vizSchemaDoc = `Types and their viz objects:
-- quadratic  → {"a":N,"b":N,"c":N,"roots":[r1,r2],"vertex":[vx,vy],"xRange":[min,max],"yRange":[min,max]}
-- linear     → {"lines":[{"m":N,"b":N,"label":"eq"}],"xRange":[min,max],"yRange":[min,max]}
-- system     → {"lines":[{"m":N,"b":N,"label":"eq"},{"m":N,"b":N,"label":"eq"}],"intersection":{"x":N,"y":N},"xRange":[min,max],"yRange":[min,max]}
-- geometry   → {"shapes":[{"t":"rect","x":N,"y":N,"w":N,"h":N},{"t":"circle","cx":N,"cy":N,"r":N},{"t":"triangle","pts":[[x1,y1],[x2,y2],[x3,y3]],"labels":["A","B","C"]}]}
-- trigonometry → {"fn":"sin|cos|tan","amplitude":N,"period":N,"phase":N,"xRange":[min,max],"yRange":[min,max]}
-- calculus   → {"a":N,"b":N,"c":N,"from":N,"to":N,"area":"STRING","xRange":[min,max],"yRange":[min,max]}
-- other      → {}`;
-
-        const vizPrompt = imageBase64
-          ? `You are a math problem classifier. Look at the image carefully and classify the math problem type, then output the appropriate JSON visualization data.
-
-Here are the first solution steps already extracted (use them to help classify):
-"${solutionContext}"
-
-Return ONLY a single valid JSON object with this schema:
-{"type":"TYPE","title":"SHORT_TITLE_IN_PROBLEM_LANGUAGE","viz":VIZ_OBJECT}
-
+Guidelines:
+- stepsVI/stepsEN: Use LaTeX for ALL math expressions (inline $like this$, block $$like this$$).
+- stepsVI must end with "✓ Đáp án: [kết quả]". stepsEN must end with "✓ Answer: [final answer]".
+- viz instructions: Use the following schema:
 ${vizSchemaDoc}
 
-Classification rules:
-1. If the problem involves a SQUARE or RECTANGULAR tile/brick decorated with parabolic curves, petals, or flower shapes (viên gạch, gạch hoa, cánh hoa, parabol, tile) → type="geometry", title MUST contain "hoa" or "gạch", shapes=[{"t":"rect","x":0,"y":0,"w":SIDE,"h":SIDE}]
-2. If the problem involves ax²+bx+c, quadratic equations, parabola graph, roots/delta → type="quadratic", extract a,b,c,roots,vertex
-3. If the problem involves a line y=mx+b or linear equation → type="linear"
-4. If the problem involves two equations/lines intersecting → type="system"
-5. If the problem involves sin/cos/tan functions → type="trigonometry"
-6. If the problem involves integrals or area under curve → type="calculus"
-7. If the problem involves triangles, circles, rectangles (not tile petals) → type="geometry"
-8. Otherwise → type="other"
+CRITICAL RULES FOR MATHEMATHICAL CONSISTENCY & ACCURACY:
+1. All steps and explanations must be mathematically correct, highly concise, and directly solve the problem. Avoid rambling, off-topic, or conversational filler.
+2. The coordinate ranges (xRange, yRange) and drawn elements MUST match the math values in the steps.
+3. For geometric tile problems (e.g., painting a square tile of side length A containing a flower petal):
+   - Setup a coordinate range fitting the tile (e.g. xRange=[-1, A+1], yRange=[-1, A+1]).
+   - Draw a "petal_tile" shape command centered at x=A/2, y=A/2, with size=A.
+   - Example for side length 4: {"cmd": "shape", "type": "petal_tile", "x": 2, "y": 2, "size": 4, "startAt": 0.1, "endAt": 0.9}
+   - NEVER draw random circles or arbitrary squares that do not represent the actual tile side length.
+4. For functions, the equations, domain limits, vertices, and points plotted in "instructions" MUST BE IDENTICAL to the values calculated in stepsVI and stepsEN.
+5. REPRESENTATIVE DIAGRAMS FOR NUMBER-LESS PROBLEMS:
+   - If the problem does not contain any numerical values (e.g. a general geometry proof or theorem like "tam giác ABC vuông tại A, đường cao AH"), you MUST still generate a representative visualization diagram!
+   - Assume standard, clean, and reasonable numerical coordinates to represent the geometric entities.
+   - Example: For a right triangle ABC at A, define A=[0,0], B=[0,3], C=[4,0] and draw the lines.
+   - NEVER skip drawing or return "Không có đủ thông tin" on the visualization panel just because the problem is symbolic. Always illustrate it with a representative figure.
+6. COLOR & LABELS RULE FOR PREMIUM VISUALS:
+   - Use vibrant, contrasting hex colors (#f43f5e for red, #3b82f6 for blue, #10b981 for green, #eab308 for yellow, #a855f7 for purple) for lines and shapes to distinguish different geometric parts. Do NOT draw everything in plain white/black.
+   - Label all vertices (A, B, C, D, etc.) clearly using point commands with "label": "A" or text commands next to the coordinates.
+   - Highlight sub-regions or key parts of the geometry using the "shape" command with fill: true (draws semi-transparent color fill) to make it easy to follow.
+7. ABSOLUTE LATEX DELIMITER RULE:
+   - You MUST wrap EVERY single math symbol, fraction, variable, or equation in stepsVI and stepsEN in dollar signs (e.g. use $x$, $\\frac{AB}{\\sin C}$, $18^\\circ$, NOT x, \\frac{AB}{\\sin C}, or 18^o).
+   - If a step does not have dollar signs around its LaTeX math elements, the math rendering will fail.
 
-Output ONLY the JSON. No markdown, no explanation, no extra text.`
-          : `Given this math problem: "${question}"
-Here are the first solution steps (use them to help classify):
-"${solutionContext}"
+Output ONLY raw JSON. No markdown code block wrappers, no preamble, no extra text.`
+          : `You are an expert math tutor and visualizer.
+Solve this math problem: "${question}"
+Generate both:
+1. Detailed step-by-step solution in Vietnamese (up to 10 steps).
+2. Detailed step-by-step solution in English (up to 10 steps).
+3. A sequence of drawing instructions to represent the problem visually.
 
-Return ONLY a single valid JSON object:
-{"type":"TYPE","title":"SHORT_TITLE","viz":VIZ_OBJECT}
+Return ONLY a single valid JSON object with the following schema:
+{
+  "type": "custom",
+  "title": "SHORT_TITLE_OF_THE_PROBLEM",
+  "stepsVI": ["Bước 1...", "Bước 2..."],
+  "stepsEN": ["Step 1...", "Step 2..."],
+  "viz": {
+    "instructions": [VIZ_COMMANDS]
+  }
+}
 
+Guidelines:
+- stepsVI/stepsEN: Use LaTeX for ALL math expressions (inline $like this$, block $$like this$$).
+- stepsVI must end with "✓ Đáp án: [kết quả]". stepsEN must end with "✓ Answer: [final answer]".
+- viz instructions: Use the following schema:
 ${vizSchemaDoc}
 
-Classification rules:
-1. If problem involves parabola tile / flower petal tile / viên gạch / cánh hoa → type="geometry", title contains "hoa" or "gạch"
-2. If ax²+bx+c, quadratic, roots/delta → type="quadratic"
-3. Linear y=mx+b → type="linear"
-4. Two intersecting lines → type="system"
-5. sin/cos/tan → type="trigonometry"
-6. Integral/area under curve → type="calculus"
-7. Triangles, circles, rectangles (not petal tiles) → type="geometry"
-8. Otherwise → type="other"
+CRITICAL RULES FOR MATHEMATHICAL CONSISTENCY & ACCURACY:
+1. All steps and explanations must be mathematically correct, highly concise, and directly solve the problem. Avoid rambling, off-topic, or conversational filler.
+2. The coordinate ranges (xRange, yRange) and drawn elements MUST match the math values in the steps.
+3. For geometric tile problems (e.g., painting a square tile of side length A containing a flower petal):
+   - Setup a coordinate range fitting the tile (e.g. xRange=[-1, A+1], yRange=[-1, A+1]).
+   - Draw a "petal_tile" shape command centered at x=A/2, y=A/2, with size=A.
+   - Example for side length 4: {"cmd": "shape", "type": "petal_tile", "x": 2, "y": 2, "size": 4, "startAt": 0.1, "endAt": 0.9}
+   - NEVER draw random circles or arbitrary squares that do not represent the actual tile side length.
+4. For functions, the equations, domain limits, vertices, and points plotted in "instructions" MUST BE IDENTICAL to the values calculated in stepsVI and stepsEN.
+5. REPRESENTATIVE DIAGRAMS FOR NUMBER-LESS PROBLEMS:
+   - If the problem does not contain any numerical values (e.g. a general geometry proof or theorem like "tam giác ABC vuông tại A, đường cao AH"), you MUST still generate a representative visualization diagram!
+   - Assume standard, clean, and reasonable numerical coordinates to represent the geometric entities.
+   - Example: For a right triangle ABC at A, define A=[0,0], B=[0,3], C=[4,0] and draw the lines.
+   - NEVER skip drawing or return "Không có đủ thông tin" on the visualization panel just because the problem is symbolic. Always illustrate it with a representative figure.
+6. COLOR & LABELS RULE FOR PREMIUM VISUALS:
+   - Use vibrant, contrasting hex colors (#f43f5e for red, #3b82f6 for blue, #10b981 for green, #eab308 for yellow, #a855f7 for purple) for lines and shapes to distinguish different geometric parts. Do NOT draw everything in plain white/black.
+   - Label all vertices (A, B, C, D, etc.) clearly using point commands with "label": "A" or text commands next to the coordinates.
+   - Highlight sub-regions or key parts of the geometry using the "shape" command with fill: true (draws semi-transparent color fill) to make it easy to follow.
+7. ABSOLUTE LATEX DELIMITER RULE:
+   - You MUST wrap EVERY single math symbol, fraction, variable, or equation in stepsVI and stepsEN in dollar signs (e.g. use $x$, $\\frac{AB}{\\sin C}$, $18^\\circ$, NOT x, \\frac{AB}{\\sin C}, or 18^o).
+   - If a step does not have dollar signs around its LaTeX math elements, the math rendering will fail.
 
-Output ONLY the JSON. No markdown, no extra text.`;
+Output ONLY raw JSON. No markdown, no preamble.`;
 
-        const vizData = await chatFn(sessionId, vizPrompt, {
+        const response = await chatFn(sessionId, prompt, {
           image: imageBase64 || null,
           mode: "solution",
         });
-        const vizReply = vizData?.reply || "";
+        const reply = response?.reply || "";
 
-        let vizParsed = { type: "other", title: question || "Math Problem", viz: {} };
+        let vizParsed = { type: "other", title: question || "Math Problem", viz: {}, stepsVI: [], stepsEN: [] };
         try {
-          const cleaned = vizReply
+          const cleaned = reply
             .replace(/```json\s*/gi, "")
             .replace(/```\s*/g, "")
             .trim();
           const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            const obj = JSON.parse(jsonMatch[0]);
+            // Pre-process raw JSON text to double-escape LaTeX backslashes inside string values,
+            // while preserving valid escapes like \"
+            // Also strip any trailing commas in objects or arrays
+            const jsonText = jsonMatch[0]
+              .replace(/"(\\.|[^"\\])*"/g, (match) => {
+                return match.replace(/\\(?!")/g, "\\\\");
+              })
+              .replace(/,\s*([\}\]])/g, "$1");
+
+            const obj = JSON.parse(jsonText);
             vizParsed = {
-              type: obj.type || "other",
+              type: obj.type || "custom",
               title: obj.title || question || "Math Problem",
-              viz: obj.viz || {},
+              viz: obj.viz || { instructions: obj.instructions || [] },
+              stepsVI: obj.stepsVI || [],
+              stepsEN: obj.stepsEN || [],
             };
           }
-        } catch {
-          // JSON parse failed — stick with generic viz
+        } catch (e) {
+          console.error("Failed to parse JSON visualization response", e);
         }
 
-        // ── Fallback: if AI returned "other" but solution text hints at a type,
-        //    promote it to the right type so we show a useful visualization.
+        const rawStepsEN = vizParsed.stepsEN || [];
+        const rawStepsVI = vizParsed.stepsVI || [];
+        const solutionReply = rawStepsVI.join("\n");
+
         if (vizParsed.type === "other") {
           const combined = (solutionReply + " " + (question || "")).toLowerCase();
           if (/viên gạch|gạch hoa|cánh hoa|petal|tile.*parabol|parabol.*tile/.test(combined)) {
@@ -902,6 +1310,23 @@ Output ONLY the JSON. No markdown, no extra text.`;
           : [problemTitle, "Bước 1: Phân tích đề bài", "Bước 2: Áp dụng công thức", "✓ Xem lời giải đầy đủ"];
 
         setVideoData({ ...vizParsed, stepsEN, stepsVI });
+
+        // Dựng video bằng Matplotlib trên backend
+        const instructions = vizParsed.viz?.instructions || [];
+        if (instructions.length > 0) {
+          setLoadingVideo(true);
+          setLoadingVideoText("Đang kết xuất chuyển động...");
+          try {
+            const vidRes = await generateVideo(instructions);
+            if (vidRes && !vidRes.error && vidRes.url) {
+              setVideoUrl(vidRes.url);
+            }
+          } catch (vidErr) {
+            console.error("Failed to generate video:", vidErr);
+          } finally {
+            setLoadingVideo(false);
+          }
+        }
       } catch {
         setVideoData({
           type: "other",
@@ -973,10 +1398,9 @@ Output ONLY the JSON. No markdown, no extra text.`;
     drawFrame(frameRef.current);
     animRef.current = requestAnimationFrame(tick);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingSteps, videoData, lang]); // lang is added here to update visual immediately on language change
 
-  const totalSec = Math.round(totalFrames / 30);
+  const totalSec = videoUrl ? Math.round(videoDuration) : Math.round(totalFrames / 30);
 
   return (
     <div className={styles.inlineVideoContainer}>
@@ -994,13 +1418,44 @@ Output ONLY the JSON. No markdown, no extra text.`;
 
       {/* Body: canvas (left) + HTML KaTeX solution panel (right) */}
       <div className={styles.inlineVideoBody}>
-        {/* LEFT: visualization canvas */}
+        {/* LEFT: visualization canvas or video */}
         <div className={styles.inlineVizPanel}>
           {loadingSteps ? (
             <div className={styles.videoLoadingOverlay}>
               <div className={styles.videoLoadingSpinner} />
               <p className={styles.videoLoadingText}>AI đang phân tích...</p>
             </div>
+          ) : loadingVideo ? (
+            <div className={styles.videoLoadingOverlay}>
+              <div className={styles.videoLoadingSpinner} />
+              <p className={styles.videoLoadingText}>{loadingVideoText}</p>
+            </div>
+          ) : videoUrl ? (
+            <video 
+              ref={videoRef}
+              src={videoUrl} 
+              autoPlay 
+              loop 
+              onTimeUpdate={(e) => {
+                const vid = e.target;
+                if (vid.duration) {
+                  const pct = (vid.currentTime / vid.duration) * 100;
+                  setProgress(pct);
+                  if (progressFillRef.current) {
+                    progressFillRef.current.style.width = `${pct}%`;
+                  }
+                }
+              }}
+              onPlay={() => setIsPlayingState(true)}
+              onPause={() => setIsPlayingState(false)}
+              onLoadedMetadata={(e) => {
+                if (e.target.duration) {
+                  setVideoDuration(e.target.duration);
+                }
+              }}
+              className={styles.inlineVideoTag}
+              style={{ width: "100%", height: "100%", borderRadius: "8px", objectFit: "contain" }}
+            />
           ) : (
             <canvas ref={canvasRef} className={styles.inlineCanvas} />
           )}
@@ -1081,9 +1536,21 @@ Output ONLY the JSON. No markdown, no extra text.`;
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className={styles.videoProgressBar}>
-        <div ref={progressFillRef} className={styles.videoProgressFill} style={{ width: `${progress}%` }} />
+      {/* Progress bar / Scrubber */}
+      <div className={styles.videoProgressBarContainer}>
+        <input 
+          type="range"
+          min="0"
+          max="100"
+          step="0.1"
+          value={progress}
+          onChange={handleSeek}
+          className={styles.videoProgressSlider}
+          disabled={loadingSteps || loadingVideo}
+        />
+        <div className={styles.videoProgressBar}>
+          <div ref={progressFillRef} className={styles.videoProgressFill} style={{ width: `${progress}%` }} />
+        </div>
       </div>
 
       {/* Controls */}
@@ -1092,7 +1559,15 @@ Output ONLY the JSON. No markdown, no extra text.`;
           <button className={styles.videoCtrlBtn} onClick={() => setIsPlaying(p => !p)} disabled={loadingSteps}>
             {isPlaying ? "⏸" : "▶"}
           </button>
-          <button className={styles.videoCtrlBtn} onClick={() => { frameRef.current = 0; setProgress(0); setIsPlaying(true); }} disabled={loadingSteps}>
+          <button className={styles.videoCtrlBtn} onClick={() => {
+            if (videoRef.current) {
+              videoRef.current.currentTime = 0;
+              videoRef.current.play().catch(() => {});
+            }
+            frameRef.current = 0;
+            setProgress(0);
+            setIsPlaying(true);
+          }} disabled={loadingSteps}>
             🔄
           </button>
           <span className={styles.videoDuration}>{Math.floor((progress / 100) * totalSec)}s / {totalSec}s</span>
@@ -1165,10 +1640,26 @@ export default function DuoMCBPage() {
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
   const [showImageModal, setShowImageModal] = useState(false);
-  const [savedHistory, setSavedHistory] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("duomcb_history") || "[]"); }
-    catch { return []; }
-  });
+  const [savedHistory, setSavedHistory] = useState([]);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("duomcb_history") || "[]");
+      setSavedHistory(saved);
+    } catch (e) {
+      setSavedHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    if (messages.length > 0) {
+      dbSet(`duomcb_session_${sessionId}`, messages).catch(e => {
+        console.error("Failed to save session to IndexedDB", e);
+      });
+    }
+  }, [messages, sessionId]);
+
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -1199,12 +1690,40 @@ export default function DuoMCBPage() {
     return sid;
   }
 
-  function pushToHistory(firstMsg) {
+  function pushToHistory(firstMsg, sid) {
+    if (!sid) return;
     const title = firstMsg.substring(0, 44) + (firstMsg.length > 44 ? "…" : "");
-    const entry = { id: Date.now(), title, date: new Date().toLocaleDateString("vi-VN") };
-    const updated = [entry, ...savedHistory].slice(0, 20);
+    const entry = { id: sid, title, date: new Date().toLocaleDateString("vi-VN") };
+    const updated = [entry, ...savedHistory.filter(h => h.id !== sid)].slice(0, 20);
     setSavedHistory(updated);
     try { localStorage.setItem("duomcb_history", JSON.stringify(updated)); } catch {}
+  }
+
+  async function loadChat(sid) {
+    try {
+      const saved = await dbGet(`duomcb_session_${sid}`);
+      if (saved) {
+        setSessionId(sid);
+        setMessages(saved);
+      }
+    } catch (e) {
+      console.error("Failed to load session from IndexedDB", e);
+    }
+  }
+
+  async function deleteChat(sid, e) {
+    if (e) e.stopPropagation();
+    try {
+      await dbDelete(`duomcb_session_${sid}`);
+      const updated = savedHistory.filter(h => h.id !== sid);
+      setSavedHistory(updated);
+      localStorage.setItem("duomcb_history", JSON.stringify(updated));
+      if (sessionId === sid) {
+        newChat();
+      }
+    } catch (e) {
+      console.error("Failed to delete session", e);
+    }
   }
 
   function saveConversation() {
@@ -1245,7 +1764,7 @@ export default function DuoMCBPage() {
         imageBase64: imageBase64,
         sessionId: sid,
       };
-      if (messages.length === 0) pushToHistory("Bài toán từ ảnh");
+      if (messages.length === 0) pushToHistory("Bài toán từ ảnh", sid);
       setMessages(prev => [...prev, videoMsg]);
       setImagePreview(null); setImageBase64(null);
       return;
@@ -1255,9 +1774,12 @@ export default function DuoMCBPage() {
       : "Look at the problem in this image and solve it STEP BY STEP for me.";
     const userMsg = { role: "user", content: modeText, image: imagePreview, id: Date.now() };
     setMessages(prev => [...prev, userMsg]);
-    if (messages.length === 0) pushToHistory(modeText);
     setLoading(true);
     const sid = await ensureSession();
+    if (messages.length === 0) {
+      const cleanTitle = mode === "hint" ? "Gợi ý bài toán từ ảnh" : "Giải bài toán từ ảnh";
+      pushToHistory(cleanTitle, sid);
+    }
     try {
       const data = await chat(sid, modeText, { image: imageBase64, mode: mode === "hint" ? "hint" : "solution" });
       if (data.error) throw new Error();
@@ -1275,7 +1797,7 @@ export default function DuoMCBPage() {
 
     if (mode === "video") {
       const sid = await ensureSession();
-      if (messages.length === 0) pushToHistory(msg);
+      if (messages.length === 0) pushToHistory(msg, sid);
       setMessages(prev => [...prev, {
         id: Date.now(), role: "assistant", type: "video",
         question: msg, imageBase64: null, sessionId: sid,
@@ -1285,8 +1807,8 @@ export default function DuoMCBPage() {
     }
 
     setInput("");
-    if (messages.length === 0) pushToHistory(msg);
     const sid = await ensureSession();
+    if (messages.length === 0) pushToHistory(msg, sid);
     setMessages(prev => [...prev, { role: "user", content: msg, id: Date.now() }]);
     setLoading(true);
     try {
@@ -1364,10 +1886,15 @@ export default function DuoMCBPage() {
               {savedHistory.length === 0 ? (
                 <p style={{ fontSize: "12px", color: "#4b5563", padding: "4px 10px" }}>Chưa có cuộc trò chuyện</p>
               ) : savedHistory.map(h => (
-                <button key={h.id} className={styles.historyItem} onClick={newChat}>
-                  <span className={styles.historyIcon}>💬</span>
-                  <span className={styles.historyTitle}>{h.title}</span>
-                </button>
+                <div key={h.id} className={`${styles.historyItemWrapper} ${sessionId === h.id ? styles.historyItemActive : ""}`}>
+                  <button className={styles.historyItem} onClick={() => loadChat(h.id)}>
+                    <span className={styles.historyIcon}>💬</span>
+                    <span className={styles.historyTitle} title={h.title}>{h.title}</span>
+                  </button>
+                  <button className={styles.deleteChatBtn} onClick={(e) => deleteChat(h.id, e)} title="Xóa phiên chat">
+                    ✕
+                  </button>
+                </div>
               ))}
             </div>
             <div className={styles.sidebarFooter}>

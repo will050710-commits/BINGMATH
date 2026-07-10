@@ -218,9 +218,9 @@ def get_identity(request: Request) -> str:
 
 # ── OCR (optional) ───────────────────────────────────────────────────────────
 try:
-    # pyrefly: ignore [missing-import]
     import easyocr # pyright: ignore[reportMissingImports]
-    ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False)
+    # Lưu weights của mô hình ở ổ D để tránh tràn dung lượng ổ C
+    ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False, model_storage_directory="D:\\easyocr_models")
     _ocr_available = True
 except ImportError:
     ocr_reader = None
@@ -235,9 +235,11 @@ SELF_URL  = os.environ.get("SELF_URL", "")
 # ── MathGPT Socratic System Prompts ──────────────────────────────────────────
 _LATEX_RULES = (
     "\n\n## QUY TẮC ĐỊNH DẠNG TOÁN HỌC (BẮT BUỘC):\n"
+    "- Bạn BẮT BUỘC phải bao quanh TẤT CẢ các công thức toán học, ký hiệu, phân số, góc, phương trình bằng dấu đô la ($...$ cho inline, $$...$$ cho block).\n"
+    "- Ví dụ: viết $\\frac{AB}{\\sin 24^\\circ}$, TUYỆT ĐỐI KHÔNG viết \\frac{AB}{\\sin 24^\\circ} mà không có dấu $.\n"
     "- Dùng $...$ cho công thức inline: $f(x) = ax^2 + bx + c$, $x_1 + x_2 = -b/a$\n"
     "- Dùng $$...$$ trên dòng riêng cho công thức quan trọng: $$\\Delta = b^2 - 4ac$$\n"
-    "- KHÔNG viết biến số dưới dạng plain text — luôn dùng $x$, $a$, $\\Delta$, không phải x, a, Delta\n"
+    "- KHÔNG viết biến số hay ký hiệu dưới dạng plain text — luôn dùng $x$, $a$, $\\Delta$, không phải x, a, Delta\n"
     "- Đánh số bước giải: **Bước 1**, **Bước 2**, ...\n"
 )
 
@@ -1376,6 +1378,7 @@ async def chat(request: Request):
         user_message = "Hãy giải bài toán trong ảnh này cho em."  # fallback khi chỉ có ảnh
 
     history = ensure_session(session_id)
+    is_viz_request = "visualizer" in user_message or "viz" in user_message or "instructions" in user_message
 
     if image_data:
         if "," in image_data:
@@ -1384,48 +1387,189 @@ async def chat(request: Request):
         else:
             b64, media_type = image_data, "image/jpeg"
 
-        extracted_text = ""
-        if _ocr_available:
-            try:
-                img_bytes = base64.b64decode(b64)
-                extracted_text = extract_text_from_image(img_bytes)
-            except Exception:
-                extracted_text = ""
-
-        # Chọn prompt variant theo mode
+        gemini_api_key = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6J0P2bjKP175mWC2WefMm4hejW0sm-PmhEd0iGXt9W1Bg")
+        
+        # Build prompt variant according to mode
         img_prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "image"
-        if extracted_text.strip():
-            user_content  = f"📝 **Nội dung nhận diện từ ảnh (OCR):**\n{extracted_text}\n\n**Câu hỏi:** {user_message}"
-            model         = "llama-3.1-8b-instant"
-            system_prompt = cached_system_prompt(img_prompt_variant)
-        else:
-            user_content = [
-                {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
-                {"type": "text",      "text": user_message},
+        system_prompt = cached_system_prompt(img_prompt_variant)
+        
+        if is_viz_request:
+            system_prompt = (
+                "You are an expert mathematical visualizer and graph plotter.\n"
+                "Your task is to analyze the math problem and output ONLY a valid JSON object matching the requested schema.\n"
+                "You MUST ensure that the returned math steps ('stepsVI', 'stepsEN') wrap ALL math symbols, variables, fractions, and equations in dollar signs ($...$ for inline, $$...$$ for block).\n"
+                "You MUST use vibrant neon colors for drawing instructions (lines, shapes, points) instead of plain white/black, label all vertices clearly, and highlight sub-regions.\n"
+                "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
+            )
+            
+        retrieved_kb = retrieve_math_context(user_message)
+        full_system_prompt = (
+            f"{system_prompt}\n\n"
+            f"## REFERENCE MATHEMATICAL KNOWLEDGE (DO NOT COPY DIRECTLY):\n"
+            f"The following context contains formulas and examples for reference. "
+            f"You MUST only use it as a general conceptual reference. "
+            f"NEVER solve or copy the example equations, functions, or numbers from this reference context. "
+            f"Only solve the exact problem and numbers specified in the User Request.\n\n"
+            f"{retrieved_kb}"
+        )
+        
+        # Map conversation history to Gemini structure
+        gemini_contents = []
+        for h in history[-5:]:
+            role = "model" if h["role"] == "assistant" else "user"
+            content = h.get("content") or ""
+            if content.startswith("[Image] "):
+                content = content[8:]
+            if content.strip():
+                gemini_contents.append({
+                    "role": role,
+                    "parts": [{"text": content}]
+                })
+            
+        # Add current user turn with the image
+        gemini_contents.append({
+            "role": "user",
+            "parts": [
+                {"text": user_message},
+                {
+                    "inlineData": {
+                        "mimeType": media_type,
+                        "data": b64
+                    }
+                }
             ]
-            model         = "meta-llama/llama-4-scout-17b-16e-instruct"
-            system_prompt = cached_system_prompt(img_prompt_variant)
-
+        })
+        
         history.append({"role": "user", "content": f"[Image] {user_message}"})
+        client = await get_http_client()
+        
+        if use_stream:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent?key={gemini_api_key}&alt=sse"
+            payload = {
+                "contents": gemini_contents,
+                "systemInstruction": {
+                    "parts": [{"text": full_system_prompt}]
+                },
+                "generationConfig": {
+                    "temperature": 0.3,
+                    "maxOutputTokens": 2000 if chat_mode in ("solution", "raw_solution") else 1024
+                }
+            }
+            
+            async def generate():
+                full_reply = []
+                try:
+                    async with client.stream("POST", url, json=payload, timeout=30) as resp:
+                        resp.raise_for_status()
+                        async for raw_line in resp.aiter_lines():
+                            if not raw_line:
+                                continue
+                            line = raw_line
+                            if line.startswith("data: "):
+                                data_str = line[6:]
+                                try:
+                                    chunk = json.loads(data_str)
+                                    token = chunk["candidates"][0]["content"]["parts"][0].get("text", "")
+                                    if token:
+                                        full_reply.append(token)
+                                        yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
+                                except Exception:
+                                    continue
+                except Exception as e:
+                    yield f"data: {orjson.dumps({'error': str(e)}).decode()}\n\n"
+                    return
+
+                reply_text = "".join(full_reply)
+                history.append({"role": "assistant", "content": reply_text})
+                save_history(session_id, history)
+                yield f"data: {orjson.dumps({'done': True, 'session_id': session_id}).decode()}\n\n"
+
+            return StreamingResponse(
+                generate(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    "Access-Control-Allow-Origin": "*",
+                },
+            )
+        else:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={gemini_api_key}"
+            payload = {
+                "contents": gemini_contents,
+                "systemInstruction": {
+                    "parts": [{"text": full_system_prompt}]
+                },
+                "generationConfig": {
+                    "temperature": 0.3,
+                    "maxOutputTokens": 2000 if chat_mode in ("solution", "raw_solution") else 1024
+                }
+            }
+            try:
+                resp = await client.post(url, json=payload, timeout=30)
+                resp.raise_for_status()
+                reply = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                if hasattr(e, "response") and e.response is not None:
+                    print("[ERROR] Gemini API response text:", e.response.text)
+                    return JSONResponse({"error": True, "reply": f"AI unavailable: {e} - {e.response.text}"}, status_code=502)
+                return JSONResponse({"error": True, "reply": f"AI unavailable: {e}"}, status_code=502)
+
+            history.append({"role": "assistant", "content": reply})
+            save_history(session_id, history)
+            return JSONResponse({"reply": reply, "session_id": session_id, "history_length": len(history)})
     else:
         user_content  = user_message
-        # mode="solution" → giải đầy đủ + bài phái sinh; mặc định → Socratic hint
-        prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "text"
-        model         = "llama-3.1-8b-instant"
-        system_prompt = cached_system_prompt(prompt_variant)
+        
+        if is_viz_request:
+            model         = "llama-3.3-70b-versatile"
+            system_prompt = (
+                "You are an expert mathematical visualizer and graph plotter.\n"
+                "Your task is to analyze the math problem and output ONLY a valid JSON object matching the requested schema.\n"
+                "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
+            )
+        else:
+            # mode="solution" → giải đầy đủ + bài phái sinh; mặc định → Socratic hint
+            prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "text"
+            model         = "llama-3.1-8b-instant"
+            system_prompt = cached_system_prompt(prompt_variant)
         history.append({"role": "user", "content": user_message})
 
     # Retrieve mathematical context using LightRAG-style retriever
     retrieved_kb = retrieve_math_context(user_message)
-    full_system_prompt = f"{system_prompt}\n\n{retrieved_kb}"
+    full_system_prompt = (
+        f"{system_prompt}\n\n"
+        f"## REFERENCE MATHEMATICAL KNOWLEDGE (DO NOT COPY DIRECTLY):\n"
+        f"The following context contains formulas and examples for reference. "
+        f"You MUST only use it as a general conceptual reference. "
+        f"NEVER solve or copy the example equations, functions, or numbers from this reference context. "
+        f"Only solve the exact problem and numbers specified in the User Request.\n\n"
+        f"{retrieved_kb}"
+    )
 
     # Build messages without mutating history dicts (slicing shares dict refs in Python)
-    context_history = history[-5:-1]  # previous turns, excluding the just-appended user turn
-    messages = (
-        [{"role": "system", "content": full_system_prompt}]
-        + context_history
-        + [{"role": "user", "content": user_content}]
-    )
+    context_history = [] if is_viz_request else history[-5:-1]  # previous turns, excluding the just-appended user turn
+    
+    if "vision" in model and isinstance(user_content, list):
+        # Merge system prompt into user_content text part
+        new_user_content = []
+        for item in user_content:
+            if item.get("type") == "text":
+                new_user_content.append({
+                    "type": "text",
+                    "text": f"{full_system_prompt}\n\nUser request:\n{item.get('text', '')}"
+                })
+            else:
+                new_user_content.append(item)
+        messages = context_history + [{"role": "user", "content": new_user_content}]
+    else:
+        messages = (
+            [{"role": "system", "content": full_system_prompt}]
+            + context_history
+            + [{"role": "user", "content": user_content}]
+        )
 
     # Solution mode cần nhiều token hơn để sinh cả lời giải + bài phái sinh
     max_tokens = 2000 if chat_mode in ("solution", "raw_solution") else 1024
@@ -1491,6 +1635,11 @@ async def chat(request: Request):
         resp.raise_for_status()
         reply = resp.json()["choices"][0]["message"]["content"]
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+        if hasattr(e, "response") and e.response is not None:
+            print("[ERROR] Groq API response text:", e.response.text)
+            return JSONResponse({"error": True, "reply": f"AI unavailable: {e} - {e.response.text}"}, status_code=502)
         return JSONResponse({"error": True, "reply": f"AI unavailable: {e}"}, status_code=502)
 
     history.append({"role": "assistant", "content": reply})
@@ -1611,6 +1760,56 @@ def get_mock_translation(text: str) -> dict:
                 {"word": text, "type": "term", "pronunciation": "/.../", "vietnamese": "Dịch nghĩa tương ứng", "example": "Example usage context."}
             ]
         }
+@app.post("/api/video/generate")
+async def generate_video(request: Request):
+    try:
+        data = await request.json()
+        instructions = data.get("instructions") or []
+        if not instructions:
+            raise HTTPException(status_code=400, detail="Missing instructions")
+            
+        video_id = str(uuid.uuid4())
+        
+        # Prepare output directory in frontend public
+        backend_dir = os.path.dirname(os.path.abspath(__file__))
+        frontend_public = os.path.abspath(os.path.join(backend_dir, "..", "frontend", "public"))
+        videos_dir = os.path.join(frontend_public, "videos")
+        os.makedirs(videos_dir, exist_ok=True)
+        
+        output_file = os.path.join(videos_dir, f"{video_id}.mp4")
+        
+        # Run python compilation in D:\duosteam_venv
+        compiler_script = os.path.join(backend_dir, "canvas_to_video.py")
+        json_str = json.dumps(instructions)
+        
+        # Subprocess call using the venv python interpreter on D: drive
+        python_exe = r"D:\duosteam_venv\Scripts\python.exe"
+        if not os.path.exists(python_exe):
+            # Fallback to local venv python if D drive venv is not ready
+            python_exe = os.path.abspath(os.path.join(backend_dir, "..", ".venv", "Scripts", "python.exe"))
+            
+        cmd = [python_exe, compiler_script, json_str, output_file]
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            err_msg = stderr.decode()
+            print("[ERROR] Video generation failed:", err_msg)
+            raise HTTPException(status_code=500, detail=f"Video rendering failed: {err_msg}")
+            
+        return {"url": f"/videos/{video_id}.mp4"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/translate")
 async def translate(request: Request):
@@ -1921,7 +2120,7 @@ async def health():
         "db_latency_ms":    db_ms,
         "keep_alive":       bool(SELF_URL),
         "text_model":       "llama-3.1-8b-instant",
-        "vision_model":     "meta-llama/llama-4-scout-17b-16e-instruct",
+        "vision_model":     "llama-3.3-70b-versatile (via local EasyOCR)",
         "ocr_available":    _ocr_available,
         "mathgpt_mode":     "socratic",
         "lightrag_nodes":   len(MATH_CONCEPT_GRAPH["nodes"]),

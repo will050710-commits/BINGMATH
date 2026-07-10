@@ -66,3 +66,22 @@ export async function translate(text) {
 
 // Alias — DuoTranslate.js imports this name
 export const translateText = translate;
+
+export async function generateVideo(instructions) {
+  try {
+    const res = await fetch(`${API}/api/video/generate`, {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ instructions }),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "");
+      console.error(`[duoServer] generateVideo HTTP ${res.status}:`, errText);
+      return { error: true, message: `Server error ${res.status}` };
+    }
+    return await res.json();
+  } catch (err) {
+    console.error("[duoServer] generateVideo failed:", err);
+    return { error: true, message: "Network error" };
+  }
+}
