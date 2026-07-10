@@ -42,7 +42,7 @@ const gradeData = [
     ],
   },
   {
-    grade: "Grade 12", img: "/images/math12.webp", comingSoon: true,
+    grade: "Grade 12", img: "/images/math12.webp", comingSoon: false,
     tests: Array.from({ length: 6 }, (_, i) => ({ href: null, key: null })),
   },
 ];
