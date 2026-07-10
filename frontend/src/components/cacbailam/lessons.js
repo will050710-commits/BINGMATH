@@ -43,7 +43,14 @@ const gradeData = [
   },
   {
     grade: "Grade 12", img: "/images/math12.webp", comingSoon: false,
-    tests: Array.from({ length: 6 }, (_, i) => ({ href: null, key: null })),
+    tests: [
+      { href: "/L12-test1-section1", key: "reading-test-L12-1" },
+      { href: "/L12-test2-section1", key: "reading-test-L12-2" },
+      { href: "/L12-test3-section1", key: "reading-test-L12-3" },
+      { href: "/L12-test4-section1", key: "reading-test-L12-4" },
+      { href: "/L12-test5-section1", key: "reading-test-L12-5" },
+      { href: "/L12-test6-section1", key: "reading-test-L12-6" },
+    ],
   },
 ];
 
