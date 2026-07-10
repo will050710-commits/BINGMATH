@@ -1,9 +1,11 @@
 /* eslint-disable react-hooks/set-state-in-effect */
- 
+
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import ReportUserModal from "@/components/ReportUserModal";
+import JackpotBanner from "@/components/mrm/JackpotBanner";
+import { CoinStoreProvider } from "@/context/CoinStore";
 
 // ── Math particles background ──────────────────────────────────────────────
 const MATH_SYMBOLS = ["∑", "∫", "π", "√", "∞", "Δ", "∂", "∇", "⊕", "≈", "≠", "±", "×", "÷", "α", "β", "θ", "λ", "μ", "σ"];
@@ -268,48 +270,70 @@ export default function MRMHomePage() {
           }}>MRM</span>
         </Link>
 
-        <nav style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <nav style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <Link href="/mrm/leaderboard" style={{
+            color: "#fbbf24", textDecoration: "none",
+            fontSize: 13, fontWeight: 700, padding: "7px 13px", borderRadius: 8,
+            background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)",
+            transition: "all 0.2s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(251,191,36,0.18)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(251,191,36,0.08)"; }}
+          >
+            🏆 Leaderboard
+          </Link>
+          <Link href="/mrm/shop" style={{
+            color: "#a78bfa", textDecoration: "none",
+            fontSize: 13, fontWeight: 700, padding: "7px 13px", borderRadius: 8,
+            background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.2)",
+            transition: "all 0.2s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(167,139,250,0.18)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(167,139,250,0.08)"; }}
+          >
+            🛍️ Shop
+          </Link>
           <button
             onClick={() => setShowReportModal(true)}
             style={{
-              color: "rgba(255,255,255,0.7)", background: "transparent",
+              color: "rgba(255,255,255,0.55)", background: "transparent",
               border: "none", textDecoration: "none",
-              fontSize: 14, fontWeight: 500, padding: "8px 14px", borderRadius: 8,
+              fontSize: 13, fontWeight: 500, padding: "7px 13px", borderRadius: 8,
               transition: "all 0.2s", cursor: "pointer",
             }}
             onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.background = "transparent"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.55)"; e.currentTarget.style.background = "transparent"; }}
           >
             🚩 Báo cáo
           </button>
           <Link href="/mrm/creator" style={{
-            color: "rgba(255,255,255,0.7)", textDecoration: "none",
-            fontSize: 14, fontWeight: 500, padding: "8px 14px", borderRadius: 8,
+            color: "rgba(255,255,255,0.55)", textDecoration: "none",
+            fontSize: 13, fontWeight: 500, padding: "7px 13px", borderRadius: 8,
             transition: "all 0.2s",
           }}
             onMouseEnter={e => { e.currentTarget.style.color = "white"; e.currentTarget.style.background = "rgba(167,139,250,0.1)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.background = "transparent"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.55)"; e.currentTarget.style.background = "transparent"; }}
           >
-            🛠️ Creator Tool
+            🛠️ Creator
           </Link>
           <Link href="/bmf" style={{
-            color: "rgba(255,255,255,0.7)", textDecoration: "none",
-            fontSize: 14, fontWeight: 500, padding: "8px 14px", borderRadius: 8,
+            color: "rgba(255,255,255,0.55)", textDecoration: "none",
+            fontSize: 13, fontWeight: 500, padding: "7px 13px", borderRadius: 8,
             transition: "all 0.2s",
           }}
             onMouseEnter={e => { e.currentTarget.style.color = "white"; e.currentTarget.style.background = "rgba(251,191,36,0.1)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.7)"; e.currentTarget.style.background = "transparent"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.55)"; e.currentTarget.style.background = "transparent"; }}
           >
-            💬 BMF Forum
+            💬 BMF
           </Link>
           <Link href="/" style={{
-            padding: "8px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-            background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.8)",
-            border: "1px solid rgba(255,255,255,0.15)", textDecoration: "none",
+            padding: "7px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+            background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)",
+            border: "1px solid rgba(255,255,255,0.12)", textDecoration: "none",
             transition: "all 0.2s",
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.15)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.14)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
           >
             ← Trang chủ
           </Link>
@@ -343,6 +367,13 @@ export default function MRMHomePage() {
           <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 16, maxWidth: 480, margin: "0 auto" }}>
             Hệ thống đấu Rank Toán học — Cơ chế Tráo bài chiến thuật · Elo Rating · Bilingual
           </p>
+        </div>
+
+        {/* Jackpot Banner */}
+        <div style={{ width: "100%", maxWidth: 680, marginBottom: 8 }}>
+          <CoinStoreProvider>
+            <JackpotBanner />
+          </CoinStoreProvider>
         </div>
 
         {/* ─── OWL HERO ─── */}

@@ -19,8 +19,12 @@ import { useEffect, useRef } from "react";
   • docH checked only every 30 frames           → avoids forced layout
 */
 
-// ─── Physics constants ────────────────────────────────────────────────────────
-const NUM_STARS        = 450;
+// ─── Physics constants — adaptive to device ──────────────────────────────────
+const IS_MOBILE        = typeof window !== "undefined" && window.innerWidth < 768;
+const NUM_STARS        = IS_MOBILE ? 180 : 450;   // mobile: 60% fewer stars
+const SPHERE_STACKS    = IS_MOBILE ? 32  : 64;    // mobile: lower WebGL quality
+const SPHERE_SLICES    = IS_MOBILE ? 32  : 64;
+const NUM_MATH_SYMBOLS = IS_MOBILE ? 10  : 28;    // mobile: fewer math particles
 const ATTRACT_RADIUS   = 200;          // px
 const ATTRACT_RADIUS_SQ = ATTRACT_RADIUS * ATTRACT_RADIUS;
 const ATTRACT_STRENGTH = 0.10;
@@ -29,6 +33,8 @@ const DAMPING          = 0.84;
 const ANGLE_LERP_NEAR  = 0.07;        // how fast vector points toward cursor
 const ANGLE_LERP_FAR   = 0.012;       // how fast it returns to base angle
 const COLOR_BANDS      = 6;
+// Cap FPS on mobile to save GPU budget: 30fps on mobile vs 60fps on desktop
+const TARGET_MS        = IS_MOBILE ? 1000 / 30 : 0;
 
 // Band hues: cyan(180) → blue(210) → indigo(235) → violet(255) → purple(270) → magenta-violet(285)
 const BAND_HUES = [180, 210, 235, 255, 270, 285];
@@ -284,8 +290,8 @@ export default function CosmosBackground() {
     const ringProg = linkProg(gl, rvs, rfs);
     if (!prog || !ringProg) return;
 
-    const sphere = buildSphere(64, 64);
-    const ring   = buildRing(0.55, 1.0, 128);
+    const sphere = buildSphere(SPHERE_STACKS, SPHERE_SLICES);
+    const ring   = buildRing(0.55, 1.0, IS_MOBILE ? 64 : 128);
 
     // Sphere VAO
     const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
@@ -369,9 +375,8 @@ export default function CosmosBackground() {
       bandIdx[i] = Math.min(COLOR_BANDS - 1, Math.floor(normY[i] * COLOR_BANDS));
     }
 
-    // Math symbol particles (small count, light overhead)
-    const NUM_MATH = 28;
-    const mathP = Array.from({ length: NUM_MATH }, (_, i) => ({
+    // Math symbol particles — count scaled to device
+    const mathP = Array.from({ length: NUM_MATH_SYMBOLS }, (_, i) => ({
       sym:   MATH_SYMBOLS[i % MATH_SYMBOLS.length],
       nx:    rng(), ny: rng(),   // normalised
       vy:   -rr(0.00006, 0.0002),
@@ -386,11 +391,17 @@ export default function CosmosBackground() {
 
     window.addEventListener("resize", resizeAll);
 
+    // ── Pause animation when tab is hidden (saves 100% GPU on alt-tab) ───────
+    let paused = false;
+    const onVisibilityChange = () => { paused = document.hidden; };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
     // ── Animation loop ────────────────────────────────────────────────────────
     let time     = 0;
     let ringRot  = 0;
     let frameN   = 0;
     let lastDocH = docH;
+    let lastFrameTs = 0; // for mobile FPS throttle
 
     // Pre-allocated matrix buffers — no new Float32Array() inside drawFrame
     const modelBuf   = new Float32Array(16);
@@ -404,7 +415,16 @@ export default function CosmosBackground() {
         dst[j*4+i]=a[i]*b[j*4]+a[i+4]*b[j*4+1]+a[i+8]*b[j*4+2]+a[i+12]*b[j*4+3];
     }
 
-    function drawFrame() {
+    function drawFrame(ts = 0) {
+      rafRef.current = requestAnimationFrame(drawFrame);
+      // ── Pause when tab is hidden ──────────────────────────────────────────
+      if (paused) return;
+      // ── FPS throttle for mobile (30fps cap) ──────────────────────────────
+      if (TARGET_MS > 0) {
+        const elapsed = ts - lastFrameTs;
+        if (elapsed < TARGET_MS) return;
+        lastFrameTs = ts - (elapsed % TARGET_MS);
+      }
       time    += 0.016;
       ringRot += 0.0003;
       frameN++;
@@ -663,13 +683,13 @@ export default function CosmosBackground() {
       ctx2d.fill();
       ctx2d.restore();
 
-      rafRef.current = requestAnimationFrame(drawFrame);
     }
 
     rafRef.current = requestAnimationFrame(drawFrame);
 
     return () => {
       cancelAnimationFrame(rafRef.current);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("mousemove",  onMove);
       window.removeEventListener("mousedown",  onDown);
       window.removeEventListener("mouseup",   onUp);

@@ -3,13 +3,11 @@ import { useEffect, useRef } from "react";
 
 /*
   HUD Galaxy Canvas — scrollable absolute background page layout
-  v4:
-    • Absolute positioning with canvas spanning the full document scroll height
-    • Galaxy 1 (cyan/blue HUD) positioned at page top (~15% absolute height)
-    • Galaxy 2 (purple/violet HUD) positioned at the absolute bottom (docH - 450px)
-    • Denser star field (600+ stars) and constellation lines stretching from top to bottom
-    • Seamless vertical color gradient from cyan (top) to purple (bottom) for stars and lines
-    • Dynamically updates canvas height if the document content height changes
+  v5 (Performance):
+    • Mobile adaptive particle counts (60% reduction on mobile)
+    • Pauses animation when tab is hidden — zero GPU on alt-tab
+    • 30 FPS cap on mobile to halve GPU budget
+    • Reduced star count on mobile (600 → 200)
 */
 export default function GalaxyCanvas() {
   const canvasRef = useRef(null);
@@ -45,12 +43,16 @@ export default function GalaxyCanvas() {
     const W = () => parseInt(canvas.style.width)  || window.innerWidth;
     const H = () => parseInt(canvas.style.height) || window.innerHeight;
 
+    // ── Device tier detection ──────────────────────────────────
+    const isMobile = window.innerWidth < 768;
+    const TARGET_FPS_MS = isMobile ? 1000 / 30 : 0; // 30fps cap on mobile
+
     // ────────────────────────────────────────────────────────────
     // GALAXY 1 — Cyan/Blue HUD (page top)
     // ────────────────────────────────────────────────────────────
     const G1_CX = () => W() * 0.62;
 
-    const G1_ARM_N = 1800;
+    const G1_ARM_N = isMobile ? 700  : 1800; // 60% fewer particles on mobile
     const G1_ARMS  = 4;
     const G1_WIND  = 3.6;
     const g1Arm = [];
@@ -98,7 +100,7 @@ export default function GalaxyCanvas() {
     // ────────────────────────────────────────────────────────────
     const G2_CX = () => W() * 0.28;
 
-    const G2_ARM_N = 1400;
+    const G2_ARM_N = isMobile ? 500  : 1400; // 60% fewer particles on mobile
     const G2_ARMS  = 3;
     const G2_WIND  = 3.2;
     const G2_BASE  = () => Math.min(window.innerWidth, window.innerHeight) * 0.38;
@@ -140,9 +142,9 @@ export default function GalaxyCanvas() {
     const g2GridAngles = Array.from({length: G2_RADIAL}, (_, i) => (i / G2_RADIAL) * Math.PI * 2);
 
     // ────────────────────────────────────────────────────────────
-    // DENSE STAR FIELD (600 stars)
+    // DENSE STAR FIELD — adaptive count
     // ────────────────────────────────────────────────────────────
-    const NUM_STARS = 600;
+    const NUM_STARS = isMobile ? 200 : 600; // 66% fewer on mobile
     const starData  = [];
     for (let i = 0; i < NUM_STARS; i++) {
       starData.push({
@@ -190,11 +192,25 @@ export default function GalaxyCanvas() {
 
     let time    = 0;
     let ringRot = 0;
+    let lastFrameTs = 0;
+
+    // ── Pause when tab is hidden ──────────────────────────────────
+    let paused = false;
+    const onVisibilityChange = () => { paused = document.hidden; };
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     // ────────────────────────────────────────────────────────────
     // DRAW LOOP
     // ────────────────────────────────────────────────────────────
-    function draw() {
+    function draw(ts = 0) {
+      // ── Pause when tab hidden ──────────────────────────────────
+      if (paused) { rafRef.current = requestAnimationFrame(draw); return; }
+      // ── FPS cap on mobile ──────────────────────────────────────
+      if (TARGET_FPS_MS > 0) {
+        const elapsed = ts - lastFrameTs;
+        if (elapsed < TARGET_FPS_MS) { rafRef.current = requestAnimationFrame(draw); return; }
+        lastFrameTs = ts - (elapsed % TARGET_FPS_MS);
+      }
       const vw = W(), vh = H();
       time    += 0.016;
       ringRot += 0.0004;
@@ -391,6 +407,7 @@ export default function GalaxyCanvas() {
     draw();
     return () => {
       cancelAnimationFrame(rafRef.current);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("resize", resize);
     };
   }, []);

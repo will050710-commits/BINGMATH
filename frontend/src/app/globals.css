@@ -47,9 +47,24 @@
   padding: 0;
 }
 
-body {
+/* ── Fixed background via pseudo-element — GPU composited, no scroll repaint ── */
+html {
+  /* The pseudo-element lives on html so it doesn't affect body layout */
+  position: relative;
+}
+html::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
   background: linear-gradient(160deg, #020c1b 0%, #0a1628 15%, #0c2340 35%, #0e3158 50%, #0a3d5c 65%, #063d56 80%, #042f46 100%);
-  background-attachment: fixed;
+  /* Promote to its own GPU layer — zero scroll repaint cost */
+  will-change: transform;
+  pointer-events: none;
+}
+
+body {
+  background: transparent; /* background is now on html::before */
   color: var(--foreground);
   font-family: var(--font-sans);
   overflow-x: hidden;
@@ -389,4 +404,41 @@ body {
 /* mrm-slide-in class used inline on arena containers */
 .mrm-slide-in {
   animation: mrmArenaIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PERFORMANCE: prefers-reduced-motion
+   Tắt mọi animation cho user bật "Reduce Motion" ở OS
+═══════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PERFORMANCE: GPU layer hints
+   Dùng cho các element animated thường xuyên
+═══════════════════════════════════════════════════════════ */
+.gpu-promote {
+  will-change: transform;
+  transform: translateZ(0);  /* force GPU layer */
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PERFORMANCE: content-visibility
+   Các section lớn ngoài viewport sẽ skip layout + paint
+═══════════════════════════════════════════════════════════ */
+.cv-section {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 600px; /* estimated height */
 }

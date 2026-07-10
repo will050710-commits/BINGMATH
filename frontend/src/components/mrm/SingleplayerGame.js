@@ -6,6 +6,29 @@ import { useRouter } from "next/navigation";
 import { useMathMapStore } from "@/context/MathMapStore";
 import { useAuth } from "@/context/authContext";
 import { MOCK_MATHMAPS } from "@/data/mockMathmaps";
+import { CoinStoreProvider, useCoinStore } from "@/context/CoinStore";
+import WagerModal from "@/components/mrm/WagerModal";
+import NearMissEffect from "@/components/mrm/NearMissEffect";
+import MysteryChestModal from "@/components/mrm/MysteryChestModal";
+import { auth } from "@/lib/firebase";
+
+const _BACKEND =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  (typeof window !== "undefined" &&
+  window.location.hostname !== "localhost" &&
+  window.location.hostname !== "127.0.0.1"
+    ? "https://duomath.onrender.com"
+    : "http://localhost:5000");
+
+async function _apiPost(path, body) {
+  const hdrs = { "Content-Type": "application/json" };
+  const cu = auth?.currentUser;
+  if (cu) { try { hdrs["Authorization"] = `Bearer ${await cu.getIdToken(true)}`; } catch (_) {} }
+  try {
+    const res = await fetch(`${_BACKEND}${path}`, { method: "POST", headers: hdrs, body: JSON.stringify(body) });
+    return res.json().catch(() => ({}));
+  } catch (_) { return {}; }
+}
 
 // ── BGM synthesizer ──────────────────────────────────────────────────────────
 function useBgmPlayer(bgmId, customBgmUrl) {
@@ -118,9 +141,10 @@ const DEFAULT_MAP = {
 const MAX_HP = 5;
 const TIME_PER_QUESTION = 30; // seconds
 
-export default function SingleplayerGame({ mapId }) {
+function SingleplayerGameInner({ mapId }) {
   const { saveLeaderboardScore, maps, hydrated } = useMathMapStore();
   const { user } = useAuth();
+  const { earnCoins, refreshCoins } = useCoinStore();
 
   let mapData = (hydrated && maps.find(m => m.id === mapId)) || MOCK_MATHMAPS[mapId] || DEFAULT_MAP;
   if (!mapData.questions || mapData.questions.length === 0) {
@@ -192,6 +216,16 @@ export default function SingleplayerGame({ mapId }) {
   const [lastPoints, setLastPoints] = useState(null); // for animation
   const [blankInput, setBlankInput] = useState(""); // text input for fill_in_blank questions
 
+  // ── Gamification v2 states ──
+  const [showWager, setShowWager] = useState(false);
+  const [wagerConfig, setWagerConfig] = useState(null); // { wager, multiplier, safeReward }
+  const [showNearMiss, setShowNearMiss] = useState(false);
+  const [nearMissQuestion, setNearMissQuestion] = useState(null);
+  const [nearMissAnswer, setNearMissAnswer] = useState(null);
+  const [showChest, setShowChest] = useState(false);
+  const [lastWrongIdx, setLastWrongIdx] = useState(null);
+  const [x2TokenActive, setX2TokenActive] = useState(false);
+
   const timerRef = useRef(null);
   const router = useRouter();
 
@@ -247,18 +281,39 @@ export default function SingleplayerGame({ mapId }) {
     ? (mapData.customBgmName || "Nhạc tự chọn") 
     : (mapData.bgm || "Chill Lofi");
 
-  // Save score to leaderboard when game ends
+  // Save score to leaderboard + earn coins + record rank when game ends
   useEffect(() => {
     if (phase === "result") {
       const correctCount = answers.filter(a => a.correct).length;
       const accuracy = answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0;
-      
+
       const username = user?.username || user?.email?.split("@")[0] || "Người chơi";
       const grade = user?.grade || "Lớp 11";
-      
+
       saveLeaderboardScore(mapId, username, grade, score, accuracy, maxCombo);
+
+      // Wager payout
+      if (wagerConfig && user) {
+        if (accuracy >= 60 && wagerConfig.wager > 0) {
+          // Won the wager: earn wager * multiplier
+          earnCoins(wagerConfig.wager * wagerConfig.multiplier, "wager_win");
+        } else if (accuracy >= 60 && wagerConfig.wager === 0) {
+          // Safe mode flat reward
+          earnCoins(wagerConfig.safeReward || 10, "game_complete");
+        }
+        // Loss: coins already optimistically deducted if needed — no extra action
+      } else if (accuracy >= 60 && user) {
+        // No wager chosen — base reward by accuracy
+        const baseReward = accuracy === 100 ? 80 : accuracy >= 80 ? 50 : 20;
+        earnCoins(baseReward, "game_complete");
+      }
+
+      // Record ELO rank snapshot (fire-and-forget)
+      if (user) {
+        _apiPost("/api/mrm/rank-history/record", {}).then(() => refreshCoins());
+      }
     }
-  }, [phase, answers, score, maxCombo, user, mapId, saveLeaderboardScore]);
+  }, [phase]); // eslint-disable-line
 
   // ─── Timer ───────────────────────────────────────────────────────────────
   const startTimer = useCallback(() => {
@@ -291,11 +346,12 @@ export default function SingleplayerGame({ mapId }) {
     const limit = question ? (question.timeLimit || 30) : 30;
 
     let isCorrect = false;
+    let userAnswerText = null;
     if (!timeout) {
       if (question.type === "fill_in_blank") {
-        const userAns = typeof optionIdx === "string" ? optionIdx.trim().toLowerCase() : "";
+        userAnswerText = typeof optionIdx === "string" ? optionIdx.trim() : "";
         const correctAns = (question.correctAnswerText || "").trim().toLowerCase();
-        isCorrect = userAns === correctAns;
+        isCorrect = userAnswerText.toLowerCase() === correctAns;
       } else {
         isCorrect = optionIdx === question.correct;
       }
@@ -308,7 +364,9 @@ export default function SingleplayerGame({ mapId }) {
     const newCombo = isCorrect ? combo + 1 : 0;
     const comboBonus = isCorrect ? newCombo * 10 : 0;
     const basePoints = question ? (question.points || 100) : 100;
-    const pts = isCorrect ? (basePoints + timeBonus + comboBonus) : 0;
+    const multiplier = x2TokenActive ? 2 : 1;
+    const pts = isCorrect ? (basePoints + timeBonus + comboBonus) * multiplier : 0;
+    if (x2TokenActive && isCorrect) setX2TokenActive(false);
 
     setAnswers(prev => [...prev, { correct: isCorrect, time: limit - timeLeft, points: pts }]);
 
@@ -320,10 +378,23 @@ export default function SingleplayerGame({ mapId }) {
       setTimeout(() => setLastPoints(null), 1200);
     } else {
       setCombo(0);
+      // Show NearMiss effect if user answered (not timeout)
+      if (!timeout && optionIdx !== null) {
+        setNearMissQuestion(question);
+        setNearMissAnswer(userAnswerText ?? optionIdx);
+        setLastWrongIdx(optionIdx);
+        setShowNearMiss(true);
+        // Don't auto-advance yet — NearMiss handles it
+        const newHp = hp - 1;
+        setHp(newHp);
+        if (newHp <= 0) {
+          setTimeout(() => { setShowNearMiss(false); setPhase("result"); }, 1500);
+        }
+        return;
+      }
       const newHp = hp - 1;
       setHp(newHp);
       if (newHp <= 0) {
-        // Game over
         setTimeout(() => setPhase("result"), 1200);
         return;
       }
@@ -340,6 +411,29 @@ export default function SingleplayerGame({ mapId }) {
         setBlankInput("");
       }
     }, 2000);
+  };
+
+  // ─── NearMiss: Revive (redo current question) ─────────────────────────────
+  const handleRevive = () => {
+    setShowNearMiss(false);
+    setSelected(null);
+    setShowExplain(false);
+    setBlankInput("");
+    setHp(prev => Math.min(prev + 1, MAX_HP)); // restore 1 hp
+    // Restart timer for same question
+    startTimer();
+  };
+
+  const handleNearMissContinue = () => {
+    setShowNearMiss(false);
+    if (isLastQ || hp <= 0) {
+      setPhase("result");
+    } else {
+      setCurrentQ(prev => prev + 1);
+      setSelected(null);
+      setShowExplain(false);
+      setBlankInput("");
+    }
   };
 
   const handleSwap = () => {
@@ -367,6 +461,15 @@ export default function SingleplayerGame({ mapId }) {
         fontFamily: "'Inter', sans-serif", color: "white", position: "relative",
       }}>
         <MapBgLayer bgImageUrl={mapData.bgImageUrl || mapData.thumbnail_url} bgOpacity={activeBgOpacity} />
+
+        {/* WagerModal */}
+        {showWager && (
+          <WagerModal
+            onConfirm={(cfg) => { setWagerConfig(cfg); setShowWager(false); setPhase("playing"); }}
+            onSkip={() => { setWagerConfig(null); setShowWager(false); setPhase("playing"); }}
+          />
+        )}
+
         <div style={{
           width: 96, height: 96, borderRadius: 20,
           background: mapData.thumbnail_color,
@@ -391,6 +494,7 @@ export default function SingleplayerGame({ mapId }) {
             { icon: "⏱", label: `${mapData.time_avg || 30}s/câu`, color: "#fbbf24" },
             { icon: "🃏", label: "1 Swap Card", color: "#a78bfa" },
             { icon: "💎", label: "Combo bonus", color: "#22d3ee" },
+            { icon: "🎰", label: "Đặt cược xu", color: "#f97316" },
           ].map(f => (
             <div key={f.label} style={{
               display: "flex", alignItems: "center", gap: 6, padding: "8px 16px",
@@ -403,7 +507,7 @@ export default function SingleplayerGame({ mapId }) {
         </div>
 
         <button
-          onClick={() => setPhase("playing")}
+          onClick={() => setShowWager(true)}
           style={{
             padding: "16px 56px", borderRadius: 12, fontSize: 16, fontWeight: 800,
             background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
@@ -432,21 +536,31 @@ export default function SingleplayerGame({ mapId }) {
   if (phase === "result") {
     const correctCount = answers.filter(a => a.correct).length;
     const accuracy = answers.length > 0 ? Math.round((correctCount / answers.length) * 100) : 0;
-    
+
     // osu! Style Grade System
-    const grade = accuracy === 100 ? "SS" 
-      : accuracy >= 95 ? "S" 
-      : accuracy >= 90 ? "A" 
-      : accuracy >= 80 ? "B" 
-      : accuracy >= 70 ? "C" 
+    const grade = accuracy === 100 ? "SS"
+      : accuracy >= 95 ? "S"
+      : accuracy >= 90 ? "A"
+      : accuracy >= 80 ? "B"
+      : accuracy >= 70 ? "C"
       : "D";
-      
-    const gradeColor = grade === "SS" ? "#facc15" 
-      : grade === "S" ? "#fbbf24" 
-      : grade === "A" ? "#22d3ee" 
-      : grade === "B" ? "#a78bfa" 
-      : grade === "C" ? "#ec4899" 
+
+    const gradeColor = grade === "SS" ? "#facc15"
+      : grade === "S" ? "#fbbf24"
+      : grade === "A" ? "#22d3ee"
+      : grade === "B" ? "#a78bfa"
+      : grade === "C" ? "#ec4899"
       : "#ef4444";
+
+    // MysteryChest shown on top of result if accuracy >= 40%
+    if (showChest) {
+      return (
+        <MysteryChestModal
+          onClose={() => setShowChest(false)}
+          onTokenEarned={(t) => { if (t === "x2") setX2TokenActive(true); }}
+        />
+      );
+    }
 
     return (
       <div style={{
@@ -527,20 +641,31 @@ export default function SingleplayerGame({ mapId }) {
         </div>
 
         {/* Actions */}
-        <div style={{ display: "flex", gap: 12 }}>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          {/* Mystery Chest button — reward for completing */}
+          {accuracy >= 40 && (
+            <button
+              onClick={() => setShowChest(true)}
+              style={{
+                padding: "12px 28px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
+                background: "linear-gradient(135deg, #fbbf24, #f59e0b)",
+                border: "none", color: "#000", cursor: "pointer",
+                boxShadow: "0 4px 20px rgba(251,191,36,0.4)",
+                transform: "skewX(-8deg)",
+                animation: "chestGlow 2s ease-in-out infinite",
+              }}
+            >
+              <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>🎁 Mở hộp quà</span>
+            </button>
+          )}
           <button
             onClick={() => {
               setPhase("intro");
-              setCurrentQ(0);
-              setHp(MAX_HP);
-              setScore(0);
-              setCombo(0);
-              setMaxCombo(0);
-              setSelected(null);
-              setShowExplain(false);
-              setAnswers([]);
-              setSwapUsed(false);
-              setBlankInput("");
+              setCurrentQ(0); setHp(MAX_HP); setScore(0);
+              setCombo(0); setMaxCombo(0); setSelected(null);
+              setShowExplain(false); setAnswers([]); setSwapUsed(false);
+              setBlankInput(""); setShowNearMiss(false); setShowChest(false);
+              setWagerConfig(null);
             }}
             style={{
               padding: "12px 32px", borderRadius: 8, fontSize: 14.5, fontWeight: 800,
@@ -951,7 +1076,31 @@ export default function SingleplayerGame({ mapId }) {
             {question.explain}
           </div>
         )}
+
+        {/* NearMiss Effect — show after wrong answer */}
+        {showNearMiss && (
+          <NearMissEffect
+            question={nearMissQuestion}
+            userAnswer={nearMissAnswer}
+            onRevive={handleRevive}
+            onContinue={handleNearMissContinue}
+          />
+        )}
       </div>
+
+      {/* X2 Token indicator */}
+      {x2TokenActive && (
+        <div style={{
+          position: "fixed", top: 70, right: 20, zIndex: 100,
+          background: "rgba(251,191,36,0.15)",
+          border: "1px solid rgba(251,191,36,0.4)",
+          borderRadius: 8, padding: "6px 12px",
+          fontSize: 12, fontWeight: 800, color: "#fbbf24",
+          animation: "fadeIn 0.3s ease-out",
+        }}>
+          🃏 X2 Điểm Active!
+        </div>
+      )}
 
       <style>{`
         @keyframes scoreFloat {
@@ -962,8 +1111,21 @@ export default function SingleplayerGame({ mapId }) {
           from { opacity: 0; transform: translateY(6px); }
           to   { opacity: 1; transform: translateY(0); }
         }
+        @keyframes chestGlow {
+          0%, 100% { box-shadow: 0 4px 20px rgba(251,191,36,0.4); }
+          50%       { box-shadow: 0 4px 40px rgba(251,191,36,0.8); }
+        }
       `}</style>
     </div>
+  );
+}
+
+// Wrap with CoinStoreProvider
+export default function SingleplayerGame({ mapId }) {
+  return (
+    <CoinStoreProvider>
+      <SingleplayerGameInner mapId={mapId} />
+    </CoinStoreProvider>
   );
 }
 

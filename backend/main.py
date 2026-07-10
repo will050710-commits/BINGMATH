@@ -733,6 +733,42 @@ def init_db():
         ("ALTER TABLE users ADD COLUMN school TEXT DEFAULT ''",      None),
         ("ALTER TABLE users ADD COLUMN grade TEXT DEFAULT ''",       None),
         ("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''",  None),
+        # ── Gamification v2: Coins + Country ──
+        ("ALTER TABLE user_gamification ADD COLUMN coins INTEGER DEFAULT 0", None),
+        ("ALTER TABLE user_gamification ADD COLUMN lifetime_coins INTEGER DEFAULT 0", None),
+        ("ALTER TABLE users ADD COLUMN country TEXT DEFAULT 'VN'", None),
+        ("CREATE INDEX IF NOT EXISTS idx_user_country ON users(country)", None),
+        # ── Profile borders shop ──
+        ("""CREATE TABLE IF NOT EXISTS profile_borders (
+            id          TEXT PRIMARY KEY,
+            name_vi     TEXT NOT NULL,
+            name_en     TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            price_coins INTEGER NOT NULL,
+            rarity      TEXT DEFAULT 'common',
+            css_style   TEXT NOT NULL DEFAULT '{}',
+            preview_emoji TEXT DEFAULT '',
+            is_animated INTEGER DEFAULT 0,
+            created_at  TEXT DEFAULT (datetime('now'))
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS user_borders (
+            user_id   INTEGER NOT NULL,
+            border_id TEXT NOT NULL,
+            owned_at  TEXT DEFAULT (datetime('now')),
+            is_active INTEGER DEFAULT 0,
+            PRIMARY KEY (user_id, border_id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )""", None),
+        # ── MRM Rank history ──
+        ("""CREATE TABLE IF NOT EXISTS mrm_rank_history (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id     INTEGER NOT NULL,
+            elo_rating  INTEGER NOT NULL,
+            global_rank INTEGER,
+            recorded_at TEXT DEFAULT (datetime('now')),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        )""", None),
+        ("CREATE INDEX IF NOT EXISTS idx_mrm_rank_history ON mrm_rank_history(user_id, recorded_at DESC)", None),
     ]
     for sql, _ in migrations:
         try:
@@ -2952,6 +2988,557 @@ async def get_leaderboard(request: Request):
             })
             
         return JSONResponse(result)
+    finally:
+        db.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  GAMIFICATION v2 — COINS, BORDERS SHOP, MRM LEADERBOARD, RANK HISTORY, SSE
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ── Seed profile borders data ─────────────────────────────────────────────────
+BORDER_SEEDS = [
+    # Common
+    {"id": "border_cyan", "name_vi": "Viền Xanh Lam", "name_en": "Cyan Frame",
+     "description": "Viền đơn sắc xanh lam thanh lịch", "price_coins": 200,
+     "rarity": "common", "preview_emoji": "🔵",
+     "css_style": '{"border": "3px solid #22d3ee", "boxShadow": "0 0 8px #22d3ee66"}', "is_animated": 0},
+    {"id": "border_purple", "name_vi": "Viền Tím", "name_en": "Purple Frame",
+     "description": "Viền tím huyền bí", "price_coins": 200,
+     "rarity": "common", "preview_emoji": "🟣",
+     "css_style": '{"border": "3px solid #a78bfa", "boxShadow": "0 0 8px #a78bfa66"}', "is_animated": 0},
+    {"id": "border_gold", "name_vi": "Viền Vàng", "name_en": "Gold Frame",
+     "description": "Viền vàng sang trọng", "price_coins": 200,
+     "rarity": "common", "preview_emoji": "🟡",
+     "css_style": '{"border": "3px solid #fbbf24", "boxShadow": "0 0 8px #fbbf2466"}', "is_animated": 0},
+    # Rare
+    {"id": "border_ocean", "name_vi": "Đại Dương", "name_en": "Ocean Gradient",
+     "description": "Gradient xanh dương gradient chảy mượt", "price_coins": 500,
+     "rarity": "rare", "preview_emoji": "🌊",
+     "css_style": '{"border": "3px solid transparent", "backgroundClip": "padding-box", "boxShadow": "0 0 0 3px #0ea5e9, 0 0 16px #0ea5e988"}', "is_animated": 0},
+    {"id": "border_fire", "name_vi": "Lửa Rực", "name_en": "Fire Aura",
+     "description": "Viền gradient lửa rực rỡ", "price_coins": 500,
+     "rarity": "rare", "preview_emoji": "🔥",
+     "css_style": '{"border": "3px solid transparent", "boxShadow": "0 0 0 3px #ef4444, 0 0 16px #f9731688"}', "is_animated": 0},
+    {"id": "border_galaxy", "name_vi": "Thiên Hà", "name_en": "Galaxy",
+     "description": "Gradient ngân hà tím xanh", "price_coins": 500,
+     "rarity": "rare", "preview_emoji": "🌌",
+     "css_style": '{"border": "3px solid transparent", "boxShadow": "0 0 0 3px #7c3aed, 0 0 20px #7c3aed88"}', "is_animated": 0},
+    # Epic
+    {"id": "border_math_sigma", "name_vi": "Sigma Master", "name_en": "Sigma Master",
+     "description": "Viền in ký hiệu ∑ toán học nổi bật", "price_coins": 1200,
+     "rarity": "epic", "preview_emoji": "∑",
+     "css_style": '{"border": "3px solid #22d3ee", "boxShadow": "0 0 0 1px #a78bfa, 0 0 24px #22d3ee99", "outline": "2px dashed #a78bfa44"}', "is_animated": 0},
+    {"id": "border_neon", "name_vi": "Neon Pulse", "name_en": "Neon Pulse",
+     "description": "Viền neon nhấp nháy sáng rực", "price_coins": 1200,
+     "rarity": "epic", "preview_emoji": "💡",
+     "css_style": '{"border": "3px solid #4ade80", "boxShadow": "0 0 0 2px #4ade8033, 0 0 30px #4ade8099", "animation": "neonPulse 2s ease-in-out infinite"}', "is_animated": 1},
+    {"id": "border_diamond", "name_vi": "Kim Cương", "name_en": "Diamond Aura",
+     "description": "Viền kim cương lấp lánh", "price_coins": 1200,
+     "rarity": "epic", "preview_emoji": "💎",
+     "css_style": '{"border": "3px solid #93c5fd", "boxShadow": "0 0 0 2px #bfdbfe, 0 0 28px #93c5fd99, inset 0 0 8px #1e40af33"}', "is_animated": 0},
+    # Legendary
+    {"id": "border_rainbow", "name_vi": "Cầu Vồng Huyền Thoại", "name_en": "Legendary Rainbow",
+     "description": "Viền cầu vồng xoay tròn — cực kỳ hiếm", "price_coins": 3000,
+     "rarity": "legendary", "preview_emoji": "🌈",
+     "css_style": '{"border": "3px solid transparent", "backgroundImage": "linear-gradient(white,white), conic-gradient(from 0deg, #ff0000, #ff7700, #ffff00, #00ff00, #0000ff, #8b00ff, #ff0000)", "backgroundOrigin": "border-box", "backgroundClip": "padding-box, border-box", "animation": "rainbowSpin 3s linear infinite"}', "is_animated": 1},
+    {"id": "border_god", "name_vi": "Thần Toán Học", "name_en": "Math God",
+     "description": "Dành cho những ai đã chinh phục toán học — viền vàng huyền thoại", "price_coins": 3000,
+     "rarity": "legendary", "preview_emoji": "👑",
+     "css_style": '{"border": "4px solid #ffd700", "boxShadow": "0 0 0 2px #ffd70055, 0 0 40px #ffd70099, 0 0 80px #ffd70044", "animation": "godGlow 2s ease-in-out infinite"}', "is_animated": 1},
+]
+
+
+def _seed_borders(conn):
+    """Seed profile_borders nếu chưa có."""
+    for b in BORDER_SEEDS:
+        conn.execute(
+            """INSERT OR IGNORE INTO profile_borders
+               (id, name_vi, name_en, description, price_coins, rarity, css_style, preview_emoji, is_animated)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (b["id"], b["name_vi"], b["name_en"], b["description"],
+             b["price_coins"], b["rarity"], b["css_style"], b["preview_emoji"], b["is_animated"])
+        )
+    conn.commit()
+
+
+# ── SSE state (in-memory — single process) ────────────────────────────────────
+from fastapi.responses import StreamingResponse as _SSEStream
+import asyncio as _asyncio
+
+_sse_jackpot = 0          # tăng mỗi khi có game submit
+_sse_online  = 0          # số SSE connections active
+_sse_recent_wins: list    = []  # [{'username': ..., 'score': ..., 'at': ...}]
+_sse_lock = _asyncio.Lock()
+
+async def _sse_broadcast_gen():
+    """Generator trả về SSE events mỗi 5 giây."""
+    global _sse_online
+    async with _sse_lock:
+        _sse_online += 1
+    try:
+        while True:
+            data = {
+                "jackpot": _sse_jackpot,
+                "online": _sse_online,
+                "recent_wins": _sse_recent_wins[-5:],
+            }
+            yield f"data: {json.dumps(data)}\n\n"
+            await _asyncio.sleep(5)
+    finally:
+        async with _sse_lock:
+            _sse_online = max(0, _sse_online - 1)
+
+
+@app.get("/api/sse/mrm-live")
+async def sse_mrm_live():
+    """Server-Sent Events — jackpot, online count, recent wins."""
+    return _SSEStream(
+        _sse_broadcast_gen(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+# ── Helper: compute ELO-based ranks ──────────────────────────────────────────
+def _compute_elo_rank(db, user_id: int, country: str | None = None, school: str | None = None) -> dict:
+    """Return global_rank, country_rank, school_rank for user_id based on elo_rating."""
+    elo_row = db.execute(
+        "SELECT elo_rating FROM user_gamification WHERE user_id=?", (user_id,)
+    ).fetchone()
+    elo = elo_row["elo_rating"] if elo_row else 1000
+
+    global_rank = db.execute(
+        """SELECT COUNT(*)+1 as r FROM user_gamification g
+           JOIN users u ON u.id = g.user_id
+           WHERE g.elo_rating > ? AND u.banned = 0""",
+        (elo,)
+    ).fetchone()["r"]
+
+    country_rank = None
+    if country:
+        country_rank = db.execute(
+            """SELECT COUNT(*)+1 as r FROM user_gamification g
+               JOIN users u ON u.id = g.user_id
+               WHERE g.elo_rating > ? AND u.country = ? AND u.banned = 0""",
+            (elo, country)
+        ).fetchone()["r"]
+
+    school_rank = None
+    if school:
+        school_rank = db.execute(
+            """SELECT COUNT(*)+1 as r FROM user_gamification g
+               JOIN users u ON u.id = g.user_id
+               WHERE g.elo_rating > ? AND u.school = ? AND u.banned = 0""",
+            (elo, school)
+        ).fetchone()["r"]
+
+    return {"global_rank": global_rank, "country_rank": country_rank, "school_rank": school_rank, "elo": elo}
+
+
+# ── MRM Leaderboard ───────────────────────────────────────────────────────────
+@app.get("/api/mrm/leaderboard")
+async def mrm_leaderboard(request: Request,
+                          type: str = "global",
+                          country: str = "",
+                          school: str = "",
+                          page: int = 1,
+                          limit: int = 50):
+    """Leaderboard xếp hạng theo ELO. type: global | country | school."""
+    offset = (page - 1) * limit
+    db = get_db()
+    try:
+        base_q = """
+            SELECT
+                u.id, u.username, u.avatar_url, u.school, u.grade, u.country,
+                COALESCE(g.elo_rating, 1000) AS elo_rating,
+                COALESCE(g.peak_elo,   1000) AS peak_elo,
+                COALESCE(g.league, 'Bronze') AS league,
+                COALESCE(g.current_streak, 0) AS current_streak,
+                COALESCE(g.total_xp, 0) AS total_xp,
+                COALESCE(g.level, 1) AS level
+            FROM users u
+            LEFT JOIN user_gamification g ON g.user_id = u.id
+            WHERE u.banned = 0
+        """
+        params: list = []
+        if type == "country" and country:
+            base_q += " AND u.country = ?"
+            params.append(country)
+        elif type == "school" and school:
+            base_q += " AND u.school = ?"
+            params.append(school)
+
+        base_q += " ORDER BY elo_rating DESC, total_xp DESC LIMIT ? OFFSET ?"
+        params += [limit, offset]
+
+        rows = db.execute(base_q, params).fetchall()
+        total_q = "SELECT COUNT(*) as c FROM users u LEFT JOIN user_gamification g ON g.user_id=u.id WHERE u.banned=0"
+        total_params: list = []
+        if type == "country" and country:
+            total_q += " AND u.country=?"
+            total_params.append(country)
+        elif type == "school" and school:
+            total_q += " AND u.school=?"
+            total_params.append(school)
+
+        total_count = db.execute(total_q, total_params).fetchone()["c"]
+
+        # Fetch active border for each user
+        result = []
+        for i, r in enumerate(rows):
+            border_row = db.execute(
+                """SELECT b.id, b.name_vi, b.rarity, b.css_style, b.preview_emoji
+                   FROM user_borders ub
+                   JOIN profile_borders b ON b.id = ub.border_id
+                   WHERE ub.user_id=? AND ub.is_active=1""",
+                (r["id"],)
+            ).fetchone()
+            active_border = dict(border_row) if border_row else None
+
+            result.append({
+                "rank": offset + i + 1,
+                "user_id": r["id"],
+                "username": r["username"],
+                "avatar_url": r["avatar_url"] or "",
+                "school": r["school"] or "",
+                "grade": r["grade"] or "",
+                "country": r["country"] or "VN",
+                "elo_rating": r["elo_rating"],
+                "peak_elo": r["peak_elo"],
+                "league": r["league"],
+                "current_streak": r["current_streak"],
+                "total_xp": r["total_xp"],
+                "level": r["level"],
+                "active_border": active_border,
+            })
+
+        return JSONResponse({"items": result, "total": total_count, "page": page, "limit": limit})
+    finally:
+        db.close()
+
+
+# ── MRM Rank History ──────────────────────────────────────────────────────────
+@app.get("/api/mrm/rank-history/{user_id}")
+async def mrm_rank_history(user_id: int):
+    """Lịch sử ELO + rank của user trong 90 ngày gần nhất."""
+    db = get_db()
+    try:
+        rows = db.execute(
+            """SELECT elo_rating, global_rank, recorded_at
+               FROM mrm_rank_history
+               WHERE user_id=?
+               ORDER BY recorded_at ASC
+               LIMIT 180""",
+            (user_id,)
+        ).fetchall()
+        return JSONResponse([dict(r) for r in rows])
+    finally:
+        db.close()
+
+
+@app.post("/api/mrm/rank-history/record")
+async def mrm_record_rank(request: Request):
+    """Ghi lại ELO snapshot sau khi hoàn thành game. Gọi từ frontend."""
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        g_row = db.execute(
+            "SELECT elo_rating FROM user_gamification WHERE user_id=?", (uid,)
+        ).fetchone()
+        elo = g_row["elo_rating"] if g_row else 1000
+
+        u_row = db.execute("SELECT country FROM users WHERE id=?", (uid,)).fetchone()
+        country = u_row["country"] if u_row else "VN"
+
+        global_rank = db.execute(
+            """SELECT COUNT(*)+1 as r FROM user_gamification g
+               JOIN users u ON u.id=g.user_id
+               WHERE g.elo_rating > ? AND u.banned=0""",
+            (elo,)
+        ).fetchone()["r"]
+
+        db.execute(
+            "INSERT INTO mrm_rank_history (user_id, elo_rating, global_rank) VALUES (?,?,?)",
+            (uid, elo, global_rank)
+        )
+        db.commit()
+        return JSONResponse({"recorded": True, "elo": elo, "global_rank": global_rank})
+    finally:
+        db.close()
+
+
+# ── Public Profile ────────────────────────────────────────────────────────────
+@app.get("/api/profile/{user_id}")
+async def get_profile(user_id: int):
+    """Public profile: stats, rank (ELO-based), border, badges."""
+    db = get_db()
+    try:
+        u = db.execute(
+            "SELECT id, username, avatar_url, school, grade, country, created_at FROM users WHERE id=? AND banned=0",
+            (user_id,)
+        ).fetchone()
+        if not u:
+            raise HTTPException(404, "User not found")
+
+        g = db.execute(
+            "SELECT * FROM user_gamification WHERE user_id=?", (user_id,)
+        ).fetchone()
+
+        # ELO-based ranks
+        elo = g["elo_rating"] if g else 1000
+        country = u["country"] or "VN"
+        school  = u["school"]  or ""
+
+        global_rank = db.execute(
+            """SELECT COUNT(*)+1 as r FROM user_gamification g2
+               JOIN users u2 ON u2.id=g2.user_id
+               WHERE g2.elo_rating > ? AND u2.banned=0""", (elo,)
+        ).fetchone()["r"]
+
+        country_rank = db.execute(
+            """SELECT COUNT(*)+1 as r FROM user_gamification g2
+               JOIN users u2 ON u2.id=g2.user_id
+               WHERE g2.elo_rating > ? AND u2.country=? AND u2.banned=0""", (elo, country)
+        ).fetchone()["r"]
+
+        school_rank = None
+        if school:
+            school_rank = db.execute(
+                """SELECT COUNT(*)+1 as r FROM user_gamification g2
+                   JOIN users u2 ON u2.id=g2.user_id
+                   WHERE g2.elo_rating > ? AND u2.school=? AND u2.banned=0""", (elo, school)
+            ).fetchone()["r"]
+
+        # Badges
+        badges = db.execute(
+            "SELECT badge_id, earned_at FROM user_badges WHERE user_id=? ORDER BY earned_at DESC",
+            (user_id,)
+        ).fetchall()
+
+        # Active border
+        border_row = db.execute(
+            """SELECT b.id, b.name_vi, b.rarity, b.css_style, b.preview_emoji
+               FROM user_borders ub JOIN profile_borders b ON b.id=ub.border_id
+               WHERE ub.user_id=? AND ub.is_active=1""",
+            (user_id,)
+        ).fetchone()
+
+        # Recent MRM games (from rank history — last 10 ELO changes)
+        recent = db.execute(
+            """SELECT elo_rating, global_rank, recorded_at
+               FROM mrm_rank_history WHERE user_id=?
+               ORDER BY recorded_at DESC LIMIT 10""",
+            (user_id,)
+        ).fetchall()
+
+        # Test stats
+        test_stats = db.execute(
+            """SELECT COUNT(*) as total_tests,
+                      AVG(accuracy) as avg_accuracy,
+                      MAX(score) as best_score
+               FROM test_results WHERE user_id=?""",
+            (user_id,)
+        ).fetchone()
+
+        return JSONResponse({
+            "user": {
+                "id": u["id"], "username": u["username"],
+                "avatar_url": u["avatar_url"] or "",
+                "school": u["school"] or "",
+                "grade": u["grade"] or "",
+                "country": u["country"] or "VN",
+                "created_at": u["created_at"],
+            },
+            "gamification": {
+                "elo_rating": elo,
+                "peak_elo": g["peak_elo"] if g else 1000,
+                "league": g["league"] if g else "Bronze",
+                "current_streak": g["current_streak"] if g else 0,
+                "longest_streak": g["longest_streak"] if g else 0,
+                "total_xp": g["total_xp"] if g else 0,
+                "level": g["level"] if g else 1,
+                "coins": g["coins"] if g and "coins" in g.keys() else 0,
+            },
+            "ranks": {
+                "global_rank": global_rank,
+                "country_rank": country_rank,
+                "school_rank": school_rank,
+                "country": country,
+            },
+            "badges": [{"badge_id": b["badge_id"], "earned_at": b["earned_at"]} for b in badges],
+            "active_border": dict(border_row) if border_row else None,
+            "test_stats": {
+                "total_tests": test_stats["total_tests"] if test_stats else 0,
+                "avg_accuracy": round(test_stats["avg_accuracy"] or 0, 1),
+                "best_score": test_stats["best_score"] or 0,
+            },
+            "recent_rank_history": [dict(r) for r in recent],
+        })
+    finally:
+        db.close()
+
+
+# ── Coins APIs ────────────────────────────────────────────────────────────────
+@app.get("/api/coins")
+async def get_coins(request: Request):
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        row = db.execute(
+            "SELECT coins, lifetime_coins FROM user_gamification WHERE user_id=?", (uid,)
+        ).fetchone()
+        coins = row["coins"] if row and "coins" in row.keys() else 0
+        lifetime = row["lifetime_coins"] if row and "lifetime_coins" in row.keys() else 0
+        return JSONResponse({"coins": coins, "lifetime_coins": lifetime})
+    finally:
+        db.close()
+
+
+@app.post("/api/coins/earn")
+async def earn_coins(request: Request):
+    """Cộng xu sau khi hoàn thành bài / mở mystery chest."""
+    uid = await resolve_user_id(request)
+    d = await request.json()
+    amount = max(0, int(d.get("amount", 0)))
+    reason = str(d.get("reason", "game_complete"))[:64]
+
+    if amount == 0:
+        raise HTTPException(400, "amount must be > 0")
+
+    db = get_db()
+    try:
+        db.execute(
+            """INSERT INTO user_gamification (user_id, coins, lifetime_coins)
+               VALUES (?, ?, ?)
+               ON CONFLICT(user_id) DO UPDATE SET
+                 coins = coins + excluded.coins,
+                 lifetime_coins = lifetime_coins + excluded.lifetime_coins""",
+            (uid, amount, amount)
+        )
+        db.commit()
+
+        # Update SSE jackpot counter
+        global _sse_jackpot
+        _sse_jackpot += 1
+
+        row = db.execute(
+            "SELECT coins FROM user_gamification WHERE user_id=?", (uid,)
+        ).fetchone()
+        return JSONResponse({"coins": row["coins"] if row else amount, "earned": amount, "reason": reason})
+    finally:
+        db.close()
+
+
+# ── Shop: Borders ─────────────────────────────────────────────────────────────
+@app.get("/api/shop/borders")
+async def shop_borders():
+    """Danh sách tất cả viền profile có thể mua."""
+    db = get_db()
+    try:
+        _seed_borders(db)   # idempotent seed
+        rows = db.execute(
+            "SELECT * FROM profile_borders ORDER BY price_coins ASC"
+        ).fetchall()
+        return JSONResponse([dict(r) for r in rows])
+    finally:
+        db.close()
+
+
+@app.get("/api/shop/borders/owned")
+async def owned_borders(request: Request):
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        rows = db.execute(
+            """SELECT b.*, ub.is_active, ub.owned_at
+               FROM user_borders ub
+               JOIN profile_borders b ON b.id = ub.border_id
+               WHERE ub.user_id=?""",
+            (uid,)
+        ).fetchall()
+        return JSONResponse([dict(r) for r in rows])
+    finally:
+        db.close()
+
+
+@app.post("/api/shop/borders/{border_id}/buy")
+async def buy_border(border_id: str, request: Request):
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        _seed_borders(db)
+        border = db.execute(
+            "SELECT * FROM profile_borders WHERE id=?", (border_id,)
+        ).fetchone()
+        if not border:
+            raise HTTPException(404, "Border not found")
+
+        already = db.execute(
+            "SELECT 1 FROM user_borders WHERE user_id=? AND border_id=?", (uid, border_id)
+        ).fetchone()
+        if already:
+            raise HTTPException(409, "Bạn đã sở hữu viền này rồi!")
+
+        g = db.execute(
+            "SELECT coins FROM user_gamification WHERE user_id=?", (uid,)
+        ).fetchone()
+        coins = g["coins"] if g and "coins" in g.keys() else 0
+
+        if coins < border["price_coins"]:
+            raise HTTPException(400, f"Không đủ xu! Cần {border['price_coins']}, bạn có {coins}.")
+
+        # Deduct coins
+        db.execute(
+            "UPDATE user_gamification SET coins = coins - ? WHERE user_id=?",
+            (border["price_coins"], uid)
+        )
+        # Grant border
+        db.execute(
+            "INSERT INTO user_borders (user_id, border_id) VALUES (?,?)",
+            (uid, border_id)
+        )
+        db.commit()
+
+        new_coins = db.execute(
+            "SELECT coins FROM user_gamification WHERE user_id=?", (uid,)
+        ).fetchone()["coins"]
+        return JSONResponse({"success": True, "border_id": border_id, "coins_remaining": new_coins})
+    finally:
+        db.close()
+
+
+@app.post("/api/shop/borders/{border_id}/equip")
+async def equip_border(border_id: str, request: Request):
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        owns = db.execute(
+            "SELECT 1 FROM user_borders WHERE user_id=? AND border_id=?", (uid, border_id)
+        ).fetchone()
+        if not owns:
+            raise HTTPException(403, "Bạn chưa sở hữu viền này!")
+
+        # Unequip all, equip selected
+        db.execute("UPDATE user_borders SET is_active=0 WHERE user_id=?", (uid,))
+        db.execute(
+            "UPDATE user_borders SET is_active=1 WHERE user_id=? AND border_id=?",
+            (uid, border_id)
+        )
+        db.commit()
+        return JSONResponse({"success": True, "equipped": border_id})
+    finally:
+        db.close()
+
+
+@app.post("/api/shop/borders/unequip")
+async def unequip_border(request: Request):
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        db.execute("UPDATE user_borders SET is_active=0 WHERE user_id=?", (uid,))
+        db.commit()
+        return JSONResponse({"success": True})
     finally:
         db.close()
 

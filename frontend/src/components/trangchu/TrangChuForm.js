@@ -186,15 +186,16 @@ function UserAvatar({ user, size = 34, style = {} }) {
   );
 }
 
-const STATIC_MATH_SYMBOLS = Array.from({ length: 18 }).map((_, i) => {
-  const symbols = ["π", "Σ", "θ", "∞", "∫", "Δ", "√", "f(x)", "dy/dx", "log", "x²", "y", "z", "a+b", "sin", "cos"];
+const SYMBOL_COUNT = typeof window !== "undefined" && window.innerWidth < 768 ? 6 : 10;
+const STATIC_MATH_SYMBOLS = Array.from({ length: SYMBOL_COUNT }).map((_, i) => {
+  const symbols = ["π", "Σ", "θ", "∞", "∫", "Δ", "√", "f(x)", "dy/dx", "log"];
   return {
     id: i,
     char: symbols[i % symbols.length],
-    size: 14 + (i * 7) % 20, // 14px to 34px
-    left: `${5 + (i * 23) % 90}%`,
-    delay: `${(i * 3) % 20}s`,
-    dur: `${15 + (i * 5) % 18}s`,
+    size: 14 + (i * 7) % 16, // 14px to 30px (was 34px — smaller = less paint)
+    left: `${8 + (i * 30) % 84}%`,
+    delay: `${(i * 4) % 20}s`,
+    dur: `${18 + (i * 5) % 15}s`,
   };
 });
 
