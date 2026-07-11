@@ -4180,6 +4180,8 @@ async def mrm_websocket_endpoint(websocket: WebSocket, token: str = None):
                         eval_msg = {
                             "type": "round_evaluation",
                             "q_idx": q_idx,
+                            "host_id": room["host_id"],
+                            "guest_id": room["guest_id"],
                             "answers": {
                                 str(room["host_id"]): p1_ans,
                                 str(room["guest_id"]): p2_ans

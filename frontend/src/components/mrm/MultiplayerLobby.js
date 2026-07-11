@@ -593,9 +593,11 @@ export default function MultiplayerLobby() {
             setEvaluating(true);
             clearInterval(questionTimerRef.current);
             
-            const myAns = msg.answers[user.id];
-            const oppId = Object.keys(msg.answers).find(id => id !== user.id.toString());
-            const oppAns = oppId ? msg.answers[oppId] : null;
+            const myId = myRole === "host" ? msg.host_id : msg.guest_id;
+            const oppId = myRole === "host" ? msg.guest_id : msg.host_id;
+            
+            const myAns = msg.answers[myId?.toString()];
+            const oppAns = msg.answers[oppId?.toString()];
             
             setPlayerSelected(myAns?.option);
             setBotSelected(oppAns?.option);
