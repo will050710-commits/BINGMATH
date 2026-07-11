@@ -832,6 +832,14 @@ export default function MultiplayerLobby() {
     }
   }, []);
 
+  // Sync ELO from database user profile to prevent local resets
+  useEffect(() => {
+    if (user?.elo_rating !== undefined) {
+      setPlayerElo(user.elo_rating);
+      localStorage.setItem("duomath_player_elo", user.elo_rating.toString());
+    }
+  }, [user]);
+
   const saveStatsToStorage = (wins, losses, elo) => {
     localStorage.setItem("duomath_player_wins", wins.toString());
     localStorage.setItem("duomath_player_losses", losses.toString());
@@ -1296,8 +1304,12 @@ export default function MultiplayerLobby() {
     }, ...prev.slice(0, 4)]);
   };
 
-  // percentile for display
-  const displayRooms = socketRef.current && socketRef.current.readyState === WebSocket.OPEN ? wsRooms : rooms;
+  const displayRooms = (() => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      return [...wsRooms, ...rooms];
+    }
+    return rooms;
+  })();
   const percentile = Math.min(99, Math.round(((playerElo - 1000) / 1200) * 100));
 
   return (
@@ -1431,7 +1443,7 @@ export default function MultiplayerLobby() {
                   {displayRooms.map(room => {
                     const dc = getDiffColor(room.diff);
                     return (
-                      <div key={room.id} style={{
+                      <div key={room.id} className="mrm-room-item" style={{
                         display: "flex", alignItems: "center", gap: 14,
                         padding: "14px 18px",
                         background: room.status === "in_game"
@@ -1453,8 +1465,9 @@ export default function MultiplayerLobby() {
                           display: "flex", alignItems: "center", justifyContent: "center",
                           fontSize: 20, flexShrink: 0,
                           border: "2px solid rgba(167,139,250,0.3)",
+                          overflow: "hidden"
                         }}>
-                          {BOTS.find(b => b.username === room.host)?.avatar || "⚔️"}
+                          {renderAvatar(room.host_avatar || BOTS.find(b => b.username === room.host)?.avatar || "⚔️", room.host)}
                         </div>
 
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -2648,6 +2661,9 @@ export default function MultiplayerLobby() {
         }
         .mrm-bounce-in {
           animation: mrmBounceIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1.3) 0.2s both;
+        }
+        .mrm-room-item {
+          animation: mrmFadeUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
         @keyframes mrmSlideIn {

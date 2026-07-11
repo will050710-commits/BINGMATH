@@ -1002,9 +1002,17 @@ async def me(request: Request):
         row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         if not row:
             raise HTTPException(404, "User not found.")
+        
+        g_row = db.execute("SELECT elo_rating FROM user_gamification WHERE user_id=?", (uid,)).fetchone()
+        elo = g_row["elo_rating"] if g_row else 1000
+        
         test_results, game_results = _fetch_scores(db, uid)
+        
+        user_data = user_dict(row)
+        user_data["elo_rating"] = elo
+        
         return JSONResponse({
-            "user": user_dict(row),
+            "user": user_data,
             "test_results": test_results,
             "game_results": game_results,
         })
