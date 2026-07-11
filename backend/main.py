@@ -1886,7 +1886,16 @@ async def translate(request: Request):
     payload = {
         "model": "llama-3.1-8b-instant",
         "messages": [
-            {"role": "system", "content": "You are a JSON-only translation API. Output only the JSON object."},
+            {
+                "role": "system",
+                "content": (
+                    "You are a JSON-only translation API. Output only the JSON object. "
+                    "CRITICAL: For all Vietnamese fields (like 'translation', 'summary', 'vietnamese', and 'theory.vi'), "
+                    "you MUST use only standard Latin-based Vietnamese characters (Chữ Quốc Ngữ). "
+                    "Do NOT use any Chinese characters (Hanzi/Kanji like '等式', '不等式', etc.) under any circumstances. "
+                    "Always write terms like 'inequality' as 'bất đẳng thức', NOT 'bất等式'."
+                )
+            },
             {"role": "user",   "content": prompt},
         ],
         "max_tokens": 500, "temperature": 0.2,
