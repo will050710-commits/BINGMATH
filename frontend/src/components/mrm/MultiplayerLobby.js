@@ -17,6 +17,23 @@ const BASE =
     ? "https://duomath.onrender.com"
     : "http://localhost:5000");
 
+const renderAvatar = (avatar, username) => {
+  if (!avatar) {
+    return (username || "?")[0].toUpperCase();
+  }
+  const isImg = avatar.startsWith("http") || avatar.startsWith("/") || avatar.startsWith("data:") || avatar.length > 10;
+  if (isImg) {
+    return (
+      <img
+        src={avatar}
+        alt={username}
+        style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }}
+      />
+    );
+  }
+  return avatar;
+};
+
 
 // ── Constants & Configs ──────────────────────────────────────────────────
 const BOTS = [
@@ -610,7 +627,29 @@ export default function MultiplayerLobby() {
               setCombo(0);
             }
             
-            setFeedMessages(msg.logs);
+            const clientLogs = [];
+            const myCorrect = myAns?.is_correct;
+            const oppCorrect = oppAns?.is_correct;
+            const myTime = myAns?.time_taken || 0;
+            const oppTime = oppAns?.time_taken || 0;
+            const oppName = botOpponent?.username || "Đối thủ";
+            
+            if (myCorrect && oppCorrect) {
+              if (myTime < oppTime) {
+                clientLogs.push("⚡ Bạn nhanh hơn! Gây sát thương lên đối thủ! / You are faster!");
+              } else if (oppTime < myTime) {
+                clientLogs.push(`⚡ Đối thủ nhanh hơn! Bạn mất 1 HP. / ${oppName} is faster!`);
+              } else {
+                clientLogs.push("🤝 Hòa! Cả hai đều đúng cùng tốc độ!");
+              }
+            } else if (myCorrect && !oppCorrect) {
+              clientLogs.push("🎯 Bạn đúng! Gây sát thương! / You hit!");
+            } else if (!myCorrect && oppCorrect) {
+              clientLogs.push(`🎯 Bạn sai! Đối thủ gây sát thương! / ${oppName} hits!`);
+            } else {
+              clientLogs.push("💨 Cả hai đều trả lời sai! / Both missed!");
+            }
+            setFeedMessages(clientLogs);
             
             setTimeout(() => {
               if (nextPlayerHP <= 0 || nextBotHP <= 0 || currentQ === activeQuestions.length - 1) {
@@ -1764,7 +1803,15 @@ export default function MultiplayerLobby() {
               borderRadius: 16, padding: "24px 20px", textAlign: "center", width: 180,
               boxShadow: "0 0 30px rgba(56,189,248,0.15), 0 12px 32px rgba(0,0,0,0.5)",
             }}>
-              <div style={{ fontSize: 44, marginBottom: 10 }}>🎓</div>
+              <div style={{
+                width: 60, height: 60, borderRadius: "50%",
+                background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 10px", overflow: "hidden",
+                border: "2px solid rgba(14,165,233,0.4)"
+              }}>
+                {renderAvatar(user?.avatar_url, playerUsername)}
+              </div>
               <RankBadge rank={playerRank} size={36} />
               <div style={{ fontSize: 14, fontWeight: 900, color: "white", marginTop: 8 }}>{playerUsername}</div>
               <div style={{ fontSize: 11, color: getRankColor(playerRank), marginTop: 2 }}>{playerRank}</div>
@@ -1840,7 +1887,16 @@ export default function MultiplayerLobby() {
               transform: "skewX(-6deg)",
             }}>
               <div style={{ transform: "skewX(6deg)" }}>
-                <div style={{ fontSize: 56, marginBottom: 14 }}>🎓</div>
+                <div style={{
+                  width: 70, height: 70, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 14px", overflow: "hidden",
+                  border: "2px solid rgba(14,165,233,0.4)",
+                  boxShadow: "0 0 12px rgba(14,165,233,0.3)"
+                }}>
+                  {renderAvatar(user?.avatar_url, playerUsername)}
+                </div>
                 <RankBadge rank={playerRank} size={44} />
                 <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginTop: 10 }}>{playerUsername}</div>
                 <div style={{ fontSize: 12, color: getRankColor(playerRank), fontWeight: 800, marginTop: 2 }}>{playerRank}</div>
@@ -1865,7 +1921,16 @@ export default function MultiplayerLobby() {
               transform: "skewX(-6deg)",
             }}>
               <div style={{ transform: "skewX(6deg)" }}>
-                <div style={{ fontSize: 56, marginBottom: 14 }}>{botOpponent.avatar}</div>
+                <div style={{
+                  width: 70, height: 70, borderRadius: "50%",
+                  background: "linear-gradient(135deg, #dc2626, #b91c1c)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 14px", overflow: "hidden",
+                  border: "2px solid rgba(239,68,68,0.4)",
+                  boxShadow: "0 0 12px rgba(239,68,68,0.3)"
+                }}>
+                  {renderAvatar(botOpponent.avatar, botOpponent.username)}
+                </div>
                 <RankBadge rank={botOpponent.rank} size={44} />
                 <div style={{ fontSize: 18, fontWeight: 900, color: "white", marginTop: 10 }}>{botOpponent.username}</div>
                 <div style={{ fontSize: 12, color: getRankColor(botOpponent.rank), fontWeight: 800, marginTop: 2 }}>{botOpponent.rank}</div>
@@ -2202,7 +2267,10 @@ export default function MultiplayerLobby() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 18, border: "2px solid rgba(14,165,233,0.4)",
                   boxShadow: "0 0 12px rgba(14,165,233,0.3)",
-                }}>🎓</div>
+                  overflow: "hidden"
+                }}>
+                  {renderAvatar(user?.avatar_url, playerUsername)}
+                </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: "white" }}>{playerUsername}</span>
@@ -2281,7 +2349,8 @@ export default function MultiplayerLobby() {
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: 18, border: "2px solid rgba(239,68,68,0.4)",
                   boxShadow: "0 0 12px rgba(239,68,68,0.3)",
-                }}>{botOpponent.avatar}</div>
+                  overflow: "hidden"
+                }}>{renderAvatar(botOpponent.avatar, botOpponent.username)}</div>
               </div>
             </div>
 
