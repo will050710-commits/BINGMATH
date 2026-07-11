@@ -2075,7 +2075,7 @@ export default function MultiplayerLobby() {
                 color: "#4ade80", fontSize: 13, fontWeight: 800,
                 animation: "mrmPulse 1.5s infinite",
               }}>
-                ✓ "{selectedCard.enTitle}" selected — Loading match...
+                ✓ &quot;{selectedCard.enTitle}&quot; selected — Loading match...
               </div>
             )}
           </div>
