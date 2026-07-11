@@ -5,7 +5,6 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/authContext";
 import Link from "next/link";
-import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
 import MathToolsPanel from "./MathToolsPanel";
 import { logQuizAttempt, getNextDifficulty } from "@/lib/api";
@@ -949,7 +948,6 @@ export default function PremiumLessonEngine({
 
       {showHUD && <GamificationHUD onClose={closeHUD} />}
 
-      <DuoTranslate />
       <MathToolsPanel lang={lang} />
 
       <style>{`

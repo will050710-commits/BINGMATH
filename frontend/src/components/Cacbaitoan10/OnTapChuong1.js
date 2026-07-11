@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/authContext";
 import Link from "next/link";
-import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
 import LessonVideoPlayer from "./LessonVideoPlayer";
 const SectionHeader = ({ icon, title }) => (
   <div style={{ display:"flex", alignItems:"center", gap:12, fontSize:22, fontWeight:700, color: "#22d3ee", marginBottom:20, paddingBottom:12, borderBottom:"2px solid #f0f0f0" }}>
@@ -532,7 +531,6 @@ export default function OnTapChuong1() {
           article{transition:transform 0.25s cubic-bezier(.2,.8,.2,1),box-shadow 0.25s ease;border-radius:10px;padding:8px;}
           article:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 12px 28px rgba(0,0,0,0.12);}
         `}</style>
-        <DuoTranslate/> 
       </div>
     </div>
     

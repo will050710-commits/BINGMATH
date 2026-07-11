@@ -211,10 +211,48 @@ function registerAvoidanceBox(bx, by, bw, bh) {
   labelBoxes.push({ x: bx, y: by, w: bw, h: bh });
 }
 
+function cleanMathText(text) {
+  if (typeof text !== "string") return text;
+  let clean = text;
+  
+  // Replace degree patterns: ^\circ, ^\\circ, \circ, \\circ, ^{\circ}, etc.
+  clean = clean.replace(/\^\{\\+circ\}/g, "°");
+  clean = clean.replace(/\^\\+circ/g, "°");
+  clean = clean.replace(/\\+circ/g, "°");
+  clean = clean.replace(/\^o/g, "°");
+  
+  // Replace other common latex symbols
+  clean = clean.replace(/\\+alpha/g, "α");
+  clean = clean.replace(/\\+beta/g, "β");
+  clean = clean.replace(/\\+gamma/g, "γ");
+  clean = clean.replace(/\\+theta/g, "θ");
+  clean = clean.replace(/\\+pi/g, "π");
+  clean = clean.replace(/\\+Delta/g, "Δ");
+  clean = clean.replace(/\\+pm/g, "±");
+  clean = clean.replace(/\\+leq?/g, "≤");
+  clean = clean.replace(/\\+geq?/g, "≥");
+  clean = clean.replace(/\\+neq/g, "≠");
+  clean = clean.replace(/\\+times/g, "×");
+  clean = clean.replace(/\\+div/g, "÷");
+  clean = clean.replace(/\\+infty/g, "∞");
+  clean = clean.replace(/\\+approx/g, "≈");
+  clean = clean.replace(/\\+hat\{([A-Za-z])\}/g, "$1̂");
+  clean = clean.replace(/\\+hat\s+([A-Za-z])/g, "$1̂");
+  
+  // Strip enclosing dollar signs and any other dollar signs
+  clean = clean.replace(/\$/g, "");
+  
+  // Replace any remaining backslashes
+  clean = clean.replace(/\\+/g, "");
+  
+  return clean;
+}
+
 function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sans-serif") {
+  const cleanedText = cleanMathText(text);
   ctx.save();
   ctx.font = font;
-  const metrics = ctx.measureText(text);
+  const metrics = ctx.measureText(cleanedText);
   const w = metrics.width + 10;
   const h = 15;
   const candidates = [
@@ -276,7 +314,7 @@ function drawAvoidanceText(ctx, text, px, py, color, font = "bold 11px 'Sora',sa
   ctx.fillStyle = color;
   ctx.textAlign = best.align;
   ctx.textBaseline = best.baseline;
-  ctx.fillText(text, best.tx, best.ty);
+  ctx.fillText(cleanedText, best.tx, best.ty);
   ctx.restore();
 }
 
@@ -824,11 +862,11 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
       
       // X label near the right end of X axis
       const yZeroText = Math.max(pad.top + 10, Math.min(pad.top + plotH - 10, yZero));
-      ctx.fillText(xLabel, pad.left + plotW - 15, yZeroText - 10);
+      ctx.fillText(cleanMathText(xLabel), pad.left + plotW - 15, yZeroText - 10);
       
       // Y label near the top end of Y axis
       const xZeroText = Math.max(pad.left + 10, Math.min(pad.left + plotW - 20, xZero));
-      ctx.fillText(yLabel, xZeroText + 10, pad.top + 15);
+      ctx.fillText(cleanMathText(yLabel), xZeroText + 10, pad.top + 15);
       ctx.restore();
 
     } else if (cmd === "function") {
@@ -907,7 +945,7 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
         ctx.fillStyle = color;
         ctx.font = `${size}px sans-serif`;
         ctx.textAlign = align;
-        ctx.fillText(txt, cx(x), cy(y));
+        ctx.fillText(cleanMathText(txt), cx(x), cy(y));
         ctx.restore();
       }
 

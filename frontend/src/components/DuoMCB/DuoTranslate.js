@@ -206,10 +206,8 @@ export default function DuoTranslate({ children }) {
 
   const isEnToVi = results?.source_lang ? results.source_lang === "en" : true;
 
-  return (
-    <div className={styles.root}>
-      <div className={styles.content}>{children}</div>
-
+  const renderPanel = () => (
+    <>
       {isOpen && <div className={styles.backdrop} onClick={handleClose} />}
 
       <div ref={panelRef} className={`${styles.panel} ${isOpen ? styles.panelOpen : ""}`}>
@@ -346,6 +344,17 @@ export default function DuoTranslate({ children }) {
 
         </div>
       </div>
+    </>
+  );
+
+  if (!children) {
+    return renderPanel();
+  }
+
+  return (
+    <div className={styles.root}>
+      <div className={styles.content}>{children}</div>
+      {renderPanel()}
     </div>
   );
 }

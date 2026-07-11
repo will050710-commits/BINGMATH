@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/authContext";
 import Link from "next/link";
-import DuoTranslate from "../DuoMCB/DuoTranslate";
 
 const SH = ({ icon, title }) => (
   <div style={{ display:"flex",alignItems:"center",gap:12,fontSize:22,fontWeight:700,color:"#38bdf8",marginBottom:20,paddingBottom:12,borderBottom:"2px solid rgba(255,255,255,0.08)" }}>
@@ -359,14 +358,12 @@ export default function L11_C1_L1_GocLuongGiac() {
               </div>
             )}
 
-            {/* TRANSLATION */}
             {activeTab==="trans" && (
               <div>
                 <SH icon="🌐" title={t("Trợ giúp dịch thuật học tập","Translation & Definition Tool")} />
                 <p style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 24 }}>
                   {t("Bôi đen hoặc nhập bất kỳ từ tiếng Anh toán học nào vào khung bên dưới để tra cứu định nghĩa song ngữ tức thời.","Select or type any mathematical English term below to inspect instant bilingual definition support.")}
                 </p>
-                <DuoTranslate />
               </div>
             )}
 
