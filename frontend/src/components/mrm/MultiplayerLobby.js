@@ -4,9 +4,18 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/authContext";
+import { auth } from "@/lib/firebase";
 import ReportUserModal from "@/components/ReportUserModal";
 import { getQuestionsForCard } from "@/data/multiplayerQuestions";
 import { MOCK_MATHMAPS } from "@/data/mockMathmaps";
+
+const BASE =
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  (typeof window !== "undefined" &&
+  window.location.hostname !== "localhost" &&
+  window.location.hostname !== "127.0.0.1"
+    ? "https://duomath.onrender.com"
+    : "http://localhost:5000");
 
 
 // ── Constants & Configs ──────────────────────────────────────────────────
@@ -278,6 +287,17 @@ export default function MultiplayerLobby() {
   const [onlineCount, setOnlineCount] = useState(347);
   const [rooms, setRooms] = useState(INITIAL_ROOMS);
 
+  // ─── WebSocket Integration States ──────────────────────────────────────
+  const socketRef = useRef(null);
+  const [wsRooms, setWsRooms] = useState([]);
+  const [isRealMultiplayer, setIsRealMultiplayer] = useState(false);
+  const [myRole, setMyRole] = useState(null); // "host" | "guest"
+  const [roomId, setRoomId] = useState(null);
+  const [createMap, setCreateMap] = useState("Phương trình bậc hai nâng cao");
+  const [createMinElo, setCreateMinElo] = useState("Tất cả");
+  const [createMode, setCreateMode] = useState("Ranked (Tính ELO)");
+
+
   // ─── Lobby / Flow States ───────────────────────────────────────────────
   const [tab, setTab] = useState("browse"); // browse | create | ranked
   const [joiningRoomId, setJoiningRoomId] = useState(null);
@@ -430,6 +450,335 @@ export default function MultiplayerLobby() {
   const playerUsername = user?.username || user?.email?.split("@")[0] || "Bạn";
   const playerRank = getRankTitle(playerElo);
 
+  // ─── WebSocket Client Connection ───────────────────────────────────────
+  useEffect(() => {
+    if (!user) return;
+    
+    let isMounted = true;
+    let ws = null;
+    
+    const connectWs = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (!currentUser) return;
+        const token = await currentUser.getIdToken(true);
+        
+        const wsBase = BASE.replace("http://", "ws://").replace("https://", "wss://");
+        ws = new WebSocket(`${wsBase}/api/mrm/ws?token=${token}`);
+        socketRef.current = ws;
+        
+        ws.onopen = () => {
+          console.log("[WS Connected]");
+          if (isMounted) {
+            ws.send(JSON.stringify({ type: "join_lobby" }));
+          }
+        };
+        
+        ws.onmessage = (event) => {
+          if (!isMounted) return;
+          const msg = JSON.parse(event.data);
+          
+          if (msg.type === "lobby_update") {
+            setWsRooms(msg.rooms);
+          }
+          
+          else if (msg.type === "room_created") {
+            setRoomId(msg.room_id);
+            setIsRealMultiplayer(true);
+            setMyRole("host");
+            setBotOpponent(null);
+            setGameState("matching");
+          }
+          
+          else if (msg.type === "game_start" || msg.type === "match_found") {
+            clearInterval(matchingTimerRef.current);
+            setIsRealMultiplayer(true);
+            setRoomId(msg.room_id);
+            setMyRole(msg.role);
+            
+            const opp = msg.opponent;
+            setBotOpponent({
+              uid: opp.uid,
+              username: opp.username,
+              elo: opp.elo,
+              rank: getRankTitle(opp.elo),
+              avatar: opp.avatar || "👤"
+            });
+            
+            setGameState("faceoff");
+            setChooser(msg.chooser_id === user.id ? "player" : "bot");
+            
+            setTimeout(() => {
+              setGameState("card_choosing");
+              setSelectedCard(null);
+              setDiscardedCards([]);
+              setAvailableCards(ALL_FORUM_CARDS);
+              setGamePhase("discarding");
+              setPlayerBigHP(3);
+              setBotBigHP(3);
+            }, 2500);
+          }
+          
+          else if (msg.type === "opponent_card_action") {
+            if (msg.action === "discard") {
+              setDiscardedCards(msg.discarded_cards);
+              if (msg.discarded_cards.length >= 2) {
+                setGamePhase("picking");
+                setAvailableCards(ALL_FORUM_CARDS.filter(c => !msg.discarded_cards.includes(c.id)));
+              }
+              setChooser(msg.chooser_id === user.id ? "player" : "bot");
+            } else if (msg.action === "pick") {
+              setSelectedCard(msg.card);
+              setTimeout(() => {
+                const questions = getQuestionsForCard(msg.card);
+                setActiveQuestions(questions);
+                setGameState("playing");
+                setCurrentQ(0);
+                setPlayerHP(5);
+                setBotHP(5);
+                setScore(0);
+                setCombo(0);
+                setMaxCombo(0);
+                setRoundCorrect(0);
+                setRoundTotal(0);
+                setEvaluating(false);
+                setFeedMessages([`${msg.card ? msg.card.enTitle : "Mixed"} — Match Start!`]);
+                
+                setPlayerSelected(null);
+                setBotSelected(null);
+                setPlayerSubmitted(false);
+                setBotSubmitted(false);
+                setPlayerCorrect(null);
+                setBotCorrect(null);
+                setPlayerAnswerTime(null);
+                setBotAnswerTime(null);
+                setEvaluating(false);
+                setTimeLeft(30);
+                
+                clearInterval(questionTimerRef.current);
+                questionTimerRef.current = setInterval(() => {
+                  setTimeLeft(prev => {
+                    if (prev <= 1) {
+                      clearInterval(questionTimerRef.current);
+                      handleWsTimeout();
+                      return 0;
+                    }
+                    return prev - 1;
+                  });
+                }, 1000);
+              }, 2000);
+            }
+          }
+          
+          else if (msg.type === "opponent_submitted") {
+            setBotSubmitted(true);
+          }
+          
+          else if (msg.type === "round_evaluation") {
+            setEvaluating(true);
+            clearInterval(questionTimerRef.current);
+            
+            const myAns = msg.answers[user.id];
+            const oppId = Object.keys(msg.answers).find(id => id !== user.id.toString());
+            const oppAns = oppId ? msg.answers[oppId] : null;
+            
+            setPlayerSelected(myAns?.option);
+            setBotSelected(oppAns?.option);
+            setPlayerSubmitted(true);
+            setBotSubmitted(true);
+            
+            setPlayerCorrect(myAns?.is_correct);
+            setBotCorrect(oppAns?.is_correct);
+            
+            setRoundTotal(prev => prev + 1);
+            if (myAns?.is_correct) setRoundCorrect(prev => prev + 1);
+            
+            const nextPlayerHP = myRole === "host" ? msg.host_hp : msg.guest_hp;
+            const nextBotHP = myRole === "host" ? msg.guest_hp : msg.host_hp;
+            
+            setPlayerHP(nextPlayerHP);
+            setBotHP(nextBotHP);
+            
+            if (myAns?.is_correct) {
+              setCombo(prev => {
+                const nextC = prev + 1;
+                setMaxCombo(m => Math.max(m, nextC));
+                setComboFlash(true);
+                setTimeout(() => setComboFlash(false), 600);
+                return nextC;
+              });
+              setScore(prev => prev + 100 + combo * 10);
+            } else {
+              setCombo(0);
+            }
+            
+            setFeedMessages(msg.logs);
+            
+            setTimeout(() => {
+              if (nextPlayerHP <= 0 || nextBotHP <= 0 || currentQ === activeQuestions.length - 1) {
+                if (myRole === "host") {
+                  const winnerRole = nextPlayerHP > 0 ? "host" : "guest";
+                  socketRef.current.send(JSON.stringify({
+                    type: "duel_round_end",
+                    room_id: roomId,
+                    winner_role: winnerRole
+                  }));
+                }
+              } else {
+                setCurrentQ(prev => {
+                  const nextQIdx = prev + 1;
+                  setPlayerSelected(null);
+                  setBotSelected(null);
+                  setPlayerSubmitted(false);
+                  setBotSubmitted(false);
+                  setPlayerCorrect(null);
+                  setBotCorrect(null);
+                  setPlayerAnswerTime(null);
+                  setBotAnswerTime(null);
+                  setEvaluating(false);
+                  setTimeLeft(30);
+                  
+                  clearInterval(questionTimerRef.current);
+                  questionTimerRef.current = setInterval(() => {
+                    setTimeLeft(prev => {
+                      if (prev <= 1) {
+                        clearInterval(questionTimerRef.current);
+                        handleWsTimeout();
+                        return 0;
+                      }
+                      return prev - 1;
+                    });
+                  }, 1000);
+                  
+                  return nextQIdx;
+                });
+              }
+            }, 2800);
+          }
+          
+          else if (msg.type === "round_end_sync") {
+            const nextPlayerBigHP = myRole === "host" ? msg.host_big_hp : msg.guest_big_hp;
+            const nextBotBigHP = myRole === "host" ? msg.guest_big_hp : msg.host_big_hp;
+            
+            setPlayerBigHP(nextPlayerBigHP);
+            setBotBigHP(nextBotBigHP);
+            
+            const wonRound = (msg.winner_role === "host" && myRole === "host") || (msg.winner_role === "guest" && myRole === "guest");
+            if (wonRound) {
+              setFeedMessages(["🏆 Thắng ván đấu! Bạn lấy được 1 điểm đấu!"]);
+            } else {
+              setFeedMessages(["💔 Thua ván đấu! Đối thủ lấy được 1 điểm đấu!"]);
+            }
+            
+            setTimeout(() => {
+              if (nextPlayerBigHP <= 0 || nextBotBigHP <= 0) {
+                if (myRole === "host") {
+                  socketRef.current.send(JSON.stringify({
+                    type: "match_end_action",
+                    room_id: roomId
+                  }));
+                }
+              } else {
+                setGameState("card_choosing");
+                setSelectedCard(null);
+                setDiscardedCards([]);
+                setAvailableCards(ALL_FORUM_CARDS);
+                setGamePhase("discarding");
+                setChooser(prev => prev === "player" ? "bot" : "player");
+              }
+            }, 3000);
+          }
+          
+          else if (msg.type === "match_results") {
+            setGameState("ended");
+            clearInterval(questionTimerRef.current);
+            
+            const won = msg.won;
+            const delta = msg.elo_delta;
+            const nextElo = msg.new_elo;
+            
+            setEloDelta(delta);
+            setPlayerElo(nextElo);
+            const nextWins = won ? playerStats.wins + 1 : playerStats.wins;
+            const nextLosses = !won ? playerStats.losses + 1 : playerStats.losses;
+            setPlayerStats({ wins: nextWins, losses: nextLosses });
+            saveStatsToStorage(nextWins, nextLosses, nextElo);
+            
+            const currentCard = selectedCard || ALL_FORUM_CARDS[0];
+            const grade = getPerformanceGrade(roundCorrect, roundTotal, maxCombo);
+            setMatchHistory(prev => [{
+              opponent: botOpponent?.username || "Đối thủ",
+              result: won ? "W" : "L",
+              eloDelta: delta,
+              map: currentCard?.title || "Mixed",
+              grade,
+            }, ...prev.slice(0, 4)]);
+          }
+          
+          else if (msg.type === "opponent_left") {
+            if (msg.won) {
+              setGameState("ended");
+              clearInterval(questionTimerRef.current);
+              
+              setEloDelta(msg.elo_delta);
+              setPlayerElo(msg.new_elo);
+              const nextWins = playerStats.wins + 1;
+              setPlayerStats(prev => ({ ...prev, wins: nextWins }));
+              saveStatsToStorage(nextWins, playerStats.losses, msg.new_elo);
+              
+              setFeedMessages([msg.reason]);
+              
+              const currentCard = selectedCard || ALL_FORUM_CARDS[0];
+              setMatchHistory(prev => [{
+                opponent: botOpponent?.username || "Đối thủ",
+                result: "W",
+                eloDelta: msg.elo_delta,
+                map: currentCard?.title || "Mixed",
+                grade: "A",
+              }, ...prev.slice(0, 4)]);
+            } else {
+              setFeedMessages([msg.reason || "Đối thủ đã rời phòng!"]);
+              setTimeout(() => {
+                setGameState("lobby");
+                setTab("browse");
+              }, 2000);
+            }
+          }
+        };
+        
+        ws.onclose = () => {
+          console.log("[WS Closed]");
+        };
+      } catch (err) {
+        console.error("[WS Connection error]", err);
+      }
+    };
+    
+    connectWs();
+    
+    return () => {
+      isMounted = false;
+      if (ws) ws.close();
+    };
+  }, [user]);
+
+  const handleWsTimeout = () => {
+    if (playerSubmitted || evaluating) return;
+    setPlayerSubmitted(true);
+    setPlayerSelected(-1);
+    
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({
+        type: "submit_answer",
+        room_id: roomId,
+        q_idx: currentQ,
+        option: -1,
+        is_correct: false,
+        time_taken: 30.0
+      }));
+    }
+  };
+
   // ─── Hydration & LocalStorage ──────────────────────────────────────────
   useEffect(() => {
     const savedElo = localStorage.getItem("duomath_player_elo");
@@ -470,46 +819,90 @@ export default function MultiplayerLobby() {
   const startMatching = () => {
     setGameState("matching");
     setMatchTimer(0);
-    matchingTimerRef.current = setInterval(() => {
-      setMatchTimer(prev => {
-        const next = prev + 1;
-        if (next >= 4) {
+    
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({
+        type: "matchmaking_search"
+      }));
+      
+      let count = 0;
+      matchingTimerRef.current = setInterval(() => {
+        count += 1;
+        setMatchTimer(count);
+        if (count >= 6) {
           clearInterval(matchingTimerRef.current);
+          socketRef.current.send(JSON.stringify({
+            type: "matchmaking_cancel"
+          }));
+          
+          // Bot fallback
+          setIsRealMultiplayer(false);
           const matchedBot = BOTS[Math.floor(Math.random() * BOTS.length)];
           setBotOpponent(matchedBot);
           setGameState("faceoff");
           setTimeout(() => startCardChoosingPhase(matchedBot, true), 2500);
         }
-        return next;
-      });
-    }, 1000);
+      }, 1000);
+    } else {
+      matchingTimerRef.current = setInterval(() => {
+        setMatchTimer(prev => {
+          const next = prev + 1;
+          if (next >= 4) {
+            clearInterval(matchingTimerRef.current);
+            const matchedBot = BOTS[Math.floor(Math.random() * BOTS.length)];
+            setBotOpponent(matchedBot);
+            setGameState("faceoff");
+            setTimeout(() => startCardChoosingPhase(matchedBot, true), 2500);
+          }
+          return next;
+        });
+      }, 1000);
+    }
   };
 
   const cancelMatching = () => {
     clearInterval(matchingTimerRef.current);
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      if (roomId) {
+        socketRef.current.send(JSON.stringify({
+          type: "leave_room",
+          room_id: roomId
+        }));
+      }
+      socketRef.current.send(JSON.stringify({
+        type: "matchmaking_cancel"
+      }));
+    }
     setGameState("lobby");
     setTab("ranked");
   };
 
   // ─── Join Room countdown simulation ───────────────────────────────────
   const handleJoinRoom = (room) => {
-    setJoiningRoomId(room.id);
-    let c = 3;
-    setCountdown(c);
-    const interval = setInterval(() => {
-      c -= 1;
-      if (c <= 0) {
-        clearInterval(interval);
-        setCountdown(null);
-        setJoiningRoomId(null);
-        const botTemplate = BOTS.find(b => b.username === room.host) || BOTS[0];
-        setBotOpponent(botTemplate);
-        setGameState("faceoff");
-        setTimeout(() => startCardChoosingPhase(botTemplate, true), 2500);
-      } else {
-        setCountdown(c);
-      }
-    }, 1000);
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN && room.id && room.id.startsWith("r_")) {
+      socketRef.current.send(JSON.stringify({
+        type: "join_room",
+        room_id: room.id
+      }));
+    } else {
+      setJoiningRoomId(room.id);
+      let c = 3;
+      setCountdown(c);
+      const interval = setInterval(() => {
+        c -= 1;
+        if (c <= 0) {
+          clearInterval(interval);
+          setCountdown(null);
+          setJoiningRoomId(null);
+          const botTemplate = BOTS.find(b => b.username === room.host) || BOTS[0];
+          setBotOpponent(botTemplate);
+          setGameState("faceoff");
+          setTimeout(() => startCardChoosingPhase(botTemplate, true), 2500);
+        } else {
+          setCountdown(c);
+        }
+      }, 1000);
+    }
   };
 
   // ─── Card Choosing Phase Initialization ───────────────────────────────
@@ -532,6 +925,18 @@ export default function MultiplayerLobby() {
     if (discardedCards.length >= DISCARD_COUNT) return;
     const newDiscarded = [...discardedCards, card.id];
     setDiscardedCards(newDiscarded);
+    
+    if (isRealMultiplayer && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({
+        type: "card_phase_action",
+        room_id: roomId,
+        action: "discard",
+        card: card,
+        discarded_cards: newDiscarded,
+        next_chooser_id: newDiscarded.length >= DISCARD_COUNT ? (chooser === "player" ? user.id : botOpponent?.uid) : (chooser === "player" ? user.id : botOpponent?.uid)
+      }));
+    }
+    
     if (newDiscarded.length >= DISCARD_COUNT) {
       // Move to picking phase
       setGamePhase("picking");
@@ -541,11 +946,22 @@ export default function MultiplayerLobby() {
 
   const handleSelectCard = (card) => {
     setSelectedCard(card);
+    
+    if (isRealMultiplayer && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      socketRef.current.send(JSON.stringify({
+        type: "card_phase_action",
+        room_id: roomId,
+        action: "pick",
+        card: card
+      }));
+    }
+    
     setTimeout(() => initializeMatch(botOpponent, card), 2000);
   };
 
   // Bot card selection simulation
   useEffect(() => {
+    if (isRealMultiplayer) return;
     if (gameState === "card_choosing" && chooser === "bot") {
       if (gamePhase === "discarding") {
         // Bot discards 2 random cards
@@ -667,20 +1083,38 @@ export default function MultiplayerLobby() {
 
   const handlePlayerAnswer = (optionIdx) => {
     if (playerSubmitted || evaluating) return;
-    setPlayerAnswerTime(Date.now());
+    const timeNow = Date.now();
+    setPlayerAnswerTime(timeNow);
     setPlayerSelected(optionIdx);
     setPlayerSubmitted(true);
+
+    if (isRealMultiplayer && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+      const calcTimeTaken = 30 - timeLeft;
+      const currentQuestion = activeQuestions[currentQ];
+      const isCorrect = optionIdx === currentQuestion?.correct;
+      
+      socketRef.current.send(JSON.stringify({
+        type: "submit_answer",
+        room_id: roomId,
+        q_idx: currentQ,
+        option: optionIdx,
+        is_correct: isCorrect,
+        time_taken: calcTimeTaken
+      }));
+    }
   };
 
   useEffect(() => {
     if (playerSubmitted && botSubmitted && !evaluating && gameState === "playing") {
-      setEvaluating(true);
-      clearInterval(questionTimerRef.current);
-      clearTimeout(botTimerRef.current);
-      evaluateAnswers(playerSelected, botSelected);
+      if (!isRealMultiplayer) {
+        setEvaluating(true);
+        clearInterval(questionTimerRef.current);
+        clearTimeout(botTimerRef.current);
+        evaluateAnswers(playerSelected, botSelected);
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [playerSubmitted, botSubmitted, evaluating, gameState, playerSelected, botSelected]);
+  }, [playerSubmitted, botSubmitted, evaluating, gameState, playerSelected, botSelected, isRealMultiplayer]);
 
   // ─── Evaluation ────────────────────────────────────────────────────────
   const evaluateAnswers = (pSelected, bSelected) => {
@@ -824,6 +1258,7 @@ export default function MultiplayerLobby() {
   };
 
   // percentile for display
+  const displayRooms = socketRef.current && socketRef.current.readyState === WebSocket.OPEN ? wsRooms : rooms;
   const percentile = Math.min(99, Math.round(((playerElo - 1000) / 1200) * 100));
 
   return (
@@ -937,9 +1372,15 @@ export default function MultiplayerLobby() {
                 <>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
                     <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600 }}>
-                      {rooms.filter(r => r.status === "waiting").length} ROOMS OPEN
+                      {displayRooms.filter(r => r.status === "waiting").length} ROOMS OPEN
                     </div>
-                    <button onClick={() => setRooms(INITIAL_ROOMS)} style={{
+                    <button onClick={() => {
+                      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                        socketRef.current.send(JSON.stringify({ type: "join_lobby" }));
+                      } else {
+                        setRooms(INITIAL_ROOMS);
+                      }
+                    }} style={{
                       padding: "5px 14px", borderRadius: 20, fontSize: 11, cursor: "pointer",
                       background: "rgba(167,139,250,0.08)", border: "1px solid rgba(167,139,250,0.25)",
                       color: "#a78bfa", fontWeight: 700,
@@ -948,7 +1389,7 @@ export default function MultiplayerLobby() {
                     </button>
                   </div>
 
-                  {rooms.map(room => {
+                  {displayRooms.map(room => {
                     const dc = getDiffColor(room.diff);
                     return (
                       <div key={room.id} style={{
@@ -1038,33 +1479,77 @@ export default function MultiplayerLobby() {
                   <div style={{ fontSize: 16, fontWeight: 900, color: "white", marginBottom: 20 }}>
                     Create Room / <span style={{ color: "#a78bfa" }}>Tạo phòng mới</span>
                   </div>
-                  {[
-                    { label: "MathMap / Chủ đề", options: ["Phương trình bậc hai nâng cao", "Lượng giác - Tổng hợp", "Đạo hàm & Ứng dụng", "Hình học phẳng"] },
-                    { label: "Min ELO Requirement / ELO tối thiểu", options: ["Tất cả", "1200+", "1400+", "1600+", "1800+", "2000+"] },
-                    { label: "Mode", options: ["Ranked (Tính ELO)", "Friendly (Practice)"] },
-                  ].map(field => (
-                    <div key={field.label} style={{ marginBottom: 14 }}>
-                      <label style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 700, display: "block", marginBottom: 5 }}>
-                        {field.label}
-                      </label>
-                      <select style={{
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 700, display: "block", marginBottom: 5 }}>
+                      MathMap / Chủ đề
+                    </label>
+                    <select 
+                      value={createMap}
+                      onChange={(e) => setCreateMap(e.target.value)}
+                      style={{
                         width: "100%", padding: "11px 14px",
                         background: "rgba(10,5,30,0.8)", border: "1px solid rgba(167,139,250,0.2)",
                         borderRadius: 8, color: "white", fontSize: 13, cursor: "pointer", outline: "none",
-                      }}>
-                        {field.options.map(o => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    </div>
-                  ))}
+                      }}
+                    >
+                      {["Phương trình bậc hai nâng cao", "Lượng giác - Tổng hợp", "Đạo hàm & Ứng dụng", "Hình học phẳng"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 700, display: "block", marginBottom: 5 }}>
+                      Min ELO Requirement / ELO tối thiểu
+                    </label>
+                    <select 
+                      value={createMinElo}
+                      onChange={(e) => setCreateMinElo(e.target.value)}
+                      style={{
+                        width: "100%", padding: "11px 14px",
+                        background: "rgba(10,5,30,0.8)", border: "1px solid rgba(167,139,250,0.2)",
+                        borderRadius: 8, color: "white", fontSize: 13, cursor: "pointer", outline: "none",
+                      }}
+                    >
+                      {["Tất cả", "1200+", "1400+", "1600+", "1800+", "2000+"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", fontWeight: 700, display: "block", marginBottom: 5 }}>
+                      Mode
+                    </label>
+                    <select 
+                      value={createMode}
+                      onChange={(e) => setCreateMode(e.target.value)}
+                      style={{
+                        width: "100%", padding: "11px 14px",
+                        background: "rgba(10,5,30,0.8)", border: "1px solid rgba(167,139,250,0.2)",
+                        borderRadius: 8, color: "white", fontSize: 13, cursor: "pointer", outline: "none",
+                      }}
+                    >
+                      {["Ranked (Tính ELO)", "Friendly (Practice)"].map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
                   <button onClick={() => {
-                    setTab("browse");
-                    const newRoom = {
-                      id: `r_${Date.now()}`, host: playerUsername, map: "Phương trình bậc hai nâng cao",
-                      grade: "Lớp 11", diff: 7.8, players: 1, maxPlayers: 2, status: "waiting",
-                      elo: `${playerElo - 50}+`,
-                    };
-                    setRooms(prev => [newRoom, ...prev]);
-                    setTimeout(() => handleJoinRoom(newRoom), 100);
+                    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                      socketRef.current.send(JSON.stringify({
+                        type: "create_room",
+                        map_info: {
+                          title: createMap,
+                          grade: "Lớp 11",
+                          difficulty_fmp: 7.8
+                        },
+                        wager: 0
+                      }));
+                    } else {
+                      setTab("browse");
+                      const newRoom = {
+                        id: `r_${Date.now()}`, host: playerUsername, map: createMap,
+                        grade: "Lớp 11", diff: 7.8, players: 1, maxPlayers: 2, status: "waiting",
+                        elo: `${playerElo - 50}+`,
+                      };
+                      setRooms(prev => [newRoom, ...prev]);
+                      setTimeout(() => handleJoinRoom(newRoom), 100);
+                    }
                   }} style={{
                     width: "100%", padding: "14px 0", marginTop: 8, borderRadius: 10,
                     background: "linear-gradient(135deg, #a78bfa, #6d28d9)",

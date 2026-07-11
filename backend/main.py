@@ -3760,6 +3760,508 @@ async def unequip_border(request: Request):
         db.close()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  MRM MULTIPLAYER WEBSOCKET INTEGRATION
+# ═══════════════════════════════════════════════════════════════════════════════
+from fastapi import WebSocket, WebSocketDisconnect
+import random
+
+async def resolve_user_id_from_token(token: str) -> int:
+    # Try backend JWT first
+    try:
+        identity = decode_token(token)
+        return int(identity)
+    except Exception:
+        pass
+    
+    # Try Firebase ID token
+    try:
+        payload = await verify_firebase_token(token)
+        firebase_uid = payload["sub"]
+        db = get_db()
+        try:
+            row = db.execute("SELECT id FROM users WHERE firebase_uid=?", (firebase_uid,)).fetchone()
+            if row:
+                return row["id"]
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"[WS Auth Error] {e}")
+    raise ValueError("Invalid token")
+
+
+async def get_user_profile_for_ws(user_id: int) -> dict:
+    db = get_db()
+    try:
+        user_row = db.execute("SELECT id, username, avatar_url, grade FROM users WHERE id=?", (user_id,)).fetchone()
+        gami_row = db.execute("SELECT elo_rating, level FROM user_gamification WHERE user_id=?", (user_id,)).fetchone()
+        
+        username = user_row["username"] if user_row else "Player"
+        avatar = user_row["avatar_url"] if user_row else ""
+        grade = user_row["grade"] if user_row else "Lớp 11"
+        elo = gami_row["elo_rating"] if gami_row else 1000
+        level = gami_row["level"] if gami_row else 1
+        
+        return {
+            "uid": user_id,
+            "username": username,
+            "avatar": avatar,
+            "grade": grade,
+            "elo": elo,
+            "level": level
+        }
+    finally:
+        db.close()
+
+
+def calculate_elo_change(r_a: int, r_b: int, won: bool) -> tuple[int, int]:
+    # K-factor
+    K = 32
+    # Expected scores
+    E_a = 1.0 / (1.0 + 10.0 ** ((r_b - r_a) / 400.0))
+    E_b = 1.0 / (1.0 + 10.0 ** ((r_a - r_b) / 400.0))
+    
+    # Actual scores
+    S_a = 1.0 if won else 0.0
+    S_b = 0.0 if won else 1.0
+    
+    # New ratings
+    new_r_a = max(1000, round(r_a + K * (S_a - E_a)))
+    new_r_b = max(1000, round(r_b + K * (S_b - E_b)))
+    
+    return new_r_a - r_a, new_r_b - r_b
+
+
+def update_db_elo(user_id: int, elo_change: int) -> int:
+    db = get_db()
+    try:
+        # Check if user exists in user_gamification
+        row = db.execute("SELECT elo_rating, peak_elo FROM user_gamification WHERE user_id=?", (user_id,)).fetchone()
+        if not row:
+            db.execute("INSERT INTO user_gamification (user_id, elo_rating, peak_elo) VALUES (?,?,?)", (user_id, 1000 + elo_change, max(1000, 1000 + elo_change)))
+            new_elo = 1000 + elo_change
+        else:
+            new_elo = max(1000, row["elo_rating"] + elo_change)
+            new_peak = max(row["peak_elo"], new_elo)
+            db.execute("UPDATE user_gamification SET elo_rating=?, peak_elo=? WHERE user_id=?", (new_elo, new_peak, user_id))
+        
+        # Get country
+        c_row = db.execute("SELECT country FROM users WHERE id=?", (user_id,)).fetchone()
+        country = c_row["country"] if c_row else "VN"
+        
+        # Calculate rank
+        global_rank = db.execute(
+            """SELECT COUNT(*)+1 as r FROM user_gamification g
+               JOIN users u ON u.id=g.user_id
+               WHERE g.elo_rating > ? AND u.banned=0""",
+            (new_elo,)
+        ).fetchone()["r"]
+        
+        # Insert into mrm_rank_history
+        db.execute(
+            "INSERT INTO mrm_rank_history (user_id, elo_rating, global_rank) VALUES (?,?,?)",
+            (user_id, new_elo, global_rank)
+        )
+        db.commit()
+        return new_elo
+    finally:
+        db.close()
+
+
+class MRMConnectionManager:
+    def __init__(self):
+        # active connections: user_id (int) -> WebSocket
+        self.active_connections = {}
+        # lobby listeners: user_id (int) -> WebSocket
+        self.lobby_listeners = {}
+        # matchmaking queue: list of user_id (int)
+        self.matchmaking_queue = []
+        # active rooms: room_id (str) -> room_dict
+        self.rooms = {}
+
+    async def connect(self, user_id: int, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections[user_id] = websocket
+
+    def disconnect(self, user_id: int):
+        if user_id in self.active_connections:
+            del self.active_connections[user_id]
+        if user_id in self.lobby_listeners:
+            del self.lobby_listeners[user_id]
+        if user_id in self.matchmaking_queue:
+            try:
+                self.matchmaking_queue.remove(user_id)
+            except ValueError:
+                pass
+        
+        # If user was in a room, handle their abandonment
+        abandoned_rooms = []
+        for r_id, room in self.rooms.items():
+            if room["host_id"] == user_id or room["guest_id"] == user_id:
+                abandoned_rooms.append(r_id)
+        
+        return abandoned_rooms
+
+    async def send_to_user(self, user_id: int, message: dict):
+        ws = self.active_connections.get(user_id)
+        if ws:
+            try:
+                await ws.send_json(message)
+            except Exception:
+                self.disconnect(user_id)
+
+    async def broadcast_to_lobby(self):
+        lobby_data = self.get_lobby_rooms_data()
+        msg = {"type": "lobby_update", "rooms": lobby_data}
+        dead_users = []
+        for uid, ws in self.lobby_listeners.items():
+            try:
+                await ws.send_json(msg)
+            except Exception:
+                dead_users.append(uid)
+        for uid in dead_users:
+            self.disconnect(uid)
+
+    def get_lobby_rooms_data(self):
+        data = []
+        for r_id, room in self.rooms.items():
+            # Only include public waiting or playing rooms (matchmaking rooms are temporary and hidden)
+            if not r_id.startswith("mm_temp_"):
+                data.append({
+                    "id": r_id,
+                    "host": room["host_profile"].get("username", "Unknown"),
+                    "map": room["map_info"].get("title", "Mixed Map"),
+                    "grade": room["map_info"].get("grade", "Lớp 11"),
+                    "diff": room["map_info"].get("difficulty_fmp", 5.0),
+                    "players": 2 if room["guest_id"] else 1,
+                    "maxPlayers": 2,
+                    "status": room["status"],
+                    "elo": f"{room['host_profile'].get('elo', 1000)}+"
+                })
+        return data
+
+mrm_manager = MRMConnectionManager()
+
+
+@app.websocket("/api/mrm/ws")
+async def mrm_websocket_endpoint(websocket: WebSocket, token: str = None):
+    if not token:
+        token = websocket.query_params.get("token")
+    if not token:
+        await websocket.accept()
+        await websocket.close(code=4001, reason="Missing token")
+        return
+
+    try:
+        user_id = await resolve_user_id_from_token(token)
+    except Exception as e:
+        await websocket.accept()
+        await websocket.close(code=4002, reason=f"Auth failed: {str(e)}")
+        return
+
+    profile = await get_user_profile_for_ws(user_id)
+    await mrm_manager.connect(user_id, websocket)
+
+    try:
+        while True:
+            data = await websocket.receive_json()
+            msg_type = data.get("type")
+
+            if msg_type == "join_lobby":
+                mrm_manager.lobby_listeners[user_id] = websocket
+                await websocket.send_json({
+                    "type": "lobby_update",
+                    "rooms": mrm_manager.get_lobby_rooms_data()
+                })
+
+            elif msg_type == "create_room":
+                room_id = f"r_{uuid.uuid4().hex[:8]}"
+                map_info = data.get("map_info", {})
+                wager = data.get("wager", 0)
+                
+                mrm_manager.rooms[room_id] = {
+                    "id": room_id,
+                    "host_id": user_id,
+                    "host_profile": profile,
+                    "guest_id": None,
+                    "guest_profile": None,
+                    "map_info": map_info,
+                    "status": "waiting",
+                    "wager": wager,
+                    "phase": "discarding",
+                    "discarded_cards": [],
+                    "chooser_id": None,
+                    "selected_card": None,
+                    "current_q_idx": 0,
+                    "host_hp": 5,
+                    "guest_hp": 5,
+                    "host_big_hp": 3,
+                    "guest_big_hp": 3,
+                    "answers": {}
+                }
+                
+                await websocket.send_json({
+                    "type": "room_created",
+                    "room_id": room_id
+                })
+                await mrm_manager.broadcast_to_lobby()
+
+            elif msg_type == "join_room":
+                room_id = data.get("room_id")
+                if room_id in mrm_manager.rooms:
+                    room = mrm_manager.rooms[room_id]
+                    if room["guest_id"] is None and room["host_id"] != user_id:
+                        room["guest_id"] = user_id
+                        room["guest_profile"] = profile
+                        room["status"] = "in_game"
+                        room["chooser_id"] = room["host_id"] if random.random() < 0.5 else room["guest_id"]
+                        
+                        await mrm_manager.send_to_user(room["host_id"], {
+                            "type": "game_start",
+                            "role": "host",
+                            "opponent": profile,
+                            "room_id": room_id,
+                            "chooser_id": room["chooser_id"]
+                        })
+                        await mrm_manager.send_to_user(room["guest_id"], {
+                            "type": "game_start",
+                            "role": "guest",
+                            "opponent": room["host_profile"],
+                            "room_id": room_id,
+                            "chooser_id": room["chooser_id"]
+                        })
+                        await mrm_manager.broadcast_to_lobby()
+
+            elif msg_type == "leave_room":
+                room_id = data.get("room_id")
+                if room_id in mrm_manager.rooms:
+                    room = mrm_manager.rooms[room_id]
+                    opp_id = room["guest_id"] if room["host_id"] == user_id else room["host_id"]
+                    if opp_id:
+                        await mrm_manager.send_to_user(opp_id, {
+                            "type": "opponent_left",
+                            "reason": "Đối thủ đã rời phòng!"
+                        })
+                    
+                    if room_id in mrm_manager.rooms:
+                        del mrm_manager.rooms[room_id]
+                    await mrm_manager.broadcast_to_lobby()
+
+            elif msg_type == "matchmaking_search":
+                if user_id not in mrm_manager.matchmaking_queue:
+                    mrm_manager.matchmaking_queue.append(user_id)
+                
+                if len(mrm_manager.matchmaking_queue) >= 2:
+                    p1_id = mrm_manager.matchmaking_queue.pop(0)
+                    p2_id = mrm_manager.matchmaking_queue.pop(0)
+                    
+                    room_id = f"mm_temp_{uuid.uuid4().hex[:8]}"
+                    p1_profile = await get_user_profile_for_ws(p1_id)
+                    p2_profile = await get_user_profile_for_ws(p2_id)
+                    
+                    mrm_manager.rooms[room_id] = {
+                        "id": room_id,
+                        "host_id": p1_id,
+                        "host_profile": p1_profile,
+                        "guest_id": p2_id,
+                        "guest_profile": p2_profile,
+                        "map_info": {"title": "Xác suất & Tổ hợp", "grade": "Lớp 11", "difficulty_fmp": 6.8},
+                        "status": "in_game",
+                        "wager": 0,
+                        "phase": "discarding",
+                        "discarded_cards": [],
+                        "chooser_id": p1_id if random.random() < 0.5 else p2_id,
+                        "selected_card": None,
+                        "current_q_idx": 0,
+                        "host_hp": 5,
+                        "guest_hp": 5,
+                        "host_big_hp": 3,
+                        "guest_big_hp": 3,
+                        "answers": {}
+                    }
+                    
+                    await mrm_manager.send_to_user(p1_id, {
+                        "type": "match_found",
+                        "room_id": room_id,
+                        "role": "host",
+                        "opponent": p2_profile,
+                        "chooser_id": mrm_manager.rooms[room_id]["chooser_id"]
+                    })
+                    await mrm_manager.send_to_user(p2_id, {
+                        "type": "match_found",
+                        "room_id": room_id,
+                        "role": "guest",
+                        "opponent": p1_profile,
+                        "chooser_id": mrm_manager.rooms[room_id]["chooser_id"]
+                    })
+                    await mrm_manager.broadcast_to_lobby()
+
+            elif msg_type == "matchmaking_cancel":
+                if user_id in mrm_manager.matchmaking_queue:
+                    mrm_manager.matchmaking_queue.remove(user_id)
+
+            elif msg_type == "card_phase_action":
+                room_id = data.get("room_id")
+                if room_id in mrm_manager.rooms:
+                    room = mrm_manager.rooms[room_id]
+                    opp_id = room["guest_id"] if room["host_id"] == user_id else room["host_id"]
+                    if opp_id:
+                        await mrm_manager.send_to_user(opp_id, {
+                            "type": "opponent_card_action",
+                            "action": data.get("action"),
+                            "card": data.get("card"),
+                            "discarded_cards": data.get("discarded_cards"),
+                            "chooser_id": data.get("next_chooser_id")
+                        })
+                    
+            elif msg_type == "submit_answer":
+                room_id = data.get("room_id")
+                if room_id in mrm_manager.rooms:
+                    room = mrm_manager.rooms[room_id]
+                    q_idx = data.get("q_idx")
+                    option = data.get("option")
+                    is_correct = data.get("is_correct")
+                    time_taken = data.get("time_taken")
+                    
+                    if q_idx not in room["answers"]:
+                        room["answers"][q_idx] = {}
+                    
+                    room["answers"][q_idx][user_id] = {
+                        "option": option,
+                        "is_correct": is_correct,
+                        "time_taken": time_taken
+                    }
+                    
+                    opp_id = room["guest_id"] if room["host_id"] == user_id else room["host_id"]
+                    if opp_id:
+                        await mrm_manager.send_to_user(opp_id, {
+                            "type": "opponent_submitted",
+                            "q_idx": q_idx
+                        })
+                    
+                    if len(room["answers"][q_idx]) >= 2:
+                        p1_ans = room["answers"][q_idx][room["host_id"]]
+                        p2_ans = room["answers"][q_idx][room["guest_id"]]
+                        
+                        p1_corr = p1_ans["is_correct"]
+                        p2_corr = p2_ans["is_correct"]
+                        
+                        p1_time = p1_ans["time_taken"]
+                        p2_time = p2_ans["time_taken"]
+                        
+                        host_dmg = 0
+                        guest_dmg = 0
+                        logs = []
+                        
+                        host_name = room["host_profile"]["username"]
+                        guest_name = room["guest_profile"]["username"]
+                        
+                        if p1_corr and p2_corr:
+                            if p1_time < p2_time:
+                                guest_dmg = 1
+                                logs.append(f"⚡ Bạn nhanh hơn! Gây sát thương lên đối thủ! / {host_name} faster!")
+                            elif p2_time < p1_time:
+                                host_dmg = 1
+                                logs.append(f"⚡ Đối thủ nhanh hơn! Bạn mất 1 HP. / {guest_name} faster!")
+                            else:
+                                logs.append("🤝 Hòa! Cả hai đều đúng cùng tốc độ!")
+                        elif p1_corr and not p2_corr:
+                            guest_dmg = 1
+                            logs.append(f"🎯 Bạn đúng! Gây sát thương! / {host_name} hits!")
+                        elif not p1_corr and p2_corr:
+                            host_dmg = 1
+                            logs.append(f"🎯 Bạn sai! Đối thủ gây sát thương! / {guest_name} hits!")
+                        else:
+                            logs.append("💨 Cả hai đều trả lời sai! / Both missed!")
+                            
+                        room["host_hp"] = max(0, room["host_hp"] - host_dmg)
+                        room["guest_hp"] = max(0, room["guest_hp"] - guest_dmg)
+                        
+                        eval_msg = {
+                            "type": "round_evaluation",
+                            "q_idx": q_idx,
+                            "answers": {
+                                str(room["host_id"]): p1_ans,
+                                str(room["guest_id"]): p2_ans
+                            },
+                            "host_hp": room["host_hp"],
+                            "guest_hp": room["guest_hp"],
+                            "logs": logs
+                        }
+                        await mrm_manager.send_to_user(room["host_id"], eval_msg)
+                        await mrm_manager.send_to_user(room["guest_id"], eval_msg)
+                        
+            elif msg_type == "duel_round_end":
+                room_id = data.get("room_id")
+                if room_id in mrm_manager.rooms:
+                    room = mrm_manager.rooms[room_id]
+                    winner_role = data.get("winner_role")
+                    
+                    if winner_role == "host":
+                        room["guest_big_hp"] = max(0, room["guest_big_hp"] - 1)
+                    else:
+                        room["host_big_hp"] = max(0, room["host_big_hp"] - 1)
+                        
+                    sync_set_msg = {
+                        "type": "round_end_sync",
+                        "host_big_hp": room["host_big_hp"],
+                        "guest_big_hp": room["guest_big_hp"],
+                        "winner_role": winner_role
+                    }
+                    await mrm_manager.send_to_user(room["host_id"], sync_set_msg)
+                    await mrm_manager.send_to_user(room["guest_id"], sync_set_msg)
+
+            elif msg_type == "match_end_action":
+                room_id = data.get("room_id")
+                if room_id in mrm_manager.rooms:
+                    room = mrm_manager.rooms[room_id]
+                    h_elo = room["host_profile"]["elo"]
+                    g_elo = room["guest_profile"]["elo"]
+                    host_won = room["host_big_hp"] > 0 and room["guest_big_hp"] == 0
+                    
+                    h_change, g_change = calculate_elo_change(h_elo, g_elo, host_won)
+                    new_h_elo = update_db_elo(room["host_id"], h_change)
+                    new_g_elo = update_db_elo(room["guest_id"], g_change)
+                    
+                    await mrm_manager.send_to_user(room["host_id"], {
+                        "type": "match_results",
+                        "won": host_won,
+                        "elo_delta": h_change,
+                        "new_elo": new_h_elo
+                    })
+                    await mrm_manager.send_to_user(room["guest_id"], {
+                        "type": "match_results",
+                        "won": not host_won,
+                        "elo_delta": g_change,
+                        "new_elo": new_g_elo
+                    })
+                    
+                    if room_id in mrm_manager.rooms:
+                        del mrm_manager.rooms[room_id]
+                    await mrm_manager.broadcast_to_lobby()
+
+    except WebSocketDisconnect:
+        abandoned = mrm_manager.disconnect(user_id)
+        for r_id in abandoned:
+            if r_id in mrm_manager.rooms:
+                room = mrm_manager.rooms[r_id]
+                opp_id = room["guest_id"] if room["host_id"] == user_id else room["host_id"]
+                if opp_id:
+                    if room["status"] == "in_game":
+                        new_opp_elo = update_db_elo(opp_id, 15)
+                        update_db_elo(user_id, -15)
+                        await mrm_manager.send_to_user(opp_id, {
+                            "type": "opponent_left",
+                            "won": True,
+                            "elo_delta": 15,
+                            "new_elo": new_opp_elo,
+                            "reason": "Đối thủ đã rời trận đấu! Bạn thắng mặc định +15 ELO."
+                        })
+                if r_id in mrm_manager.rooms:
+                    del mrm_manager.rooms[r_id]
+        await mrm_manager.broadcast_to_lobby()
+
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn # pyright: ignore[reportMissingImports]
