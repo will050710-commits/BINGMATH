@@ -4038,10 +4038,22 @@ async def mrm_websocket_endpoint(websocket: WebSocket, token: str = None):
                     room = mrm_manager.rooms[room_id]
                     opp_id = room["guest_id"] if room["host_id"] == user_id else room["host_id"]
                     if opp_id:
-                        await mrm_manager.send_to_user(opp_id, {
-                            "type": "opponent_left",
-                            "reason": "Đối thủ đã rời phòng!"
-                        })
+                        if room["status"] == "in_game":
+                            new_opp_elo = update_db_elo(opp_id, 15)
+                            update_db_elo(user_id, -15)
+                            await mrm_manager.send_to_user(opp_id, {
+                                "type": "opponent_left",
+                                "won": True,
+                                "elo_delta": 15,
+                                "new_elo": new_opp_elo,
+                                "reason": "Đối thủ đã đầu hàng! Bạn thắng mặc định +15 ELO."
+                            })
+                        else:
+                            await mrm_manager.send_to_user(opp_id, {
+                                "type": "opponent_left",
+                                "won": False,
+                                "reason": "Đối thủ đã rời phòng!"
+                            })
                     
                     if room_id in mrm_manager.rooms:
                         del mrm_manager.rooms[room_id]

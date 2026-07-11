@@ -2495,7 +2495,15 @@ export default function MultiplayerLobby() {
           {/* LEAVE BUTTON */}
           <div style={{ display: "flex", justifyContent: "center", padding: "12px 0", background: "rgba(3,2,10,0.4)" }}>
             <button onClick={() => {
-              if (confirm("Rời trận sẽ bị xử thua và trừ ELO. Chắc chưa?")) endMatch(0, 3);
+              if (confirm("Rời trận sẽ bị xử thua và trừ ELO. Chắc chưa?")) {
+                if (isRealMultiplayer && socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                  socketRef.current.send(JSON.stringify({
+                    type: "leave_room",
+                    room_id: roomId
+                  }));
+                }
+                endMatch(0, 3);
+              }
             }} style={{
               padding: "7px 20px", borderRadius: 8, fontSize: 11, fontWeight: 700,
               background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
