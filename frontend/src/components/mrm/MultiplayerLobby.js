@@ -225,9 +225,8 @@ function GradeDisplay({ grade }) {
 
 function MathParticles() {
   const SYMBOLS = ["∑", "∫", "π", "√", "∞", "Δ", "∂", "∇", "⊕", "≈", "≠", "±", "×", "÷", "α", "β", "θ", "λ", "∿", "∏"];
-  const [particles, setParticles] = useState([]);
-  useEffect(() => {
-    const p = Array.from({ length: 25 }, (_, i) => ({
+  const [particles] = useState(() => 
+    Array.from({ length: 25 }, (_, i) => ({
       id: i,
       symbol: SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
       left: `${Math.random() * 100}%`,
@@ -235,9 +234,8 @@ function MathParticles() {
       delay: `${Math.random() * 12}s`,
       size: `${12 + Math.random() * 20}px`,
       opacity: 0.04 + Math.random() * 0.1,
-    }));
-    setParticles(p);
-  }, []);
+    }))
+  );
   return (
     <div aria-hidden="true" style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}>
       {particles.map(p => (
