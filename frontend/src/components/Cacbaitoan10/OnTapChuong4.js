@@ -374,8 +374,8 @@ export default function OnTapChuong4() {
         <hr style={{ width: "5px" }}></hr>
         <div className="reveal" data-reveal style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.5)", fontSize: 15, marginBottom: 60 }}>Toán 10 · Chân Trời Sáng Tạo · {t("Ôn Tập Chương IV", "Chapter IV Review")}</div>
         <style>{`.reveal{opacity:0;transform:translateY(28px) scale(0.97);transition:opacity 0.55s cubic-bezier(.2,.8,.2,1),transform 0.45s cubic-bezier(.2,.8,.2,1);will-change:opacity,transform;}.reveal.visible{opacity:1;transform:translateY(0) scale(1);}.reveal[data-reveal-stagger].visible{opacity:1;transform:none;}.reveal[data-reveal-stagger]>*{opacity:0;transform:translateY(24px) scale(0.97);will-change:opacity,transform;}header.reveal{transform:translateY(-18px);opacity:0;}header.reveal.visible{opacity:1;transform:translateY(0);}article{transition:transform 0.25s cubic-bezier(.2,.8,.2,1),box-shadow 0.25s ease;border-radius:10px;padding:8px;}article:hover{transform:translateY(-6px) scale(1.01);box-shadow:0 12px 28px rgba(0,0,0,0.12);}`}</style>
-      
       </div>
-    </>
+    </div>
+  </>
   );
 }
