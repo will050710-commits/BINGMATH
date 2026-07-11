@@ -958,6 +958,7 @@ def chat():
         return jsonify({"error": "message or image is required."}), 400
 
     history = ensure_session(session_id)
+    is_viz_request = "visualizer" in (user_message or "") or "viz" in (user_message or "") or "instructions" in (user_message or "")
 
     if image_data:
         if "," in image_data:
@@ -965,29 +966,63 @@ def chat():
             media_type  = header.split(":")[1].split(";")[0]
         else:
             b64, media_type = image_data, "image/jpeg"
-
-        # Send directly to vision model (OCR removed — exceeds 512 MB free tier RAM)
-        user_content = [
-            {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
-            {"type": "text",      "text": user_message or "Hãy giải bài toán trong ảnh này cho em."},
-        ]
-        model         = "meta-llama/llama-4-scout-17b-16e-instruct"
-        img_prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "image"
-        system_prompt = cached_system_prompt(img_prompt_variant)
+        
+        if is_viz_request:
+            user_content = [
+                {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
+                {"type": "text",      "text": user_message or "Hãy vẽ hình minh họa cho bài toán trong ảnh này."},
+            ]
+            model         = "meta-llama/llama-4-scout-17b-16e-instruct"
+            system_prompt = (
+                "You are an expert mathematical visualizer and graph plotter.\n"
+                "Your task is to analyze the math problem (and image if provided) and output ONLY a valid JSON object matching the requested schema.\n"
+                "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
+            )
+        else:
+            user_content = [
+                {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
+                {"type": "text",      "text": user_message or "Hãy giải bài toán trong ảnh này cho em."},
+            ]
+            model         = "meta-llama/llama-4-scout-17b-16e-instruct"
+            img_prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "image"
+            system_prompt = cached_system_prompt(img_prompt_variant)
+            
         history.append({"role": "user", "content": f"[Image] {user_message or 'Giải bài toán từ ảnh'}"})
     else:
         user_content  = user_message
-        model         = "llama-3.1-8b-instant"
-        prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "text"
-        system_prompt = cached_system_prompt(prompt_variant)
+        
+        if is_viz_request:
+            model         = "llama-3.1-8b-instant"
+            system_prompt = (
+                "You are an expert mathematical visualizer and graph plotter.\n"
+                "Your task is to analyze the math problem and output ONLY a valid JSON object matching the requested schema.\n"
+                "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
+            )
+        else:
+            model         = "llama-3.1-8b-instant"
+            prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "text"
+            system_prompt = cached_system_prompt(prompt_variant)
         history.append({"role": "user", "content": user_message})
 
-    context_history = history[-5:-1]
-    messages = (
-        [{"role": "system", "content": system_prompt}]
-        + context_history
-        + [{"role": "user", "content": user_content}]
-    )
+    context_history = [] if is_viz_request else history[-5:-1]
+    if "vision" in model and isinstance(user_content, list):
+        # Merge system prompt into user_content text part
+        new_user_content = []
+        for item in user_content:
+            if item.get("type") == "text":
+                new_user_content.append({
+                    "type": "text",
+                    "text": f"{system_prompt}\n\nUser request:\n{item.get('text', '')}"
+                })
+            else:
+                new_user_content.append(item)
+        messages = context_history + [{"role": "user", "content": new_user_content}]
+    else:
+        messages = (
+            [{"role": "system", "content": system_prompt}]
+            + context_history
+            + [{"role": "user", "content": user_content}]
+        )
 
     max_tokens = 2000 if chat_mode in ("solution", "raw_solution") else 1024
     payload = {

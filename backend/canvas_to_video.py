@@ -12,6 +12,37 @@ import imageio_ffmpeg
 # Configure Matplotlib to use imageio-ffmpeg executable directly
 plt.rcParams['animation.ffmpeg_path'] = imageio_ffmpeg.get_ffmpeg_exe()
 
+def safe_draw_text(ax, x, y, text, **kwargs):
+    if not text:
+        return ax.text(x, y, "")
+    
+    cleaned_text = text
+    if isinstance(cleaned_text, str):
+        while "\\\\" in cleaned_text:
+            cleaned_text = cleaned_text.replace("\\\\", "\\")
+            
+    try:
+        return ax.text(x, y, cleaned_text, **kwargs)
+    except Exception:
+        fallback_text = text
+        if isinstance(fallback_text, str):
+            fallback_text = fallback_text.replace("\\^{circ}", "°").replace("\\^{+circ}", "°")
+            fallback_text = fallback_text.replace("\\^circ", "°").replace("\\circ", "°")
+            fallback_text = fallback_text.replace("\\^o", "°")
+            fallback_text = fallback_text.replace("\\alpha", "α")
+            fallback_text = fallback_text.replace("\\beta", "β")
+            fallback_text = fallback_text.replace("\\gamma", "γ")
+            fallback_text = fallback_text.replace("\\theta", "θ")
+            fallback_text = fallback_text.replace("\\pi", "π")
+            if fallback_text.startswith("$") and fallback_text.endswith("$"):
+                fallback_text = fallback_text[1:-1]
+            fallback_text = fallback_text.replace("\\", "")
+            
+        try:
+            return ax.text(x, y, fallback_text, **kwargs)
+        except Exception:
+            return ax.text(x, y, "")
+
 def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
     # Determine bounds
     x_range = [-5, 5]
@@ -69,8 +100,8 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
             xl = inst.get("xLabel", "")
             yl = inst.get("yLabel", "")
             # Draw labels
-            x_lbl = ax.text(x_range[1] - (x_range[1]-x_range[0])*0.05, -(y_range[1]-y_range[0])*0.04, xl, color='#94a3b8', fontsize=10, ha='right', va='top', alpha=0)
-            y_lbl = ax.text((x_range[1]-x_range[0])*0.02, y_range[1] - (y_range[1]-y_range[0])*0.05, yl, color='#94a3b8', fontsize=10, ha='left', va='top', alpha=0)
+            x_lbl = safe_draw_text(ax, x_range[1] - (x_range[1]-x_range[0])*0.05, -(y_range[1]-y_range[0])*0.04, xl, color='#94a3b8', fontsize=10, ha='right', va='top', alpha=0)
+            y_lbl = safe_draw_text(ax, (x_range[1]-x_range[0])*0.02, y_range[1] - (y_range[1]-y_range[0])*0.05, yl, color='#94a3b8', fontsize=10, ha='left', va='top', alpha=0)
             
             def make_update_axes(xl_obj, yl_obj, sf, ef):
                 def update_axes(frame):
@@ -111,7 +142,7 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
                 x_val = domain[1]
                 try:
                     y_val = eval(py_expr, {"x": x_val, "np": np, "Math": np})
-                    lbl = ax.text(x_val, y_val, "  " + label_text, color=color, fontsize=9, va='center', ha='left', alpha=0)
+                    lbl = safe_draw_text(ax, x_val, y_val, "  " + label_text, color=color, fontsize=9, va='center', ha='left', alpha=0)
                 except:
                     pass
             
@@ -154,7 +185,7 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
                 
             lbl = None
             if label_text:
-                lbl = ax.text(x + (x_range[1]-x_range[0])*0.02, y + (y_range[1]-y_range[0])*0.02, label_text, color=color, fontsize=9, alpha=0, zorder=6)
+                lbl = safe_draw_text(ax, x + (x_range[1]-x_range[0])*0.02, y + (y_range[1]-y_range[0])*0.02, label_text, color=color, fontsize=9, alpha=0, zorder=6)
                 
             def make_update_point(dot_obj, label_obj, sf):
                 def update_point(frame):
@@ -175,7 +206,7 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
             
             lbl = None
             if label_text:
-                lbl = ax.text((p1[0]+p2[0])/2, (p1[1]+p2[1])/2, label_text, color=color, fontsize=8, alpha=0, zorder=4, ha='center', va='bottom')
+                lbl = safe_draw_text(ax, (p1[0]+p2[0])/2, (p1[1]+p2[1])/2, label_text, color=color, fontsize=8, alpha=0, zorder=4, ha='center', va='bottom')
                 
             def make_update_line(l_artist, label_obj, sf, ef, pt1, pt2):
                 def update_line(frame):
@@ -198,12 +229,13 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
             text_val = inst.get("text", "")
             size = inst.get("size", 10)
             
-            lbl = ax.text(x, y, text_val, color=color, fontsize=size, alpha=0, zorder=4, ha='center', va='center')
+            lbl = safe_draw_text(ax, x, y, text_val, color=color, fontsize=size, alpha=0, zorder=4, ha='center', va='center')
             
             def make_update_text(lbl_obj, sf):
                 def update_text(frame):
                     if frame >= sf:
-                        lbl_obj.set_alpha(1.0)
+                        if lbl_obj:
+                            lbl_obj.set_alpha(1.0)
                 return update_text
             frame_updates.append(make_update_text(lbl, start_frame))
             

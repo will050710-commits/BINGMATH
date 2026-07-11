@@ -391,6 +391,26 @@ CREATE INDEX idx_chat_user ON chat_sessions(user_id);
    - Học sinh có thể hỏi bằng Tiếng Việt → Phản hồi bằng Tiếng Việt
    - Hoặc hỏi bằng Tiếng Anh → Phản hồi bằng Tiếng Anh (automatic language detection)
 
+#### Động cơ hoạt họa đồ thị và Camera động (Canvas Visualizer)
+
+Lấy cảm hứng từ thư viện dựng hình toán học chuyên nghiệp **Manim**, giao diện Chatbot DuoMCB tích hợp một động cơ vẽ hoạt ảnh động trên trình duyệt chạy bằng **HTML5 Canvas 2D**. Động cơ này hoạt động theo cơ chế chỉ thị vẽ động (Instruction-based Canvas Engine) thay thế cho việc vẽ tĩnh hay cụ thể hóa cứng (hardcode) các dạng toán trước đây:
+
+1. **Chuỗi chỉ thị vẽ động (viz instructions):**
+   Thay vì phân loại dạng toán cứng nhắc, AI sẽ phân tích bài toán và tự động xuất ra một danh sách các lệnh vẽ hoạt họa dưới dạng JSON:
+   - `setup`: Khởi tạo vùng hiển thị tọa độ.
+   - `grid` & `axes`: Dựng lưới tọa độ mảnh và hai trục hoành/tung.
+   - `function`: Vẽ đồ thị của hàm số bất kỳ dựa trên biểu thức JavaScript (e.g. `x*x - 2*x`, `Math.sin(x)`) kèm thời gian bắt đầu vẽ và hiệu ứng phát sáng neon (`glow`).
+   - `point` & `line`: Dựng các điểm nghiệm, đỉnh đồ thị hoặc các vectơ hướng, liên kết dạng sóng (`isPhoton`).
+   - `shape`: Vẽ các đa giác hoặc diện tích tích phân hình học.
+   - `camera`: Điều hướng máy ảnh zoom/pan mượt mà.
+
+2. **Nguyên lý Camera điện ảnh (Cinematography Camera):**
+   - Động cơ Canvas duy trì một trạng thái máy ảnh `{ zoom, camX, camY }`.
+   - Khi tiến trình chạy đến các bước giải thích chính, camera sẽ tự động nội suy (`lerp` kết hợp `smoothstep` easing) để chuyển dịch tiêu điểm và phóng to cận cảnh vào khu vực tọa độ quan trọng (chẳng hạn như đỉnh parabol hoặc điểm giao nhau của hệ phương trình).
+
+3. **Cơ chế tương thích ngược:**
+   - Bộ chuyển đổi `convertLegacyToInstructions` tự động dịch các định dạng dữ liệu cũ sang chuỗi chỉ thị vẽ động mới, đảm bảo tính liên tục và ổn định cho toàn hệ thống.
+
 #### Những Hạn Chế So Với ChatGPT/Gemini:
 
 1. **Tính Năng Chung**: DuoMCB chỉ chuyên sâu toán học, không giải quyết được các câu hỏi ngoài lĩnh vực.
