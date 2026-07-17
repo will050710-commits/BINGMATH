@@ -18,7 +18,14 @@ function ShapesSVG({ shape, color }) {
   return <svg viewBox="0 0 100 100" fill="none"><polygon points="50,5 95,90 5,90" stroke={color} strokeWidth="2" fill="none"/><line x1="50" y1="5" x2="50" y2="90" stroke={color} strokeWidth="1" opacity="0.5"/></svg>;
 }
 
-const grades = [
+const gradesThcs = [
+  { label: "Grade 6", href: "/Cacbaitoan6", img: "/images/math6.webp" },
+  { label: "Grade 7", href: "/Cacbaitoan7", img: "/images/math7.webp" },
+  { label: "Grade 8", href: "/Cacbaitoan8", img: "/images/math8.webp" },
+  { label: "Grade 9", href: "/Cacbaitoan9", img: "/images/math9.webp" },
+];
+
+const gradesThpt = [
   { label: "Grade 10", href: "/Cacbaitoan10", img: "/images/math10.webp" },
   { label: "Grade 11", href: "/Cacbaitoan11", img: "/images/math11.webp" },
   { label: "Grade 12", href: "/Cacbaitoan12", img: "/images/math12.webp" },
@@ -57,26 +64,58 @@ export default function CacbailamPage() {
         </Link>
 
         <h1 style={{ fontSize: 32, fontWeight: "bold", color: "white", marginBottom: 8, letterSpacing: 1 }}>
-          Bilingual Math Lessons for High School Students
+          Bilingual Math Lessons / Bài Học Toán Song Ngữ
         </h1>
         <p style={{ color: "#93c5fd", fontSize: 18, marginBottom: 48 }}>
-          Choose a class to learn
+          Choose a class to learn / Chọn lớp học để bắt đầu
         </p>
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
-          {grades.map((g) => (
-            <Link key={g.label} href={g.href} style={{ textDecoration: "none", color: "inherit" }}>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: 32, background: "rgba(255,255,255,0.07)", backdropFilter: "blur(12px)", borderRadius: 14, boxShadow: "0 4px 24px rgba(0,180,255,0.1)", border: "1px solid rgba(255,255,255,0.13)", padding: "28px 36px", cursor: "pointer", transition: "box-shadow 0.2s ease, border-color 0.2s" }}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,180,255,0.25)"; e.currentTarget.style.borderColor = "rgba(0,200,255,0.4)"; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 4px 24px rgba(0,180,255,0.1)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.13)"; }}
-              >
-                <img src={g.img} alt={g.label} style={{ width: 100, height: 100, objectFit: "cover", borderRadius: 10 }} />
-                <span style={{ fontSize: 36, fontWeight: "bold", color: "white" }}>{g.label}</span>
-                <span style={{ marginLeft: "auto", fontSize: 28, color: "#7dd3fc" }}>›</span>
-              </div>
-            </Link>
-          ))}
+        {/* Cấp 2 - Middle School */}
+        <div style={{ marginBottom: 48 }}>
+          <h2 style={{ fontSize: 24, fontWeight: "bold", color: "#14b8a6", marginBottom: 24, borderBottom: "2px solid rgba(20, 184, 166, 0.3)", paddingBottom: 8 }}>
+            🏫 Middle School / Cấp 2 (THCS)
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
+            {gradesThcs.map((g) => (
+              <Link key={g.label} href={g.href} style={{ textDecoration: "none", color: "inherit" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: 20, background: "rgba(255,255,255,0.05)", backdropFilter: "blur(12px)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)", padding: "20px 24px", cursor: "pointer", transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(20,184,166,0.2)"; e.currentTarget.style.borderColor = "rgba(20,184,166,0.4)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                >
+                  <div style={{ width: 64, height: 64, background: "rgba(20, 184, 166, 0.1)", border: "1px solid rgba(20, 184, 166, 0.3)", borderRadius: 10, display: "flex", alignItems: "center", justifyValue: "center", fontSize: 24, fontWeight: "bold", color: "#14b8a6", justifyContent: "center" }}>
+                    {g.label.replace("Grade ", "")}
+                  </div>
+                  <span style={{ fontSize: 22, fontWeight: "bold", color: "white" }}>{g.label}</span>
+                  <span style={{ marginLeft: "auto", fontSize: 24, color: "#14b8a6" }}>›</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* Cấp 3 - High School */}
+        <div style={{ marginBottom: 48 }}>
+          <h2 style={{ fontSize: 24, fontWeight: "bold", color: "#38bdf8", marginBottom: 24, borderBottom: "2px solid rgba(56, 189, 248, 0.3)", paddingBottom: 8 }}>
+            🎓 High School / Cấp 3 (THPT)
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 24 }}>
+            {gradesThpt.map((g) => (
+              <Link key={g.label} href={g.href} style={{ textDecoration: "none", color: "inherit" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: 20, background: "rgba(255,255,255,0.05)", backdropFilter: "blur(12px)", borderRadius: 14, border: "1px solid rgba(255,255,255,0.1)", padding: "20px 24px", cursor: "pointer", transition: "all 0.2s" }}
+                  onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 8px 32px rgba(56,189,248,0.2)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.4)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; }}
+                >
+                  <div style={{ width: 64, height: 64, background: "rgba(56, 189, 248, 0.1)", border: "1px solid rgba(56, 189, 248, 0.3)", borderRadius: 10, display: "flex", alignItems: "center", justifyValue: "center", fontSize: 24, fontWeight: "bold", color: "#38bdf8", justifyContent: "center" }}>
+                    {g.label.replace("Grade ", "")}
+                  </div>
+                  <span style={{ fontSize: 22, fontWeight: "bold", color: "white" }}>{g.label}</span>
+                  <span style={{ marginLeft: "auto", fontSize: 24, color: "#38bdf8" }}>›</span>
+                </div>
+              </Link>
+            ))}
+          </div>
         </div>
 
         <style jsx>{`

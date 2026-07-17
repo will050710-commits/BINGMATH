@@ -92,11 +92,59 @@ export const TOPIC_QUESTIONS = {
       { text: "Mốt (mode) của dãy số 2, 3, 3, 4, 5, 3, 7 là:", options: ["2", "4", "7", "3"], correct: 3, explain: "Số 3 xuất hiện nhiều nhất (3 lần) nên mode = 3" },
     ],
   },
+  // ==========================================
+  // CẤP 2 TOPIC QUESTIONS (Grades 6–9)
+  // ==========================================
+  fc_cs1: {
+    title: "Số học & Tập hợp (Grade 6)",
+    questions: [
+      { text: "Tập hợp A = {x ∈ ℕ | 2 < x ≤ 6} gồm những phần tử nào?", options: ["{2, 3, 4, 5, 6}", "{3, 4, 5}", "{3, 4, 5, 6}", "{2, 3, 4, 5}"], correct: 2, explain: "x lớn hơn 2 và nhỏ hơn hoặc bằng 6 nên gồm 3, 4, 5, 6." },
+      { text: "Thực hiện phép tính: 25 . 8 + 25 . 2", options: ["200", "250", "300", "150"], correct: 1, explain: "25 . (8 + 2) = 25 . 10 = 250." },
+      { text: "Tìm ƯCLN của 12 và 18:", options: ["3", "12", "6", "2"], correct: 2, explain: "12 = 2² . 3; 18 = 2 . 3² -> ƯCLN = 2 . 3 = 6." },
+      { text: "Tìm số tự nhiên x biết: 2x - 5 = 15", options: ["x = 5", "x = 8", "x = 10", "x = 6"], correct: 2, explain: "2x = 20 -> x = 10." },
+      { text: "Số nào sau đây chia hết cho cả 2, 3, 5 và 9?", options: ["450", "90", "180", "270"], correct: 1, explain: "90 chia hết cho 2, 5 (tận cùng 0) và chia hết cho 9, 3 (tổng chữ số là 9)." },
+      { text: "Thực hiện phép tính: (-15) + (-20)", options: ["-5", "-35", "5", "35"], correct: 1, explain: "Hai số cùng âm: -(15 + 20) = -35." },
+      { text: "Kết quả của phép tính: 5/6 - 1/3 là:", options: ["1/2", "2/3", "1/6", "1/3"], correct: 0, explain: "5/6 - 2/6 = 3/6 = 1/2." }
+    ]
+  },
+  fc_cs2: {
+    title: "Đại số & Tỉ lệ (Grade 7)",
+    questions: [
+      { text: "Tìm hai số x và y biết x/3 = y/4 và x + y = 14:", options: ["x = 6, y = 8", "x = 8, y = 6", "x = 3, y = 11", "x = 4, y = 10"], correct: 0, explain: "x/3 = y/4 = (x+y)/(3+4) = 14/7 = 2 -> x = 6, y = 8." },
+      { text: "Giá trị của đa thức A(x) = x² - 2x + 1 tại x = 2 là:", options: ["0", "2", "1", "4"], correct: 2, explain: "A(2) = 2² - 2(2) + 1 = 4 - 4 + 1 = 1." },
+      { text: "Làm tròn số 12.3456 đến chữ số thập phân thứ hai:", options: ["12.34", "12.35", "12.3", "12.40"], correct: 1, explain: "Chữ số thứ ba là 5 >= 5 nên tăng lên thành 12.35." },
+      { text: "Biết 3 mét vải giá 90,000đ. Hỏi 5 mét vải cùng loại giá bao nhiêu?", options: ["120,000đ", "150,000đ", "180,000đ", "100,000đ"], correct: 1, explain: "1 mét vải giá 30,000đ -> 5 mét giá 150,000đ." },
+      { text: "Cho đa thức P(x) = 2x - 4. Nghiệm của đa thức là:", options: ["x = 2", "x = -2", "x = 0", "x = 4"], correct: 0, explain: "2x - 4 = 0 -> x = 2." }
+    ]
+  },
+  fc_cs3: {
+    title: "Hằng đẳng thức & Phương trình (Grade 8)",
+    questions: [
+      { text: "Rút gọn biểu thức: (x - 2)² + 4x", options: ["x² - 4", "x² + 4", "x² + 8x", "x²"], correct: 1, explain: "x² - 4x + 4 + 4x = x² + 4." },
+      { text: "Phân tích đa thức thành nhân tử: x² - 4", options: ["(x - 2)(x - 2)", "(x - 2)(x + 2)", "(x + 2)(x + 2)", "x(x - 4)"], correct: 1, explain: "Hiệu hai bình phương: (x-2)(x+2)." },
+      { text: "Giải phương trình: 3(x - 1) = 2x + 5", options: ["x = 6", "x = 8", "x = 4", "x = 2"], correct: 1, explain: "3x - 3 = 2x + 5 -> x = 8." },
+      { text: "Giải bất phương trình: 2x - 4 > 6", options: ["x > 5", "x > 10", "x > 1", "x > 4"], correct: 0, explain: "2x > 10 -> x > 5." },
+      { text: "Tính diện tích hình thang biết hai đáy là 6cm, 10cm và chiều cao 4cm:", options: ["16 cm²", "32 cm²", "64 cm²", "24 cm²"], correct: 1, explain: "S = (6 + 10) * 4 / 2 = 32." }
+    ]
+  },
+  fc_cs4: {
+    title: "Hàm số & Đường tròn (Grade 9)",
+    questions: [
+      { text: "Đường thẳng y = 2x + b đi qua điểm A(1; 3). Hệ số b bằng:", options: ["1", "2", "-1", "3"], correct: 0, explain: "3 = 2(1) + b -> b = 1." },
+      { text: "Rút gọn biểu thức: A = (√18 - √2) * √2", options: ["2", "4", "6", "8"], correct: 1, explain: "(3√2 - √2) * √2 = 2√2 * √2 = 4." },
+      { text: "Giải hệ phương trình { x + y = 3 ; x - y = 1 }:", options: ["x = 1, y = 2", "x = 2, y = 1", "x = 3, y = 0", "x = 1.5, y = 1.5"], correct: 1, explain: "Cộng hai vế: 2x = 4 -> x = 2, y = 1." },
+      { text: "Tổng và tích hai nghiệm của x² - 5x + 6 = 0 lần lượt là:", options: ["S = 6, P = 5", "S = -5, P = 6", "S = 5, P = 6", "S = -6, P = -5"], correct: 2, explain: "S = -b/a = 5; P = c/a = 6." },
+      { text: "Tìm tọa độ giao điểm của (P): y = x² và (d): y = 2x + 3:", options: ["(1, 1) và (-3, 9)", "(3, 9) và (-1, 1)", "(2, 4) và (-1, 1)", "(0, 0) và (3, 9)"], correct: 1, explain: "x² - 2x - 3 = 0 -> x = 3 hoặc x = -1 -> (3,9) và (-1,1)." }
+    ]
+  }
 };
 
 export const DEFAULT_QUESTIONS = TOPIC_QUESTIONS.fc1.questions;
 
 export function getQuestionsForCard(card) {
   if (!card?.id) return DEFAULT_QUESTIONS;
+  const qSet = TOPIC_QUESTIONS[card.id]?.questions;
+  if (qSet) return qSet;
+  // Fallback for THCS custom cards
   return TOPIC_QUESTIONS[card.id]?.questions ?? DEFAULT_QUESTIONS;
 }

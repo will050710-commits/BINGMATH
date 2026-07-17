@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/context/authContext";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+import TiltCard from "../TiltCard";
+
 
 const RARITY_THEMES = {
   Common: {
@@ -83,82 +85,108 @@ export default function KnowledgeAlbum() {
       }}>
         {collection.map((card, idx) => {
           const theme = RARITY_THEMES[card.rarity] || RARITY_THEMES.Common;
+          
+          if (card.owned) {
+            return (
+              <TiltCard
+                key={idx}
+                maxRotation={15}
+                onClick={() => setActiveCard(card)}
+                style={{
+                  background: theme.bg,
+                  border: theme.border,
+                  borderRadius: 16,
+                  aspectRatio: "1/1.45",
+                  padding: 16,
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  cursor: "pointer",
+                  position: "relative",
+                  overflow: "hidden",
+                  boxShadow: `0 10px 25px rgba(0,0,0,0.4), 0 0 15px ${theme.glow}`,
+                  transition: "box-shadow 0.3s"
+                }}
+              >
+                {/* Rarity Border Glow */}
+                <div style={{
+                  position: "absolute", inset: 0, pointerEvents: "none",
+                  background: `radial-gradient(circle at 10% 10%, ${theme.color}22 0%, transparent 60%)`,
+                }} />
+
+                {/* Top: Name & Rarity badge */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 900, letterSpacing: 0.6,
+                      color: theme.color, textTransform: "uppercase",
+                      background: `${theme.color}15`, border: `1px solid ${theme.color}35`,
+                      borderRadius: 20, padding: "2px 8px"
+                    }}>
+                      {card.rarity}
+                    </span>
+                    {card.owned_count > 1 && (
+                      <span style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.45)" }}>
+                        x{card.owned_count}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 14.5, fontWeight: 800, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {card.name}
+                  </div>
+                </div>
+
+                {/* Middle: Formula */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexGrow: 1 }}>
+                  {renderFormula(card.formula)}
+                </div>
+
+                {/* Bottom: short category */}
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 700, textAlign: "right" }}>
+                  Toán 10
+                </div>
+              </TiltCard>
+            );
+          }
+
+          // Locked card state
           return (
-            <motion.div
+            <div
               key={idx}
-              whileHover={card.owned ? { scale: 1.05, y: -4, rotateY: 5 } : {}}
-              onClick={() => card.owned && setActiveCard(card)}
               style={{
-                background: card.owned ? theme.bg : "rgba(255,255,255,0.02)",
-                border: card.owned ? theme.border : "1px dashed rgba(255,255,255,0.08)",
+                background: "rgba(255,255,255,0.02)",
+                border: "1px dashed rgba(255,255,255,0.08)",
                 borderRadius: 16,
                 aspectRatio: "1/1.45",
                 padding: 16,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
-                cursor: card.owned ? "pointer" : "default",
                 position: "relative",
                 overflow: "hidden",
-                boxShadow: card.owned ? `0 10px 25px rgba(0,0,0,0.4), 0 0 15px ${theme.glow}` : "none",
-                opacity: card.owned ? 1 : 0.45,
-                transition: "box-shadow 0.3s, opacity 0.3s"
+                opacity: 0.45
               }}
             >
-              {/* Rarity Border Glow */}
-              {card.owned && (
-                <div style={{
-                  position: "absolute", inset: 0, pointerEvents: "none",
-                  background: `radial-gradient(circle at 10% 10%, ${theme.color}22 0%, transparent 60%)`,
-                }} />
-              )}
-
-              {card.owned ? (
-                <>
-                  {/* Top: Name & Rarity badge */}
-                  <div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <span style={{
-                        fontSize: 9, fontWeight: 900, letterSpacing: 0.6,
-                        color: theme.color, textTransform: "uppercase",
-                        background: `${theme.color}15`, border: `1px solid ${theme.color}35`,
-                        borderRadius: 20, padding: "2px 8px"
-                      }}>
-                        {card.rarity}
-                      </span>
-                      {card.owned_count > 1 && (
-                        <span style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.45)" }}>
-                          x{card.owned_count}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 14.5, fontWeight: 800, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {card.name}
-                    </div>
-                  </div>
-
-                  {/* Middle: Formula */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexGrow: 1 }}>
-                    {renderFormula(card.formula)}
-                  </div>
-
-                  {/* Bottom: short category */}
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 700, textAlign: "right" }}>
-                    Toán 10
-                  </div>
-                </>
-              ) : (
-                <div style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  height: "100%", gap: 12
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{
+                  fontSize: 9, fontWeight: 900, letterSpacing: 0.6,
+                  color: "rgba(255,255,255,0.3)", textTransform: "uppercase",
+                  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: 20, padding: "2px 8px"
                 }}>
-                  <span style={{ fontSize: 24, opacity: 0.25 }}>🔒</span>
-                  <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 700 }}>
-                    Chưa sở hữu
-                  </span>
-                </div>
-              )}
-            </motion.div>
+                  {card.rarity}
+                </span>
+              </div>
+              <div style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                flexGrow: 1, gap: 12
+              }}>
+                <span style={{ fontSize: 24, opacity: 0.25 }}>🔒</span>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 700 }}>
+                  Chưa sở hữu
+                </span>
+              </div>
+            </div>
           );
         })}
       </div>

@@ -1,5 +1,0 @@
-import Pagebailam from "../../components/bailam/L12-test2-section2";
-
-export default function Page() {
-  return <Pagebailam />;
-}

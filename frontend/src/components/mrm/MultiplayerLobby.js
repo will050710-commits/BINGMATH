@@ -53,13 +53,21 @@ const INITIAL_ROOMS = [
 ];
 
 const ALL_FORUM_CARDS = [
-  { id: "fc1", title: "Phương trình bậc hai", enTitle: "Quadratic Equations", desc: "Chuyên đề Delta và Hệ thức Vi-ét", icon: "📐", diff: 7.8, color: "#f97316" },
-  { id: "fc2", title: "Đạo hàm & Cực trị", enTitle: "Derivatives & Extrema", desc: "Khảo sát sự biến thiên và cực đại cực tiểu", icon: "📈", diff: 8.5, color: "#ef4444" },
-  { id: "fc3", title: "Hình học phẳng Oxyz", enTitle: "Coordinate Geometry", desc: "Hệ tọa độ, vector và phương trình đường thẳng", icon: "🌐", diff: 6.3, color: "#38bdf8" },
-  { id: "fc4", title: "Dãy số & Cấp số", enTitle: "Sequences & Series", desc: "Tìm số hạng tổng quát và tính tổng S_n", icon: "🔢", diff: 5.5, color: "#4ade80" },
-  { id: "fc5", title: "Lượng giác tổng hợp", enTitle: "Trigonometry", desc: "Công thức sin, cos, tan và các bài toán ứng dụng", icon: "∿", diff: 7.0, color: "#a78bfa" },
-  { id: "fc6", title: "Xác suất & Tổ hợp", enTitle: "Probability & Combinatorics", desc: "Hoán vị, tổ hợp, chỉnh hợp và xác suất biến cố", icon: "🎲", diff: 6.8, color: "#fbbf24" },
+  { id: "fc1", title: "Phương trình bậc hai", enTitle: "Quadratic Equations", desc: "Chuyên đề Delta và Hệ thức Vi-ét", icon: "📐", diff: 7.8, color: "#f97316", bgImage: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=1200", thumbnail: "https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=300" },
+  { id: "fc2", title: "Đạo hàm & Cực trị", enTitle: "Derivatives & Extrema", desc: "Khảo sát sự biến thiên và cực đại cực tiểu", icon: "📈", diff: 8.5, color: "#ef4444", bgImage: "https://images.unsplash.com/photo-1509228468518-180dd4864904?q=80&w=1200", thumbnail: "https://images.unsplash.com/photo-1509228468518-180dd4864904?q=80&w=300" },
+  { id: "fc3", title: "Hình học phẳng Oxyz", enTitle: "Coordinate Geometry", desc: "Hệ tọa độ, vector và phương trình đường thẳng", icon: "🌐", diff: 6.3, color: "#38bdf8", bgImage: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=1200", thumbnail: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=300" },
+  { id: "fc4", title: "Dãy số & Cấp số", enTitle: "Sequences & Series", desc: "Tìm số hạng tổng quát và tính tổng S_n", icon: "🔢", diff: 5.5, color: "#4ade80", bgImage: "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?q=80&w=1200", thumbnail: "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?q=80&w=300" },
+  { id: "fc5", title: "Lượng giác tổng hợp", enTitle: "Trigonometry", desc: "Công thức sin, cos, tan và các bài toán ứng dụng", icon: "∿", diff: 7.0, color: "#a78bfa", bgImage: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1200", thumbnail: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=300" },
+  { id: "fc6", title: "Xác suất & Tổ hợp", enTitle: "Probability & Combinatorics", desc: "Hoán vị, tổ hợp, chỉnh hợp và xác suất biến cố", icon: "🎲", diff: 6.8, color: "#fbbf24", bgImage: "https://images.unsplash.com/photo-1596495578065-6e0763fa1141?q=80&w=1200", thumbnail: "https://images.unsplash.com/photo-1596495578065-6e0763fa1141?q=80&w=300" },
 ];
+
+const trisList = Array.from({ length: 16 }).map((_, i) => ({
+  id: i,
+  left: (i * 7.1) % 100, // deterministic spread across screen width
+  size: 15 + ((i * 13) % 45), // sizing range 15px - 60px
+  dur: 7 + ((i * 3) % 10), // duration range 7s - 17s
+  delay: -((i * 4.5) % 15), // negative delay for instant distributed stagger
+}));
 
 function getRankTitle(elo) {
   if (elo < 1200) return "Bronze I";
@@ -1060,8 +1068,8 @@ export default function MultiplayerLobby() {
         );
       });
       const mapMeta = matchKey ? MOCK_MATHMAPS[matchKey] : null;
-      const bgUrl = mapMeta?.bgImageUrl || mapMeta?.thumbnail_url || null;
-      const opacity = mapMeta?.bgOpacity ?? 0.3;
+      const bgUrl = mapMeta?.bgImageUrl || mapMeta?.thumbnail_url || card.bgImage || card.thumbnail || null;
+      const opacity = mapMeta?.bgOpacity ?? 0.35; // slightly higher opacity for visual presence
       if (bgUrl) {
         showOpacityPanel(bgUrl, opacity);
       } else {
@@ -1969,196 +1977,348 @@ export default function MultiplayerLobby() {
           position: "relative", zIndex: 1,
           flex: 1, display: "flex", flexDirection: "column",
           minHeight: "100vh",
+          background: selectedCard 
+            ? `linear-gradient(rgba(224, 34, 122, 0.65), rgba(92, 10, 48, 0.85)), url(${selectedCard.bgImage}) center/cover no-repeat`
+            : "linear-gradient(160deg, #e0227a 0%, #a1114f 55%, #5c0a30 100%)",
+          padding: "22px 18px 30px",
+          boxSizing: "border-box",
+          fontFamily: "system-ui, sans-serif",
+          overflow: "hidden",
+          transition: "background 0.5s ease"
         }}>
-          {/* TOP: Big HP bar — diamond style */}
-          <div style={{
-            background: "rgba(5,2,15,0.9)", backdropFilter: "blur(16px)",
-            borderBottom: "1px solid rgba(255,255,255,0.06)",
-            padding: "14px 28px",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#38bdf8" }}>{playerUsername}</div>
-                <div style={{ display: "flex", gap: 5, marginTop: 3 }}>
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <span key={i} style={{
-                      fontSize: 16, transition: "all 0.4s",
-                      color: i < playerBigHP ? "#fbbf24" : "#1e293b",
-                      filter: i < playerBigHP ? "drop-shadow(0 0 6px #fbbf24)" : "none",
-                    }}>◆</span>
-                  ))}
-                </div>
-              </div>
+          {/* Custom style injection */}
+          <style dangerouslySetInnerHTML={{ __html: `
+            @keyframes floatUp {
+              0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+              10% { opacity: 0.6; }
+              90% { opacity: 0.4; }
+              100% { transform: translateY(-700px) rotate(15deg); opacity: 0; }
+            }
+            @keyframes pulseTitle {
+              0%, 100% { transform: scale(1); }
+              50% { transform: scale(1.05); }
+            }
+            @keyframes dotPulse {
+              0%, 100% { background: rgba(255,255,255,0.12); }
+              50% { background: #ffe3ee; }
+            }
+            .pick-dot {
+              width: 14px;
+              height: 14px;
+              border-radius: 50%;
+              background: rgba(255,255,255,0.12);
+              border: 1px solid rgba(255,255,255,0.35);
+              animation: dotPulse 2.4s ease-in-out infinite;
+            }
+            .pick-dot:nth-child(1) { animation-delay: 0s; }
+            .pick-dot:nth-child(2) { animation-delay: 0.3s; }
+            .pick-dot:nth-child(3) { animation-delay: 0.6s; }
+            .pick-dot:nth-child(4) { animation-delay: 0.9s; }
+            .pick-dot:nth-child(5) { animation-delay: 1.2s; }
 
-              <div style={{
-                fontSize: 11, fontWeight: 900, color: "rgba(255,255,255,0.2)",
-                letterSpacing: 2, textTransform: "uppercase",
-              }}>
-                {gamePhase === "discarding"
-                  ? (chooser === "player" ? "DISCARD PHASE — You" : `DISCARD PHASE — ${botOpponent.username}`)
-                  : (chooser === "player" ? "PICK PHASE — You" : `PICK PHASE — ${botOpponent.username}`)}
-              </div>
+            .pick-card-item {
+              transition: transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), z-index 0.1s;
+            }
+            .pick-card-item:hover {
+              transform: translateY(-28px) rotate(0deg) !important;
+              z-index: 1000 !important;
+            }
+            .pick-card-item:hover .card-inner {
+              transform: rotateY(180deg);
+              box-shadow: 0 15px 35px rgba(224, 34, 122, 0.6);
+            }
+            /* Flipped state if selected */
+            .pick-card-item.is-selected .card-inner {
+              transform: rotateY(180deg);
+              box-shadow: 0 0 0 2px #fff, 0 10px 30px rgba(255,255,255,0.5);
+            }
+            /* Discarded state styling */
+            .pick-card-item.is-discarded {
+              opacity: 0.25;
+              pointer-events: none;
+            }
+          `}} />
 
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: "#f87171" }}>{botOpponent.username}</div>
-                <div style={{ display: "flex", gap: 5, marginTop: 3, justifyContent: "flex-end" }}>
-                  {Array.from({ length: 3 }).map((_, i) => (
-                    <span key={i} style={{
-                      fontSize: 16, transition: "all 0.4s",
-                      color: i < botBigHP ? "#fbbf24" : "#1e293b",
-                      filter: i < botBigHP ? "drop-shadow(0 0 6px #fbbf24)" : "none",
-                    }}>◆</span>
-                  ))}
-                </div>
-              </div>
+          {/* Floating Triangles Background */}
+          <div id="tris" style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none", zIndex: 0 }}>
+            {trisList.map(t => (
+              <div key={t.id} style={{
+                position: "absolute",
+                left: `${t.left}%`,
+                bottom: "-40px",
+                width: t.size,
+                height: t.size,
+                background: "rgba(255,255,255,0.06)",
+                clipPath: "polygon(50% 0%, 0% 100%, 100% 100%)",
+                animation: `floatUp ${t.dur}s linear infinite`,
+                animationDelay: `${t.delay}s`
+              }} />
+            ))}
+          </div>
+
+          {/* Header Row */}
+          <div style={{ position: "relative", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, zIndex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>⏱️</span>
+              <span style={{ color: "#fbd7e6", fontSize: 12, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                {gamePhase === "discarding" ? "discard phase" : "pick phase"}
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <div className="pick-dot"></div>
+              <div className="pick-dot"></div>
+              <div className="pick-dot"></div>
+              <div className="pick-dot"></div>
+              <div className="pick-dot"></div>
             </div>
           </div>
 
-          {/* CONTENT */}
-          <div style={{
-            flex: 1, display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center",
-            padding: "24px",
-          }}>
-            {/* Phase header */}
-            <div style={{ textAlign: "center", marginBottom: 28 }}>
-              <div style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: gamePhase === "discarding"
-                  ? "rgba(239,68,68,0.12)" : "rgba(167,139,250,0.12)",
-                border: `1px solid ${gamePhase === "discarding" ? "rgba(239,68,68,0.3)" : "rgba(167,139,250,0.3)"}`,
-                borderRadius: 20, padding: "5px 16px", fontSize: 11, fontWeight: 800,
-                color: gamePhase === "discarding" ? "#f87171" : "#a78bfa",
-                marginBottom: 12,
-              }}>
-                {gamePhase === "discarding" ? "🗑️ DISCARD PHASE" : "🎯 PICK PHASE"}
-              </div>
-              <h2 style={{ fontSize: 22, fontWeight: 900, color: "white", marginBottom: 6 }}>
-                {gamePhase === "discarding"
-                  ? (chooser === "player" ? "Chọn 2 lá bài để loại bỏ" : `${botOpponent.username} đang loại bỏ bài...`)
-                  : (chooser === "player" ? "Chọn 1 chủ đề để chiến đấu!" : `${botOpponent.username} đang chọn...`)}
-              </h2>
-              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-                {gamePhase === "discarding"
-                  ? (chooser === "player"
-                    ? `Discard ${DISCARD_COUNT - discardedCards.length} more map(s) / Còn ${DISCARD_COUNT - discardedCards.length} lá cần bỏ`
-                    : "Wait for opponent to discard / Chờ đối thủ bỏ bài")
-                  : (chooser === "player"
-                    ? "Pick the topic for this round / Chọn chủ đề cho vòng này"
-                    : "Waiting for pick... / Chờ đối thủ chọn")
-                }
-              </p>
-            </div>
+          {/* Pick Phase Progress Bar */}
+          <div style={{ position: "relative", width: "100%", height: 8, background: "rgba(255,255,255,.15)", borderRadius: 6, marginTop: 12, overflow: "hidden", zIndex: 1 }}>
+            <div id="hp" style={{
+              height: "100%",
+              width: `${(timeLeft / 30) * 100}%`,
+              background: "#ffe3ee",
+              borderRadius: 6,
+              transition: "width 1s linear"
+            }} />
+          </div>
 
-            {/* Card Grid — 6 cards */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-              gap: 16, width: "100%", maxWidth: 1060, marginBottom: 24,
+          {/* Title Area */}
+          <div style={{ position: "relative", textAlign: "center", marginTop: 40, zIndex: 1 }}>
+            <div id="ptitle" style={{
+              fontSize: 28,
+              fontWeight: 800,
+              letterSpacing: "0.08em",
+              color: "#fff",
+              textTransform: "uppercase",
+              animation: "pulseTitle 1.8s ease-in-out infinite"
             }}>
-              {ALL_FORUM_CARDS.map(card => {
+              {gamePhase === "discarding" ? "LOẠI BỎ CHỦ ĐỀ" : "CHỌN MAP BẮT ĐẦU"}
+            </div>
+            <div style={{ fontSize: 13, color: "#ffc4dc", marginTop: 6, fontWeight: 600 }}>
+              {chooser === "player" ? "Đến lượt bạn chọn — Rê chuột vào lá bài để lật" : `Đang chờ ${botOpponent.username} thao tác...`}
+            </div>
+            <div id="timer" style={{ marginTop: 12, fontSize: 20, color: "#fff", fontWeight: 900, background: "rgba(0,0,0,0.3)", display: "inline-block", padding: "4px 16px", borderRadius: 12 }}>
+              {timeLeft}s
+            </div>
+          </div>
+
+          {/* Fanned Cards Section */}
+          <div style={{
+            position: "relative",
+            flex: 1,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "center",
+            paddingBottom: 20,
+            zIndex: 1
+          }}>
+            <div style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "flex-end",
+              height: 240,
+              width: "100%",
+              maxWidth: 900
+            }}>
+              {ALL_FORUM_CARDS.map((card, idx) => {
                 const isDiscarded = discardedCards.includes(card.id);
                 const isUnavailable = gamePhase === "picking" && discardedCards.includes(card.id);
                 const isSelected = selectedCard && selectedCard.id === card.id;
                 const canDiscard = gamePhase === "discarding" && chooser === "player" && discardedCards.length < DISCARD_COUNT && !isDiscarded;
                 const canPick = gamePhase === "picking" && chooser === "player" && !isDiscarded && !selectedCard;
 
+                // Fan Math (Rotation + TranslateY)
+                const totalCards = ALL_FORUM_CARDS.length;
+                const midIndex = (totalCards - 1) / 2;
+                const rotateVal = (idx - midIndex) * 5.5; // Fan angles
+                const translateVal = Math.abs(idx - midIndex) * 7.5; // Fan depth curve
+
                 return (
                   <div
                     key={card.id}
+                    className={`pick-card-item ${isDiscarded ? "is-discarded" : ""} ${isSelected ? "is-selected" : ""}`}
                     onClick={() => {
                       if (canPick) handleSelectCard(card);
                     }}
                     style={{
                       position: "relative",
-                      background: isDiscarded || isUnavailable
-                        ? "rgba(15,10,30,0.3)"
-                        : isSelected
-                        ? `linear-gradient(135deg, ${card.color}22, ${card.color}11)`
-                        : "rgba(12,8,28,0.85)",
-                      border: isDiscarded || isUnavailable
-                        ? "1px solid rgba(255,255,255,0.03)"
-                        : isSelected
-                        ? `2px solid ${card.color}`
-                        : `1px solid ${card.color}33`,
-                      borderRadius: 14,
-                      padding: "24px 16px",
-                      textAlign: "center",
+                      width: 142,
+                      height: 260,
+                      perspective: 700,
                       cursor: (canDiscard || canPick) ? "pointer" : "default",
-                      opacity: isDiscarded ? 0.3 : 1,
-                      transform: isSelected ? "scale(1.04) skewX(-5deg)" : "skewX(-5deg)",
-                      transition: "all 0.25s cubic-bezier(0.2,0.8,0.2,1)",
-                      boxShadow: isSelected ? `0 0 24px ${card.color}44, 0 8px 24px rgba(0,0,0,0.4)` : "0 8px 20px rgba(0,0,0,0.3)",
-                      filter: isUnavailable ? "grayscale(0.8)" : "none",
-                    }}
-                    onMouseEnter={e => {
-                      if ((canDiscard || canPick) && !isSelected) {
-                        e.currentTarget.style.borderColor = card.color + "88";
-                        e.currentTarget.style.transform = "translateY(-4px) skewX(-5deg)";
-                      }
-                    }}
-                    onMouseLeave={e => {
-                      if (!isSelected) {
-                        e.currentTarget.style.borderColor = card.color + "33";
-                        e.currentTarget.style.transform = "skewX(-5deg)";
-                      }
+                      transform: `rotate(${rotateVal}deg) translateY(${translateVal}px)`,
+                      margin: "0 -22px", // Overlap cards tightly
+                      zIndex: isSelected ? 100 : idx,
                     }}
                   >
-                    <div style={{ transform: "skewX(5deg)" }}>
-                      {/* Discard X button */}
-                      {canDiscard && (
-                        <button
-                          onClick={e => { e.stopPropagation(); handleDiscardCard(card); }}
-                          style={{
-                            position: "absolute", top: 8, right: 8,
-                            width: 22, height: 22, borderRadius: "50%",
-                            background: "rgba(239,68,68,0.2)", border: "1px solid rgba(239,68,68,0.5)",
-                            color: "#f87171", fontSize: 11, fontWeight: 900,
-                            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                            lineHeight: 1, transition: "all 0.15s",
-                          }}
-                          onMouseEnter={e => { e.currentTarget.style.background = "rgba(239,68,68,0.5)"; e.currentTarget.style.transform = "scale(1.2)"; }}
-                          onMouseLeave={e => { e.currentTarget.style.background = "rgba(239,68,68,0.2)"; e.currentTarget.style.transform = "scale(1)"; }}
-                        >
-                          ✕
-                        </button>
-                      )}
-
-                      {/* Discarded overlay icon */}
-                      {isDiscarded && (
-                        <div style={{
-                          position: "absolute", top: 8, right: 8,
-                          width: 22, height: 22, borderRadius: "50%",
-                          background: "rgba(239,68,68,0.3)",
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          fontSize: 11, color: "#f87171", fontWeight: 900,
-                        }}>✕</div>
-                      )}
-
-                      <div style={{ fontSize: 36, marginBottom: 10 }}>{card.icon}</div>
-                      <div style={{ fontSize: 9, color: card.color, fontWeight: 700, marginBottom: 3, letterSpacing: 1 }}>
-                        {card.enTitle.toUpperCase()}
+                    <div className="card-inner" style={{
+                      position: "relative",
+                      width: "100%",
+                      height: "100%",
+                      transformStyle: "preserve-3d",
+                      transition: "transform 0.55s cubic-bezier(.2,.8,.2,1)",
+                    }}>
+                      {/* CARD FRONT: Cover logo */}
+                      <div className="card-face card-front" style={{
+                        position: "absolute",
+                        inset: 0,
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                        borderRadius: 10,
+                        background: "linear-gradient(160deg, #c21868, #7a0e42)",
+                        border: "1px solid rgba(255,255,255,.25)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}>
+                        <span style={{ fontSize: 36, color: "rgba(255,255,255,.65)" }}>✨</span>
+                        <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 8, fontWeight: 900, letterSpacing: 1.5, marginTop: 8 }}>DUOMATH</span>
                       </div>
-                      <h3 style={{ fontSize: 13, fontWeight: 900, color: "white", marginBottom: 6 }}>{card.title}</h3>
-                      <DiffStars diff={card.diff} />
-                      <p style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", lineHeight: 1.4, marginTop: 8 }}>{card.desc}</p>
+
+                      {/* CARD BACK: Map details */}
+                      <div className="card-face card-back" style={{
+                        position: "absolute",
+                        inset: 0,
+                        backfaceVisibility: "hidden",
+                        WebkitBackfaceVisibility: "hidden",
+                        transform: "rotateY(180deg)",
+                        borderRadius: 10,
+                        background: "rgba(23, 13, 48, 0.95)",
+                        border: isSelected ? "2px solid #fff" : "1px solid rgba(255,255,255,.25)",
+                        display: "flex",
+                        flexDirection: "column",
+                        overflow: "hidden"
+                      }}>
+                        {/* Discard trigger (inside card details) */}
+                        {canDiscard && (
+                          <button
+                            onClick={e => { e.stopPropagation(); handleDiscardCard(card); }}
+                            style={{
+                              position: "absolute", top: 6, right: 6,
+                              width: 20, height: 20, borderRadius: "50%",
+                              background: "rgba(239,68,68,0.75)", border: "1px solid rgba(239,68,68,0.9)",
+                              color: "#fff", fontSize: 10, fontWeight: 900,
+                              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                              zIndex: 10
+                            }}
+                          >
+                            ✕
+                          </button>
+                        )}
+
+                        {/* Card Image Cover (osu! Style) */}
+                        <div style={{
+                          width: "100%",
+                          height: "85px",
+                          backgroundImage: `url(${card.thumbnail})`,
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                          position: "relative",
+                          borderBottom: "1px solid rgba(255,255,255,0.15)"
+                        }}>
+                          {/* Title overlay */}
+                          <div style={{
+                            position: "absolute",
+                            inset: 0,
+                            background: "linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.1) 100%)",
+                            display: "flex",
+                            alignItems: "flex-end",
+                            padding: "6px 8px"
+                          }}>
+                            <div>
+                              <div style={{ fontSize: 7, color: "#ffc4dc", fontWeight: 800, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                                {card.enTitle}
+                              </div>
+                              <h3 style={{ fontSize: 10, fontWeight: 900, color: "#fff", margin: "1px 0 0" }}>{card.title}</h3>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Card Details & Stats */}
+                        <div style={{ padding: "8px", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                          {/* Stats block (resembling osu! metadata list) */}
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                            {/* Diff Bar */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, fontSize: 8, color: "rgba(255,255,255,0.8)" }}>
+                              <span>Difficulty:</span>
+                              <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, overflow: "hidden" }}>
+                                <div style={{ width: `${(card.diff / 10) * 100}%`, height: "100%", background: card.color || "#ffc4dc", borderRadius: 2 }} />
+                              </div>
+                              <span style={{ fontWeight: 800, fontSize: 8 }}>{card.diff}★</span>
+                            </div>
+
+                            {/* Questions Bar */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, fontSize: 8, color: "rgba(255,255,255,0.8)" }}>
+                              <span>Questions:</span>
+                              <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, overflow: "hidden" }}>
+                                <div style={{ width: "50%", height: "100%", background: "#4ade80", borderRadius: 2 }} />
+                              </div>
+                              <span style={{ fontWeight: 800 }}>5</span>
+                            </div>
+
+                            {/* Time limit Bar */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, fontSize: 8, color: "rgba(255,255,255,0.8)" }}>
+                              <span>Time Limit:</span>
+                              <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, overflow: "hidden" }}>
+                                <div style={{ width: "60%", height: "100%", background: "#38bdf8", borderRadius: 2 }} />
+                              </div>
+                              <span style={{ fontWeight: 800 }}>30s</span>
+                            </div>
+
+                            {/* Accuracy required Bar */}
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 4, fontSize: 8, color: "rgba(255,255,255,0.8)" }}>
+                              <span>Req Acc:</span>
+                              <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.12)", borderRadius: 2, overflow: "hidden" }}>
+                                <div style={{ width: "80%", height: "100%", background: "#fbbf24", borderRadius: 2 }} />
+                              </div>
+                              <span style={{ fontWeight: 800 }}>80%</span>
+                            </div>
+                          </div>
+
+                          {/* Description short text */}
+                          <p style={{
+                            fontSize: 7.5,
+                            color: "rgba(255,255,255,0.45)",
+                            lineHeight: 1.2,
+                            margin: "4px 0 0",
+                            overflow: "hidden",
+                            display: "-webkit-box",
+                            WebkitLineClamp: 3,
+                            WebkitBoxOrient: "vertical"
+                          }}>
+                            {card.desc}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
-
-            {selectedCard && (
-              <div style={{
-                padding: "10px 24px", background: "rgba(34,197,94,0.12)",
-                border: "1px solid rgba(34,197,94,0.4)", borderRadius: 20,
-                color: "#4ade80", fontSize: 13, fontWeight: 800,
-                animation: "mrmPulse 1.5s infinite",
-              }}>
-                ✓ &quot;{selectedCard.enTitle}&quot; selected — Loading match...
-              </div>
-            )}
           </div>
+
+          {/* Match load indicator */}
+          {selectedCard && (
+            <div style={{
+              position: "relative",
+              alignSelf: "center",
+              padding: "10px 24px",
+              background: "rgba(34,197,94,0.15)",
+              border: "1px solid rgba(34,197,94,0.4)",
+              borderRadius: 20,
+              color: "#4ade80",
+              fontSize: 13,
+              fontWeight: 800,
+              zIndex: 1,
+              animation: "mrmPulse 1.5s infinite",
+              marginTop: 10
+            }}>
+              ✓ Đã chọn: &quot;{selectedCard.title}&quot; — Trận đấu đang tải...
+            </div>
+          )}
         </div>
       )}
 
@@ -2168,7 +2328,7 @@ export default function MultiplayerLobby() {
           position: "relative", zIndex: 1,
           flex: 1, display: "flex", flexDirection: "column",
           minHeight: "100vh",
-          background: "linear-gradient(160deg, #03020a, #08051a)",
+          background: "radial-gradient(circle at 50% 60%, rgba(6, 182, 212, 0.22) 0%, #03020a 80%)",
         }}>
           {/* ── Map Background Image Layer ── */}
           {mapBgImage && (

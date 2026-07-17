@@ -1,0 +1,9 @@
+- [x] Cập nhật `globals.css` với các lớp phong cách neon, glitch, split-text, scroll-snap và drag-drop zone
+- [x] Tạo component `ScrollReveal.js` sử dụng IntersectionObserver
+- [x] Tạo component `TypewriterText.js` hiển thị hiệu ứng gõ chữ
+- [x] Tạo component `TiltCard.js` kích hoạt hiệu ứng nghiêng 3D khi di chuột
+- [x] Cập nhật `KnowledgeAlbum.js` để áp dụng hiệu ứng nghiêng 3D `<TiltCard>` cho thẻ bài
+- [x] Cập nhật `TrangChuForm.js` để tích hợp `ScrollReveal`, `TypewriterText`, nút phát sáng và chữ glitch
+- [x] Cập nhật `DuoMCBPage.js` hỗ trợ kéo thả ảnh và tài liệu văn bản
+- [x] Tạo trang Reels `/tailieu/shorts/page.js` hỗ trợ cuộn snap dọc từng công thức toán và liên kết nó ở trang tài liệu
+- [/] Thực hiện kiểm tra thủ công và chạy thử ứng dụng (Đang chạy npx next build để xác thực)

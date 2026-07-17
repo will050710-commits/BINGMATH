@@ -503,5 +503,81 @@ export const ANSWER_KEY = {
     section2: { 0: "TRUE", 1: "TRUE", 2: "NOT GIVEN", 3: "FALSE", 4: "FALSE" },
     section3: { "1-0": "F(x) = x^4 - 3x^2 + 2x + 3", "1-1": "1", "2-0": "1/2", "2-1": "e - 1", "3-0": "(x-1)^2 + (y+2)^2 + (z-3)^2 = 16", "3-1": "Center I(1,-2,3), r=4", "4-0": "15/56", "4-1": "3/8", "5-0": "0.117", "5-1": "0.162 (or 16.2%)" }
   },
+
+  // ===========================
+  // ✅ THCS GRADE 6 TESTS
+  // ===========================
+  "reading-test-L6-1": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "C", p1q4: "C", p1q5: "B" },
+    section2: { p2q1: "C", p2q2: "B", p2q3: "B", p2q4: "D", p2q5: "B" },
+    section3: { "1-0": "A = {4, 5, 6, 7, 8}, 5", "2-0": "2400", "3-0": "14" }
+  },
+  "reading-test-L6-2": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "B", p1q5: "B" },
+    section2: { p2q1: "B", p2q2: "C", p2q3: "B", p2q4: "A", p2q5: "B" },
+    section3: { "1-0": "12", "1-1": "UC = {1, 2, 3, 4, 6, 12}", "2-0": "0", "3-0": "50" }
+  },
+  "reading-test-L6-3": {
+    section1: { p1q1: "C", p1q2: "B", p1q3: "D", p1q4: "C", p1q5: "B" },
+    section2: { p2q1: "C", p2q2: "B", p2q3: "C", p2q4: "D", p2q5: "D" },
+    section3: { "1-0": "1/6", "2-0": "5/8", "3-0": "48" }
+  },
+
+  // ===========================
+  // ✅ THCS GRADE 7 TESTS
+  // ===========================
+  "reading-test-L7-1": {
+    section1: { p1q1: "C", p1q2: "B", p1q3: "B", p1q4: "C", p1q5: "C" },
+    section2: { p2q1: "B", p2q2: "B", p2q3: "A", p2q4: "C", p2q5: "D" },
+    section3: { "1-0": "-1.5", "2-0": "6", "2-1": "10", "3-0": "40" }
+  },
+  "reading-test-L7-2": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "C", p1q4: "B", p1q5: "C" },
+    section2: { p2q1: "A", p2q2: "C", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section3: { "1-0": "34.57", "2-0": "3.6", "3-0": "6" }
+  },
+  "reading-test-L7-3": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "B", p1q5: "C" },
+    section2: { p2q1: "B", p2q2: "B", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section3: { "1-0": "4x^2 - 2", "2-0": "8", "3-0": "10" }
+  },
+
+  // ===========================
+  // ✅ THCS GRADE 8 TESTS
+  // ===========================
+  "reading-test-L8-1": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "C", p1q5: "C" },
+    section2: { p2q1: "B", p2q2: "B", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section3: { "1-0": "x^2 + 4", "2-0": "(x - y - 3)(x - y + 3)", "3-0": "60" }
+  },
+  "reading-test-L8-2": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "C", p1q4: "B", p1q5: "B" },
+    section2: { p2q1: "B", p2q2: "B", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section3: { "1-0": "13", "2-0": "(x + 2)/x", "3-0": "4" }
+  },
+  "reading-test-L8-3": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "B", p1q5: "B" },
+    section2: { p2q1: "B", p2q2: "C", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section3: { "1-0": "3, -1/2", "2-0": "4", "3-0": "60" }
+  },
+
+  // ===========================
+  // ✅ THCS GRADE 9 TESTS
+  // ===========================
+  "reading-test-L9-1": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "B", p1q5: "B" },
+    section2: { p2q1: "B", p2q2: "B", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section3: { "1-0": "3", "2-0": "2", "2-1": "1", "3-0": "2", "3-1": "3" }
+  },
+  "reading-test-L9-2": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "B", p1q5: "B" },
+    section2: { p2q1: "B", p2q2: "B", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section3: { "1-0": "2", "1-1": "1", "2-0": "18", "3-0": "2, -2, 1, -1" }
+  },
+  "reading-test-L9-3": {
+    section1: { p1q1: "B", p1q2: "B", p1q3: "B", p1q4: "B", p1q5: "B" },
+    section2: { p2q1: "B", p2q2: "B", p2q3: "B", p2q4: "B", p2q5: "B" },
+    section3: { "1-0": "(3, 9)", "1-1": "(-1, 1)", "2-0": "7", "2-1": "10", "3-0": "60" }
+  }
 };
 

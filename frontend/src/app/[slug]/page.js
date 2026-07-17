@@ -1,7 +1,7 @@
 "use client";
 import { useParams } from "next/navigation";
 import { getLessonData } from "@/data/lessonsData";
-import PremiumLessonEngine from "@/components/Cacbaitoan10/PremiumLessonEngine";
+import PremiumLessonEngine from "@/components/thpt/Cacbaitoan10/PremiumLessonEngine";
 import { useState } from "react";
 import { renderDuoIcon } from "@/components/DuoIcons";
 

@@ -1,4 +1,4 @@
-import Timer from "../../utils/testTimer";
+import Timer from "@/utils/testTimer";
 
 export default function Header() {
   return (

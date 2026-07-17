@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 "use client";
 import Link from "next/link";
+import { useState } from "react";
 import { resetTimer } from "@/utils/testTimer";
 
 const SHAPES = [
@@ -18,9 +19,9 @@ function ShapesSVG({ shape, color }) {
   return <svg viewBox="0 0 100 100" fill="none"><polygon points="50,5 95,90 5,90" stroke={color} strokeWidth="2" fill="none"/><line x1="50" y1="5" x2="50" y2="90" stroke={color} strokeWidth="1" opacity="0.5"/></svg>;
 }
 
-const gradeData = [
+const thptGradeData = [
   {
-    grade: "Grade 10", img: "/images/math10.webp", comingSoon: false,
+    grade: "Grade 10", img: "/images/math10.webp", level: "SAT", comingSoon: false,
     tests: [
       { href: "/L10-test1-section1", key: "reading-test-1" },
       { href: "/L10-test2-section1", key: "reading-test-2" },
@@ -31,7 +32,7 @@ const gradeData = [
     ],
   },
   {
-    grade: "Grade 11", img: "/images/math11.webp", comingSoon: false,
+    grade: "Grade 11", img: "/images/math11.webp", level: "SAT", comingSoon: false,
     tests: [
       { href: "/L11-test1-section1", key: "reading-test-L11-1" },
       { href: "/L11-test2-section1", key: "reading-test-L11-2" },
@@ -42,7 +43,7 @@ const gradeData = [
     ],
   },
   {
-    grade: "Grade 12", img: "/images/math12.webp", comingSoon: false,
+    grade: "Grade 12", img: "/images/math12.webp", level: "SAT", comingSoon: false,
     tests: [
       { href: "/L12-test1-section1", key: "reading-test-L12-1" },
       { href: "/L12-test2-section1", key: "reading-test-L12-2" },
@@ -54,7 +55,45 @@ const gradeData = [
   },
 ];
 
+const thcsGradeData = [
+  {
+    grade: "Grade 6", img: "/images/math6.png", level: "Flyer", comingSoon: false,
+    tests: [
+      { href: "/L6-test1-section1", key: "reading-test-L6-1" },
+      { href: "/L6-test2-section1", key: "reading-test-L6-2" },
+      { href: "/L6-test3-section1", key: "reading-test-L6-3" },
+    ],
+  },
+  {
+    grade: "Grade 7", img: "/images/math7.png", level: "KET", comingSoon: false,
+    tests: [
+      { href: "/L7-test1-section1", key: "reading-test-L7-1" },
+      { href: "/L7-test2-section1", key: "reading-test-L7-2" },
+      { href: "/L7-test3-section1", key: "reading-test-L7-3" },
+    ],
+  },
+  {
+    grade: "Grade 8", img: "/images/math8.png", level: "PET", comingSoon: false,
+    tests: [
+      { href: "/L8-test1-section1", key: "reading-test-L8-1" },
+      { href: "/L8-test2-section1", key: "reading-test-L8-2" },
+      { href: "/L8-test3-section1", key: "reading-test-L8-3" },
+    ],
+  },
+  {
+    grade: "Grade 9", img: "/images/math9.png", level: "IELTS Academic (Easy)", comingSoon: false,
+    tests: [
+      { href: "/L9-test1-section1", key: "reading-test-L9-1" },
+      { href: "/L9-test2-section1", key: "reading-test-L9-2" },
+      { href: "/L9-test3-section1", key: "reading-test-L9-3" },
+    ],
+  },
+];
+
 export default function CacBaiLamPage() {
+  const [activeTab, setActiveTab] = useState("thpt"); // "thpt" | "thcs"
+  const currentData = activeTab === "thpt" ? thptGradeData : thcsGradeData;
+
   return (
     <div style={{ width: "100%", background: "#0a0a1a", display: "flex", justifyContent: "center", minHeight: "100vh", position: "relative", overflow: "hidden" }}>
 
@@ -90,39 +129,74 @@ export default function CacBaiLamPage() {
           Bilingual Math Tests
         </h1>
         <p style={{ color: "#93c5fd", fontSize: 18, marginBottom: 12 }}>
-          3 sections per test · SAT Reading → IELTS T/F/NG → Grade Math · 60 minutes
+          3 sections per test · SAT/Flyer/KET/PET/IELTS Reading → Bilingual Math · 60 minutes
         </p>
-        <div style={{ display: "flex", gap: 12, marginBottom: 48, flexWrap: "wrap" }}>
-          {["📖 Section 1: SAT Reading (10 MC)", "📝 Section 2: IELTS True/False/NG (5 Q)", "🔢 Section 3: Math Short Answer (5 problems)"].map((s, i) => (
+        <div style={{ display: "flex", gap: 12, marginBottom: 36, flexWrap: "wrap" }}>
+          {["📖 Section 1 & 2: Reading Comprehension", "🔢 Section 3: Math (thcs.toanmath.com & Sở GD)"].map((s, i) => (
             <div key={i} style={{ background: "rgba(14,165,233,0.15)", color: "#7dd3fc", border: "1px solid rgba(14,165,233,0.3)", borderRadius: 20, padding: "6px 14px", fontSize: 13, fontWeight: 600 }}>{s}</div>
           ))}
         </div>
 
-        {gradeData.map((g, gi) => (
-          <div key={gi} style={{ marginBottom: 64 }}>
-            <h2 style={{ fontSize: 24, fontWeight: "bold", color: "white", marginBottom: 28 }}>
-              {g.grade}{g.comingSoon ? " (Coming soon)" : ""}
-            </h2>
+        {/* School Level Tabs */}
+        <div style={{ display: "flex", gap: 16, marginBottom: 40, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 16 }}>
+          <button
+            onClick={() => setActiveTab("thpt")}
+            style={{
+              background: activeTab === "thpt" ? "linear-gradient(135deg, #0ea5e9, #6366f1)" : "rgba(255,255,255,0.05)",
+              color: activeTab === "thpt" ? "white" : "rgba(255,255,255,0.6)",
+              border: "1px solid " + (activeTab === "thpt" ? "#38bdf8" : "rgba(255,255,255,0.1)"),
+              borderRadius: 10, padding: "12px 28px", fontSize: 16, fontWeight: 700,
+              cursor: "pointer", transition: "all 0.3s ease",
+              boxShadow: activeTab === "thpt" ? "0 4px 20px rgba(14,165,233,0.3)" : "none"
+            }}
+          >
+            🎓 Cấp 3 (Grades 10–12)
+          </button>
+          <button
+            onClick={() => setActiveTab("thcs")}
+            style={{
+              background: activeTab === "thcs" ? "linear-gradient(135deg, #0d9488, #10b981)" : "rgba(255,255,255,0.05)",
+              color: activeTab === "thcs" ? "white" : "rgba(255,255,255,0.6)",
+              border: "1px solid " + (activeTab === "thcs" ? "#2dd4bf" : "rgba(255,255,255,0.1)"),
+              borderRadius: 10, padding: "12px 28px", fontSize: 16, fontWeight: 700,
+              cursor: "pointer", transition: "all 0.3s ease",
+              boxShadow: activeTab === "thcs" ? "0 4px 20px rgba(13,148,136,0.3)" : "none"
+            }}
+          >
+            🏫 Cấp 2 (Grades 6–9)
+          </button>
+        </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 28, background: "rgba(255,255,255,0.06)", backdropFilter: "blur(10px)", borderRadius: 14, boxShadow: "0 4px 24px rgba(0,180,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", padding: 28 }}>
+        {currentData.map((g, gi) => (
+          <div key={gi} style={{ marginBottom: 64 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
+              <h2 style={{ fontSize: 26, fontWeight: "800", color: "white", margin: 0 }}>
+                {g.grade}{g.comingSoon ? " (Coming soon)" : ""}
+              </h2>
+              <div style={{ background: activeTab === "thpt" ? "rgba(14,165,233,0.2)" : "rgba(13,148,136,0.2)", color: activeTab === "thpt" ? "#38bdf8" : "#2dd4bf", border: "1px solid " + (activeTab === "thpt" ? "rgba(14,165,233,0.4)" : "rgba(13,148,136,0.4)"), borderRadius: 8, padding: "4px 12px", fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>
+                Level: {g.level}
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 28, background: "rgba(255,255,255,0.04)", backdropFilter: "blur(12px)", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.2)", border: "1px solid rgba(255,255,255,0.08)", padding: 28 }}>
               {g.tests.map((test, idx) => {
                 const card = (
-                  <div style={{ background: "rgba(255,255,255,0.07)", backdropFilter: "blur(8px)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", overflow: "hidden", opacity: g.comingSoon ? 0.45 : 1, cursor: g.comingSoon ? "not-allowed" : "pointer", transition: "box-shadow 0.2s, transform 0.2s, border-color 0.2s" }}
-                    onMouseEnter={e => { if (!g.comingSoon) { e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,180,255,0.2)"; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.borderColor = "rgba(0,200,255,0.35)"; } }}
-                    onMouseLeave={e => { if (!g.comingSoon) { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; } }}
+                  <div style={{ background: "rgba(255,255,255,0.06)", backdropFilter: "blur(8px)", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden", opacity: g.comingSoon ? 0.45 : 1, cursor: g.comingSoon ? "not-allowed" : "pointer", transition: "box-shadow 0.3s, transform 0.3s, border-color 0.3s" }}
+                    onMouseEnter={e => { if (!g.comingSoon) { e.currentTarget.style.boxShadow = activeTab === "thpt" ? "0 8px 32px rgba(14,165,233,0.25)" : "0 8px 32px rgba(13,148,136,0.25)"; e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.borderColor = activeTab === "thpt" ? "rgba(56,189,248,0.4)" : "rgba(45,212,191,0.4)"; } }}
+                    onMouseLeave={e => { if (!g.comingSoon) { e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; } }}
                   >
                     <img src={g.img} alt={g.grade} style={{ width: "100%", height: 170, objectFit: "cover" }} />
-                    <div style={{ padding: "16px 20px" }}>
-                      <div style={{ fontSize: 20, fontWeight: 700, color: "white" }}>Test {idx + 1}</div>
-                      <div style={{ color: "#93c5fd", fontSize: 15, marginTop: 3 }}>{g.grade}</div>
-                      <div style={{ fontSize: 13, color: "#7dd3fc", marginTop: 4 }}>15 questions · 3 sections · 60 min</div>
+                    <div style={{ padding: "20px" }}>
+                      <div style={{ fontSize: 20, fontWeight: 800, color: "white" }}>Test {idx + 1}</div>
+                      <div style={{ color: "#94a3b8", fontSize: 14, marginTop: 4 }}>{g.grade}</div>
+                      <div style={{ fontSize: 13, color: activeTab === "thpt" ? "#38bdf8" : "#2dd4bf", marginTop: 6, fontWeight: "600" }}>13 questions · 3 sections · 60 min</div>
                       {!g.comingSoon && (
-                        <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#38bdf8", fontWeight: 600 }}>
-                          Start Test →
+                        <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: activeTab === "thpt" ? "#38bdf8" : "#2dd4bf", fontWeight: 700 }}>
+                          Bắt đầu làm bài →
                         </div>
                       )}
                       {g.comingSoon && (
-                        <div style={{ marginTop: 10, fontSize: 12, color: "#6b7280" }}>Coming soon</div>
+                        <div style={{ marginTop: 12, fontSize: 12, color: "#6b7280" }}>Coming soon</div>
                       )}
                     </div>
                   </div>
@@ -131,7 +205,7 @@ export default function CacBaiLamPage() {
                 if (!g.comingSoon && test.href) {
                   return (
                     <Link key={idx} href={test.href} style={{ textDecoration: "none" }}
-                      onClick={() => test.key && resetTimer(test.key)}> {/* ✅ FIX */}
+                      onClick={() => test.key && resetTimer(test.key)}>
                       {card}
                     </Link>
                   );
@@ -140,8 +214,8 @@ export default function CacBaiLamPage() {
               })}
             </div>
 
-            {gi < gradeData.length - 1 && (
-              <div style={{ height: 1, background: "rgba(255,255,255,0.1)", margin: "48px 0 0" }} />
+            {gi < currentData.length - 1 && (
+              <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "48px 0 0" }} />
             )}
           </div>
         ))}

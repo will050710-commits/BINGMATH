@@ -442,3 +442,70 @@ body {
   content-visibility: auto;
   contain-intrinsic-size: 0 600px; /* estimated height */
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ADDITIONAL ANIMATION STYLES (REELS, GLITCH, GLOW, DROPZONE)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Neon glow button */
+.glow-btn {
+  box-shadow: 0 0 10px rgba(0, 200, 255, 0.4);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+.glow-btn:hover {
+  box-shadow: 0 0 25px rgba(0, 200, 255, 0.9), 0 0 45px rgba(0, 200, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+/* Glitch text */
+.glitch {
+  position: relative;
+  color: #fff;
+}
+.glitch::before,
+.glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+.glitch::before {
+  color: #0ff;
+  animation: glitchTop 2s infinite linear alternate-reverse;
+  background: transparent;
+}
+.glitch::after {
+  color: #f0f;
+  animation: glitchBottom 2s infinite linear alternate-reverse;
+  background: transparent;
+}
+@keyframes glitchTop {
+  0% { clip-path: inset(0 0 90% 0); transform: translate(-2px, -2px); }
+  100% { clip-path: inset(80% 0 0 0); transform: translate(2px, 2px); }
+}
+@keyframes glitchBottom {
+  0% { clip-path: inset(90% 0 0 0); transform: translate(2px, 2px); }
+  100% { clip-path: inset(0 0 80% 0); transform: translate(-2px, -2px); }
+}
+
+/* Split text character reveal */
+.char-reveal {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: charIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes charIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* DuoMCB drag and drop Dropzone active overlay state */
+.mcb-dropzone-active {
+  outline: 2px dashed #00d4ff !important;
+  outline-offset: -8px;
+  background-color: rgba(0, 212, 255, 0.05) !important;
+  transition: all 0.3s ease;
+}
+

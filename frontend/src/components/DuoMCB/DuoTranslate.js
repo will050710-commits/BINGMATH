@@ -5,7 +5,7 @@ import styles from "./DuoTranslate.module.css";
 import { createSession, translateText } from "./duoServer";
 import katex from "katex";
 import "katex/dist/katex.min.css";
-import MathGraphSVG from "../Cacbaitoan10/MathGraphSVG";
+import MathGraphSVG from "@/components/thpt/Cacbaitoan10/MathGraphSVG";
 
 // LaTeX parsing utility
 function parseMathAndText(text) {

@@ -74,7 +74,9 @@ const TOOLS = [
   { id: "hint",     icon: "💡", label: "Gợi Ý Socratic",     desc: "Hướng dẫn từng bước nhỏ" },
   { id: "solution", icon: "📖", label: "Giải Đầy Đủ",        desc: "Lời giải chi tiết hoàn chỉnh" },
   { id: "video",    icon: "🎬", label: "Tạo Video Giải",      desc: "Video hoạt hình giải bài" },
+  { id: "threeD",   icon: "🌐", label: "Minh Họa 3D",        desc: "Mô hình 3D tương tác" },
 ];
+
 
 // ── LaTeX & Markdown Parser Helper Functions ──────────────────────────────
 function parseMathAndText(text) {
@@ -1101,8 +1103,195 @@ function drawGenericViz(ctx, data, panelW, panelH, t, lang = "vi") {
   ctx.restore();
 }
 
+// ── Interactive 3D Math Model Player ──
+function InlineThreeDPlayer({ question }) {
+  const containerRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [loading, setLoading] = useState(true);
+  const [modelType, setModelType] = useState("Math Concept");
+
+  useEffect(() => {
+    let animId;
+    let canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const initThree = () => {
+      const THREE = window.THREE;
+      if (!THREE || !canvasRef.current) return;
+      
+      setLoading(false);
+      const W = canvasRef.current.clientWidth || 400;
+      const H = canvasRef.current.clientHeight || 300;
+      
+      const scene = new THREE.Scene();
+      scene.background = new THREE.Color("#0c0a1a");
+      
+      const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, antialias: true });
+      renderer.setSize(W, H);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      
+      // Grid & Axes
+      const gridHelper = new THREE.GridHelper(20, 20, "#14b8a6", "#334155");
+      scene.add(gridHelper);
+      
+      const axesHelper = new THREE.AxesHelper(5);
+      scene.add(axesHelper);
+      
+      // Determine model from question
+      const q = (question || "").toLowerCase();
+      let geom;
+      let title = "Conceptual Model";
+      
+      if (q.includes("nón") || q.includes("cone")) {
+        geom = new THREE.ConeGeometry(2, 4, 32);
+        title = "3D Cone (Hình nón)";
+      } else if (q.includes("trụ") || q.includes("cylinder") || q.includes("prism") || q.includes("lăng trụ")) {
+        geom = new THREE.CylinderGeometry(2, 2, 4, 32);
+        title = "3D Cylinder (Hình trụ)";
+      } else if (q.includes("cầu") || q.includes("sphere") || q.includes("tròn") || q.includes("circle")) {
+        geom = new THREE.SphereGeometry(2, 32, 32);
+        title = "3D Sphere (Hình cầu)";
+      } else if (q.includes("hộp") || q.includes("cube") || q.includes("lập phương") || q.includes("box")) {
+        geom = new THREE.BoxGeometry(3, 3, 3);
+        title = "3D Box (Hình hộp)";
+      } else {
+        geom = new THREE.TorusKnotGeometry(1.5, 0.5, 100, 16);
+        title = "3D Mathematical Knot";
+      }
+      
+      setModelType(title);
+      
+      const mat = new THREE.MeshNormalMaterial({ wireframe: true });
+      const mesh = new THREE.Mesh(geom, mat);
+      scene.add(mesh);
+      
+      // Lights
+      const light = new THREE.DirectionalLight(0xffffff, 1);
+      light.position.set(5, 5, 5);
+      scene.add(light);
+      
+      const ambientLight = new THREE.AmbientLight(0x404040);
+      scene.add(ambientLight);
+      
+      // Camera orbit controls
+      let theta = 0;
+      let phi = Math.PI / 3;
+      let radius = 10;
+      
+      const updateCamera = () => {
+        camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
+        camera.position.y = radius * Math.cos(phi);
+        camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
+        camera.lookAt(0, 0, 0);
+      };
+      
+      updateCamera();
+      
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+      
+      const handleMouseDown = (e) => {
+        isDragging = true;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      };
+      const handleMouseMove = (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaY = e.clientY - previousMousePosition.y;
+        theta -= deltaX * 0.005;
+        phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi - deltaY * 0.005));
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+        updateCamera();
+      };
+      const handleMouseUp = () => { isDragging = false; };
+      const handleWheel = (e) => {
+        e.preventDefault();
+        radius = Math.max(3, Math.min(30, radius + e.deltaY * 0.01));
+        updateCamera();
+      };
+      
+      canvas.addEventListener("mousedown", handleMouseDown);
+      canvas.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
+      canvas.addEventListener("wheel", handleWheel, { passive: false });
+      
+      const animate = () => {
+        mesh.rotation.y += 0.005;
+        renderer.render(scene, camera);
+        animId = requestAnimationFrame(animate);
+      };
+      animate();
+      
+      return () => {
+        cancelAnimationFrame(animId);
+        if (canvas) {
+          canvas.removeEventListener("mousedown", handleMouseDown);
+          canvas.removeEventListener("mousemove", handleMouseMove);
+          canvas.removeEventListener("wheel", handleWheel);
+        }
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
+    };
+
+    const existingScript = document.getElementById("three-cdn");
+    if (!existingScript) {
+      const script = document.createElement("script");
+      script.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+      script.id = "three-cdn";
+      script.async = true;
+      script.onload = () => initThree();
+      document.body.appendChild(script);
+    } else {
+      if (window.THREE) {
+        initThree();
+      } else {
+        existingScript.addEventListener("load", initThree);
+      }
+    }
+
+    return () => {
+      cancelAnimationFrame(animId);
+    };
+  }, [question]);
+
+  return (
+    <div style={{ display: "flex", width: "100%", background: "#0c0a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden", minHeight: 380 }}>
+      <div ref={containerRef} style={{ flex: 1, position: "relative", minHeight: 380 }}>
+        {loading && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0c0a1a" }}>
+            <div style={{ width: 32, height: 32, border: "3px solid #14b8a6", borderTopColor: "transparent", borderRadius: "50%", animation: "three-spin 1s linear infinite" }} />
+            <p style={{ marginTop: 12, fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Khởi động WebGL 3D...</p>
+          </div>
+        )}
+        <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
+        <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(0,0,0,0.6)", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, color: "#14b8a6" }}>
+          🎮 Xoay mô hình để soi xét | Cuộn để phóng to
+        </div>
+      </div>
+      
+      <div style={{ width: 280, background: "rgba(255,255,255,0.02)", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: 20, display: "flex", flexDirection: "column" }}>
+        <div style={{ fontSize: 10, fontWeight: 800, color: "#14b8a6", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
+          {modelType}
+        </div>
+        <h4 style={{ fontSize: 14, fontWeight: 900, color: "white", margin: "0 0 10px 0" }}>
+          Đề Bài
+        </h4>
+        <div style={{ flex: 1, fontSize: 12.5, color: "rgba(255,255,255,0.7)", overflowY: "auto", lineHeight: 1.6 }}>
+          {question}
+        </div>
+      </div>
+      
+      <style jsx>{`
+        @keyframes three-spin { to { transform: rotate(360deg); } }
+      `}</style>
+    </div>
+  );
+}
+
 // ── Inline Video Player (renders in chat message, not a modal overlay) ──
 function InlineVideoPlayer({ question, imageBase64, sessionId }) {
+
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
   const animRef = useRef(null);
@@ -1779,18 +1968,67 @@ export default function DuoMCBPage() {
     a.click(); URL.revokeObjectURL(url);
   }
 
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      processDroppedFile(file);
+    }
+  };
+
+  const processDroppedFile = (file) => {
+    if (file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        setImagePreview(ev.target.result);
+        setImageBase64(ev.target.result);
+        setShowImageModal(true);
+      };
+      reader.readAsDataURL(file);
+    } else if (
+      file.type.startsWith("text/") ||
+      file.name.endsWith(".txt") ||
+      file.name.endsWith(".md") ||
+      file.name.endsWith(".json") ||
+      file.name.endsWith(".csv")
+    ) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const fileContent = ev.target.result;
+        const docText = `[Tài liệu đính kèm: ${file.name}]\n---\n${fileContent}\n---\n`;
+        setInput(prev => prev + (prev ? "\n" : "") + docText);
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
+      };
+      reader.readAsText(file);
+    } else {
+      alert("Hệ thống chỉ hỗ trợ kéo thả ảnh hoặc file văn bản (.txt, .md, .json)!");
+    }
+  };
+
   function handleImageSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImagePreview(ev.target.result);
-      setImageBase64(ev.target.result);
-      setShowImageModal(true);
-    };
-    reader.readAsDataURL(file);
+    processDroppedFile(file);
     e.target.value = "";
   }
+
 
   async function sendImageMessage(mode) {
     setShowImageModal(false);
@@ -1804,6 +2042,16 @@ export default function DuoMCBPage() {
       };
       if (messages.length === 0) pushToHistory("Bài toán từ ảnh", sid);
       setMessages(prev => [...prev, videoMsg]);
+      setImagePreview(null); setImageBase64(null);
+      return;
+    }
+    if (mode === "threeD") {
+      const threeDMsg = {
+        id: Date.now(), role: "assistant", type: "threeD",
+        question: input.trim() || "Bài toán hình học từ ảnh",
+      };
+      if (messages.length === 0) pushToHistory("Minh họa 3D bài toán từ ảnh", sid);
+      setMessages(prev => [...prev, threeDMsg]);
       setImagePreview(null); setImageBase64(null);
       return;
     }
@@ -1844,6 +2092,17 @@ export default function DuoMCBPage() {
       return;
     }
 
+    if (mode === "threeD") {
+      const sid = await ensureSession();
+      if (messages.length === 0) pushToHistory(msg, sid);
+      setMessages(prev => [...prev, {
+        id: Date.now(), role: "assistant", type: "threeD",
+        question: msg,
+      }]);
+      setInput("");
+      return;
+    }
+
     setInput("");
     const sid = await ensureSession();
     if (messages.length === 0) pushToHistory(msg, sid);
@@ -1873,7 +2132,38 @@ export default function DuoMCBPage() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className={styles.root}>
+    <div 
+      className={`${styles.root} ${dragActive ? "mcb-dropzone-active" : ""}`}
+      onDragEnter={handleDrag}
+      onDragOver={handleDrag}
+      onDragLeave={handleDrag}
+      onDrop={handleDrop}
+    >
+      {/* ── DRAG & DROP OVERLAY ── */}
+      {dragActive && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(2, 12, 27, 0.9)",
+          backdropFilter: "blur(12px)",
+          border: "2px dashed #00d4ff",
+          margin: 20,
+          borderRadius: 24,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 10000,
+          pointerEvents: "none",
+          boxShadow: "0 0 50px rgba(0, 212, 255, 0.35)",
+          transition: "all 0.3s ease"
+        }}>
+          <div style={{ fontSize: 72, marginBottom: 16 }}>📥</div>
+          <h2 style={{ color: "white", fontSize: 24, fontWeight: 900 }}>Thả file vào đây để tải lên</h2>
+          <p style={{ color: "#38bdf8", fontSize: 14, fontWeight: 600, marginTop: 8 }}>Hỗ trợ ảnh đề bài (.png, .jpg) hoặc tài liệu văn bản (.txt, .md, .json)</p>
+        </div>
+      )}
+
       {/* ── IMAGE MODAL ── */}
       {showImageModal && (
         <div className={styles.modalOverlay} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>
@@ -1889,6 +2179,7 @@ export default function DuoMCBPage() {
               <button className={styles.hintBtn} onClick={() => sendImageMessage("hint")}>💡 Gợi ý</button>
               <button className={styles.answerBtn} onClick={() => sendImageMessage("answer")}>📖 Giải đầy đủ</button>
               <button className={styles.videoModalBtn} onClick={() => sendImageMessage("video")}>🎬 Video Giải</button>
+              <button className={styles.videoModalBtn} style={{ background: "linear-gradient(135deg, #14b8a6, #0d9488)", border: "1px solid rgba(20,184,166,0.3)" }} onClick={() => sendImageMessage("threeD")}>🌐 Minh Họa 3D</button>
             </div>
           </div>
         </div>
@@ -1986,6 +2277,18 @@ export default function DuoMCBPage() {
           ) : (
             <div className={styles.messages}>
               {messages.map(m => {
+                if (m.type === "threeD") {
+                  return (
+                    <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`} style={{ maxWidth: "100%" }}>
+                      <div className={styles.avatar}>
+                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
+                      </div>
+                      <div style={{ flex: 1, overflow: "hidden", borderRadius: 12 }}>
+                        <InlineThreeDPlayer question={m.question} />
+                      </div>
+                    </div>
+                  );
+                }
                 if (m.type === "video") {
                   return (
                     <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`}>

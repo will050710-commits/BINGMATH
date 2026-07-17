@@ -14,6 +14,9 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 import { renderDuoIcon } from "@/components/DuoIcons";
 import AppDownloadSection from "./AppDownloadSection";
+import ScrollReveal from "../ScrollReveal";
+import TypewriterText from "../TypewriterText";
+
 
 // Dynamically import EditProfileModal to reduce initial JS bundle size
 const EditProfileModal = dynamic(() => import("./EditProfileModal"), {
@@ -906,6 +909,18 @@ export default function TrangChuForm() {
               </span>
             </Link>
 
+            <Link href="/tailieu" style={{ textDecoration: "none", color: "rgba(255,255,255,0.8)", padding: "8px 16px", borderRadius: 6, transition: "all 0.2s", fontWeight: 700, transform: "skewX(-8deg)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+              className="nav-link-item"
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(20, 184, 166, 0.12)"; e.currentTarget.style.borderColor = "rgba(20, 184, 166, 0.4)"; e.currentTarget.style.color = "#14b8a6"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
+                {renderDuoIcon("📚", { size: 14 })}
+                Tài liệu
+              </span>
+            </Link>
+
+
             <Link href="/mrm" style={{ textDecoration: "none" }}>
               <button className="nav-mrm-btn" style={{
                 color: "white",
@@ -994,9 +1009,13 @@ export default function TrangChuForm() {
                 <div style={{ display: "inline-block", background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)", borderRadius: 30, padding: "4px 14px", fontSize: 12, fontWeight: 800, color: "#38bdf8", letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>
                   Bilingual Math Platform
                 </div>
-                <FadeInTitle
-                  text={user ? `Chào bạn, ${user.username}! 👋` : "Chào mừng tới DUOMATH!"}
-                />
+                {user ? (
+                  <h1 style={{ fontSize: "clamp(26px, 7vw, 44px)", fontWeight: 900, marginBottom: 12, lineHeight: 1.1, color: "white" }}>
+                    <TypewriterText text={`Chào bạn, ${user.username}! 👋`} speed={70} />
+                  </h1>
+                ) : (
+                  <FadeInTitle text="Chào mừng tới DUOMATH!" />
+                )}
                 <p style={{ color: "#bae6fd", fontSize: 20, lineHeight: 1.5, fontWeight: 500, marginBottom: 16 }}>
                   Khơi mở tư duy, làm chủ toán học THPT với <strong>giáo trình song ngữ Anh - Việt</strong> tiên tiến!
                 </p>
@@ -1095,15 +1114,13 @@ export default function TrangChuForm() {
                   <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
                     <button
                       onClick={handleOpenGacha}
+                      className="glow-btn"
                       style={{
                         width: "100%", padding: "12px 0", borderRadius: 12,
                         background: "linear-gradient(135deg, #00d4ff 0%, #0072ff 100%)",
                         color: "white", fontSize: 14, fontWeight: 800, border: "none",
-                        cursor: "pointer", boxShadow: "0 4px 15px rgba(0,212,255,0.3)",
-                        transition: "all 0.2s"
+                        cursor: "pointer"
                       }}
-                      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
-                      onMouseLeave={e => e.currentTarget.style.transform = "none"}
                     >
                       🎁 Mở Rương Tri Thức (50 XP)
                     </button>
@@ -1137,7 +1154,7 @@ export default function TrangChuForm() {
                   flexDirection: "column"
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "white" }}>
+                    <h3 className="glitch" data-text="🏆 Bảng Xếp Hạng" style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "white" }}>
                       🏆 Bảng Xếp Hạng
                     </h3>
                     <div style={{ display: "flex", gap: 4 }}>
