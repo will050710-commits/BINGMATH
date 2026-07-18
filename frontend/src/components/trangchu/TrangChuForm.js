@@ -16,6 +16,7 @@ import { renderDuoIcon } from "@/components/DuoIcons";
 import AppDownloadSection from "./AppDownloadSection";
 import ScrollReveal from "../ScrollReveal";
 import TypewriterText from "../TypewriterText";
+import { useLanguage } from "@/context/LanguageContext";
 
 
 // Dynamically import EditProfileModal to reduce initial JS bundle size
@@ -452,6 +453,7 @@ export default function TrangChuForm() {
   } = useAuth();
 
   const { admins } = useMathMapStore();
+  const { t } = useLanguage();
 
   const [showProfile, setShowProfile] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -1007,26 +1009,32 @@ export default function TrangChuForm() {
                   boxShadow: "0 20px 50px rgba(0,0,0,0.4), 0 0 30px rgba(99,102,241,0.05)"
                 }}>
                 <div style={{ display: "inline-block", background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.3)", borderRadius: 30, padding: "4px 14px", fontSize: 12, fontWeight: 800, color: "#38bdf8", letterSpacing: 1, textTransform: "uppercase", marginBottom: 16 }}>
-                  Bilingual Math Platform
+                  {t("Nền tảng Toán Song Ngữ", "Bilingual Math Platform")}
                 </div>
                 {user ? (
                   <h1 style={{ fontSize: "clamp(26px, 7vw, 44px)", fontWeight: 900, marginBottom: 12, lineHeight: 1.1, color: "white" }}>
-                    <TypewriterText text={`Chào bạn, ${user.username}! 👋`} speed={70} />
+                    <TypewriterText text={t(`Chào bạn, ${user.username}! 👋`, `Welcome, ${user.username}! 👋`)} speed={70} />
                   </h1>
                 ) : (
-                  <FadeInTitle text="Chào mừng tới DUOMATH!" />
+                  <FadeInTitle text={t("Chào mừng tới DUOMATH!", "Welcome to DUOMATH!")} />
                 )}
                 <p style={{ color: "#bae6fd", fontSize: 20, lineHeight: 1.5, fontWeight: 500, marginBottom: 16 }}>
-                  Khơi mở tư duy, làm chủ toán học THPT với <strong>giáo trình song ngữ Anh - Việt</strong> tiên tiến!
+                  {t(
+                    <span>Khơi mở tư duy, làm chủ toán học THPT với <strong>giáo trình song ngữ Anh - Việt</strong> tiên tiến!</span>,
+                    <span>Unlock your potential and master high school math with an advanced <strong>Bilingual (EN-VI) curriculum</strong>!</span>
+                  )}
                 </p>
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 15.5, lineHeight: 1.65, marginBottom: 26 }}>
-                  Chúng tôi tin rằng tương lai của <strong>STEM</strong> gắn liền với <strong>năng lực song ngữ</strong>. DuoMath mang tới trải nghiệm học tập đỉnh cao kết hợp bài học chuẩn hóa, AI chatbot thông minh và đấu hạng thời gian thực.
+                  {t(
+                    <span>Chúng tôi tin rằng tương lai của <strong>STEM</strong> gắn liền với <strong>năng lực song ngữ</strong>. DuoMath mang tới trải nghiệm học tập đỉnh cao kết hợp bài học chuẩn hóa, AI chatbot thông minh và đấu hạng thời gian thực.</span>,
+                    <span>We believe the future of <strong>STEM</strong> goes hand-in-hand with <strong>bilingual proficiency</strong>. DuoMath delivers a premium learning experience with standardized lessons, smart AI chatbot, and real-time competitive ranking.</span>
+                  )}
                 </p>
 
                 <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
                   <Link href="/Cacbaitoan" style={{ textDecoration: "none" }}>
                     <button className="primary-hero-btn" style={{ padding: "14px 28px", background: "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", borderRadius: 10, border: "none", fontSize: 16, fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 20px rgba(99,102,241,0.35)", transition: "all 0.25s", display: "flex", alignItems: "center", gap: 8 }}>
-                      Bắt đầu học ngay {renderDuoIcon("🚀", { size: 18 })}
+                      {t("Bắt đầu học ngay", "Start Learning")} {renderDuoIcon("🚀", { size: 18 })}
                     </button>
                   </Link>
                   {ready && !user && (
@@ -1034,7 +1042,7 @@ export default function TrangChuForm() {
                       <button style={{ padding: "14px 28px", background: "rgba(255,255,255,0.06)", color: "white", borderRadius: 10, border: "1.5px solid rgba(255,255,255,0.2)", fontSize: 16, fontWeight: 700, cursor: "pointer", transition: "all 0.2s" }}
                         onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)"; }}
                         onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.2)"; }}>
-                        Đăng ký miễn phí
+                        {t("Đăng ký miễn phí", "Sign up free")}
                       </button>
                     </Link>
                   )}
@@ -1091,10 +1099,13 @@ export default function TrangChuForm() {
                 }}>
                   <div>
                     <h3 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "white" }}>
-                      📦 Rương Công Thức
+                      📦 {t("Rương Công Thức", "Formula Chest")}
                     </h3>
                     <p style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", marginTop: 6 }}>
-                      Tích lũy XP từ bài tập để mở rương nhận thẻ bài toán học ngẫu nhiên.
+                      {t(
+                        "Tích lũy XP từ bài tập để mở rương nhận thẻ bài toán học ngẫu nhiên.",
+                        "Earn XP from exercises to open chests and collect random math formula cards."
+                      )}
                     </p>
                   </div>
 
@@ -1122,7 +1133,7 @@ export default function TrangChuForm() {
                         cursor: "pointer"
                       }}
                     >
-                      🎁 Mở Rương Tri Thức (50 XP)
+                      🎁 {t("Mở Rương Tri Thức (50 XP)", "Open Knowledge Chest (50 XP)")}
                     </button>
 
                     <button
@@ -1137,7 +1148,7 @@ export default function TrangChuForm() {
                       onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.1)"; }}
                       onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
                     >
-                      🎴 Xem Album Thẻ Bài
+                      🎴 {t("Xem Album Thẻ Bài", "View Card Album")}
                     </button>
                   </div>
                 </div>
@@ -1154,14 +1165,14 @@ export default function TrangChuForm() {
                   flexDirection: "column"
                 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3 className="glitch" data-text="🏆 Bảng Xếp Hạng" style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "white" }}>
-                      🏆 Bảng Xếp Hạng
+                    <h3 className="glitch" data-text={t("🏆 Bảng Xếp Hạng", "🏆 Leaderboard")} style={{ margin: 0, fontSize: 19, fontWeight: 800, color: "white" }}>
+                      {t("🏆 Bảng Xếp Hạng", "🏆 Leaderboard")}
                     </h3>
                     <div style={{ display: "flex", gap: 4 }}>
                       {[
-                        { id: "all", label: "Toàn cầu" },
-                        { id: "school", label: "Trường" },
-                        { id: "grade", label: "Lớp" }
+                        { id: "all", label: t("Toàn cầu", "Global") },
+                        { id: "school", label: t("Trường", "School") },
+                        { id: "grade", label: t("Lớp", "Grade") }
                       ].map(f => {
                         const active = leaderboardFilter === f.id;
                         return (

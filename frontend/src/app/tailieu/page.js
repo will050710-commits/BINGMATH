@@ -1,6 +1,7 @@
 "use client";
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
 
 const SHAPES = [
   { size: 100, left: "10%", top: "12%", delay: "0s", dur: "15s", color: "#14b8a6" },
@@ -166,31 +167,40 @@ const CHANNELS = [
     desc: "Khám phá vẻ đẹp trực quan của toán học qua các video hoạt họa tuyệt đẹp của Grant Sanderson.",
     url: "https://www.youtube.com/@3blue1brown",
     platform: "YouTube",
-    note: "Chuỗi video hoạt họa nổi tiếng thế giới về đại số tuyến tính, giải tích, chuỗi Fourier và trực quan hóa toán học.",
-    videos: []
+    videos: [
+      { title: "Vectors, what even are they? | Essence of linear algebra", duration: "9:52", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=fNk_zzaMoSs", img: "https://img.youtube.com/vi/fNk_zzaMoSs/hqdefault.jpg" },
+      { title: "Linear transformations and matrices | Essence of linear algebra", duration: "10:59", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=kYB8IZa5AuE", img: "https://img.youtube.com/vi/kYB8IZa5AuE/hqdefault.jpg" },
+      { title: "Eigenvectors and eigenvalues | Essence of linear algebra", duration: "17:15", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=PFDu9oVAE-g", img: "https://img.youtube.com/vi/PFDu9oVAE-g/hqdefault.jpg" }
+    ]
   },
   {
     name: "Brian McLogan",
     desc: "Giải thích các chủ đề từ Lượng giác đến Đạo hàm siêu dễ hiểu bằng tiếng Anh.",
     url: "https://www.youtube.com/@BrianMcLogan",
     platform: "YouTube",
-    note: "Kho video khổng lồ chữa từng dạng bài Algebra, Trigonometry, Calculus theo phong cách hỏi-đáp trực tiếp.",
-    videos: []
+    videos: [
+      { title: "Mr. McLogan Open Live Q&A", duration: "Livestream", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=fs0dPKhAkyM", img: "https://img.youtube.com/vi/fs0dPKhAkyM/hqdefault.jpg" },
+      { title: "Ask Mr. McLogan + Math Q&A", duration: "Livestream", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=am368j5SZ8U", img: "https://img.youtube.com/vi/am368j5SZ8U/hqdefault.jpg" },
+      { title: "When you suck at math, do this | Q&A Week 93", duration: "12:40", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=HANUtGIRaUQ", img: "https://img.youtube.com/vi/HANUtGIRaUQ/hqdefault.jpg" }
+    ]
   },
   {
     name: "Numberphile",
     desc: "Khám phá thế giới số học, các nghịch lý và vẻ đẹp kỳ diệu của toán học thực tế.",
     url: "https://www.youtube.com/@numberphile",
     platform: "YouTube",
-    note: "Các video phỏng vấn nhà toán học, khám phá số Pi, tỷ lệ vàng, số nguyên tố theo cách kể chuyện lôi cuốn.",
-    videos: []
+    videos: [
+      { title: "Pi (with Alex Bellos & Roger Bowley)", duration: "6:04", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=yJ-HwrOpIps", img: "https://img.youtube.com/vi/yJ-HwrOpIps/hqdefault.jpg" },
+      { title: "A Fun Golden Ratio Limit", duration: "12:30", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=eNWslgrRNoY", img: "https://img.youtube.com/vi/eNWslgrRNoY/hqdefault.jpg" },
+      { title: "Bouncing Balls and a Strange Property of Pi", duration: "8:15", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=abv4Fz7oNr0", img: "https://img.youtube.com/vi/abv4Fz7oNr0/hqdefault.jpg" }
+    ]
   },
   {
     name: "VTV7 - Truyền hình Giáo dục Quốc gia",
     desc: "Kênh truyền hình giáo dục quốc gia với các chương trình học toán trực quan cho học sinh phổ thông.",
     url: "https://www.youtube.com/@VTV7tv",
     platform: "YouTube",
-    note: "Chương trình dạy học trên truyền hình các môn học, trong đó có Toán, bám sát chương trình phổ thông.",
+    note: "Chương trình dạy học trên truyền hình các môn học, trong đó có Toán Tiểu học, bám sát chương trình phổ thông.",
     videos: []
   },
   {
@@ -198,16 +208,22 @@ const CHANNELS = [
     desc: "Những giải thích và chứng minh toán học cực kỳ lý thú, sâu sắc của nhà toán học Burkard Polster.",
     url: "https://www.youtube.com/@Mathologer",
     platform: "YouTube",
-    note: "Video đi sâu vào bản chất các định lý, nghịch lý toán học nổi tiếng với hình ảnh minh họa cực kỳ trực quan.",
-    videos: []
+    videos: [
+      { title: "Visualising Pythagoras: ultimate proofs and crazy contortions", duration: "22:10", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=p-0SOWbzUYI", img: "https://img.youtube.com/vi/p-0SOWbzUYI/hqdefault.jpg" },
+      { title: "Euler's and Fermat's last theorems, the Simpsons and CDC6600", duration: "27:30", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=AO-W5aEJ3Wg", img: "https://img.youtube.com/vi/AO-W5aEJ3Wg/hqdefault.jpg" },
+      { title: "The hardest \"What comes next?\" (Euler's pentagonal formula)", duration: "18:45", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=iJ8pnCO0nTY", img: "https://img.youtube.com/vi/iJ8pnCO0nTY/hqdefault.jpg" }
+    ]
   },
   {
     name: "MindYourDecisions",
     desc: "Giải đố các nghịch lý toán học, các bài toán viral trên mạng xã hội và phương pháp tư duy game theory.",
     url: "https://www.youtube.com/@mindyourdecisions",
     platform: "YouTube",
-    note: "Chuyên giải các bài toán gây tranh cãi trên mạng xã hội và các bài toán logic, xác suất thú vị.",
-    videos: []
+    videos: [
+      { title: "The Answer Is Too Good", duration: "7:20", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=TCBP-SHdUnA", img: "https://img.youtube.com/vi/TCBP-SHdUnA/hqdefault.jpg" },
+      { title: "What Is The Square's Area?", duration: "6:45", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=iszucjbTh5I", img: "https://img.youtube.com/vi/iszucjbTh5I/hqdefault.jpg" },
+      { title: "Visual Math - Sum of All Numbers in a Times Table", duration: "5:30", views: "Video bài giảng", link: "https://www.youtube.com/watch?v=FB-nBkjLixU", img: "https://img.youtube.com/vi/FB-nBkjLixU/hqdefault.jpg" }
+    ]
   },
   {
     name: "Thầy Hồng Trí Quang",
@@ -577,13 +593,11 @@ const CHANNELS = [
 
 
 export default function RecommendationsPage() {
-  const [lang, setLang] = useState("vi");
+  const { lang, t } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [platformFilter, setPlatformFilter] = useState("All");
   const itemsPerPage = 3;
-
-  const t = (vi, en) => (lang === "vi" ? vi : en);
 
   // Filter channels based on search query and platform filter
   const filteredChannels = useMemo(() => {
@@ -648,23 +662,6 @@ export default function RecommendationsPage() {
             </div>
           </Link>
 
-          {/* Bilingual Toggle */}
-          <div style={{ display: "flex", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", padding: 4, borderRadius: 24 }}>
-            {[["vi", "🇻🇳 Tiếng Việt"], ["en", "🇬🇧 English"]].map(([l, label]) => (
-              <button
-                key={l}
-                onClick={() => setLang(l)}
-                style={{
-                  background: lang === l ? "rgba(99,102,241,0.8)" : "none",
-                  border: "none", color: lang === l ? "white" : "rgba(255,255,255,0.5)",
-                  padding: "6px 16px", borderRadius: 20, cursor: "pointer",
-                  fontSize: 12, fontWeight: 700, transition: "all 0.2s"
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Page Title */}
@@ -677,25 +674,9 @@ export default function RecommendationsPage() {
           }}>
             {t("Tài Nguyên Học Toán Song Ngữ", "Bilingual Math Resources")}
           </h1>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16, marginBottom: 20 }}>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: 16 }}>
             {t("Đề xuất các trang web tài liệu chất lượng và kênh học tập sinh động trực quan", "Recommended websites and video channels for bilingual mathematics")}
           </p>
-          <Link href="/tailieu/shorts" style={{ textDecoration: "none" }}>
-            <div style={{
-              display: "inline-flex", alignItems: "center", gap: 10,
-              background: "linear-gradient(135deg, #7c3aed, #00d4ff)",
-              border: "1px solid rgba(0, 212, 255, 0.3)",
-              borderRadius: 12, padding: "12px 24px",
-              fontSize: 14, fontWeight: 800, color: "white",
-              cursor: "pointer", transition: "all 0.25s",
-              boxShadow: "0 0 15px rgba(0,212,255,0.35)",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.boxShadow = "0 0 25px rgba(0,212,255,0.6)"; e.currentTarget.style.transform = "translateY(-1px)"; }}
-              onMouseLeave={e => { e.currentTarget.style.boxShadow = "0 0 15px rgba(0,212,255,0.35)"; e.currentTarget.style.transform = "none"; }}
-            >
-              🎬 {t("Xem Reels Công Thức Toán Học", "Watch Math Formula Reels")} →
-            </div>
-          </Link>
         </div>
 
         {/* SECTION 1: KHUNG TÀI LIỆU (TL) */}

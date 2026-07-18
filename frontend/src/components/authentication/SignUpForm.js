@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/authContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 const GRADES = ["Grade 10", "Grade 11", "Grade 12", "Other"];
 
@@ -43,6 +44,7 @@ function Inp({ style, ...props }) {
 export default function SignUpForm() {
   const { signup } = useAuth();
   const router     = useRouter();
+  const { t }      = useLanguage();
 
   const [f, setF] = useState({ username: "", email: "", password: "", confirm: "", phone: "", school: "", grade: "Grade 10" });
   const set        = k => e => setF(p => ({ ...p, [k]: e.target.value }));
@@ -86,8 +88,8 @@ export default function SignUpForm() {
         {/* Banner */}
         <div style={{ background: "linear-gradient(135deg,#0B4F5C,#1a9ab5)", padding: "26px 32px 20px", textAlign: "center", color: "white" }}>
           <div style={{ fontSize: 28, marginBottom: 5 }}>🎓</div>
-          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 3 }}>Tạo tài khoản</div>
-          <div style={{ fontSize: 13, opacity: 0.82 }}>Điểm số và tiến độ học sẽ được lưu tự động</div>
+          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 3 }}>{t("Tạo tài khoản", "Create Account")}</div>
+          <div style={{ fontSize: 13, opacity: 0.82 }}>{t("Điểm số và tiến độ học sẽ được lưu tự động", "Your scores and progress will be saved automatically")}</div>
         </div>
 
         {/* Hint bar */}
@@ -106,11 +108,11 @@ export default function SignUpForm() {
           {/* Row: username + grade */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>Tên người dùng *</label>
-              <Inp type="text" value={f.username} onChange={set("username")} placeholder="Họ tên của bạn" autoComplete="name" required />
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>{t("Tên người dùng *", "Username *")}</label>
+              <Inp type="text" value={f.username} onChange={set("username")} placeholder={t("Họ tên của bạn", "Your full name")} autoComplete="name" required />
             </div>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>Lớp</label>
+              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>{t("Lớp", "Grade")}</label>
               <select value={f.grade} onChange={set("grade")}
                 style={{ width: "100%", padding: "11px 12px", border: "1.5px solid #13b0ff", borderRadius: 8, fontSize: 15, background: "#fff", outline: "none" }}>
                 {GRADES.map(g => <option key={g}>{g}</option>)}
@@ -124,19 +126,19 @@ export default function SignUpForm() {
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>Trường học <span style={{ color: "#555555", fontWeight: 400 }}>(không bắt buộc)</span></label>
-            <Inp type="text" value={f.school} onChange={set("school")} placeholder="VD: THPT Nguyễn Chí Thanh" style={{ border: "1.5px solid #555555" }} />
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>{t("Trường học", "School")} <span style={{ color: "#555555", fontWeight: 400 }}>({t("không bắt buộc", "optional")})</span></label>
+            <Inp type="text" value={f.school} onChange={set("school")} placeholder={t("VD: THPT Nguyễn Chí Thanh", "E.g: Lincoln High School")} style={{ border: "1.5px solid #555555" }} />
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>Số điện thoại <span style={{ color: "#555555", fontWeight: 400 }}>(không bắt buộc)</span></label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>{t("Số điện thoại", "Phone")} <span style={{ color: "#555555", fontWeight: 400 }}>({t("không bắt buộc", "optional")})</span></label>
             <Inp type="tel" value={f.phone} onChange={set("phone")} placeholder="+84 ..." style={{ border: "1.5px solid #555555" }} />
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>Mật khẩu * <span style={{ color: "#555555", fontWeight: 400 }}>(tối thiểu 6 ký tự)</span></label>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>{t("Mật khẩu *", "Password *")} <span style={{ color: "#555555", fontWeight: 400 }}>({t("tối thiểu 6 ký tự", "min 6 characters")})</span></label>
             <div style={{ position: "relative" }}>
-              <Inp type={showPw ? "text" : "password"} value={f.password} onChange={set("password")} placeholder="Tạo mật khẩu" autoComplete="new-password" required style={{ paddingRight: 44 }} />
+              <Inp type={showPw ? "text" : "password"} value={f.password} onChange={set("password")} placeholder={t("Tạo mật khẩu", "Create a password")} autoComplete="new-password" required style={{ paddingRight: 44 }} />
               <button type="button" onClick={() => setShowPw(v => !v)}
                 style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, color: "#888" }}>
                 {showPw ? "🙈" : "👁️"}
@@ -145,21 +147,21 @@ export default function SignUpForm() {
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>Xác nhận mật khẩu *</label>
-            <Inp type={showPw ? "text" : "password"} value={f.confirm} onChange={set("confirm")} placeholder="Nhập lại mật khẩu" autoComplete="new-password" required style={{ color: "#555555", border: "1.5px solid #555555"}} />
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#333", marginBottom: 5 }}>{t("Xác nhận mật khẩu *", "Confirm Password *")}</label>
+            <Inp type={showPw ? "text" : "password"} value={f.confirm} onChange={set("confirm")} placeholder={t("Nhập lại mật khẩu", "Re-enter password")} autoComplete="new-password" required style={{ color: "#555555", border: "1.5px solid #555555"}} />
           </div>
 
           <button type="submit" disabled={loading}
             style={{ width: "100%", padding: "12px 0", background: loading ? "#6ca3ae" : "#13b0ff", color: "white", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", marginBottom: 12, transition: "background 0.2s" }}>
-            {loading ? "Đang tạo tài khoản…" : "Tạo tài khoản"}
+            {loading ? t("Đang tạo tài khoản…", "Creating account…") : t("Tạo tài khoản", "Create Account")}
           </button>
 
           <div style={{ textAlign: "center", fontSize: 13, color: "#888", marginBottom: 8 }}>
-            Đã có tài khoản?{" "}
-            <Link href="/login" style={{ color: "#13b0ff", fontWeight: 600, textDecoration: "none" }}>Đăng nhập</Link>
+            {t("Đã có tài khoản?", "Already have an account?")}{" "}
+            <Link href="/login" style={{ color: "#13b0ff", fontWeight: 600, textDecoration: "none" }}>{t("Đăng nhập", "Sign In")}</Link>
           </div>
           <div style={{ textAlign: "center" }}>
-            <Link href="/" style={{ color: "#6e6e6e", fontSize: 12, textDecoration: "none" }}>← Về trang chủ</Link>
+            <Link href="/" style={{ color: "#6e6e6e", fontSize: 12, textDecoration: "none" }}>← {t("Về trang chủ", "Back to Home")}</Link>
           </div>
         </form>
       </div>

@@ -1,0 +1,8 @@
+DuoMath Native Mobile App APK Placeholder.
+
+To generate the real APK file and make it downloadable here:
+1. Open the 'DuoMathMobile' project in Android Studio or use React Native CLI.
+2. Build the release APK by running:
+   cd DuoMathMobile/android
+   ./gradlew assembleRelease
+3. Copy the resulting APK from 'DuoMathMobile/android/app/build/outputs/apk/release/app-release.apk' to 'duosteam/frontend/public/duomath.apk'.

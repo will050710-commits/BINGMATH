@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/authContext";
 import { useMathMapStore } from "@/context/MathMapStore";
+import { useLanguage } from "@/context/LanguageContext";
 
 function getAuthErrorMessage(error, fallback) {
   const message = error?.message || "";
@@ -30,6 +31,7 @@ export default function LoginForm() {
   const { login }  = useAuth();
   const { isAdmin, syncAdminSession } = useMathMapStore();
   const router     = useRouter();
+  const { t }      = useLanguage();
   const [email,    setEmail]    = useState("");
   const [password, setPassword] = useState("");
   const [showPw,   setShowPw]   = useState(false);
@@ -73,8 +75,8 @@ export default function LoginForm() {
         {/* Banner */}
         <div style={{ background: "linear-gradient(135deg, #00d8fe, #13b0ff)", padding: "28px 32px 22px", textAlign: "center", color: "white" }}>
           <div style={{ fontSize: 30, marginBottom: 6 }}>🎓</div>
-          <div style={{ fontSize: 21, fontWeight: 800, marginBottom: 3 }}>Đăng nhập</div>
-          <div style={{ fontSize: 13, opacity: 0.82 }}>Chào mừng quay lại DuoMath!</div>
+          <div style={{ fontSize: 21, fontWeight: 800, marginBottom: 3 }}>{t("Đăng nhập", "Sign In")}</div>
+          <div style={{ fontSize: 13, opacity: 0.82 }}>{t("Chào mừng quay lại DuoMath!", "Welcome back to DuoMath!")}</div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: "26px 32px 30px" }}>
@@ -94,10 +96,10 @@ export default function LoginForm() {
           </div>
 
           <div style={{ marginBottom: 22 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#333", marginBottom: 5 }}>Mật khẩu</label>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#333", marginBottom: 5 }}>{t("Mật khẩu", "Password")}</label>
             <div style={{ position: "relative" }}>
               <input type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
-                placeholder="Nhập mật khẩu" autoComplete="current-password" required
+                placeholder={t("Nhập mật khẩu", "Enter password")} autoComplete="current-password" required
                 style={{ ...inp, paddingRight: 44 }}
                 onFocus={e => e.target.style.borderColor = "#13b0ff"}
                 onBlur={e  => e.target.style.borderColor = "#ddd"} />
@@ -110,15 +112,15 @@ export default function LoginForm() {
 
           <button type="submit" disabled={loading}
             style={{ width: "100%", padding: "12px 0", background: loading ? "#6ca3ae" : "#13b0ff", color: "white", border: "none", borderRadius: 8, fontSize: 15, fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", marginBottom: 14, transition: "background 0.2s" }}>
-            {loading ? "Đang đăng nhập…" : "Đăng nhập"}
+            {loading ? t("Đang đăng nhập…", "Signing in…") : t("Đăng nhập", "Sign In")}
           </button>
 
           <div style={{ textAlign: "center", fontSize: 13, color: "#888", marginBottom: 10 }}>
-            Chưa có tài khoản?{" "}
-            <Link href="/signup" style={{ color: "#13b0ff", fontWeight: 600, textDecoration: "none" }}>Đăng ký miễn phí</Link>
+            {t("Chưa có tài khoản?", "Don't have an account?")}{" "}
+            <Link href="/signup" style={{ color: "#13b0ff", fontWeight: 600, textDecoration: "none" }}>{t("Đăng ký miễn phí", "Sign up free")}</Link>
           </div>
           <div style={{ textAlign: "center" }}>
-            <Link href="/" style={{ color: "#bbb", fontSize: 12, textDecoration: "none" }}>← Về trang chủ</Link>
+            <Link href="/" style={{ color: "#bbb", fontSize: 12, textDecoration: "none" }}>← {t("Về trang chủ", "Back to Home")}</Link>
           </div>
         </form>
       </div>
