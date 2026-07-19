@@ -6,17 +6,26 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useLanguage } from "@/context/LanguageContext";
 
 // ─── Phone Mockup ─────────────────────────────────────────────
 function PhoneMockup() {
   const [activeScreen, setActiveScreen] = useState(0);
+  const { t } = useLanguage();
+
   const screens = [
     {
       bg: "linear-gradient(160deg, #020c1b 0%, #0c2340 60%, #0e3158 100%)",
       content: (
         <div style={{ padding: "14px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", marginBottom: 10, letterSpacing: 0.5 }}>📚 BÀI HỌC HÔM NAY</div>
-          {["Đạo hàm & Tích phân", "Lượng giác nâng cao", "Xác suất thống kê"].map((t, i) => (
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#38bdf8", marginBottom: 10, letterSpacing: 0.5 }}>
+            {t("📚 BÀI HỌC HÔM NAY", "📚 TODAY'S LESSONS")}
+          </div>
+          {[
+            t("Đạo hàm & Tích phân", "Derivatives & Integrals"),
+            t("Lượng giác nâng cao", "Advanced Trigonometry"),
+            t("Xác suất thống kê", "Probability & Stats")
+          ].map((title, i) => (
             <div key={i} style={{
               background: i === 0 ? "linear-gradient(135deg,rgba(99,102,241,0.25),rgba(56,189,248,0.15))" : "rgba(255,255,255,0.04)",
               border: `1px solid ${i === 0 ? "rgba(99,102,241,0.4)" : "rgba(255,255,255,0.08)"}`,
@@ -25,9 +34,13 @@ function PhoneMockup() {
             }}>
               <span style={{ fontSize: 14 }}>{["🔢", "📐", "🎲"][i]}</span>
               <div>
-                <div style={{ fontSize: 10, fontWeight: 700, color: i === 0 ? "#a5b4fc" : "white" }}>{t}</div>
+                <div style={{ fontSize: 10, fontWeight: 700, color: i === 0 ? "#a5b4fc" : "white" }}>{title}</div>
                 <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
-                  {["Đang học • Lớp 12", "Hoàn thành 80%", "Chưa bắt đầu"][i]}
+                  {[
+                    t("Đang học • Lớp 12", "Learning • Grade 12"),
+                    t("Hoàn thành 80%", "Completed 80%"),
+                    t("Chưa bắt đầu", "Not started")
+                  ][i]}
                 </div>
               </div>
             </div>
@@ -39,13 +52,25 @@ function PhoneMockup() {
       bg: "linear-gradient(160deg, #0d0524 0%, #1a0a3d 60%, #160730 100%)",
       content: (
         <div style={{ padding: "14px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#a78bfa", marginBottom: 10, letterSpacing: 0.5 }}>⚔️ ĐẤU HẠNG MRM</div>
-          <div style={{ background: "linear-gradient(135deg,rgba(167,139,250,0.2),rgba(99,102,241,0.1))", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 12, padding: 11, marginBottom: 8 }}>
-            <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>Hạng của bạn</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: "#a78bfa" }}>💎 DIAMOND</div>
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>Top 5% toàn quốc</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#a78bfa", marginBottom: 10, letterSpacing: 0.5 }}>
+            {t("⚔️ ĐẤU HẠNG MRM", "⚔️ MRM RANK MATCH")}
           </div>
-          {[["🔥", "Streak", "12 ngày"], ["⭐", "XP", "4,820"], ["🏆", "Thắng", "47 trận"]].map(([ic, lb, val], i) => (
+          <div style={{ background: "linear-gradient(135deg,rgba(167,139,250,0.2),rgba(99,102,241,0.15))", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 12, padding: 11, marginBottom: 8 }}>
+            <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", marginBottom: 4 }}>
+              {t("Hạng của bạn", "Your Rank")}
+            </div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: "#a78bfa" }}>
+              {t("💎 DIAMOND", "💎 DIAMOND")}
+            </div>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>
+              {t("Top 5% toàn quốc", "Top 5% nationwide")}
+            </div>
+          </div>
+          {[
+            ["🔥", t("Streak", "Streak"), t("12 ngày", "12 days")],
+            ["⭐", "XP", "4,820"],
+            ["🏆", t("Thắng", "Wins"), t("47 trận", "47 matches")]
+          ].map(([ic, lb, val], i) => (
             <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
               <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)" }}>{ic} {lb}</span>
               <span style={{ fontSize: 10, fontWeight: 700, color: "white" }}>{val}</span>
@@ -58,11 +83,15 @@ function PhoneMockup() {
       bg: "linear-gradient(160deg, #001a0d 0%, #003a1a 60%, #00291a 100%)",
       content: (
         <div style={{ padding: "14px 12px" }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#34d399", marginBottom: 10, letterSpacing: 0.5 }}>🎮 MINI GAME</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#34d399", marginBottom: 10, letterSpacing: 0.5 }}>
+            {t("🎮 MINI GAME", "🎮 MINI GAME")}
+          </div>
           <div style={{ background: "rgba(52,211,153,0.1)", border: "1px solid rgba(52,211,153,0.3)", borderRadius: 12, padding: 12, marginBottom: 10, textAlign: "center" }}>
-            <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>Câu hỏi 3/10</div>
+            <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.5)", marginBottom: 6 }}>
+              {t("Câu hỏi 3/10", "Question 3/10")}
+            </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: "white", marginBottom: 10 }}>
-              Giá trị của sin(π/6) là?
+              {t("Giá trị của sin(π/6) là?", "What is the value of sin(π/6)?")}
             </div>
             {[["A. 1/2", true], ["B. √3/2", false], ["C. 1", false], ["D. 0", false]].map(([opt, correct], i) => (
               <div key={i} style={{
@@ -155,6 +184,7 @@ function PhoneMockup() {
 // ─── Main AppDownloadSection ──────────────────────────────────
 export default function AppDownloadSection() {
   const [copied, setCopied] = useState(false);
+  const { t } = useLanguage();
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText("https://duomath.app").then(() => {
@@ -167,38 +197,38 @@ export default function AppDownloadSection() {
     {
       id: "android-native",
       icon: "📦",
-      name: "Android Native App (APK)",
-      sub: "Cài đặt trực tiếp bằng file APK",
-      desc: "Tải file APK trực tiếp cho thiết bị Android",
+      name: t("Android Native App (APK)", "Android Native App (APK)"),
+      sub: t("Cài đặt trực tiếp bằng file APK", "Install directly using APK file"),
+      desc: t("Tải file APK trực tiếp cho thiết bị Android", "Download APK directly for Android devices"),
       gradient: "linear-gradient(135deg, #1b263b, #0d1b2a)",
       border: "rgba(56,189,248,0.35)",
       glow: "rgba(56,189,248,0.15)",
       textColor: "#38bdf8",
       action: () => window.open("/duomath.apk", "_blank"),
-      btnLabel: "Tải file APK",
+      btnLabel: t("Tải file APK", "Download APK"),
       available: true,
     },
     {
       id: "ios-native",
       icon: "🍎",
-      name: "iOS App (IPA)",
-      sub: "App Store / TestFlight",
-      desc: "Phiên bản dành cho iPhone / iPad sắp ra mắt",
+      name: t("iOS App (IPA)", "iOS App (IPA)"),
+      sub: t("App Store / TestFlight", "App Store / TestFlight"),
+      desc: t("Phiên bản dành cho iPhone / iPad sắp ra mắt", "Version for iPhone / iPad coming soon"),
       gradient: "linear-gradient(135deg, #1d2030, #2a1f40)",
       border: "rgba(167,139,250,0.2)",
       glow: "rgba(167,139,250,0.05)",
       textColor: "rgba(255,255,255,0.4)",
       action: undefined,
-      btnLabel: "Sắp ra mắt",
+      btnLabel: t("Sắp ra mắt", "Coming soon"),
       available: false,
     }
   ];
 
   const benefits = [
-    { icon: "⚡", title: "Nhanh hơn 3x", desc: "Tải tức thì, không cần chờ" },
-    { icon: "📴", title: "Học Offline", desc: "Xem bài đã học khi mất mạng" },
-    { icon: "🔔", title: "Nhắc nhở học tập", desc: "Thông báo streak hàng ngày" },
-    { icon: "🏠", title: "Trực quan", desc: "Chạy mượt mà, đầy đủ hiệu ứng" },
+    { icon: "⚡", title: t("Nhanh hơn 3x", "3x Faster"), desc: t("Tải tức thì, không cần chờ", "Instant load, no waiting") },
+    { icon: "📴", title: t("Học Offline", "Offline Study"), desc: t("Xem bài đã học khi mất mạng", "Access loaded lessons offline") },
+    { icon: "🔔", title: t("Nhắc nhở học tập", "Daily Reminders"), desc: t("Thông báo streak hàng ngày", "Keep up your daily streak") },
+    { icon: "🏠", title: t("Trực quan", "Fluid UI"), desc: t("Chạy mượt mà, đầy đủ hiệu ứng", "Silky smooth, full animations") },
   ];
 
   return (
@@ -227,7 +257,7 @@ export default function AppDownloadSection() {
           boxShadow: "0 0 18px rgba(56,189,248,0.12)",
         }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#38bdf8", display: "inline-block", boxShadow: "0 0 6px #38bdf8" }} />
-          📱 Ứng dụng di động
+          {t("📱 Ứng dụng di động", "📱 Mobile Application")}
         </div>
 
         <h2 style={{
@@ -237,7 +267,7 @@ export default function AppDownloadSection() {
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
           letterSpacing: 0.3,
         }}>
-          Tải DuoMath — Trải Nghiệm Mượt Mà Nhất
+          {t("Tải DuoMath — Trải Nghiệm Mượt Mà Nhất", "Download DuoMath — Fluid Mobile Experience")}
         </h2>
 
         {/* Underline */}
@@ -254,7 +284,10 @@ export default function AppDownloadSection() {
           fontSize: "clamp(13px,3.5vw,15.5px)",
           maxWidth: 560, lineHeight: 1.6, margin: "20px auto 0",
         }}>
-          Tải ứng dụng DuoMath Native trực tiếp để học tập và đấu hạng với tốc độ tối đa, đầy đủ các tính năng ngoại tuyến và nhắc nhở học tập.
+          {t(
+            "Tải ứng dụng DuoMath Native trực tiếp để học tập và đấu hạng với tốc độ tối đa, đầy đủ các tính năng ngoại tuyến và nhắc nhở học tập.",
+            "Download the DuoMath Native app directly to study and rank up at maximum speed, complete with offline mode and smart streak notifications."
+          )}
         </p>
       </div>
 
@@ -277,7 +310,7 @@ export default function AppDownloadSection() {
             fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.4)",
             textTransform: "uppercase", letterSpacing: 1, marginBottom: 4,
           }}>
-            Tải phiên bản phù hợp
+            {t("Tải phiên bản phù hợp", "Download the right version")}
           </div>
 
           {platforms.map((p) => (
@@ -365,7 +398,7 @@ export default function AppDownloadSection() {
                 minHeight: 32, whiteSpace: "nowrap",
               }}
             >
-              {copied ? "✅ Đã sao chép" : "📋 Sao chép"}
+              {copied ? t("✅ Đã sao chép", "✅ Copied") : t("📋 Sao chép", "📋 Copy")}
             </button>
           </div>
         </div>

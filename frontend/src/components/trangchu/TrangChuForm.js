@@ -205,6 +205,7 @@ const STATIC_MATH_SYMBOLS = Array.from({ length: SYMBOL_COUNT }).map((_, i) => {
 
 // ─── FEATURE SWIPE CAROUSEL ──────────────────────────────────────────────────
 function FeatureSwipeCarousel({ features, router }) {
+  const { t } = useLanguage();
   const trackRef   = useRef(null);
   const [active, setActive]   = useState(0);
   const [offset, setOffset]   = useState(0);    // px drag offset
@@ -290,9 +291,9 @@ function FeatureSwipeCarousel({ features, router }) {
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: 44 }}>
         <SectionHeading
-          badge="Hệ sinh thái học tập"
-          title="Các Tính Năng Cốt Lõi"
-          subtitle="Khám phá hệ sinh thái học tập toàn diện — kéo để xem thêm"
+          badge={t("Hệ sinh thái học tập", "Learning Ecosystem")}
+          title={t("Các Tính Năng Cốt Lõi", "Core Features")}
+          subtitle={t("Khám phá hệ sinh thái học tập toàn diện — kéo để xem thêm", "Discover the comprehensive learning ecosystem — drag to see more")}
         />
       </div>
 
@@ -500,12 +501,12 @@ export default function TrangChuForm() {
 
   const handleOpenGacha = async () => {
     if (!user) {
-      alert("Vui lòng đăng nhập để mở rương tri thức!");
+      alert(t("Vui lòng đăng nhập để mở rương tri thức!", "Please log in to open the knowledge chest!"));
       return;
     }
     const currentXp = competitiveStats?.xp || 0;
     if (currentXp < 50) {
-      alert("Bạn cần tối thiểu 50 XP để mở rương tri thức!");
+      alert(t("Bạn cần tối thiểu 50 XP để mở rương tri thức!", "You need at least 50 XP to open the knowledge chest!"));
       return;
     }
 
@@ -536,12 +537,12 @@ export default function TrangChuForm() {
         // We can reload after closing modal to sync the client state cleanly.
       } else {
         const err = await res.json();
-        alert(err.detail || "Có lỗi xảy ra khi mở rương.");
+        alert(err.detail || t("Có lỗi xảy ra khi mở rương.", "An error occurred while opening the chest."));
         setShowGachaModal(false);
       }
     } catch (err) {
       console.error(err);
-      alert("Không thể kết nối đến máy chủ.");
+      alert(t("Không thể kết nối đến máy chủ.", "Cannot connect to server."));
       setShowGachaModal(false);
     } finally {
       setIsOpeningChest(false);
@@ -606,7 +607,7 @@ export default function TrangChuForm() {
   function ProfileDropdown() {
     if (!ready) return (
       <div style={dropStyle}>
-        <div style={{ padding: 20, textAlign: "center", color: "#888", fontSize: 13 }}>Đang tải…</div>
+        <div style={{ padding: 20, textAlign: "center", color: "#888", fontSize: 13 }}>{t("Đang tải…", "Loading...")}</div>
       </div>
     );
 
@@ -614,18 +615,18 @@ export default function TrangChuForm() {
       <div style={dropStyle}>
         <div style={{ padding: "20px 18px", textAlign: "center" }}>
           <div style={{ fontSize: 32, marginBottom: 8 }}>👤</div>
-          <div style={{ fontWeight: 700, fontSize: 14, color: "#38bdf8", marginBottom: 4 }}>Chưa đăng nhập</div>
-          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>Đăng nhập để lưu tiến độ học tập</div>
+          <div style={{ fontWeight: 700, fontSize: 14, color: "#38bdf8", marginBottom: 4 }}>{t("Chưa đăng nhập", "Not logged in")}</div>
+          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", marginBottom: 16 }}>{t("Đăng nhập để lưu tiến độ học tập", "Log in to save your learning progress")}</div>
           <Link href="/login" onClick={() => setShowProfile(false)}>
             <div style={{ background: "linear-gradient(135deg,#0ea5e9,#6366f1)", color: "white", borderRadius: 8, padding: "10px 0", textAlign: "center", fontWeight: 600, fontSize: 13, marginBottom: 10, cursor: "pointer", boxShadow: "0 4px 12px rgba(99,102,241,0.2)" }}>
-              Đăng nhập
+              {t("Đăng nhập", "Login")}
             </div>
           </Link>
           <Link href="/signup" onClick={() => setShowProfile(false)}>
             <div style={{ border: "1.5px solid rgba(255,255,255,0.3)", color: "white", borderRadius: 8, padding: "9px 0", textAlign: "center", fontWeight: 600, fontSize: 13, cursor: "pointer", transition: "all 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.borderColor = "#38bdf8"}
               onMouseLeave={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.3)"}>
-              Tạo tài khoản miễn phí
+              {t("Tạo tài khoản miễn phí", "Create a free account")}
             </div>
           </Link>
         </div>
@@ -645,8 +646,8 @@ export default function TrangChuForm() {
 
         {/* Personal info */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Thông tin cá nhân</div>
-          {[["📞", "Điện thoại", user.phone || "—"], ["🏫", "Trường", user.school || "—"], ["📚", "Lớp", user.grade || "—"]].map(([ic, lb, val]) => (
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>{t("Thông tin cá nhân", "Personal Info")}</div>
+          {[["📞", t("Điện thoại", "Phone"), user.phone || "—"], ["🏫", t("Trường", "School"), user.school || "—"], ["📚", t("Lớp", "Grade"), user.grade || "—"]].map(([ic, lb, val]) => (
             <div key={lb} style={{ display: "flex", gap: 7, fontSize: 12, color: "rgba(255,255,255,0.8)", marginBottom: 5, alignItems: "center" }}>
               <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14 }}>{renderDuoIcon(ic, { size: 14 })}</span>
               <span style={{ color: "rgba(255,255,255,0.4)", minWidth: 60 }}>{lb}:</span>
@@ -678,16 +679,16 @@ export default function TrangChuForm() {
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.12)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
           >
-            <span style={{ display: "inline-flex", alignItems: "center" }}>{renderDuoIcon("✏️", { size: 12 })}</span> Chỉnh sửa thông tin
+            <span style={{ display: "inline-flex", alignItems: "center" }}>{renderDuoIcon("✏️", { size: 12 })}</span> {t("Chỉnh sửa thông tin", "Edit Profile")}
           </button>
         </div>
 
         {/* Stats */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Thống kê học tập</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>{t("Thống kê học tập", "Learning Stats")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
-            {[["📝", "Bài test", totalTests], ["🎮", "Lượt game", totalGames],
-            ["📊", "TB test", avgTest != null ? `${avgTest}%` : "—"], ["⭐", "TB game", avgGame != null ? `${avgGame}%` : "—"]].map(([ic, lb, val]) => (
+            {[["📝", t("Bài test", "Tests"), totalTests], ["🎮", t("Lượt game", "Games"), totalGames],
+            ["📊", t("TB test", "Avg Test"), avgTest != null ? `${avgTest}%` : "—"], ["⭐", t("TB game", "Avg Game"), avgGame != null ? `${avgGame}%` : "—"]].map(([ic, lb, val]) => (
               <div key={lb} style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, padding: "7px 9px" }}>
                 <div style={{ fontSize: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", height: 16 }}>{renderDuoIcon(ic, { size: 16 })}</div>
                 <div style={{ fontSize: 16, fontWeight: 800, color: "white", lineHeight: 1.2 }}>{val}</div>
@@ -699,13 +700,13 @@ export default function TrangChuForm() {
 
         {/* Competitive Stats */}
         <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>🏆 Đấu Hạng & Cạnh Tranh</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: "#a78bfa", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>{t("🏆 Đấu Hạng & Cạnh Tranh", "🏆 Rank & Streaks")}</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7 }}>
             {[
               ["⭐", "XP", competitiveStats.xp || 0],
-              ["🔥", "Streak hiện tại", `${competitiveStats.current_streak || 0} ngày`],
-              ["🎯", "Streak dài nhất", `${competitiveStats.longest_streak || 0} ngày`],
-              ["🥇", "Xếp hạng toàn cầu", `#${competitiveStats.global_rank || 0}`],
+              ["🔥", t("Streak hiện tại", "Current Streak"), `${competitiveStats.current_streak || 0} ${t("ngày", "days")}`],
+              ["🎯", t("Streak dài nhất", "Longest Streak"), `${competitiveStats.longest_streak || 0} ${t("ngày", "days")}`],
+              ["🥇", t("Xếp hạng toàn cầu", "Global Rank"), `#${competitiveStats.global_rank || 0}`],
             ].map(([ic, lb, val]) => (
               <div key={lb} style={{ background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.1)", borderRadius: 8, padding: "7px 9px" }}>
                 <div style={{ fontSize: 14, display: "inline-flex", alignItems: "center", justifyContent: "center", height: 16 }}>{renderDuoIcon(ic, { size: 16 })}</div>
@@ -731,7 +732,7 @@ export default function TrangChuForm() {
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.16)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.4)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "rgba(56,189,248,0.08)"; e.currentTarget.style.borderColor = "rgba(56,189,248,0.2)"; }}
             >
-              📊 Thống Kê & Thành Tích
+              {t("📊 Thống Kê & Thành Tích", "📊 Stats & Achievements")}
             </div>
           </Link>
         </div>
@@ -748,7 +749,7 @@ export default function TrangChuForm() {
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                 boxShadow: "0 0 10px rgba(167,139,250,0.15)"
               }}>
-                🛡️ Admin Panel
+                {t("🛡️ Admin Panel", "🛡️ Admin Panel")}
               </div>
             </Link>
           </div>
@@ -756,7 +757,7 @@ export default function TrangChuForm() {
 
         {recentActivity.length > 0 && (
           <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Hoạt động gần đây</div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>{t("Hoạt động gần đây", "Recent Activity")}</div>
             {recentActivity.map((line, i) => (
               <div key={i} style={{ fontSize: 11.5, color: "rgba(255,255,255,0.7)", marginBottom: 4, padding: "3px 0", borderBottom: i < recentActivity.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
                 {line}
@@ -770,7 +771,7 @@ export default function TrangChuForm() {
             style={{ width: "100%", padding: "9px 0", background: "rgba(239,68,68,0.1)", color: "#f87171", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}
             onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.2)"}
             onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.1)"}>
-            Đăng xuất
+            {t("Đăng xuất", "Log Out")}
           </button>
         </div>
       </div>
@@ -780,69 +781,87 @@ export default function TrangChuForm() {
   const features = [
     {
       icon: "📖",
-      title: "Bilingual Lessons",
-      titleVi: "Học Toán Song Ngữ",
-      desc: "Trực quan hóa lý thuyết toán học THPT với hệ thống chương mục từ I đến X. Giao diện mượt mà hỗ trợ chuyển đổi tức thì giữa ngôn ngữ Tiếng Việt và Tiếng Anh để tăng vốn từ vựng chuyên ngành.",
+      title: t("Học Toán Song Ngữ", "Bilingual Lessons"),
+      titleVi: t("Bilingual Lessons", "Học Toán Song Ngữ"),
+      desc: t(
+        "Trực quan hóa lý thuyết toán học THPT với hệ thống chương mục từ I đến X. Giao diện mượt mà hỗ trợ chuyển đổi tức thì giữa ngôn ngữ Tiếng Việt và Tiếng Anh để tăng vốn từ vựng chuyên ngành.",
+        "Visualize high school math theory with chapters I to X. Smooth interface supporting instant toggle between Vietnamese and English to boost math vocabulary."
+      ),
       link: "/Cacbaitoan",
-      cta: "Vào học ngay",
+      cta: t("Vào học ngay", "Learn Now"),
       color: "rgba(14, 165, 233, 0.15)",
       glowColor: "rgba(14, 165, 233, 0.45)",
-      badge: "Chương I - X",
+      badge: t("Chương I - X", "Chapter I - X"),
     },
     {
       icon: "🤖",
-      title: "DuoMCB AI Assistant",
-      titleVi: "Trợ Lý Giải Toán AI",
-      desc: "Chatbot AI hỗ trợ đắc lực trong học tập song ngữ. Giải đáp các bài toán từ cơ bản tới nâng cao với từng bước gợi ý tư duy, giải chi tiết và tính năng nhận diện đề bài bằng hình ảnh cực nhạy.",
+      title: t("Trợ Lý Giải Toán AI", "DuoMCB AI Assistant"),
+      titleVi: t("DuoMCB AI Assistant", "Trợ Lý Giải Toán AI"),
+      desc: t(
+        "Chatbot AI hỗ trợ đắc lực trong học tập song ngữ. Giải đáp các bài toán từ cơ bản tới nâng cao với từng bước gợi ý tư duy, giải chi tiết và tính năng nhận diện đề bài bằng hình ảnh cực nhạy.",
+        "AI Chatbot to support bilingual learning. Solve basic to advanced math problems with step-by-step guidance, detailed solutions, and fast OCR scanning."
+      ),
       link: "/DuoMCB",
-      cta: "Trò chuyện ngay",
+      cta: t("Trò chuyện ngay", "Chat Now"),
       color: "rgba(99, 102, 241, 0.15)",
       glowColor: "rgba(99, 102, 241, 0.45)",
-      badge: "Học tập 24/7",
+      badge: t("Học tập 24/7", "24/7 Learning"),
     },
     {
       icon: "🔍",
-      title: "DuoTranslator",
-      titleVi: "Tra Từ Vựng Toán Học",
-      desc: "Tính năng tích hợp ngay trong trang bài học. Chỉ cần bôi đen thuật ngữ tiếng Anh, bảng tra cứu thông minh sẽ tự động hiện định nghĩa toán học tiếng Việt, phiên âm IPA chuẩn xác kèm ví dụ.",
+      title: t("Tra Từ Vựng Toán Học", "DuoTranslator"),
+      titleVi: t("DuoTranslator", "Tra Từ Vựng Toán Học"),
+      desc: t(
+        "Tính năng tích hợp ngay trong trang bài học. Chỉ cần bôi đen thuật ngữ tiếng Anh, bảng tra cứu thông minh sẽ tự động hiện định nghĩa toán học tiếng Việt, phiên âm IPA chuẩn xác kèm ví dụ.",
+        "Directly integrated into lesson pages. Highlight English math terms to instantly view Vietnamese definitions, IPA phonetics, and usage examples."
+      ),
       link: "/Cacbaitoan",
-      cta: "Khám phá bài học",
+      cta: t("Khám phá bài học", "Explore Lessons"),
       color: "rgba(16, 185, 129, 0.15)",
       glowColor: "rgba(16, 185, 129, 0.45)",
-      badge: "Tra từ thông minh",
+      badge: t("Tra từ thông minh", "Smart Dictionary"),
     },
     {
       icon: "🎮",
-      title: "Interactive Mini Games",
-      titleVi: "Trò Chơi Toán Học",
-      desc: "Luyện tập không nhàm chán với 3 thể loại mini-games ở cuối mỗi bài học: Trắc nghiệm (Multiple Choice), Đúng/Sai (True/False) và Điền từ thích hợp. Tự động thống kê kết quả học tập chi tiết.",
+      title: t("Trò Chơi Toán Học", "Interactive Mini Games"),
+      titleVi: t("Interactive Mini Games", "Trò Chơi Toán Học"),
+      desc: t(
+        "Luyện tập không nhàm chán với 3 thể loại mini-games ở cuối mỗi bài học: Trắc nghiệm (Multiple Choice), Đúng/Sai (True/False) và Điền từ thích hợp. Tự động thống kê kết quả học tập chi tiết.",
+        "Fun practice with 3 types of mini-games at the end of each lesson: Multiple Choice, True/False, and Fill-in-the-blank, with automatically tracked progress."
+      ),
       link: "/Cacbaitoan",
-      cta: "Chơi & ôn luyện",
+      cta: t("Chơi & ôn luyện", "Play & Practice"),
       color: "rgba(167, 139, 250, 0.15)",
       glowColor: "rgba(167, 139, 250, 0.45)",
-      badge: "3 Thể Loại Game",
+      badge: t("3 Thể Loại Game", "3 Game Modes"),
     },
     {
       icon: "📝",
-      title: "Bilingual Exams",
-      titleVi: "Đề Thi Thử Song Ngữ",
-      desc: "Trải nghiệm cấu trúc bài kiểm tra song ngữ chuẩn hóa (phối hợp các định dạng SAT Reading, IELTS True/False/Not Given và Tự luận toán) trong thời gian 60 phút có hệ thống tự động lưu kết quả.",
+      title: t("Đề Thi Thử Song Ngữ", "Bilingual Exams"),
+      titleVi: t("Bilingual Exams", "Đề Thi Thử Song Ngữ"),
+      desc: t(
+        "Trải nghiệm cấu trúc bài kiểm tra song ngữ chuẩn hóa (phối hợp các định dạng SAT Reading, IELTS True/False/Not Given và Tự luận toán) trong thời gian 60 phút có hệ thống tự động lưu kết quả.",
+        "Take standardized bilingual exams (combining SAT Reading, IELTS True/False/Not Given, and Math open response formats) in 60 minutes with auto-saving."
+      ),
       link: "/cacbailam",
-      cta: "Luyện thi thử",
+      cta: t("Luyện thi thử", "Practice Exam"),
       color: "rgba(244, 63, 94, 0.15)",
       glowColor: "rgba(244, 63, 94, 0.45)",
-      badge: "SAT & IELTS Math",
+      badge: t("SAT & IELTS Math", "SAT & IELTS Math"),
     },
     {
       icon: "⚔️",
-      title: "Math Ranking Match",
-      titleVi: "Đấu Hạng Toán Học (MRM)",
-      desc: "Chế độ chơi Multiplayer thời gian thực kịch tính. Bạn sẽ được ghép trận với đối thủ để so tài tốc độ và độ chính xác (Speed-First tiebreaker) thông qua các MathMap phong phú từ cộng đồng.",
+      title: t("Đấu Hạng Toán Học (MRM)", "Math Ranking Match"),
+      titleVi: t("Math Ranking Match", "Đấu Hạng Toán Học (MRM)"),
+      desc: t(
+        "Chế độ chơi Multiplayer thời gian thực kịch tính. Bạn sẽ được ghép trận với đối thủ để so tài tốc độ và độ chính xác (Speed-First tiebreaker) thông qua các MathMap phong phú từ cộng đồng.",
+        "Thrilling real-time multiplayer mode. Match with opponents to compete on speed and accuracy (Speed-First tiebreaker) across community MathMaps."
+      ),
       link: "/mrm",
-      cta: "Tham gia đấu ngay",
+      cta: t("Tham gia đấu ngay", "Match Now"),
       color: "rgba(234, 179, 8, 0.15)",
       glowColor: "rgba(234, 179, 8, 0.45)",
-      badge: "Realtime Multiplayer",
+      badge: t("Realtime Multiplayer", "Real-time Match"),
     },
   ];
 
@@ -885,7 +904,7 @@ export default function TrangChuForm() {
             >
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
                 {renderDuoIcon("📖", { size: 14 })}
-                Bài học
+                {t("Bài học", "Lessons")}
               </span>
             </Link>
 
@@ -896,7 +915,7 @@ export default function TrangChuForm() {
             >
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
                 {renderDuoIcon("🤖", { size: 14 })}
-                AI Chat
+                {t("AI Chat", "AI Chat")}
               </span>
             </Link>
 
@@ -907,7 +926,7 @@ export default function TrangChuForm() {
             >
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
                 {renderDuoIcon("📝", { size: 14 })}
-                Đề thi
+                {t("Đề thi", "Exams")}
               </span>
             </Link>
 
@@ -918,7 +937,18 @@ export default function TrangChuForm() {
             >
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
                 {renderDuoIcon("📚", { size: 14 })}
-                Tài liệu
+                {t("Tài liệu", "Library")}
+              </span>
+            </Link>
+
+            <Link href="/aithi" style={{ textDecoration: "none", color: "rgba(255,255,255,0.8)", padding: "8px 16px", borderRadius: 6, transition: "all 0.2s", fontWeight: 700, transform: "skewX(-8deg)", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)" }}
+              className="nav-link-item"
+              onMouseEnter={e => { e.currentTarget.style.background = "rgba(139, 92, 246, 0.12)"; e.currentTarget.style.borderColor = "rgba(139, 92, 246, 0.4)"; e.currentTarget.style.color = "#a78bfa"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "rgba(255,255,255,0.8)"; }}
+            >
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
+                {renderDuoIcon("✨", { size: 14 })}
+                {t("AI Thi", "AI Exam")}
               </span>
             </Link>
 
@@ -939,7 +969,7 @@ export default function TrangChuForm() {
               >
                 <span style={{ display: "flex", alignItems: "center", gap: 6, transform: "skewX(8deg)" }}>
                   {renderDuoIcon("⚔️", { size: 14 })}
-                  MRM Đấu Hạng
+                  {t("MRM Đấu Hạng", "MRM Rank Match")}
                 </span>
               </button>
             </Link>
@@ -949,7 +979,7 @@ export default function TrangChuForm() {
                 <button style={{ background: "rgba(255,255,255,0.05)", color: "white", border: "1px solid rgba(255,255,255,0.15)", borderRadius: 6, padding: "8px 18px", fontWeight: 700, fontSize: 13.5, cursor: "pointer", transition: "all 0.2s", transform: "skewX(-8deg)" }}
                   onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.15)"}
                   onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.05)"}>
-                  <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>Đăng nhập</span>
+                  <span style={{ display: "inline-block", transform: "skewX(8deg)" }}>{t("Đăng nhập", "Login")}</span>
                 </button>
               </Link>
             )}
@@ -958,7 +988,7 @@ export default function TrangChuForm() {
             <div data-profile-root style={{ position: "relative" }}>
               <button onClick={() => setShowProfile(v => !v)}
                 style={{ background: "none", border: "none", cursor: "pointer", padding: 3, display: "flex", alignItems: "center" }}
-                title={user ? user.username : "Tài khoản"}>
+                title={user ? user.username : t("Tài khoản", "Account")}>
                 {user ? (
                   <UserAvatar user={user} size={34} />
                 ) : (
@@ -1055,9 +1085,9 @@ export default function TrangChuForm() {
           {user && (
             <div className="reveal visible" style={{ marginTop: 20, marginBottom: 50 }}>
               <SectionHeading
-                badge="Gamification"
-                title="Thử Thách & Thành Tích Hàng Ngày"
-                subtitle="Hoàn thành chỉ tiêu, mở khóa thẻ bài công thức và thăng hạng cùng trường lớp!"
+                badge={t("Hoạt động", "Gamification")}
+                title={t("Thử Thách & Thành Tích Hàng Ngày", "Daily Challenges & Achievements")}
+                subtitle={t("Hoàn thành chỉ tiêu, mở khóa thẻ bài công thức và thăng hạng cùng trường lớp!", "Complete daily goals, unlock formula cards, and level up with your schoolmates!")}
               />
 
               <div style={{
@@ -1252,16 +1282,16 @@ export default function TrangChuForm() {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 30 }}>
               <div>
                 <SectionHeading
-                  badge="Đề thi song ngữ"
-                  title="Đề Kiểm Tra Mới Nhất"
-                  subtitle="Hệ thống đề thi song ngữ SAT & IELTS tự luyện"
+                  badge={t("Đề thi song ngữ", "Bilingual Exams")}
+                  title={t("Đề Kiểm Tra Mới Nhất", "Latest Exams")}
+                  subtitle={t("Hệ thống đề thi song ngữ SAT & IELTS tự luyện", "SAT & IELTS math self-practice test system")}
                   align="left"
                 />
               </div>
               <Link href="/cacbailam" style={{ color: "#38bdf8", fontWeight: 700, textDecoration: "none", fontSize: 14.5 }}
                 onMouseEnter={e => e.currentTarget.style.textDecoration = "underline"}
                 onMouseLeave={e => e.currentTarget.style.textDecoration = "none"}>
-                Xem tất cả ›
+                {t("Xem tất cả ›", "See all ›")}
               </Link>
             </div>
 
@@ -1277,28 +1307,28 @@ export default function TrangChuForm() {
                 boxShadow: "0 10px 40px rgba(0,0,0,0.3)"
               }}>
               {[
-                { href: "/L10-test1-section1", key: "reading-test-1", label: "Test 1", grade: "Lớp 10", img: "/images/math10.webp" },
-                { href: "/L10-test2-section1", key: "reading-test-2", label: "Test 2", grade: "Lớp 10", img: "/images/math10.webp" },
-                { href: "/L11-test1-section1", key: "reading-test-L11-1", label: "Test 1", grade: "Lớp 11", img: "/images/math11.webp" },
-                { href: "/L12-test1-section1", key: "reading-test-L12-1", label: "Test 1", grade: "Lớp 12", img: "/images/math12.webp" },
-              ].map((t, i) => {
-                const myScores = t.key ? Object.entries(bestScores).filter(([k]) => k.startsWith(t.key)) : [];
+                { href: "/L10-test1-section1", key: "reading-test-1", label: "Test 1", grade: t("Lớp 10", "Grade 10"), img: "/images/math10.webp" },
+                { href: "/L10-test2-section1", key: "reading-test-2", label: "Test 2", grade: t("Lớp 10", "Grade 10"), img: "/images/math10.webp" },
+                { href: "/L11-test1-section1", key: "reading-test-L11-1", label: "Test 1", grade: t("Lớp 11", "Grade 11"), img: "/images/math11.webp" },
+                { href: "/L12-test1-section1", key: "reading-test-L12-1", label: "Test 1", grade: t("Lớp 12", "Grade 12"), img: "/images/math12.webp" },
+              ].map((t_item, i) => {
+                const myScores = t_item.key ? Object.entries(bestScores).filter(([k]) => k.startsWith(t_item.key)) : [];
                 const scoreBadge = myScores.length > 0
-                  ? `🏅 Điểm cao nhất: ${myScores.map(([, r]) => `${r.score}/${r.total}`).join(", ")}`
+                  ? `🏅 ${t("Điểm cao nhất", "Best score")}: ${myScores.map(([, r]) => `${r.score}/${r.total}`).join(", ")}`
                   : null;
                 const card = (
                   <article key={i} className="test-card" style={{
                     transition: "all 0.3s ease",
                     borderRadius: 12,
                     overflow: "hidden",
-                    opacity: t.disabled ? 0.45 : 1,
+                    opacity: t_item.disabled ? 0.45 : 1,
                   }}>
                     <div style={{ overflow: "hidden", borderRadius: 10, height: 180, marginBottom: 14 }}>
-                      <img src={t.img} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s ease" }} className="test-card-image" />
+                      <img src={t_item.img} style={{ width: "100%", height: "100%", objectFit: "cover", transition: "transform 0.4s ease" }} className="test-card-image" />
                     </div>
-                    <div style={{ fontSize: 19, fontWeight: 800, color: "white", marginBottom: 3 }}>{t.label}</div>
-                    <div style={{ color: "#38bdf8", fontSize: 15, fontWeight: 700, marginBottom: 3 }}>{t.grade}</div>
-                    <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>15 câu hỏi • Bấm giờ 60 phút</div>
+                    <div style={{ fontSize: 19, fontWeight: 800, color: "white", marginBottom: 3 }}>{t_item.label}</div>
+                    <div style={{ color: "#38bdf8", fontSize: 15, fontWeight: 700, marginBottom: 3 }}>{t_item.grade}</div>
+                    <div style={{ fontSize: 13.5, color: "rgba(255,255,255,0.5)", marginBottom: 8 }}>{t("15 câu hỏi • Bấm giờ 60 phút", "15 questions • 60-min timer")}</div>
                     {scoreBadge && (
                       <div style={{ marginTop: 4, fontSize: 11, color: "#38bdf8", fontWeight: 700, background: "rgba(56,189,248,0.12)", border: "1px solid rgba(56,189,248,0.25)", padding: "4px 10px", borderRadius: 6, display: "inline-block" }}>
                         {scoreBadge}
@@ -1306,8 +1336,8 @@ export default function TrangChuForm() {
                     )}
                   </article>
                 );
-                return t.href
-                  ? <Link key={i} href={t.href} style={{ textDecoration: "none", color: "inherit" }} onClick={() => t.key && clearTestSession(t.key)}>{card}</Link>
+                return t_item.href
+                  ? <Link key={i} href={t_item.href} style={{ textDecoration: "none", color: "inherit" }} onClick={() => t_item.key && clearTestSession(t_item.key)}>{card}</Link>
                   : card;
               })}
             </div>
@@ -1330,17 +1360,17 @@ export default function TrangChuForm() {
               flexWrap: "wrap",
               boxShadow: "0 10px 40px rgba(0,0,0,0.3)"
             }}>
-              {/* Left branding */}
+               {/* Left branding */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 220 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />
                   <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 0.5 }}>DUOMATH</span>
                 </div>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontStyle: "italic" }}>
-                  Học toán song ngữ cho học sinh chuyên STEM
+                  {t("Học toán song ngữ cho học sinh chuyên STEM", "Bilingual math education for STEM students")}
                 </span>
                 <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>
-                  © 2026 DuoMath. Mọi quyền được bảo lưu.
+                  {t("© 2026 DuoMath. Mọi quyền được bảo lưu.", "© 2026 DuoMath. All rights reserved.")}
                 </span>
               </div>
 
@@ -1349,9 +1379,9 @@ export default function TrangChuForm() {
               {/* Right contacts */}
               <div style={{ display: "flex", flexDirection: "column", gap: 14, flex: 1, minWidth: 260 }}>
                 {[
-                  { icon: "📍", label: "Địa chỉ", value: "Thpt Nguyễn Chí Thanh, TP Hồ Chí Minh" },
-                  { icon: "📧", label: "Gmail", value: "will050710@gmail.com", href: "mailto:will050710@gmail.com" },
-                  { icon: "☎️", label: "Hotline", value: "+84 336 290 219", href: "tel:+84336290219" },
+                  { icon: "📍", label: t("Địa chỉ", "Address"), value: t("Thpt Nguyễn Chí Thanh, TP Hồ Chí Minh", "Nguyen Chi Thanh High School, Ho Chi Minh City") },
+                  { icon: "📧", label: t("Gmail", "Email"), value: "will050710@gmail.com", href: "mailto:will050710@gmail.com" },
+                  { icon: "☎️", label: t("Hotline", "Hotline"), value: "+84 336 290 219", href: "tel:+84336290219" },
                 ].map(({ icon, label, value, href }, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 24, flexShrink: 0 }}>
@@ -1402,7 +1432,7 @@ export default function TrangChuForm() {
               }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <h2 style={{ fontSize: 24, fontWeight: 900, color: "white", margin: 0 }}>🎴 Album Công Thức</h2>
+                <h2 style={{ fontSize: 24, fontWeight: 900, color: "white", margin: 0 }}>{t("🎴 Album Công Thức", "🎴 Formula Album")}</h2>
                 <button
                   onClick={() => setShowAlbumModal(false)}
                   style={{
@@ -1456,13 +1486,13 @@ export default function TrangChuForm() {
                     🎁
                   </span>
                   <h4 style={{ margin: 0, fontSize: 18, color: "#00d4ff", fontWeight: 800 }}>
-                    Đang giải phóng tri thức...
+                    {t("Đang giải phóng tri thức...", "Unleashing knowledge...")}
                   </h4>
                 </div>
               ) : gachaRewardCard ? (
                 <>
                   <span style={{ fontSize: 11, fontWeight: 900, color: "#f59e0b", letterSpacing: 1, textTransform: "uppercase", background: "rgba(245,158,11,0.15)", padding: "4px 12px", borderRadius: 20 }}>
-                    THÀNH CÔNG!
+                    {t("THÀNH CÔNG!", "SUCCESS!")}
                   </span>
                   <div style={{
                     width: "100%",
@@ -1504,11 +1534,11 @@ export default function TrangChuForm() {
                       cursor: "pointer"
                     }}
                   >
-                    Thêm vào Album 🎴
+                    {t("Thêm vào Album 🎴", "Add to Album 🎴")}
                   </button>
                 </>
               ) : (
-                <div style={{ color: "red" }}>Không thể mở rương.</div>
+                <div style={{ color: "red" }}>{t("Không thể mở rương.", "Cannot open chest.")}</div>
               )}
             </motion.div>
           </motion.div>
