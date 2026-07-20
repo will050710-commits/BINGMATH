@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "239672919231",
+    "project_id": "duosteam-be693",
+    "storage_bucket": "duosteam-be693.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:239672919231:android:27629590cc361ccc17f20a",
+        "android_client_info": {
+          "package_name": "com.duomathmobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "239672919231-lqkareeleqqq1kjp6enma5p137tiqvic.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBWG3FI9gVDrDNsNbyvbYQ11m4HWJcSi1Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "239672919231-lqkareeleqqq1kjp6enma5p137tiqvic.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
