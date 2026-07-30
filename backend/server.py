@@ -529,6 +529,98 @@ def _fetch_scores(db, uid: int) -> tuple:
 def groq_headers():
     return {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
 
+
+# ── Gemini Chat helpers ────────────────────────────────────────────────────────
+
+def _build_gemini_contents(history_oai: list, user_content) -> list:
+    """Convert OpenAI-format history + current user message into Gemini contents list."""
+    contents = []
+    for msg in history_oai:
+        role = "model" if msg["role"] == "assistant" else "user"
+        text = msg["content"] if isinstance(msg["content"], str) else str(msg["content"])
+        contents.append({"role": role, "parts": [{"text": text}]})
+    # Build current user parts (may include image)
+    if isinstance(user_content, list):
+        parts = []
+        for item in user_content:
+            if item.get("type") == "image_url":
+                url = item["image_url"]["url"]
+                if "," in url:
+                    header, b64 = url.split(",", 1)
+                    mime = header.split(":")[1].split(";")[0]
+                else:
+                    b64, mime = url, "image/jpeg"
+                parts.append({"inline_data": {"mime_type": mime, "data": b64}})
+            elif item.get("type") == "text":
+                parts.append({"text": item["text"]})
+        contents.append({"role": "user", "parts": parts})
+    else:
+        contents.append({"role": "user", "parts": [{"text": user_content}]})
+    return contents
+
+
+def _gemini_chat_text(system_prompt: str, history_oai: list, user_content, max_tokens: int = 1024) -> str:
+    """Call Gemini generateContent for chat; return the text reply. Retries on 429."""
+    url = f"{GEMINI_BASE}/{GEMINI_MODEL}:generateContent?key={GEMINI_KEY}"
+    payload = {
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": _build_gemini_contents(history_oai, user_content),
+        "generationConfig": {
+            "maxOutputTokens": max_tokens,
+            "temperature": 0.3,
+        },
+    }
+    for attempt in range(3):
+        r = req_lib.post(url, json=payload, timeout=(5, 30))
+        if r.status_code == 429:
+            wait = 5 * (3 ** attempt)   # 5s, 15s, 45s
+            print(f"[Gemini] 429 rate limit — retrying in {wait}s (attempt {attempt+1}/3)")
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        return r.json()["candidates"][0]["content"]["parts"][0]["text"]
+    r.raise_for_status()   # raise after all retries exhausted
+    return ""
+
+
+def _gemini_chat_stream(system_prompt: str, history_oai: list, user_content, max_tokens: int = 1024):
+    """Yield text tokens from Gemini streamGenerateContent (SSE). Retries on 429."""
+    url = f"{GEMINI_BASE}/{GEMINI_MODEL}:streamGenerateContent?alt=sse&key={GEMINI_KEY}"
+    payload = {
+        "system_instruction": {"parts": [{"text": system_prompt}]},
+        "contents": _build_gemini_contents(history_oai, user_content),
+        "generationConfig": {
+            "maxOutputTokens": max_tokens,
+            "temperature": 0.3,
+        },
+    }
+    for attempt in range(3):
+        with req_lib.post(url, json=payload, stream=True, timeout=(5, 60)) as resp:
+            if resp.status_code == 429:
+                wait = 5 * (3 ** attempt)
+                print(f"[Gemini] 429 rate limit (stream) — retrying in {wait}s (attempt {attempt+1}/3)")
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            for raw_line in resp.iter_lines():
+                if not raw_line:
+                    continue
+                line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
+                if line.startswith("data: "):
+                    line = line[6:]
+                if not line or line == "[DONE]":
+                    continue
+                try:
+                    chunk = json.loads(line)
+                    parts = chunk.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                    token = parts[0].get("text", "") if parts else ""
+                    if token:
+                        yield token
+                except (json.JSONDecodeError, KeyError, IndexError):
+                    continue
+            return  # stream completed successfully
+    raise Exception("Gemini rate limit: max retries exceeded")
+
 def ensure_session(sid: str) -> list:
     conn = _make_conn()
     try:
@@ -943,7 +1035,7 @@ def get_history(session_id):
     return jsonify({"error": "Session not found."}), 404
 
 
-# ── Chat ──────────────────────────────────────────────────────────────────────
+# ── Chat (powered by Gemini) ──────────────────────────────────────────────────
 @app.route("/api/chat", methods=["POST"])
 def chat():
     d            = request.get_json(force=True) or {}
@@ -952,27 +1044,31 @@ def chat():
     image_data   = d.get("image")
     use_stream   = d.get("stream", False)
 
-    chat_mode    = d.get("mode", "hint")
+    chat_mode = d.get("mode", "hint")
 
     if not user_message and not image_data:
         return jsonify({"error": "message or image is required."}), 400
 
     history = ensure_session(session_id)
-    is_viz_request = "visualizer" in (user_message or "") or "viz" in (user_message or "") or "instructions" in (user_message or "")
+    is_viz_request = (
+        "visualizer" in (user_message or "")
+        or "viz" in (user_message or "")
+        or "instructions" in (user_message or "")
+    )
 
+    # ── Build user content & system prompt ───────────────────────────────────
     if image_data:
         if "," in image_data:
             header, b64 = image_data.split(",", 1)
             media_type  = header.split(":")[1].split(";")[0]
         else:
             b64, media_type = image_data, "image/jpeg"
-        
+
         if is_viz_request:
             user_content = [
                 {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
                 {"type": "text",      "text": user_message or "Hãy vẽ hình minh họa cho bài toán trong ảnh này."},
             ]
-            model         = "meta-llama/llama-4-scout-17b-16e-instruct"
             system_prompt = (
                 "You are an expert mathematical visualizer and graph plotter.\n"
                 "Your task is to analyze the math problem (and image if provided) and output ONLY a valid JSON object matching the requested schema.\n"
@@ -983,82 +1079,35 @@ def chat():
                 {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{b64}"}},
                 {"type": "text",      "text": user_message or "Hãy giải bài toán trong ảnh này cho em."},
             ]
-            model         = "meta-llama/llama-4-scout-17b-16e-instruct"
             img_prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "image"
             system_prompt = cached_system_prompt(img_prompt_variant)
-            
+
         history.append({"role": "user", "content": f"[Image] {user_message or 'Giải bài toán từ ảnh'}"})
     else:
-        user_content  = user_message
-        
+        user_content = user_message
+
         if is_viz_request:
-            model         = "llama-3.1-8b-instant"
             system_prompt = (
                 "You are an expert mathematical visualizer and graph plotter.\n"
                 "Your task is to analyze the math problem and output ONLY a valid JSON object matching the requested schema.\n"
                 "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
             )
         else:
-            model         = "llama-3.1-8b-instant"
             prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "text"
             system_prompt = cached_system_prompt(prompt_variant)
         history.append({"role": "user", "content": user_message})
 
     context_history = [] if is_viz_request else history[-5:-1]
-    if "vision" in model and isinstance(user_content, list):
-        # Merge system prompt into user_content text part
-        new_user_content = []
-        for item in user_content:
-            if item.get("type") == "text":
-                new_user_content.append({
-                    "type": "text",
-                    "text": f"{system_prompt}\n\nUser request:\n{item.get('text', '')}"
-                })
-            else:
-                new_user_content.append(item)
-        messages = context_history + [{"role": "user", "content": new_user_content}]
-    else:
-        messages = (
-            [{"role": "system", "content": system_prompt}]
-            + context_history
-            + [{"role": "user", "content": user_content}]
-        )
-
     max_tokens = 2000 if chat_mode in ("solution", "raw_solution") else 1024
-    payload = {
-        "model":       model,
-        "messages":    messages,
-        "max_tokens":  max_tokens,
-        "temperature": 0.3,
-        "stream":      use_stream,
-    }
 
+    # ── Call Gemini ───────────────────────────────────────────────────────────
     if use_stream:
         def generate():
             full_reply = []
             try:
-                with req_lib.post(
-                    f"{GROQ_BASE}/chat/completions",
-                    headers=groq_headers(), json=payload,
-                    stream=True, timeout=(3, 15),
-                ) as resp:
-                    resp.raise_for_status()
-                    for raw_line in resp.iter_lines():
-                        if not raw_line:
-                            continue
-                        line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
-                        if line.startswith("data: "):
-                            line = line[6:]
-                        if line == "[DONE]":
-                            break
-                        try:
-                            chunk = json.loads(line)
-                            token = chunk["choices"][0]["delta"].get("content", "")
-                            if token:
-                                full_reply.append(token)
-                                yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
-                        except (json.JSONDecodeError, KeyError, IndexError):
-                            continue
+                for token in _gemini_chat_stream(system_prompt, context_history, user_content, max_tokens):
+                    full_reply.append(token)
+                    yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
             except Exception as e:
                 yield f"data: {orjson.dumps({'error': str(e)}).decode()}\n\n"
                 return
@@ -1080,12 +1129,7 @@ def chat():
         )
 
     try:
-        resp  = req_lib.post(f"{GROQ_BASE}/chat/completions",
-                              headers=groq_headers(),
-                              json={**payload, "stream": False},
-                              timeout=(3, 15))
-        resp.raise_for_status()
-        reply = resp.json()["choices"][0]["message"]["content"]
+        reply = _gemini_chat_text(system_prompt, context_history, user_content, max_tokens)
     except Exception as e:
         return jsonify({"error": True, "reply": f"AI unavailable: {e}"}), 502
 
@@ -1094,7 +1138,7 @@ def chat():
     return jsonify({"reply": reply, "session_id": session_id, "history_length": len(history)})
 
 
-# ── Translate ─────────────────────────────────────────────────────────────────
+# ── Translate (powered by Gemini) ─────────────────────────────────────────────
 @app.route("/api/translate", methods=["POST"])
 def translate():
     d    = request.get_json(force=True) or {}
@@ -1102,6 +1146,13 @@ def translate():
     if not text:
         return jsonify({"error": "text is required."}), 400
 
+    system = (
+        "You are a JSON-only translation API. Output only the JSON object. "
+        "CRITICAL: For all Vietnamese fields (like 'translation', 'summary', 'vietnamese', and 'theory.vi'), "
+        "you MUST use only standard Latin-based Vietnamese characters (Chữ Quốc Ngữ). "
+        "Do NOT use any Chinese characters (Hanzi/Kanji like '等式', '不等式', etc.) under any circumstances. "
+        "Always write terms like 'inequality' as 'bất đẳng thức', NOT 'bất等式'."
+    )
     prompt = (
         "Translate this English math text to Vietnamese. "
         "Reply ONLY with JSON (no markdown): "
@@ -1109,30 +1160,21 @@ def translate():
         '{"word":"...","type":"...","pronunciation":"...","vietnamese":"...","example":"..."}]}\n\n'
         f"Text: {text}"
     )
-    payload = {
-        "model":       "llama-3.1-8b-instant",
-        "messages":    [
-            {
-                "role": "system",
-                "content": (
-                    "You are a JSON-only translation API. Output only the JSON object. "
-                    "CRITICAL: For all Vietnamese fields (like 'translation', 'summary', 'vietnamese', and 'theory.vi'), "
-                    "you MUST use only standard Latin-based Vietnamese characters (Chữ Quốc Ngữ). "
-                    "Do NOT use any Chinese characters (Hanzi/Kanji like '等式', '不等式', etc.) under any circumstances. "
-                    "Always write terms like 'inequality' as 'bất đẳng thức', NOT 'bất等式'."
-                )
-            },
-            {"role": "user",   "content": prompt},
-        ],
-        "max_tokens":  400,
-        "temperature": 0.2,
-    }
 
     try:
-        resp  = req_lib.post(f"{GROQ_BASE}/chat/completions",
-                              headers=groq_headers(), json=payload, timeout=(3, 15))
-        resp.raise_for_status()
-        raw   = resp.json()["choices"][0]["message"]["content"]
+        url = f"{GEMINI_BASE}/{GEMINI_MODEL}:generateContent?key={GEMINI_KEY}"
+        payload = {
+            "system_instruction": {"parts": [{"text": system}]},
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "temperature": 0.2,
+                "maxOutputTokens": 400,
+            },
+        }
+        r = req_lib.post(url, json=payload, timeout=(3, 15))
+        r.raise_for_status()
+        raw   = r.json()["candidates"][0]["content"]["parts"][0]["text"]
         clean = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         return jsonify(json.loads(clean))
     except json.JSONDecodeError:
@@ -1154,11 +1196,11 @@ def health():
         db_ms, db_ok = -1, False
     return jsonify({
         "status":        "ok" if db_ok else "degraded",
-        "service":       "DuoMath API v3 (Flask)",
+        "service":       "DuoMath API v3 (Flask) — Gemini Edition",
         "db_latency_ms": db_ms,
         "keep_alive":    bool(SELF_URL),
-        "text_model":    "llama-3.1-8b-instant",
-        "vision_model":  "meta-llama/llama-4-scout-17b-16e-instruct",
+        "text_model":    GEMINI_MODEL,
+        "vision_model":  GEMINI_MODEL,
     })
 
 
@@ -1167,7 +1209,7 @@ def health():
 # ══════════════════════════════════════════════════════════════════════════════
 
 GEMINI_KEY   = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.5-flash-lite")
 GEMINI_BASE  = "https://generativelanguage.googleapis.com/v1beta/models"
 AI_MOCK_MODE = not bool(GEMINI_KEY)
 

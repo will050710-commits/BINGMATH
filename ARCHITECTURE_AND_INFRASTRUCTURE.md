@@ -1,6 +1,6 @@
 # TÀI LIỆU KIẾN TRÚC VÀ HẠ TẦNG DUOMATH
 
-_Cập nhật: Tháng 6, 2026_
+_Cập nhật: Tháng 7, 2026_
 
 DuoMath là nền tảng học Toán song ngữ Anh - Việt đột phá dành cho học sinh THPT (Lớp 10 - 12). Hệ thống tích hợp các bài học chuẩn hóa, đấu hạng Toán học thời gian thực (Math Ranking Matches - MRM), diễn đàn thảo luận (Bilingual Math Forum - BMF), và gia sư ảo AI chatbot thông minh.
 
@@ -52,6 +52,17 @@ Thư mục: `duosteam/frontend`
 - **Cơ chế xác thực kép (Firebase + Local JWT)**:
   - Cho phép người dùng đăng nhập bằng tài khoản email/mật khẩu truyền thống hoặc đăng nhập nhanh qua Firebase (Google, Facebook).
   - Token Firebase sau đó được gửi lên server qua endpoint `/api/firebase-sync` để đồng bộ và phát hành JWT nội bộ phục vụ cho các request API tiếp theo.
+
+### D. Native Mobile App (React Native - DuoMathMobile)
+
+- **Công nghệ cốt lõi**:
+  - **React Native (v0.86.0) & React 19**: Nền tảng ứng dụng di động gốc cho Android và iOS.
+  - **React Native Reanimated (v3.19.5)** & **React Native Screens**: Quản lý chuyển động UI mượt mà và điều hướng tối ưu hóa hiệu năng phần cứng.
+  - **React Native WebView**: Tích hợp WebView trực tiếp tương tác với Web App (`https://duomath.vercel.app`) và Backend (`https://duomath.onrender.com`).
+- **Tối ưu hóa môi trường C++ & Build Native**:
+  - **Patch Reanimated CMake**: Khắc phục xung đột `hermes-engine::hermesvm` và loại bỏ bao hàm `CxxModuleWrapper.h` không còn tương thích từ RN 0.76+.
+  - **Cơ chế C++ Header Override**: Áp dụng `include_directories(BEFORE ...)` để thay thế `std::format` bằng `std::to_string` trong `graphicsConversions.h` cho NDK 26 mà không làm hỏng bộ đệm `transforms` của Gradle.
+  - **Cấu hình ABI & Bộ nhớ**: Thiết lập `abiFilters ["arm64-v8a"]` và giới hạn luồng biên dịch (`--max-workers=2`) nhằm tối ưu hóa sử dụng bộ nhớ RAM/Pagefile trong quá trình biên dịch NDK Clang.
 
 ---
 
@@ -650,7 +661,7 @@ Kết quả: x = 3 hoặc x = 2
 
 - [ ] Tích hợp Video Tutorial: Nhúng các video giảng dạy toán từ YouTube.
 - [ ] Offline Mode: Cho phép học sinh tải nội dung để học offline.
-- [ ] Mobile App: React Native app cho iOS/Android.
+- [x] Mobile App: React Native app cho Android/iOS (Hoàn thành kiến trúc & tối ưu hóa C++ NDK build).
 
 ### Q4 2026
 
