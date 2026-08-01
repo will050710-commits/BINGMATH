@@ -1,6 +1,6 @@
 # TÀI LIỆU KIẾN TRÚC VÀ HẠ TẦNG DUOMATH
 
-_Cập nhật: Tháng 7, 2026_
+_Cập nhật: Tháng 8, 2026_
 
 DuoMath là nền tảng học Toán song ngữ Anh - Việt đột phá dành cho học sinh THPT (Lớp 10 - 12). Hệ thống tích hợp các bài học chuẩn hóa, đấu hạng Toán học thời gian thực (Math Ranking Matches - MRM), diễn đàn thảo luận (Bilingual Math Forum - BMF), và gia sư ảo AI chatbot thông minh.
 
@@ -14,9 +14,9 @@ DuoMath được thiết kế theo mô hình **Client-Server** hiện đại tá
 
 ```mermaid
 graph TD
-    Client[Next.js Frontend] <-->|HTTPS / JWT| API[FastAPI Backend]
+    Client[Next.js Web / Native APK] <-->|HTTPS / WSS / JWT| API[FastAPI Backend]
     API <-->|PRAGMA WAL| DB[(SQLite Database)]
-    API <-->|API Calls| Groq[Groq Llama API]
+    API <-->|API Calls| Groq[Google Gemini API]
     Client <-->|Auth / OAuth| Firebase[Firebase Auth]
 ```
 
@@ -36,7 +36,7 @@ Thư mục: `duosteam/frontend`
 
 - **Giao diện Glassmorphism**: Sử dụng độ mờ đục của background kết hợp hiệu ứng kính nhòe (`backdropFilter: "blur(20px)"`), viền mảnh phát sáng nhẹ để mang lại cảm giác hiện đại và cao cấp.
 - **Hiệu ứng Background Động**:
-  - Hệ thống background sử dụng dải màu gradient nước biển sâu sắc nét thay thế cho nền tối đơn điệu.
+  - Hệ thống background sử dụng dải màu gradient nước biển sâu sắc nét thay thế cho nền tối đơn điệu (`#020c1b`).
   - Sự kết hợp của lưới chấm mảnh (`dot grid pattern`) cùng hơn 15 hình học chuyển động ngẫu nhiên (tròn, lục giác, ngũ giác, hình thoi, chữ thập) tạo chiều sâu và kích thích thị giác.
 - **Cơ chế Chuyển Trang (Page Transitions)**:
   - **CSS View Transitions API**: Tận dụng tính năng gốc của trình duyệt để chụp lại trạng thái trang cũ và chuyển tiếp sang trang mới một cách mượt mà thông qua thuộc tính `:root { view-transition-name: none; }` và các keyframes `vt-slide-in`, `vt-slide-out`.
@@ -53,16 +53,15 @@ Thư mục: `duosteam/frontend`
   - Cho phép người dùng đăng nhập bằng tài khoản email/mật khẩu truyền thống hoặc đăng nhập nhanh qua Firebase (Google, Facebook).
   - Token Firebase sau đó được gửi lên server qua endpoint `/api/firebase-sync` để đồng bộ và phát hành JWT nội bộ phục vụ cho các request API tiếp theo.
 
-### D. Native Mobile App (React Native - DuoMathMobile)
+### D. Native Mobile App (Android Native APK & Pure WebView Architecture)
 
 - **Công nghệ cốt lõi**:
-  - **React Native (v0.86.0) & React 19**: Nền tảng ứng dụng di động gốc cho Android và iOS.
-  - **React Native Reanimated (v3.19.5)** & **React Native Screens**: Quản lý chuyển động UI mượt mà và điều hướng tối ưu hóa hiệu năng phần cứng.
-  - **React Native WebView**: Tích hợp WebView trực tiếp tương tác với Web App (`https://duomath.vercel.app`) và Backend (`https://duomath.onrender.com`).
-- **Tối ưu hóa môi trường C++ & Build Native**:
-  - **Patch Reanimated CMake**: Khắc phục xung đột `hermes-engine::hermesvm` và loại bỏ bao hàm `CxxModuleWrapper.h` không còn tương thích từ RN 0.76+.
-  - **Cơ chế C++ Header Override**: Áp dụng `include_directories(BEFORE ...)` để thay thế `std::format` bằng `std::to_string` trong `graphicsConversions.h` cho NDK 26 mà không làm hỏng bộ đệm `transforms` của Gradle.
-  - **Cấu hình ABI & Bộ nhớ**: Thiết lập `abiFilters ["arm64-v8a"]` và giới hạn luồng biên dịch (`--max-workers=2`) nhằm tối ưu hóa sử dụng bộ nhớ RAM/Pagefile trong quá trình biên dịch NDK Clang.
+  - **Android SDK & Pure Java Container (`DuoMathWebView`)**: Ứng dụng di động Native thuần Java/Kotlin tối ưu hóa tài nguyên phần cứng, đạt kích thước file APK siêu nhỏ (**2.6 MB**), khởi động tức thì và loại bỏ hoàn toàn hiện tượng tràn bộ nhớ (Out-Of-Memory) của NDK Clang C++.
+  - **Hardware Accelerated WebView**: Kích hoạt `setLayerType(View.LAYER_TYPE_HARDWARE, null)` đạt tốc độ 60/120 FPS mượt mà cho các hiệu ứng chuyển trang, KaTeX render và animation hạt vũ trụ.
+- **Tối ưu hóa UI & Đồng bộ trải nghiệm Web**:
+  - **Đồng bộ System Bars**: Cấu hình `setStatusBarColor(0xFF020c1b)` và `setNavigationBarColor(0xFF020c1b)` giúp thanh trạng thái và điều hướng Android hòa làm một với dải màu gradient nước biển sâu của Web App.
+  - **Native Touch & Scroll Feedback**: Bổ sung thuộc tính CSS `-webkit-tap-highlight-color: transparent` loại bỏ khung xám cảm ứng, `overscroll-behavior-y: contain` và `-webkit-overflow-scrolling: touch` cho trải nghiệm cuộn như app gốc.
+  - **Điều hướng phím Back Native**: Tích hợp trình xử lý phím Back vật lý (Back Button Override) với cơ chế xác nhận 2 lần để thoát ứng dụng (`Toast: "Nhấn lần nữa để thoát DuoMath"`).
 
 ---
 
@@ -140,12 +139,19 @@ Gia sư AI Chatbot hỗ trợ học sinh giải toán THPT thông qua các công
   - `GET /exercises/{id}`: Chi tiết bài tập đơn lẻ (câu hỏi, lựa chọn, hình ảnh)
   - `POST /exercises/submit`: Nộp bài tập và chấm điểm tự động
   - `GET /exercises/history`: Lịch sử các bài tập đã làm
-- **Math Ranking Matches (MRM) - Đấu Hạng Toán**:
+- **Math Ranking Matches (MRM) - Đấu Hạng Toán Realtime WebSocket**:
+  - `WSS /ws/mrm`: Kết nối WebSocket thời gian thực cho ghép trận (Matchmaking Queue), cấm/chọn thẻ chủ đề (`card_phase_action`), nhận nộp bài (`submit_answer`), đồng bộ điểm HP (`round_evaluation`), tính ván đấu (`duel_round_end`) và tổng kết ELO (`match_end_action`).
+  - **Thuật toán tính điểm & Sát thương (Damage Engine)**:
+    - Trả lời đúng & nhanh hơn đối thủ: Gây 1 HP sát thương cho đối thủ (`guest_hp` hoặc `host_hp` giảm 1).
+    - Trả lời đúng trong khi đối thủ trả lời sai: Gây 1 HP sát thương cho đối thủ.
+    - Trả lời sai trong khi đối thủ trả lời đúng: Nhận 1 HP sát thương.
+    - Cả hai trả lời sai hoặc cùng thời gian: Không gây sát thương (Hòa).
+  - **Xác thực Server-side cho Ván Đấu (`duel_round_end`)**:
+    - Backend tự động so sánh điểm HP thực tế của Host và Guest (`host_hp` vs `guest_hp`) để quyết định người thắng ván (`winner_role`), loại bỏ hoàn toàn khả năng người thắng ván bị trừ nhầm điểm Big HP (Set Point).
+    - Cá nhân hóa log nhật ký đánh giá (`host_log` vs `guest_log`) cho từng người chơi.
   - `GET /matches`: Lấy danh sách các trận đấu đang diễn ra
   - `POST /matches/create`: Tạo một trận đấu mới (quick match / invite specific)
   - `POST /matches/{id}/join`: Tham gia trận đấu
-  - `POST /matches/{id}/submit-answer`: Nộp câu trả lời trong trận đấu
-  - `GET /matches/{id}/leaderboard`: Bảng xếp hạng trực tiếp
   - `GET /matches/history`: Lịch sử các trận đấu đã tham gia
 - **Bilingual Math Forum (BMF) - Diễn Đàn Thảo Luận**:
   - `GET /forum/threads`: Danh sách các chủ đề thảo luận
