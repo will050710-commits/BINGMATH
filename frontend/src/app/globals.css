@@ -51,6 +51,9 @@
 html {
   /* The pseudo-element lives on html so it doesn't affect body layout */
   position: relative;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
 }
 html::before {
   content: "";

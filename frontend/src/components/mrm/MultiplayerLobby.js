@@ -664,7 +664,14 @@ export default function MultiplayerLobby() {
             setTimeout(() => {
               if (nextPlayerHP <= 0 || nextBotHP <= 0 || currentQ === activeQuestions.length - 1) {
                 if (myRole === "host") {
-                  const winnerRole = nextPlayerHP > 0 ? "host" : "guest";
+                  let winnerRole = "host";
+                  if (nextPlayerHP > nextBotHP) {
+                    winnerRole = "host";
+                  } else if (nextBotHP > nextPlayerHP) {
+                    winnerRole = "guest";
+                  } else {
+                    winnerRole = "host";
+                  }
                   socketRef.current.send(JSON.stringify({
                     type: "duel_round_end",
                     room_id: roomId,

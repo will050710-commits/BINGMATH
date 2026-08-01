@@ -4221,33 +4221,41 @@ async def mrm_websocket_endpoint(websocket: WebSocket, token: str = None):
                         
                         host_dmg = 0
                         guest_dmg = 0
-                        logs = []
                         
                         host_name = room["host_profile"]["username"]
                         guest_name = room["guest_profile"]["username"]
                         
+                        host_log = ""
+                        guest_log = ""
+                        
                         if p1_corr and p2_corr:
                             if p1_time < p2_time:
                                 guest_dmg = 1
-                                logs.append(f"⚡ Bạn nhanh hơn! Gây sát thương lên đối thủ! / {host_name} faster!")
+                                host_log = f"⚡ Bạn nhanh hơn! Gây 1 sát thương lên {guest_name}!"
+                                guest_log = f"⚡ {host_name} nhanh hơn! Bạn mất 1 HP."
                             elif p2_time < p1_time:
                                 host_dmg = 1
-                                logs.append(f"⚡ Đối thủ nhanh hơn! Bạn mất 1 HP. / {guest_name} faster!")
+                                host_log = f"⚡ {guest_name} nhanh hơn! Bạn mất 1 HP."
+                                guest_log = f"⚡ Bạn nhanh hơn! Gây 1 sát thương lên {host_name}!"
                             else:
-                                logs.append("🤝 Hòa! Cả hai đều đúng cùng tốc độ!")
+                                host_log = "🤝 Hòa! Cả hai đều đúng cùng tốc độ!"
+                                guest_log = "🤝 Hòa! Cả hai đều đúng cùng tốc độ!"
                         elif p1_corr and not p2_corr:
                             guest_dmg = 1
-                            logs.append(f"🎯 Bạn đúng! Gây sát thương! / {host_name} hits!")
+                            host_log = f"🎯 Bạn đúng, {guest_name} sai! Gây 1 sát thương!"
+                            guest_log = f"🎯 Bạn sai, {host_name} đúng! Bạn mất 1 HP."
                         elif not p1_corr and p2_corr:
                             host_dmg = 1
-                            logs.append(f"🎯 Bạn sai! Đối thủ gây sát thương! / {guest_name} hits!")
+                            host_log = f"🎯 Bạn sai, {guest_name} đúng! Bạn mất 1 HP."
+                            guest_log = f"🎯 Bạn đúng, {host_name} sai! Gây 1 sát thương!"
                         else:
-                            logs.append("💨 Cả hai đều trả lời sai! / Both missed!")
+                            host_log = "💨 Cả hai đều trả lời sai!"
+                            guest_log = "💨 Cả hai đều trả lời sai!"
                             
                         room["host_hp"] = max(0, room["host_hp"] - host_dmg)
                         room["guest_hp"] = max(0, room["guest_hp"] - guest_dmg)
                         
-                        eval_msg = {
+                        base_eval_msg = {
                             "type": "round_evaluation",
                             "q_idx": q_idx,
                             "host_id": room["host_id"],
@@ -4258,16 +4266,23 @@ async def mrm_websocket_endpoint(websocket: WebSocket, token: str = None):
                             },
                             "host_hp": room["host_hp"],
                             "guest_hp": room["guest_hp"],
-                            "logs": logs
                         }
-                        await mrm_manager.send_to_user(room["host_id"], eval_msg)
-                        await mrm_manager.send_to_user(room["guest_id"], eval_msg)
+                        
+                        await mrm_manager.send_to_user(room["host_id"], {**base_eval_msg, "logs": [host_log]})
+                        await mrm_manager.send_to_user(room["guest_id"], {**base_eval_msg, "logs": [guest_log]})
                         
             elif msg_type == "duel_round_end":
                 room_id = data.get("room_id")
                 if room_id in mrm_manager.rooms:
                     room = mrm_manager.rooms[room_id]
-                    winner_role = data.get("winner_role")
+                    
+                    # Validate winner_role on server based on remaining HP
+                    if room["host_hp"] > room["guest_hp"]:
+                        winner_role = "host"
+                    elif room["guest_hp"] > room["host_hp"]:
+                        winner_role = "guest"
+                    else:
+                        winner_role = data.get("winner_role") or "host"
                     
                     if winner_role == "host":
                         room["guest_big_hp"] = max(0, room["guest_big_hp"] - 1)
@@ -4289,7 +4304,13 @@ async def mrm_websocket_endpoint(websocket: WebSocket, token: str = None):
                     room = mrm_manager.rooms[room_id]
                     h_elo = room["host_profile"]["elo"]
                     g_elo = room["guest_profile"]["elo"]
-                    host_won = room["host_big_hp"] > 0 and room["guest_big_hp"] == 0
+                    
+                    if room["host_big_hp"] > room["guest_big_hp"]:
+                        host_won = True
+                    elif room["guest_big_hp"] > room["host_big_hp"]:
+                        host_won = False
+                    else:
+                        host_won = room["host_hp"] >= room["guest_hp"]
                     
                     h_change, g_change = calculate_elo_change(h_elo, g_elo, host_won)
                     new_h_elo = update_db_elo(room["host_id"], h_change)
