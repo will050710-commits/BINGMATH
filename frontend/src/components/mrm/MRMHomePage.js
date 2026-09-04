@@ -6,6 +6,8 @@ import Link from "next/link";
 import ReportUserModal from "@/components/ReportUserModal";
 import JackpotBanner from "@/components/mrm/JackpotBanner";
 import { CoinStoreProvider } from "@/context/CoinStore";
+import Changelog from "@/components/events/Changelog";
+import { useLanguage } from "@/context/LanguageContext";
 
 // ── Math particles background ──────────────────────────────────────────────
 const MATH_SYMBOLS = ["∑", "∫", "π", "√", "∞", "Δ", "∂", "∇", "⊕", "≈", "≠", "±", "×", "÷", "α", "β", "θ", "λ", "μ", "σ"];
@@ -187,6 +189,7 @@ function ModeCard({ icon, label, labelEn, desc, descEn, href, color, delay, inde
 
 // ── Main MRM Home Component ────────────────────────────────────────────────
 export default function MRMHomePage() {
+  const { lang, t } = useLanguage();
   const [owlActive, setOwlActive] = useState(false);
   const [showButtons, setShowButtons] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -208,29 +211,59 @@ export default function MRMHomePage() {
   const modes = [
     {
       icon: "🎯",
-      label: "Singleplayer",
-      labelEn: "Solo Practice",
-      desc: "Luyện tập một mình với MathMap đa dạng — Theo dõi tiến độ cá nhân",
+      label: t("Singleplayer", "Singleplayer"),
+      labelEn: t("Luyện tập cá nhân", "Solo Practice"),
+      desc: t(
+        "Luyện tập một mình với MathMap đa dạng — Theo dõi tiến độ cá nhân",
+        "Practice solo across diverse MathMaps — Track your personalized learning progress"
+      ),
       href: "/mrm/singleplayer",
       color: "#22d3ee",
       delay: "0.05s",
     },
     {
       icon: "⚔️",
-      label: "Multiplayer",
-      labelEn: "Ranked Match",
-      desc: "Đấu Rank 1v1 theo hệ thống Elo — Cơ chế Tráo bài chiến thuật",
+      label: t("Multiplayer", "Multiplayer"),
+      labelEn: t("Đấu Rank 1v1", "Ranked Matches"),
+      desc: t(
+        "Đấu Rank 1v1 theo hệ thống Elo — Cơ chế Tráo bài chiến thuật",
+        "1v1 ELO-rated ranked math battles with strategic card-swapping mechanics"
+      ),
       href: "/mrm/multiplayer",
       color: "#a78bfa",
       delay: "0.15s",
     },
+    {
+      icon: "🛡️",
+      label: t("Math Clans", "Math Clans"),
+      labelEn: t("Đấu Nhóm Clan", "Clan Battles"),
+      desc: t(
+        "Thành lập đội nhóm, thách đấu Clan và leo bảng xếp hạng toàn quốc",
+        "Form your math squad, challenge rival clans, and conquer the national leaderboards"
+      ),
+      href: "/clans",
+      color: "#f472b6",
+      delay: "0.25s",
+    },
+    {
+      icon: "🏆",
+      label: t("Sự Kiện & Giải Đấu", "Events & News"),
+      labelEn: t("Giải Đấu Mùa", "Tournaments"),
+      desc: t(
+        "Giải đấu mùa định kỳ, bảng vinh danh và nhật ký cập nhật hệ thống",
+        "Seasonal tournaments, Hall of Fame, and official system update logs"
+      ),
+      href: "/events",
+      color: "#fbbf24",
+      delay: "0.35s",
+    },
   ];
 
   const stats = [
-    { value: "10,000+", label: "MathMaps", icon: "📚" },
-    { value: "50,000+", label: "Học sinh", icon: "👥" },
-    { value: "1M+", label: "Lượt chơi", icon: "🎮" },
-    { value: "3 Khối", label: "10 · 11 · 12", icon: "📖" },
+    { value: "10,000+", label: t("MathMaps", "MathMaps"), icon: "📚" },
+    { value: "50,000+", label: t("Học sinh", "Students"), icon: "👥" },
+    { value: "1M+", label: t("Lượt chơi", "Matches Played"), icon: "🎮" },
+    { value: t("3 Khối", "Grades"), label: "10 · 11 · 12", icon: "📖" },
   ];
 
   return (
@@ -261,7 +294,7 @@ export default function MRMHomePage() {
       }}>
         <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 26, fontWeight: 900, color: "white", letterSpacing: 2 }}>
-            DUO<span style={{ color: "#22d3ee" }}>MATH</span>
+            BING<span style={{ color: "#22d3ee" }}>MATH</span>
           </span>
           <span style={{
             fontSize: 11, fontWeight: 700, color: "#22d3ee",
@@ -271,7 +304,18 @@ export default function MRMHomePage() {
         </Link>
 
         <nav style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <Link href="/mrm/leaderboard" style={{
+          <Link href="/clans" style={{
+            color: "#f472b6", textDecoration: "none",
+            fontSize: 13, fontWeight: 700, padding: "7px 13px", borderRadius: 8,
+            background: "rgba(244,114,182,0.08)", border: "1px solid rgba(244,114,182,0.25)",
+            transition: "all 0.2s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(244,114,182,0.18)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(244,114,182,0.08)"; }}
+          >
+            🛡️ {t("Clans", "Clans")}
+          </Link>
+          <Link href="/events" style={{
             color: "#fbbf24", textDecoration: "none",
             fontSize: 13, fontWeight: 700, padding: "7px 13px", borderRadius: 8,
             background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)",
@@ -280,7 +324,18 @@ export default function MRMHomePage() {
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(251,191,36,0.18)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(251,191,36,0.08)"; }}
           >
-            🏆 Leaderboard
+            🏆 {t("Sự kiện", "Events")}
+          </Link>
+          <Link href="/mrm/leaderboard" style={{
+            color: "#38bdf8", textDecoration: "none",
+            fontSize: 13, fontWeight: 700, padding: "7px 13px", borderRadius: 8,
+            background: "rgba(56,189,248,0.08)", border: "1px solid rgba(56,189,248,0.2)",
+            transition: "all 0.2s",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(56,189,248,0.18)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(56,189,248,0.08)"; }}
+          >
+            📊 {t("Xếp hạng", "Leaderboard")}
           </Link>
           <Link href="/mrm/shop" style={{
             color: "#a78bfa", textDecoration: "none",
@@ -291,7 +346,7 @@ export default function MRMHomePage() {
             onMouseEnter={e => { e.currentTarget.style.background = "rgba(167,139,250,0.18)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "rgba(167,139,250,0.08)"; }}
           >
-            🛍️ Shop
+            🛍️ {t("Shop", "Shop")}
           </Link>
           <button
             onClick={() => setShowReportModal(true)}
@@ -304,7 +359,7 @@ export default function MRMHomePage() {
             onMouseEnter={e => { e.currentTarget.style.color = "#f87171"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "rgba(255,255,255,0.55)"; e.currentTarget.style.background = "transparent"; }}
           >
-            🚩 Báo cáo
+            🚩 {t("Báo cáo", "Report")}
           </button>
           <Link href="/mrm/creator" style={{
             color: "rgba(255,255,255,0.55)", textDecoration: "none",
@@ -443,7 +498,7 @@ export default function MRMHomePage() {
             )}
             <img
               src="/images/duosteamicon-removebg-preview.webp"
-              alt="DuoMath Mascot"
+              alt="BingMath Mascot"
               style={{
                 width: 200,
                 height: 220,
@@ -554,6 +609,11 @@ export default function MRMHomePage() {
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", lineHeight: 1.5 }}>{f.desc}</div>
             </div>
           ))}
+        </div>
+
+        {/* ─── CHANGELOG & UPDATES SECTION ─── */}
+        <div style={{ width: "100%", maxWidth: 860, marginTop: 56 }}>
+          <Changelog />
         </div>
       </main>
 

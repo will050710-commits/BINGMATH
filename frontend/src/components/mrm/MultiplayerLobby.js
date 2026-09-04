@@ -98,6 +98,166 @@ function getRankGradient(rank) {
   return "linear-gradient(135deg, #1e293b, #334155)";
 }
 
+// ── Tournament Room Toggle ────────────────────────────────────────────────────
+function TournamentRoomToggle({ onTournamentSelected }) {
+  const [enabled, setEnabled] = useState(false);
+  const [tournaments, setTournaments] = useState([]);
+  const [selectedTid, setSelectedTid] = useState("");
+  const [tMode, setTMode] = useState("individual"); // individual | clan
+  const [clanSize, setClanSize] = useState(2);
+
+  useEffect(() => {
+    if (!enabled) return;
+    fetch(`${BASE}/api/tournaments?status=active&limit=10`)
+      .then(r => r.json())
+      .then(d => {
+        const list = d.tournaments || [];
+        setTournaments(list);
+        if (list.length > 0 && !selectedTid) setSelectedTid(list[0].id);
+      })
+      .catch(() => {});
+  }, [enabled]);
+
+  const selTournament = tournaments.find(t => t.id === selectedTid);
+
+  const selectStyle = {
+    width: "100%", padding: "10px 12px",
+    background: "rgba(10,5,30,0.8)", border: "1px solid rgba(251,191,36,0.25)",
+    borderRadius: 8, color: "white", fontSize: 12, cursor: "pointer", outline: "none",
+    marginTop: 6,
+  };
+
+  return (
+    <div style={{ marginBottom: 14 }}>
+      {/* Toggle row */}
+      <div
+        onClick={() => setEnabled(e => !e)}
+        style={{
+          display: "flex", alignItems: "center", gap: 10, cursor: "pointer",
+          padding: "10px 14px", borderRadius: 10,
+          background: enabled ? "rgba(251,191,36,0.08)" : "rgba(255,255,255,0.03)",
+          border: `1px solid ${enabled ? "rgba(251,191,36,0.35)" : "rgba(255,255,255,0.08)"}`,
+          transition: "all 0.2s", userSelect: "none",
+        }}
+      >
+        {/* Toggle switch */}
+        <div style={{
+          width: 34, height: 20, borderRadius: 10, flexShrink: 0,
+          background: enabled ? "#fbbf24" : "rgba(255,255,255,0.12)",
+          position: "relative", transition: "background 0.2s",
+        }}>
+          <div style={{
+            width: 14, height: 14, borderRadius: "50%", background: "white",
+            position: "absolute", top: 3, transition: "left 0.2s",
+            left: enabled ? 17 : 3,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
+          }} />
+        </div>
+        <div>
+          <span style={{ fontWeight: 800, fontSize: 12, color: enabled ? "#fbbf24" : "rgba(255,255,255,0.5)" }}>
+            🏆 Chế độ Giải Đấu Đặc Biệt
+          </span>
+          <span style={{ display: "block", fontSize: 10, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>
+            Điểm được hệ số ⚡1.2x–1.5x và tính vào BXH giải đấu
+          </span>
+        </div>
+      </div>
+
+      {/* Options (visible when enabled) */}
+      {enabled && (
+        <div style={{
+          padding: "14px 14px 10px", marginTop: 6,
+          background: "rgba(251,191,36,0.04)", border: "1px solid rgba(251,191,36,0.18)",
+          borderRadius: 10,
+          display: "flex", flexDirection: "column", gap: 12,
+        }}>
+          {/* Tournament selector */}
+          {tournaments.length > 0 ? (
+            <div>
+              <label style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                Chọn giải đấu đang tham gia
+              </label>
+              <select value={selectedTid} onChange={e => setSelectedTid(e.target.value)} style={selectStyle}>
+                {tournaments.map(t => (
+                  <option key={t.id} value={t.id}>
+                    {t.title} ({t.xp_multiplier}x XP)
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <p style={{ fontSize: 12, color: "#f87171", margin: 0, fontFamily: "monospace" }}>
+              Không có giải đấu active. Hãy đăng ký trước tại trang /events.
+            </p>
+          )}
+
+          {/* Mode: individual / clan */}
+          {selTournament && (
+            <div>
+              <label style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                Loại phòng
+              </label>
+              <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+                {["individual", "clan"].map(m => (
+                  <button
+                    key={m} onClick={() => setTMode(m)}
+                    style={{
+                      flex: 1, padding: "9px 0", borderRadius: 8, border: "none", cursor: "pointer",
+                      fontWeight: 800, fontSize: 11,
+                      background: tMode === m ? "rgba(251,191,36,0.2)" : "rgba(255,255,255,0.05)",
+                      color: tMode === m ? "#fbbf24" : "rgba(255,255,255,0.45)",
+                      border: tMode === m ? "1px solid rgba(251,191,36,0.4)" : "1px solid rgba(255,255,255,0.08)",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    {m === "individual" ? "👤 Cá nhân (1v1)" : "🛡 Clan (2v2 – 5v5)"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Clan size slider */}
+          {tMode === "clan" && selTournament && (
+            <div>
+              <label style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                Số đại diện mỗi Clan: <span style={{ color: "#fbbf24" }}>{clanSize}</span>
+              </label>
+              <input
+                type="range" min={Math.max(2, selTournament.min_clan_members || 2)} max={5} value={clanSize}
+                onChange={e => setClanSize(Number(e.target.value))}
+                style={{ width: "100%", marginTop: 6, accentColor: "#fbbf24" }}
+              />
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "rgba(255,255,255,0.3)" }}>
+                <span>{selTournament.min_clan_members || 2} min</span>
+                <span>5 max</span>
+              </div>
+              <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "6px 0 0", lineHeight: 1.5 }}>
+                ⚠ Chỉ Clan Leader / Sub-Leader mới được tạo phòng đại diện Clan.
+              </p>
+            </div>
+          )}
+
+          {/* Go button */}
+          {selectedTid && tournaments.length > 0 && (
+            <button
+              onClick={() => onTournamentSelected(selectedTid, tMode, clanSize)}
+              style={{
+                padding: "11px 0", borderRadius: 10, border: "none", cursor: "pointer",
+                background: "linear-gradient(135deg, #fbbf24, #f97316)",
+                color: "white", fontWeight: 900, fontSize: 13,
+                boxShadow: "0 4px 16px rgba(251,191,36,0.35)",
+              }}
+            >
+              🏆 Tạo phòng Giải Đấu
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function getDiffColor(diff) {
   if (diff < 4) return { label: "Easy", color: "#4ade80", bg: "rgba(74,222,128,0.15)" };
   if (diff < 6) return { label: "Normal", color: "#fbbf24", bg: "rgba(251,191,36,0.15)" };
@@ -1596,6 +1756,28 @@ export default function MultiplayerLobby() {
                       {["Ranked (Tính ELO)", "Friendly (Practice)"].map(o => <option key={o} value={o}>{o}</option>)}
                     </select>
                   </div>
+
+                  {/* ── Tournament Mode Toggle ── */}
+                  <TournamentRoomToggle
+                    onTournamentSelected={(tid, tMode, clanSize) => {
+                      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+                        fetch(`${BASE}/api/tournaments/${tid}/rooms`, {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", Authorization: `Bearer ${auth.currentUser?.accessToken || ""}` },
+                          body: JSON.stringify({
+                            room_mode: tMode,
+                            max_players: tMode === "clan" ? clanSize * 2 : 2,
+                            mathmap_id: createMap,
+                          }),
+                        }).then(r => r.json()).then(data => {
+                          if (data.ok && data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                          }
+                        }).catch(() => {});
+                      }
+                    }}
+                  />
+
                   <button onClick={() => {
                     if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
                       socketRef.current.send(JSON.stringify({
@@ -1627,10 +1809,11 @@ export default function MultiplayerLobby() {
                     onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
                     onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
                   >
-                    ⚔️ Create & Wait for Opponent
+                    ⚔️ Create &amp; Wait for Opponent
                   </button>
                 </div>
               )}
+
 
               {/* RANKED TAB */}
               {tab === "ranked" && (

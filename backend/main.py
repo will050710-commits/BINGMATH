@@ -4,7 +4,19 @@
 # Run with:  uvicorn main:app --host 0.0.0.0 --port $PORT
 # ─────────────────────────────────────────────────────────────────────────────
 
-import os, sqlite3, json, uuid, time, asyncio, base64, io
+import os, sys, sqlite3, json, uuid, time, asyncio, base64, io, logging
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+logger = logging.getLogger("duomath")
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("[%(levelname)s] %(name)s: %(message)s"))
+    logger.addHandler(_handler)
+logger.setLevel(logging.INFO)
+
 
 # Manual .env loader (0-dependency)
 _env_path = os.path.join(os.path.dirname(__file__), ".env")
@@ -19,6 +31,7 @@ from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from contextlib import asynccontextmanager
 
+import sympy
 import httpx # pyright: ignore[reportMissingImports]
 import orjson
 from fastapi import FastAPI, Request, HTTPException, Depends # pyright: ignore[reportMissingImports]
@@ -27,6 +40,67 @@ from fastapi.middleware.cors import CORSMiddleware # pyright: ignore[reportMissi
 from fastapi.middleware.gzip import GZipMiddleware # pyright: ignore[reportMissingImports]
 
 from werkzeug.security import generate_password_hash, check_password_hash # pyright: ignore[reportMissingImports]
+
+# ── SymPy Arithmetic & Symbolic Solver Engine (Tool Calling) ──────────────────
+def evaluate_math_expression(expression: str) -> dict:
+    """
+    Safely evaluates arithmetic and algebraic expressions symbolically and numerically using SymPy.
+    Used by LLM tool-calling to prevent mental math hallucinations and fabricated calculation steps.
+    """
+    try:
+        clean_expr = str(expression).strip()
+        clean_expr = clean_expr.replace("^", "**")
+        clean_expr = clean_expr.replace("×", "*").replace("÷", "/")
+        
+        # Sympy parse
+        sym_obj = sympy.sympify(clean_expr, evaluate=True)
+        exact_str = str(sym_obj)
+        
+        try:
+            num_val = float(sym_obj.evalf())
+            if abs(num_val - round(num_val)) < 1e-12:
+                num_str = str(int(round(num_val)))
+            else:
+                num_str = f"{num_val:.6g}"
+        except Exception:
+            num_val = None
+            num_str = None
+            
+        return {
+            "success": True,
+            "expression": expression,
+            "exact": exact_str,
+            "numeric": num_str,
+            "numeric_raw": num_val,
+            "latex": sympy.latex(sym_obj)
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "expression": expression,
+            "error": str(e)
+        }
+
+GEMINI_TOOLS = [
+    {
+        "functionDeclarations": [
+            {
+                "name": "evaluate_math",
+                "description": "Tính toán chính xác một biểu thức số học hoặc đại số bằng SymPy. LUÔN gọi tool này cho mọi phép tính số học, phân số, đạo hàm, tích phân, căn bậc hai, lượng giác thay vì tự nhẩm.",
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "expression": {
+                            "type": "STRING",
+                            "description": "Biểu thức toán học dạng Python/SymPy, ví dụ: '-3*(2.5-2)**2+9', 'sqrt(3)/2 + sin(pi/6)', 'integrate(x**2, (x, 0, 1))'"
+                        }
+                    },
+                    "required": ["expression"]
+                }
+            }
+        ]
+    }
+]
 
 # ── JWT (lightweight PyJWT) ───────────────────────────────────────────────────
 import jwt as pyjwt # pyright: ignore[reportMissingImports]
@@ -242,6 +316,12 @@ GROQ_BASE = "https://api.groq.com/openai/v1"
 GROQ_KEY  = os.environ.get("GROQ_API_KEY", "")
 SELF_URL  = os.environ.get("SELF_URL", "")
 
+# ── Vision Agent for Olympiad Geometry (Qwen2.5-VL-72B via OpenRouter) ───────
+from vision_agent import GeometryVisionAgent
+_vision_agent = GeometryVisionAgent()
+from image_preprocessing import preprocess_image_b64  # Risk 3: aspect-preserving resize + pad
+
+
 # ── MathGPT Socratic System Prompts ──────────────────────────────────────────
 _LATEX_RULES = (
     "\n\n## QUY TẮC ĐỊNH DẠNG TOÁN HỌC (BẮT BUỘC):\n"
@@ -253,91 +333,161 @@ _LATEX_RULES = (
     "- Đánh số bước giải: **Bước 1**, **Bước 2**, ...\n"
 )
 
-_SOCRATIC_BASE = """Bạn là **MathGPT** — Trợ lý Toán học AI chuyên biệt của nền tảng **DUOMATH**, hỗ trợ học sinh THPT (lớp 10-12) học Toán song ngữ Anh-Việt.
+_ARITHMETIC_PRECISION_RULES = """
+## QUY TẮC BẮT BUỘC VỀ ĐỘ CHÍNH XÁC TÍNH TOÁN & CHỐNG "BỊA SỐ":
+1. TUYỆT ĐỐI KHÔNG tự ý nhẩm hay suy diễn số học phức tạp trong đầu mà không có căn cứ. Sử dụng công cụ `evaluate_math` để tính toán chính xác mọi biểu thức đại số, phân số, đạo hàm, tích phân, căn thức, lượng giác và số thập phân.
+2. TUYỆT ĐỐI KHÔNG ĐƯỢC sửa đổi kết quả tính toán của chính mình hoặc chèn bước tính bịa đặt (ví dụ: bịa bước 'dùng máy tính x ≈ ...' không có căn cứ) chỉ để cố ép cho khớp với một phương án trắc nghiệm trong ảnh/đề bài.
+3. Đối với bài toán trắc nghiệm (có các đáp án A, B, C, D):
+   - BẮT BUỘC giải và tính toán độc lập hoàn toàn theo đúng các định lý và công thức chính xác.
+   - Chỉ đối chiếu kết quả đã tính đúng với các lựa chọn A, B, C, D ở bước kết luận cuối cùng.
+   - Nếu kết quả tính toán đúng không trùng với bất kỳ phương án nào cho sẵn (hoặc đề in sai), hãy chỉ rõ điều đó một cách trung thực và giải thích nguyên nhân, tuyệt đối không được 'bịa số' ép khớp đáp án."""
 
-## NGUYÊN TẮC GIẢNG DẠY — PHƯƠNG PHÁP SOCRATIC
+_SOCRATIC_BASE = f"""Bạn là **DuoMCB** (chú Cú Xanh Toán học thông thái 🦉) — Trợ lý & Bạn đồng hành Toán học AI chuyên sâu của nền tảng **DUOMATH / DUOSTEAM**, hỗ trợ học sinh THCS, THPT và Chuyên/Olympiad (lớp 6-12) chinh phục Toán học song ngữ Anh-Việt!
 
-QUY TẮC VÀNG: **KHÔNG BAO GIỜ** đưa ra đáp án hoàn chỉnh ngay lập tức khi học sinh hỏi lần đầu.
-Thay vào đó, dẫn dắt học sinh tự khám phá qua 3 giai đoạn:
-
-**Giai đoạn 1 — NHẬN DIỆN (Identify):**
-Đặt câu hỏi để học sinh xác định dạng bài:
-- "Bài toán này em đã gặp dạng nào tương tự chưa?"
-- "Điều kiện ràng buộc của bài là gì?"
-- "Biến số / đại lượng cần tìm là gì?"
-
-**Giai đoạn 2 — GỢI Ý TỪNG BƯỚC (Step Hints):**
-Format mỗi gợi ý: `💡 Gợi ý {n}: [câu hỏi dẫn dắt hoặc công thức cần áp dụng]`
-Ví dụ:
-- "💡 Gợi ý 1: Tiệm cận đứng xuất hiện tại điểm nào làm mẫu số bằng 0?"
-- "💡 Gợi ý 2: Hãy tính $\\Delta = b^2 - 4ac$ với $a$, $b$, $c$ bạn đã xác định."
-Nếu học sinh vẫn bế tắc sau 2 gợi ý → đưa thêm 1 công thức cụ thể có dạng tổng quát.
-
-**Giai đoạn 3 — CHỈ khi học sinh nói 'xem đáp án' / 'show solution' / 'giải hộ em':**
-Chuyển sang chế độ giải đầy đủ (xem mode=solution bên dưới).
+## NĂNG LỰC TOÁN HỌC & CHUYÊN MÔN CHUẨN XÁC:
+- **Nắm vững toàn bộ các phân môn Toán học**: Hình học phẳng thuần túy & nâng cao (Tỉ số kép, Hàng điểm/Chùm điều hòa, Tứ giác điều hòa, Cực và đối cực, Bổ đề hình thang, Phương tích - Trục đẳng phương, Điểm Miquel, Định lý Ceva, Menelaus, Pascal, Desargues), Hình không gian & Tọa độ Oxyz, Đại số & Giải tích (Khảo sát hàm, Đạo hàm, Tích phân, Dãy số, Giới hạn), Lượng giác, Số phức, Tổ hợp & Xác suất.
+- **Tính chính xác tuyệt đối về mặt toán học (Mathematical Soundness & Rigor)**:
+  + Tuyệt đối KHÔNG phỏng đoán máy móc, không ghép nối từ khóa vô căn cứ.
+  + Phải hiểu thấu đáo cấu hình hình học: Điểm đối xứng, giao điểm tiếp tuyến (cực của đường thẳng), phép chiếu chùm điều hòa lên đường tròn tạo tứ giác điều hòa, bổ đề hình thang về trung điểm của các đoạn thẳng song song...
+  + Mọi khẳng định, gợi ý hay lời giải đều phải dựa trên các định lý, tính chất toán học chuẩn mực.
+{_ARITHMETIC_PRECISION_RULES}
 
 ## PHONG CÁCH GIAO TIẾP:
-- Thân thiện, khuyến khích: "Em đang đi đúng hướng rồi! 🎯 Hãy thử thêm bước tiếp theo."
-- Khi sai: KHÔNG dùng "SAI" hay "KHÔNG ĐÚNG" → dùng: "Hướng này chưa chính xác, hãy xem lại..."
-- Kết thúc mỗi câu trả lời bằng câu hỏi kiểm tra hoặc khuyến khích: "Em thử áp dụng vào bài xem sao nhé! 😊"
-- Song ngữ: giải thích bằng tiếng Việt, kèm thuật ngữ tiếng Anh trong ngoặc đơn khi cần.
+- Thân thiện, tôn trọng, truyền cảm hứng học tập và tư duy phản biện. Xưng "DuoMCB" (hoặc "mình") và gọi học sinh là "bạn" hoặc "em".
+- Sử dụng ngôn ngữ sư phạm chuẩn xác, mạch lạc, dễ hiểu, có chèn emoji hợp lý (🦉, 💡, 📐, ✨, 🎯).
 
-## CHUYÊN MÔN THPT:
-Đại Số & Giải Tích: Hàm số (Functions), Đạo hàm (Derivatives), Tích phân (Integrals), Giới hạn (Limits), Phương trình (Equations), Tổ hợp & Xác suất (Combinatorics & Probability), Cấp số (Sequences).
-Hình Học: Hình phẳng, Hình không gian (Solid Geometry), Tọa độ Oxyz."""
+## NGUYÊN TẮC GIẢNG DẠY (SOCRATIC METHOD):
+- Ở chế độ Gợi ý: Hướng dẫn học sinh khám phá từng bước, chỉ ra các mắt xích lý thuyết và bổ đề then chốt để học sinh tự suy luận, không giải tắt làm mất đi cơ hội tư duy.
+- Ở chế độ Giải Đầy Đủ: Trình bày bài giải bài bản, chứng minh chi tiết từng bước, nêu rõ căn cứ định lý và kết luận rõ ràng."""
 
-@lru_cache(maxsize=8)
-def cached_system_prompt(variant: str = "text") -> str:
+@lru_cache(maxsize=64)
+def cached_system_prompt(variant: str = "text", widget: str | None = None) -> str:
     """MathGPT system prompt — 5 variants: text (Socratic hint), image (Vision Socratic),
-    solution (full step-by-step + bài phái sinh), raw_solution (non-Socratic step solver), translate (JSON-only)."""
+    solution (full step-by-step + bài phái sinh), raw_solution (non-Socratic step solver), translate (JSON-only).
+    Optional `widget` injects the matching mathviz schema snippet at the end.
+    Cache key is (variant, widget) — up to 64 slots = 5 variants × ~9 widgets + margin.
+    """
     if variant == "solution":
-        return (
+        base = (
             _SOCRATIC_BASE
-            + "\n\n## CHẾ ĐỘ HIỆN TẠI: GIẢI ĐẦY ĐỦ (Full Solution Mode)"
-            + "\nHọc sinh đã yêu cầu xem đáp án đầy đủ. Hãy:\n"
-            + "1. Trình bày lời giải HOÀN CHỈNH theo từng bước rõ ràng với LaTeX.\n"
-            + "2. Sau lời giải, LUÔN tạo ra 1 **Bài Tập Phái Sinh** tương tự (thay đổi số liệu hoặc biến thể nhỏ) dưới tiêu đề:\n"
+            + "\n\n## CHẾ ĐỘ HIỆN TẠI: GIẢI CHI TIẾT ĐẦY ĐỦ (Full Solution Mode)"
+            + "\nHọc sinh yêu cầu xem lời giải chi tiết. Hãy:\n"
+            + "1. Phân tích kỹ giả thiết và kết luận của đề bài (từ văn bản hoặc hình ảnh).\n"
+            + "2. Trình bày lời giải HOÀN CHỈNH, CHẶT CHẼ theo từng bước logic rõ ràng (**Bước 1**, **Bước 2**...), nêu rõ căn cứ của từng suy luận (định lý, bổ đề, tính chất hình học/đại số).\n"
+            + "3. Sau lời giải, tạo 1 **Bài Tập Luyện Tập** tương tự dưới tiêu đề:\n"
             + "   ### 📝 Bài Tập Luyện Tập Ngay\n"
             + "   [Đề bài phái sinh]\n"
-            + "   > 💡 *Em thử giải bài này trước khi hỏi đáp án nhé!*\n"
+            + "   > 💡 *Em thử áp dụng phương pháp trên để giải bài này nhé!*\n"
             + _LATEX_RULES
         )
-    if variant == "raw_solution":
-        return (
-            "You are a professional math tutor.\n"
-            "Analyze the problem and provide a highly accurate, step-by-step solution.\n"
-            "Each step must be concise, logical, and clear.\n"
+    elif variant == "raw_solution":
+        base = (
+            "You are an expert mathematics professor and Olympiad tutor.\n"
+            "Analyze the problem rigorously and provide a mathematically sound, step-by-step solution.\n"
+            "Each step must be logically complete with full justifications (theorems, lemmas, geometric properties).\n"
             "Use LaTeX for all math expressions (inline: $...$, block: $$...$$).\n"
-            "Write the response in the language specified by the user's prompt (English or Vietnamese).\n"
-            "Do NOT include any introduction, explanations, markdown code blocks, or extra text. Output ONLY the numbered steps (e.g., '1. ...', '2. ...')."
+            "Write the response in the requested language (English or Vietnamese).\n"
+            "Do NOT include conversational chatter or filler text. Output clear numbered steps."
         )
-    if variant == "image":
-        return (
+    elif variant == "visualizer":
+        base = (
+            "Bạn là chuyên gia trực quan hóa toán học và mô hình hóa hình học tương tác MathViz của DuoMath.\n\n"
+            "## NHIỆM VỤ CHÍNH: TẬP TRUNG TẠO MÔ HÌNH HÌNH HỌC / ĐỒ THỊ TƯƠNG TÁC (MATHVIZ)\n"
+            "Người dùng đã nhấn chọn chế độ 'Minh Họa Tương Tác'. Mục tiêu số 1 là XEM VÀ TƯƠNG TÁC VỚI HÌNH VẼ / MÔ HÌNH TRỰC QUAN.\n\n"
+            "## QUY TẮC PHÂN LOẠI 2D VÀ 3D CỰC KỲ QUAN TRỌNG (BẮT BUỘC TUÂN THỦ):\n"
+            "1. NẾU ẢNH HOẶC ĐỀ BÀI LÀ HÌNH HỌC PHẲNG 2D (ví dụ: bài toán chứng minh hình phẳng, tam giác ABC, đường tròn (O), tiếp tuyến, trực tâm H, cát tuyến, các điểm đồng phẳng, chùm điều hòa, tứ giác điều hòa, bổ đề hình thang, v.v.):\n"
+            "   -> BẮT BUỘC DÙNG WIDGET \"geometry_2d\"!\n"
+            "   -> Sử dụng cấu trúc \"layers\" để CHỒNG NHIỀU LỚP hình học phẳng lên nhau (đường tròn + tam giác/đa giác + các đoạn thẳng nối + các điểm tọa độ gắn nhãn A, B, C, H, E, T, O, L...).\n"
+            "   -> TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ Ý CHUYỂN THÀNH HÌNH CHÓP 3D (như S.ABC) hay hình không gian 3D!\n"
+            "2. CHỈ DÙNG WIDGET \"geometry_3d\" KHI:\n"
+            "   - Đề bài/ảnh thực sự là hình học không gian 3D (hình chóp S.ABCD, hình lăng trụ, hình trụ, hình nón, hình cầu, khối đa diện, dải Möbius 3D, bình Klein 3D).\n"
+            "3. NẾU LÀ ĐỒ THỊ HÀM SỐ: Dùng widget \"function_plot\".\n\n"
+            "## CẤU TRÚC PHẢN HỒI:\n"
+            "1. BẮT BUỘC đính kèm ĐÚNG MỘT khối ```mathviz ... ``` ở cuối câu trả lời để tạo widget trực quan trên giao diện.\n"
+            "2. TUYỆT ĐỐI KHÔNG viết bài giải chứng minh dài dòng, không viết lời giải từng bước như chế độ 'Giải Đầy Đủ'.\n"
+            "3. Phần văn bản chỉ cần RẤT NGẮN GỌN (1-2 đoạn súc tích):\n"
+            "   - Tên mô hình/khối hình học/đồ thị được minh họa.\n"
+            "   - Các thông số/yếu tố hình học chính (tọa độ các điểm, bán kính đường tròn, các đoạn thẳng nối quan trọng).\n"
+            "   - Hướng dẫn học sinh kéo các điểm trên hình vẽ để quan sát sự tương tác động.\n"
+            + _LATEX_RULES
+            + _VISUAL_RULES
+            + "\n"
+            + _WIDGET_PROMPT_SNIPPETS["geometry_2d"]
+            + "\n"
+            + _WIDGET_PROMPT_SNIPPETS["geometry_3d"]
+            + "\n"
+            + _WIDGET_PROMPT_SNIPPETS["function_plot"]
+        )
+        return base
+    elif variant == "image_with_vision":
+        base = (
             _SOCRATIC_BASE
-            + "\n\n## CHẾ ĐỘ HIỆN TẠI: NHẬN DIỆN ẢNH VÀ GỢI Ý ĐA GÓC NHÌN (Vision Socratic Mode)"
-            + "\nBạn đang phân tích một bức ảnh đề toán. Hãy:\n"
-            + "1. Mô tả ngắn gọn bài toán bạn nhận ra từ ảnh.\n"
-            + "2. Xác định dạng toán (loại bài, chương trình lớp mấy).\n"
-            + "3. BẮT BUỘC gợi ý lời giải dưới dạng **nhiều góc nhìn/hướng tiếp cận khác nhau** (đưa ra tối thiểu 2 hướng tiếp cận như Đại số, Hình học, hoặc Mẹo trắc nghiệm nhanh).\n"
-            + "4. Với mỗi hướng tiếp cận, hãy đưa ra câu hỏi gợi mở hoặc công thức dẫn dắt (Socratic method) để học sinh tự làm, tuyệt đối không giải thẳng.\n"
-            + "Ví dụ cấu trúc trình bày gợi ý:\n"
-            + "  - **Hướng tiếp cận 1: Đại số (Algebraic)**: [nội dung gợi ý + câu hỏi]\n"
-            + "  - **Hướng tiếp cận 2: Hình học/Đồ thị (Geometric)**: [nội dung gợi ý + câu hỏi]\n"
-            + "Nếu ảnh không rõ hoặc không phải bài toán -> thông báo lịch sự và hỏi lại.\n"
+            + "\n\n## CHẾ ĐỘ HIỆN TẠI: PHÂN TÍCH HÌNH HỌC TỪ VISION AI VÀ MÔ HÌNH HÓA MATHVIZ (Olympiad Geometry Mode)"
+            + "\nBạn đã nhận được kết quả trích xuất cấu trúc hình học chi tiết từ mô hình thị giác chuyên sâu Qwen2.5-VL-72B (các điểm, đường tròn, tiếp tuyến, giao điểm, quan hệ vuông góc, đồng quy, đồng viên)."
+            + "\nHãy thực hiện quy trình sau:\n"
+            + "1. **Tóm tắt cấu hình & Nhận diện bài toán**: Dựa trên các đối tượng và quan hệ đã trích xuất, nêu bật mô hình hình học cốt lõi.\n"
+            + "2. **Minh họa trực quan MathViz (Canvas) - QUY TẮC DỰNG TỌA ĐỘ GIẢI TÍCH CHUẨN XÁC**:\n"
+            + "   - **TUYỆT ĐỐI KHÔNG DÙNG tam giác cân hoặc tam giác đều** (không đặt xA=0 khi B, C đối xứng) vì sẽ làm các đường dốc (như EF) bị nằm ngang giả tạo!\n"
+            + "   - **BẮT BUỘC dùng tam giác nhọn không cân (AB < AC)**: Đáy BC nằm ngang trên trục hoành, đỉnh A lệch sang trái. Ví dụ tọa độ chuẩn Olympiad:\n"
+            + "     * A(-1.0, 3.5), B(-2.5, -1.8), C(3.0, -1.8)\n"
+            + "     * Chân đường cao D(-1.0, -1.8), E(1.0, 0.85), F(-2.1, -0.36)\n"
+            + "     * Trực tâm H(-1.0, -0.67)\n"
+            + "     * Đường tròn ngoại tiếp (O): tâm O(0.25, 0.28), bán kính r=3.45\n"
+            + "     * Đường tròn (AEF) đường kính AH: tâm I(-1.0, 1.42), bán kính r=2.08 (đi qua A, E, F, H)\n"
+            + "     * Giao điểm P của EF và BC: P(-5.8, -1.8) (thẳng hàng tuyệt đối với B, C và thẳng hàng với E, F)\n"
+            + "   - Sử dụng widget \"geometry_2d\" với cấu trúc \"layers\" đa tầng: định nghĩa đầy đủ polygon, lines, circle, points. Vẽ nét thanh mảnh (strokeWidth: 1.5 - 2), màu sắc rõ ràng (tam giác xanh neon #10b981 hoặc #3b82f6, đường tròn viền xanh/hồng mảnh, đường cao nét đứt màu đỏ hoặc cam).\n"
+            + "3. **Gợi ý định hướng giải (Socratic Hints)**: Nêu 2-3 gợi ý sắc sảo dựa trên cấu hình (bổ đề hình thang, chùm điều hòa, phương tích, trục đẳng phương, góc nội tiếp, tam giác đồng dạng...).\n"
+            + _LATEX_RULES
+            + "\n" + _VISUAL_RULES
+            + "\n" + _WIDGET_PROMPT_SNIPPETS["geometry_2d"]
+        )
+        return base
+    elif variant == "image":
+
+
+        base = (
+            _SOCRATIC_BASE
+            + "\n\n## CHẾ ĐỘ HIỆN TẠI: PHÂN TÍCH ẢNH VÀ GỢI Ý SOCRATIC (Vision Socratic Hint Mode)"
+            + "\nBạn đang đọc đề bài toán từ hình ảnh. Hãy thực hiện quy trình sau:\n"
+            + "1. **Tóm tắt cấu hình & dữ kiện chính**: Nêu rõ các đối tượng cốt lõi của đề bài (tam giác, đường tròn, các điểm, giao điểm, giả thiết quan trọng).\n"
+            + "2. **Gợi ý định hướng giải (Socratic Hints)**:\n"
+            + "   - Đưa ra 2-3 gợi ý sâu sắc và trúng bản chất toán học theo từng bước tiếp cận (sử dụng format `💡 Gợi ý 1:`, `💡 Gợi ý 2:`...).\n"
+            + "   - Nêu tên các bổ đề, tính chất hoặc công cụ toán học then chốt cần dùng (ví dụ: Chùm điều hòa & Tứ giác điều hòa, Giao điểm tiếp tuyến, Bổ đề hình thang, v.v.).\n"
+            + "   - Đặt câu hỏi dẫn dắt để người học tự kết nối các mắt xích logic.\n"
             + _LATEX_RULES
         )
-    # Default: "text" — Socratic hint mode
-    return (
-        _SOCRATIC_BASE
-        + "\n\n## CHẾ ĐỘ HIỆN TẠI: GỢI Ý SOCRATIC ĐA GÓC NHÌN (Socratic Hint Mode)"
-        + "\nBạn cần giúp học sinh giải bài toán bằng cách gợi ý hướng đi dưới dạng **nhiều góc nhìn/hướng tiếp cận khác nhau**:\n"
-        + "1. Đưa ra tối thiểu 2 đến 3 hướng tiếp cận khác nhau để giải bài toán (Ví dụ: Đại số, Hình học, Đánh giá nhanh/Mẹo trắc nghiệm).\n"
-        + "2. Với mỗi hướng đi, đặt câu hỏi gợi mở hoặc nhắc lại công thức cốt lõi để học sinh tự suy nghĩ tiếp. Tuyệt đối không cho đáp án thẳng.\n"
-        + "Ví dụ cấu trúc trình bày gợi ý:\n"
-        + "  - **Hướng tiếp cận 1: Đại số (Algebraic)**: [nội dung gợi ý + câu hỏi]\n"
-        + "  - **Hướng tiếp cận 2: Hình học/Đồ thị (Geometric)**: [nội dung gợi ý + câu hỏi]\n"
-        + _LATEX_RULES
-    )
+    else:
+        # Default: "text" — Socratic hint mode
+        base = (
+            _SOCRATIC_BASE
+            + "\n\n## CHẾ ĐỘ HIỆN TẠI: GỢI Ý SOCRATIC (Socratic Hint Mode)"
+            + "\nBạn đang đồng hành giải toán cùng học sinh bằng phương pháp gợi mở:\n"
+            + "1. Nhận diện trọng tâm và bản chất của bài toán.\n"
+            + "2. Cung cấp các gợi ý từng bước (`💡 Gợi ý 1:`, `💡 Gợi ý 2:`...) chỉ ra các bổ đề, công thức hoặc hướng suy luận then chốt.\n"
+            + "3. Đặt câu hỏi dẫn dắt học sinh tự thực hiện phép biến đổi/chứng minh tiếp theo.\n"
+            + _LATEX_RULES
+        )
+    # Append mathviz visual rules + per-widget schema snippet when widget is known
+    if widget and widget in _WIDGET_PROMPT_SNIPPETS:
+        base += _VISUAL_RULES
+        base += _WIDGET_PROMPT_SNIPPETS[widget]
+    elif variant in ("image", "solution"):
+        base += _VISUAL_RULES
+        base += (
+            "\n\n## QUY TẮC MINH HỌA TRỰC QUAN TOÁN HỌC (MathViz):\n"
+            "Nếu người dùng yêu cầu minh họa, vẽ hình hoặc bài toán có yếu tố hình học / đồ thị, hãy đính kèm ĐÚNG MỘT khối ```mathviz ... ``` ở cuối câu trả lời:\n"
+            "- Với hình phẳng (tam giác, tứ giác, đường tròn, elip, đa giác, các điểm tọa độ): Dùng widget \"geometry_2d\".\n"
+            "- Với hình học không gian 3D (hình chóp, lăng trụ, elipsoid, nón, trụ, cầu, nón cụt, mặt 3D): Dùng widget \"geometry_3d\".\n"
+            "- Với đồ thị hàm số / giải tích: Dùng widget \"function_plot\".\n\n"
+            + _WIDGET_PROMPT_SNIPPETS["geometry_2d"]
+            + "\n"
+            + _WIDGET_PROMPT_SNIPPETS["geometry_3d"]
+            + "\n"
+            + _WIDGET_PROMPT_SNIPPETS["function_plot"]
+        )
+    return base
+
+
 
 # ── LightRAG-style Mathematical Knowledge Graph & Retriever ────────────────
 import re as _re_rag  # dùng riêng cho entity matching
@@ -500,6 +650,674 @@ def extract_graph_entities(query: str) -> list:
         if hit:
             matched_ids.append(node_id)
     return list(dict.fromkeys(matched_ids))  # dedup preserve order
+
+# ── MathViz Widget Routing ────────────────────────────────────────────────────
+# Maps MATH_CONCEPT_GRAPH node IDs → widget type (priority 1: graph-based routing)
+GRAPHABLE_CONCEPT_IDS: dict[str, str] = {
+    "phuong_trinh_bac_hai": "function_plot",
+    "dao_ham":              "function_plot",
+    "tich_phan":            "function_plot",
+    "gioi_han":             "function_plot",
+    "cuc_tri":              "function_plot",
+    "tiem_can":             "function_plot",
+    "ham_so_luong_giac":    "unit_circle_wave",
+    "so_phuc":              "complex_plane",
+    "xac_suat":             "distribution",
+    "to_hop_chinh_hop":     "distribution",
+    "hinh_hoc_khong_gian":  "geometry_3d",
+}
+
+# Fallback keyword-based routing (priority 2: when no graph node matched)
+_WIDGET_KEYWORDS: dict[str, list[str]] = {
+    "geometry_2d":       [
+        "tam giác", "tứ giác", "hình thang", "đường tròn", "tiếp tuyến", "cát tuyến",
+        "đường cao", "trực tâm", "ngoại tiếp", "nội tiếp", "bàng tiếp", "chùm điều hòa",
+        "tứ giác điều hòa", "mô hình phẳng", "hình học phẳng", "2d", "chứng minh rằng",
+        "phép quay", "đối xứng trục", "tịnh tiến", "vị tự", "vectơ", "vector", "trung tuyến", "trọng tâm",
+        "hình elip", "elip", "ellipse", "tiêu cự", "tiêu điểm", "tâm sai", "bán trục",
+        "đa giác đều", "ngũ giác", "lục giác", "bát giác", "đa giác"
+    ],
+    "geometry_3d":       [
+        "hình chóp", "hình hộp", "hình lăng trụ", "mặt cầu", "mặt nón", "mặt trụ",
+        "hình trụ", "hình nón", "khối cầu", "oxyz", "thể tích khối",
+        "khối đa diện", "hình không gian", "hình chóp tam giác", "tứ diện", "tứ diện đều",
+        "lăng trụ tam giác", "lăng trụ đứng", "hình elipsoid", "hình chóp cụt", "hình nón cụt",
+        "lăng trụ lục giác", "hình 3d", "không gian 3d", "3 chiều", "không gian 3 chiều",
+        "solid geometry", "dải mobius", "chai klein", "bình klein", "klein bottle", "mobius",
+        "tesseract", "4d", "4 chiều", "không gian 4 chiều", "siêu lập phương", "hypercube",
+        "mặt boy", "boy's surface", "cross-cap", "nút trefoil", "trefoil knot", "hình xuyến", "torus", "mặt cong"
+    ],
+    "unit_circle_wave":  ["sin(", "cos(", "tan(", "lượng giác", "chu kỳ", "biên độ", "vòng tròn đơn vị", "vòng tròn lượng giác"],
+    "inequality_region": ["hệ bất phương trình", "miền nghiệm", "quy hoạch tuyến tính", "bất phương trình bậc nhất"],
+    "venn_sets":         ["tập hợp", "giao của hai tập", "hợp của hai tập", "phần bù", "tập con"],
+    "sequence_series":   ["cấp số cộng", "cấp số nhân", "dãy số", "tổng riêng phần", "số hạng tổng quát"],
+    "complex_plane":     ["số phức", "môđun", "acgumen", "mặt phẳng phức", "phần thực", "phần ảo"],
+    "distribution":      ["phân phối", "xác suất", "kỳ vọng", "phương sai", "độ lệch chuẩn", "nhị thức", "biến ngẫu nhiên"],
+    "function_plot":     ["đạo hàm", "tích phân", "khảo sát hàm số", "cực trị", "tiệm cận",
+                          "parabol", "hàm số bậc", "đồng biến", "nghịch biến", "đồ thị hàm"],
+}
+
+
+def generate_mock_mathgpt_reply(user_message: str, widget: str | None = None, mode: str = "hint") -> str:
+    """Generates a structured, mathematically sound MathGPT 3-layer reply when external LLM is offline."""
+    if not widget:
+        widget = detect_widget(user_message)
+    
+    msg_low = user_message.lower()
+
+    if widget == "geometry_3d":
+        if "tam giác" in msg_low or "tứ diện" in msg_low:
+            return (
+                "## 🔍 Hình Chóp Tam Giác Đều (Tứ Diện Đều)\n\n"
+                "**1. Phân tích hình học & Công thức**\n"
+                "Cho hình chóp tam giác đều $S.ABC$ có cạnh đáy $a = 4$, chiều cao $h = 5$.\n"
+                "Diện tích đáy tam giác đều: $$S_{\\text{đáy}} = \\frac{a^2\\sqrt{3}}{4} = \\frac{16\\sqrt{3}}{4} = 4\\sqrt{3}$$\n"
+                "Thể tích khối chóp:\n"
+                "$$V = \\frac{1}{3} S_{\\text{đáy}} \\cdot h = \\frac{1}{3} \\cdot 4\\sqrt{3} \\cdot 5 = \\frac{20\\sqrt{3}}{3} \\approx 11.55$$\n\n"
+                "**2. Thiết diện & Quan sát 3D**\n"
+                "Đoạn nối đỉnh $S$ tới tâm đường tròn ngoại tiếp đáy là trục đối xứng xoay.\n\n"
+                "*Em có thể kéo xoay mô hình 3D và điều chỉnh tham số bên dưới! 😊*\n\n"
+                "```mathviz\n"
+                '{"type": "mathviz.v1", "widget": "geometry_3d", "title": "Hình chóp tam giác đều $S.ABC$, đáy $a=4$, cao $h=5$", "solid": "triangular_pyramid", "dims": {"a": 4, "h": 5}, "show_cross_section": true, "cross_section_height": 1.5}\n'
+                "```"
+            )
+        elif "lăng trụ" in msg_low:
+            return (
+                "## 🔍 Lăng Trụ Tam Giác Đều\n\n"
+                "**1. Công thức thể tích & diện tích toàn phần**\n"
+                "Lăng trụ tam giác đều có đáy là tam giác đều cạnh $a=4$, chiều cao $h=5$.\n"
+                "$$V = S_{\\text{đáy}} \\cdot h = \\frac{a^2\\sqrt{3}}{4} \\cdot h = \\frac{16\\sqrt{3}}{4} \\cdot 5 = 20\\sqrt{3} \\approx 34.64$$\n"
+                "$$S_{tp} = 2 \\cdot S_{\\text{đáy}} + 3ah = 8\\sqrt{3} + 60$$\n\n"
+                "```mathviz\n"
+                '{"type": "mathviz.v1", "widget": "geometry_3d", "title": "Lăng trụ tam giác đều, $a=4$, $h=5$", "solid": "triangular_prism", "dims": {"a": 4, "h": 5}, "show_cross_section": false, "cross_section_height": 0}\n'
+                "```"
+            )
+        elif "elipsoid" in msg_low:
+            return (
+                "## 🔍 Khối Elipsoid 3D $\\frac{x^2}{a^2} + \\frac{y^2}{b^2} + \\frac{z^2}{c^2} = 1$\n\n"
+                "**Thể tích khối elipsoid**: $$V = \\frac{4}{3}\\pi abc$$\n"
+                "Với bán trục $a = 3, b = 2.2, c = 2$, ta có: $$V = \\frac{4}{3}\\pi \\cdot 3 \\cdot 2.2 \\cdot 2 = 17.6\\pi \\approx 55.29$$\n\n"
+                "```mathviz\n"
+                '{"type": "mathviz.v1", "widget": "geometry_3d", "title": "Khối Elipsoid 3D ($a=3, b=2.2, c=2$)", "solid": "ellipsoid", "dims": {"a": 3, "b": 2.2, "c": 2}, "show_cross_section": true, "cross_section_height": 0}\n'
+                "```"
+            )
+        elif "chóp cụt" in msg_low or "nón cụt" in msg_low:
+            return (
+                "## 🔍 Hình Nón Cụt / Chóp Cụt\n\n"
+                "**Thể tích hình nón cụt** với bán kính đáy trên $r_1=1.5$, đáy dưới $r_2=3$, chiều cao $h=4$:\n"
+                "$$V = \\frac{1}{3}\\pi h (r_1^2 + r_1 r_2 + r_2^2) = \\frac{4}{3}\\pi (2.25 + 4.5 + 9) = 21\\pi \\approx 65.97$$\n\n"
+                "```mathviz\n"
+                '{"type": "mathviz.v1", "widget": "geometry_3d", "title": "Hình nón cụt ($r_1=1.5, r_2=3, h=4$)", "solid": "frustum", "dims": {"r1": 1.5, "r2": 3, "h": 4}, "show_cross_section": true, "cross_section_height": 1}\n'
+                "```"
+            )
+        return (
+            "## 🔍 Bài toán Hình Học Không Gian (Geometry 3D)\n\n"
+            "**Hướng tiếp cận 1: Đại số & Tọa độ Oxyz (Coordinate Method)**\n"
+            "Gắn hệ trục tọa độ $Oxyz$ với gốc tại tâm đáy hình chóp để xác định tọa độ các đỉnh và vector pháp tuyến.\n\n"
+            "**Hướng tiếp cận 2: Hình học Không gian Tổng hợp (Synthetic 3D Geometry)**\n"
+            "Sử dụng công thức thể tích khối chóp:\n"
+            "$$V = \\frac{1}{3} S_{\\text{đáy}} \\cdot h$$\n"
+            "Với $S_{\\text{đáy}} = a^2 = 4^2 = 16$ và chiều cao $h = 6$, ta có $V = \\frac{1}{3} \\cdot 16 \\cdot 6 = 32$.\n\n"
+            "**Hướng tiếp cận 3: Thiết diện & Mặt phẳng cắt (Cross-Section Analysis)**\n"
+            "Khi cắt khối chóp bởi mặt phẳng song song với đáy ở độ cao $h' = 2$, thiết diện thu được là hình vuông đồng dạng.\n\n"
+            "*Em thử kiểm tra lại kết quả và xoay khối 3D bên dưới nhé! 😊*\n\n"
+            "```mathviz\n"
+            '{"type": "mathviz.v1", "widget": "geometry_3d", "title": "Hình chóp tứ giác đều $S.ABCD$, đáy $a=4$, cao $h=6$", "solid": "square_pyramid", "dims": {"a": 4, "h": 6}, "show_cross_section": true, "cross_section_height": 2}\n'
+            "```"
+        )
+
+    elif widget == "geometry_2d":
+        if "phức tạp" in msg_low or "đồng quy" in msg_low or "olympiad" in msg_low or "nhiều lớp" in msg_low or "tiếp xúc" in msg_low or "ảnh" in msg_low:
+            return (
+                "## 🔍 Cấu Trúc Hình Học Phẳng Phức Tạp & Hệ Thống Đường Đồng Quy\n\n"
+                "**1. Phân tích cấu trúc hình học**\n"
+                "Cho $\\triangle ABC$ nội tiếp đường tròn $(O)$, trực tâm $H$, tâm ngoại tiếp $O$, tâm nội tiếp $I$.\n"
+                "Các đường cao $AD, BE, CF$ đồng quy tại trực tâm $H$. Đoạn thẳng $EF$ nối hai chân đường cao tạo tam giác trực tâm $\\triangle DEF$.\n"
+                "Các đường thẳng $AP, AQ, PE, QD$ và các giao điểm $M, N, P, Q, K, L, S$ tạo thành mạng lưới các đường đồng quy và thẳng hàng kinh điển.\n\n"
+                "**2. Hệ thống đường liên kết & Đo góc tương tác**\n"
+                "Mô hình bên dưới tái hiện đầy đủ các đoạn thẳng liên kết, góc vuông $90^\\circ$ tại các chân đường cao và cho phép em kéo-nối các điểm để khám phá thêm các tính chất hình học!\n\n"
+                "*Em có thể kéo-thả giữa 2 điểm bất kỳ để vẽ thêm đường nối và xem góc đo tự động! 🎯*\n\n"
+                "```mathviz\n"
+                "{\n"
+                '  "type": "mathviz.v1",\n'
+                '  "widget": "geometry_2d",\n'
+                '  "title": "Cấu trúc hình học phẳng phức tạp $\\\\triangle ABC$ với các đường đồng quy & trực tâm $H$",\n'
+                '  "mode": "composite",\n'
+                '  "layers": [\n'
+                '    {\n'
+                '      "kind": "polygon",\n'
+                '      "points": [{"id": "A", "x": -1.0, "y": 3.5}, {"id": "B", "x": -2.5, "y": -1.8}, {"id": "C", "x": 3.0, "y": -1.8}],\n'
+                '      "fill": "rgba(59, 130, 246, 0.06)",\n'
+                '      "color": "#39FF14",\n'
+                '      "strokeWidth": 2.0\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "circle",\n'
+                '      "center": {"x": 0.25, "y": 0.28},\n'
+                '      "r": 3.45,\n'
+                '      "color": "#3b82f6",\n'
+                '      "label": "Đường tròn (O)",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "circle",\n'
+                '      "center": {"x": -1.0, "y": 1.42},\n'
+                '      "r": 2.08,\n'
+                '      "color": "#ec4899",\n'
+                '      "label": "Đường tròn (AEF)",\n'
+                '      "style": "dashed"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "A", "x": -1.0, "y": 3.5},\n'
+                '      "to": {"id": "D", "x": -1.0, "y": -1.8},\n'
+                '      "color": "#f43f5e",\n'
+                '      "label": "Đường cao AD",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "B", "x": -2.5, "y": -1.8},\n'
+                '      "to": {"id": "E", "x": 1.0, "y": 0.85},\n'
+                '      "color": "#f43f5e",\n'
+                '      "label": "Đường cao BE",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "C", "x": 3.0, "y": -1.8},\n'
+                '      "to": {"id": "F", "x": -2.09, "y": -0.36},\n'
+                '      "color": "#f43f5e",\n'
+                '      "label": "Đường cao CF",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "F", "x": -2.09, "y": -0.36},\n'
+                '      "to": {"id": "E", "x": 1.0, "y": 0.85},\n'
+                '      "color": "#00E5FF",\n'
+                '      "label": "Đoạn FE",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "P", "x": -5.8, "y": -1.8},\n'
+                '      "to": {"id": "E", "x": 1.0, "y": 0.85},\n'
+                '      "color": "#a855f7",\n'
+                '      "label": "Đoạn PE",\n'
+                '      "style": "dashed"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "A", "x": -1.0, "y": 3.5},\n'
+                '      "to": {"id": "P", "x": -5.8, "y": -1.8},\n'
+                '      "color": "#e2e8f0",\n'
+                '      "label": "Cát tuyến AP",\n'
+                '      "style": "dashed"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "A", "x": -1.0, "y": 3.5},\n'
+                '      "to": {"id": "K", "x": 0.2, "y": -1.8},\n'
+                '      "color": "#FFD400",\n'
+                '      "label": "Đoạn AK",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "E", "x": 1.0, "y": 0.85},\n'
+                '      "to": {"id": "Q", "x": 2.5, "y": 1.44},\n'
+                '      "color": "#00E5FF",\n'
+                '      "label": "FE kéo dài Q",\n'
+                '      "style": "dashed"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "points",\n'
+                '      "data": [\n'
+                '        {"id": "A", "x": -1.0, "y": 3.5, "color": "#f0f6fc"},\n'
+                '        {"id": "B", "x": -2.5, "y": -1.8, "color": "#f0f6fc"},\n'
+                '        {"id": "C", "x": 3.0, "y": -1.8, "color": "#f0f6fc"},\n'
+                '        {"id": "D", "x": -1.0, "y": -1.8, "color": "#FFD400"},\n'
+                '        {"id": "E", "x": 1.0, "y": 0.85, "color": "#FFD400"},\n'
+                '        {"id": "F", "x": -2.09, "y": -0.36, "color": "#FFD400"},\n'
+                '        {"id": "H", "x": -1.0, "y": -0.67, "color": "#f43f5e"},\n'
+                '        {"id": "O", "x": 0.25, "y": 0.28, "color": "#3b82f6"},\n'
+                '        {"id": "I", "x": -1.0, "y": 1.42, "color": "#ec4899"},\n'
+                '        {"id": "J", "x": -1.0, "y": 0.07, "color": "#00E5FF"},\n'
+                '        {"id": "M", "x": -0.55, "y": 0.25, "color": "#a855f7"},\n'
+                '        {"id": "L", "x": 1.0, "y": -0.48, "color": "#a855f7"},\n'
+                '        {"id": "K", "x": 0.2, "y": -1.8, "color": "#FFD400"},\n'
+                '        {"id": "P", "x": -5.8, "y": -1.8, "color": "#f0f6fc"},\n'
+                '        {"id": "Q", "x": 2.5, "y": 1.44, "color": "#f0f6fc"},\n'
+                '        {"id": "G", "x": 1.25, "y": 3.25, "color": "#f0f6fc"}\n'
+                '      ]\n'
+                '    }\n'
+                '  ]\n'
+                "}\n"
+                "```"
+            )
+        elif "elip" in msg_low or "ellipse" in msg_low:
+            return (
+                "## 🔍 Hình Elip Chính Tắc $\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1$\n\n"
+                "**1. Các thông số đặc trưng**\n"
+                "- Độ dài bán trục lớn: $a = 4$\n"
+                "- Độ dài bán trục bé: $b = 2.5$\n"
+                "- Tiêu cự: $2c = 2\\sqrt{a^2 - b^2} = 2\\sqrt{16 - 6.25} = 2\\sqrt{9.75} \\approx 6.24$\n"
+                "- Tọa độ 2 tiêu điểm: $F_1(-3.12, 0)$ và $F_2(3.12, 0)$\n"
+                "- Tâm sai: $e = \\frac{c}{a} = \\frac{3.12}{4} = 0.78 < 1$\n\n"
+                "**2. Diện tích hình Elip**\n"
+                "$$S = \\pi \\cdot a \\cdot b = \\pi \\cdot 4 \\cdot 2.5 = 10\\pi \\approx 31.42$$\n\n"
+                "*Em có thể kéo-thả tiêu điểm hoặc thanh trượt bán trục trên widget bên dưới! 🎯*\n\n"
+                "```mathviz\n"
+                '{"type": "mathviz.v1", "widget": "geometry_2d", "title": "Hình Elip $(E): \\\\frac{x^2}{16} + \\\\frac{y^2}{6.25} = 1$", "mode": "ellipse", "center": {"x": 0, "y": 0}, "a": 4, "b": 2.5}\n'
+                "```"
+            )
+        elif "đa giác" in msg_low or "lục giác" in msg_low or "polygon" in msg_low:
+            return (
+                "## 🔍 Đa Giác Đều & Góc Trong\n\n"
+                "**1. Tính chất đa giác đều $n = 6$ cạnh (Lục giác đều)**\n"
+                "- Tổng các góc trong: $(n - 2) \\cdot 180^\\circ = 4 \\cdot 180^\\circ = 720^\\circ$\n"
+                "- Mỗi góc trong: $\\alpha = \\frac{720^\\circ}{6} = 120^\\circ$\n"
+                "- Diện tích đa giác đều bán kính $R = 3.5$:\n"
+                "$$S = \\frac{1}{2} n R^2 \\sin\\left(\\frac{2\\pi}{n}\\right) = \\frac{1}{2} \\cdot 6 \\cdot 12.25 \\cdot \\sin(60^\\circ) = 36.75 \\cdot \\frac{\\sqrt{3}}{2} \\approx 31.83$$\n\n"
+                "```mathviz\n"
+                '{"type": "mathviz.v1", "widget": "geometry_2d", "title": "Lục giác đều $n=6, R=3.5$", "mode": "polygon", "center": {"x": 0, "y": 0}, "sides": 6, "radius": 3.5}\n'
+                "```"
+            )
+        return (
+            "## 🔍 Hình Học Phẳng & Vectơ\n\n"
+            "**Hướng tiếp cận 1: Định lý Cosin & Sin (Trigonometric Laws)**\n"
+            "Trong $\\triangle ABC$, ta có: $a^2 = b^2 + c^2 - 2bc\\cos A$ và $\\frac{a}{\\sin A} = 2R$.\n\n"
+            "**Hướng tiếp cận 2: Tọa độ & Vectơ (Vector Geometry)**\n"
+            "Trọng tâm $G = \\left(\\frac{x_A+x_B+x_C}{3}, \\frac{y_A+y_B+y_C}{3}\\right)$.\n\n"
+            "*Em có thể kéo-thả các đỉnh của hình phẳng trên khung vẽ bên dưới! 📐*\n\n"
+            "```mathviz\n"
+            '{"type": "mathviz.v1", "widget": "geometry_2d", "title": "$\\\\triangle ABC$ và Trọng tâm $G$", "mode": "triangle", "points": [{"id": "A", "x": -3, "y": -2}, {"id": "B", "x": 3, "y": -2}, {"id": "C", "x": 0, "y": 3}], "measurements": {"show_side_lengths": true, "show_angles": true, "show_centroid_medians": true, "show_circumcircle": false}, "transform": {"kind": "rotate", "params": {"angle": 60}, "center": "centroid"}}\n'
+            "```"
+        )
+
+    elif widget == "inequality_region":
+        return (
+            "## 🔍 Miền Nghiệm Hệ Bất Phương Trình Bậc Nhất 2 Ẩn\n\n"
+            "**Hướng tiếp cận 1: Vẽ các đường thẳng biên (Boundary Lines)**\n"
+            "Vẽ các đường thẳng $x + y = 4$, $x - y = -1$, $x = 0$, $y = 0$.\n\n"
+            "**Hướng tiếp cận 2: Xác định nửa mặt phẳng nghiệm (Feasible Region)**\n"
+            "Thử điểm gốc tọa độ $O(0, 0)$ để xác định miền nghiệm chung của hệ.\n\n"
+            "```mathviz\n"
+            '{"type": "mathviz.v1", "widget": "inequality_region", "title": "Miền nghiệm hệ bất phương trình", "inequalities": [{"expr": "x + y \\\\le 4", "color": "#39FF14"}, {"expr": "x - y \\\\ge -1", "color": "#00E5FF"}, {"expr": "x \\\\ge 0", "color": "#FFD400"}, {"expr": "y \\\\ge 0", "color": "#FF3CAC"}], "domain": {"x": [-2, 6], "y": [-2, 6]}, "highlight_feasible_region": true, "vertices_of_region": [[0, 0], [4, 0], [1.5, 2.5], [0, 4]]}\n'
+            "```"
+        )
+    elif widget == "venn_sets":
+        return (
+            "## 🔍 Tập Hợp & Các Phép Toán Trên Tập Hợp\n\n"
+            "**Giao của hai tập hợp**: $A \\cap B = \\{x \\mid x \\in A \\text{ và } x \\in B\\}$.\n"
+            "**Hợp của hai tập hợp**: $A \\cup B = \\{x \\mid x \\in A \\text{ hoặc } x \\in B\\}$.\n\n"
+            "```mathviz\n"
+            '{"type": "mathviz.v1", "widget": "venn_sets", "title": "$A \\\\cap B$", "sets": [{"id": "A", "label": {"vi": "Tập A", "en": "Set A"}, "color": "#39FF14", "elements": [1, 2, 3, 4]}, {"id": "B", "label": {"vi": "Tập B", "en": "Set B"}, "color": "#00E5FF", "elements": [3, 4, 5, 6]}], "highlight_operation": "intersection"}\n'
+            "```"
+        )
+    elif widget == "sequence_series":
+        return (
+            "## 🔍 Cấp Số Cộng & Cấp Số Nhân\n\n"
+            "Số hạng tổng quát cấp số cộng: $u_n = u_1 + (n - 1)d$.\n"
+            "Tổng $n$ số hạng đầu tiên: $S_n = \\frac{n(u_1 + u_n)}{2} = \\frac{n[2u_1 + (n - 1)d]}{2}$.\n\n"
+            "```mathviz\n"
+            '{"type": "mathviz.v1", "widget": "sequence_series", "title": "Cấp số cộng $u_n = u_1 + (n-1)d$", "kind": "arithmetic", "params": {"u1": {"min": -10, "max": 10, "default": 2, "step": 1}, "d_or_q": {"min": -5, "max": 5, "default": 3, "step": 1}, "n_terms": {"min": 3, "max": 30, "default": 10, "step": 1}}, "show_partial_sum": true, "highlight_term": 5}\n'
+            "```"
+        )
+    elif widget == "complex_plane":
+        return (
+            "## 🔍 Số Phức & Mặt Phẳng Phức\n\n"
+            "Số phức $z = a + bi$ ($a, b \\in \\mathbb{R}$, $i^2 = -1$). Môđun: $|z| = \\sqrt{a^2 + b^2}$.\n"
+            "Nhân số phức $z$ với $i$ tương đương với phép quay $90^\\circ$ quanh gốc tọa độ $O$.\n\n"
+            "```mathviz\n"
+            '{"type": "mathviz.v1", "widget": "complex_plane", "title": "$z = 3 + 4i,\\\\ |z| = 5$", "points": [{"re": 3, "im": 4, "label": {"vi": "z", "en": "z"}, "color": "#39FF14"}], "show_modulus_argument": true, "operation": {"kind": "multiply", "with": {"re": 0, "im": 1}}}\n'
+            "```"
+        )
+    elif widget == "distribution":
+        return (
+            "## 🔍 Xác Suất & Phân Phối Nhị Thức $B(n, p)$\n\n"
+            "Công thức xác suất Bernoulli: $P(X = k) = C_n^k p^k (1 - p)^{n - k}$.\n"
+            "Kỳ vọng $E(X) = np$, phương sai $V(X) = np(1 - p)$.\n\n"
+            "```mathviz\n"
+            '{"type": "mathviz.v1", "widget": "distribution", "title": "Phân phối nhị thức $B(10,\\\\ 0.5)$", "kind": "binomial", "params": {"n": {"min": 1, "max": 40, "default": 10, "step": 1}, "p": {"min": 0, "max": 1, "default": 0.5, "step": 0.01}}, "highlight_k": 5}\n'
+            "```"
+        )
+
+    return (
+        "## 🔍 Hướng Dẫn Giải Toán Học DuoMCB\n\n"
+        "**Bước 1: Phân tích giả thiết và mục tiêu**\n"
+        "Xác định rõ các đại lượng đã cho và yêu cầu cần tìm.\n\n"
+        "**Bước 2: Áp dụng công thức & định lý trọng tâm**\n"
+        "Biến đổi phương trình từng bước theo quy tắc toán học.\n\n"
+        "$$x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$$\n\n"
+        "**Bước 3: Kết luận**\n"
+        "*Em hãy thử áp dụng vào bài toán cụ thể nhé! 😊*"
+    )
+
+
+def detect_widget(user_message: str, matched_node_ids: list | None = None) -> str | None:
+    """Detect which mathviz widget to use for this message.
+    Priority 1: graph node mapping (exact, fast).
+    Priority 2: 3D solid keyword check (ensures 'hình chóp tứ giác' routes to geometry_3d rather than geometry_2d).
+    Priority 3: other keyword scan on user message.
+    Returns None if no widget detected — prompt will NOT include mathviz section.
+    """
+    # Priority 1: use graph-matched node IDs
+    if matched_node_ids:
+        for node_id in matched_node_ids:
+            widget = GRAPHABLE_CONCEPT_IDS.get(node_id)
+            if widget:
+                return widget
+
+    # Priority 2: keyword scan
+    msg = user_message.lower()
+
+    # Prioritize 3D solid keywords over 2D polygon keywords
+    if any(kw in msg for kw in _WIDGET_KEYWORDS.get("geometry_3d", [])):
+        return "geometry_3d"
+
+    for widget, kws in _WIDGET_KEYWORDS.items():
+        if widget == "geometry_3d":
+            continue
+        if any(kw in msg for kw in kws):
+            return widget
+    return None
+
+
+# ── MathViz Visual Rules & Per-Widget Prompt Snippets ─────────────────────────
+_VISUAL_RULES = (
+    "\n\n## QUY TẮC TRỰC QUAN HÓA:\n"
+    "- Nếu nội dung câu hỏi có hàm số/hình/số liệu CỤ THỂ để vẽ → kết thúc câu trả lời bằng "
+    "ĐÚNG MỘT khối ```mathviz chứa JSON hợp lệ theo schema bên dưới.\n"
+    "- Nếu câu hỏi thuần lý thuyết/định nghĩa, không có gì cụ thể để vẽ → KHÔNG thêm khối này.\n"
+    "- Khối ```mathviz LUÔN là phần cuối cùng, không kèm lời dẫn, không xen giữa các đoạn giải thích.\n"
+    "- Điền toàn bộ số liệu (default, points, dims, params...) khớp ĐÚNG với dữ liệu thật trong đề "
+    "bài — TUYỆT ĐỐI không bịa số liệu mẫu khác với đề.\n"
+    "- Bám sát đúng tên khóa (key) trong schema, không tự ý đổi tên hay thêm khóa lạ.\n"
+)
+
+_WIDGET_PROMPT_SNIPPETS: dict[str, str] = {
+
+"function_plot": '''
+## SCHEMA cho widget "function_plot":
+{"type":"mathviz.v1","widget":"function_plot","title":"$...$","expr":"a*x^2+b*x+c",
+ "params":{"a":{"min":...,"max":...,"default":...,"step":...},"b":{...},"c":{...}},
+ "overlays":[{"kind":"tangent_at","x0":...}|{"kind":"shade_area","from":...,"to":...}|{"kind":"extrema"}|{"kind":"asymptote","x":...}],
+ "x_domain":[min,max]}
+Ví dụ: {"type":"mathviz.v1","widget":"function_plot","title":"$y=x^2-4x+3$",
+ "expr":"a*x^2+b*x+c","params":{"a":{"min":-3,"max":3,"default":1,"step":0.1},
+ "b":{"min":-6,"max":6,"default":-4,"step":0.1},"c":{"min":-6,"max":6,"default":3,"step":0.1}},
+ "overlays":[{"kind":"extrema"}],"x_domain":[-2,6]}
+''',
+
+"unit_circle_wave": '''
+## SCHEMA cho widget "unit_circle_wave":
+{"type":"mathviz.v1","widget":"unit_circle_wave","title":"$...$",
+ "function":{"preset":"sin(x)"|"cos(x)"|"custom","custom_expr":null},
+ "params":{"amplitude":{...},"frequency":{...},"phase":{...},"vertical_shift":{...},"x_range":{...},"speed":{...}},
+ "radius_expr":"1","display":{"show_sine_line":true,"show_cosine_line":true,"graph_color":"#e6533c"}}
+Ví dụ: {"type":"mathviz.v1","widget":"unit_circle_wave","title":"$y=2\\\\sin(3x-\\\\pi/4)$",
+ "function":{"preset":"sin(x)","custom_expr":null},
+ "params":{"amplitude":{"min":0,"max":3,"default":2,"step":0.1},
+ "frequency":{"min":0.1,"max":5,"default":3,"step":0.05},
+ "phase":{"min":-3.14,"max":3.14,"default":-0.7854,"step":0.01},
+ "vertical_shift":{"min":-3,"max":3,"default":0,"step":0.1},
+ "x_range":{"min":1,"max":4,"default":2,"step":1},"speed":{"min":0,"max":3,"default":1,"step":0.1}},
+ "radius_expr":"1","display":{"show_sine_line":true,"show_cosine_line":true,"graph_color":"#e6533c"}}
+''',
+
+"geometry_2d": '''
+## SCHEMA cho widget "geometry_2d":
+1. Cấu hình nhiều lớp chồng nhau (Được KHUYÊN DÙNG cho hình học phẳng Olympiad/hình vẽ phức tạp có đường tròn + tam giác + đường thẳng + điểm):
+{"type":"mathviz.v1","widget":"geometry_2d","title":"$...$",
+ "layers":[
+   {"kind":"circle","center":{"x":0,"y":0},"r":3.5,"label":"(O)","color":"#3b82f6"},
+   {"kind":"polygon","points":[{"id":"A","x":0,"y":3.5},{"id":"B","x":-3.03,"y":-1.75},{"id":"C","x":3.03,"y":-1.75}],"color":"#39FF14"},
+   {"kind":"line","from":{"x":0,"y":3.5},"to":{"x":0,"y":-1.75},"label":"AH","style":"dashed","color":"#f43f5e"},
+   {"kind":"line","from":{"x":-4.5,"y":-4},"to":{"x":3.03,"y":-1.75},"label":"BC","color":"#94a3b8"},
+   {"kind":"points","data":[{"id":"H","x":0,"y":-1.75},{"id":"O","x":0,"y":0},{"id":"E","x":1.5,"y":0.8},{"id":"T","x":0,"y":-4.5}]}
+ ]}
+
+2. Cấu hình đơn hình (Tam giác, tứ giác, elip, đa giác đều):
+{"type":"mathviz.v1","widget":"geometry_2d","title":"$...$",
+ "mode":"triangle"|"quadrilateral"|"circle"|"ellipse"|"polygon",
+ "points":[{"id":"A","x":...,"y":...},...], // bắt buộc khi mode là triangle, quadrilateral
+ "measurements":{"show_side_lengths":true,"show_angles":true,"show_centroid_medians":false,"show_orthocenter":false,"show_circumcircle":false,"show_incenter":false,"show_excenters":false}}
+Ví dụ Tam giác & 4 Tâm (Trọng tâm G, Trực tâm H, Tâm ngoại tiếp O, Tâm nội tiếp I):
+{"type":"mathviz.v1","widget":"geometry_2d","title":"$\\\\triangle ABC$ và Các Tâm Hình Học",
+ "mode":"triangle","points":[{"id":"A","x":-3,"y":-2},{"id":"B","x":3,"y":-2},{"id":"C","x":0,"y":3}],
+ "measurements":{"show_side_lengths":true,"show_angles":true,"show_centroid_medians":true,"show_orthocenter":true,"show_circumcircle":true,"show_incenter":true}}
+''',
+
+
+"geometry_3d": '''
+## SCHEMA cho widget "geometry_3d":
+{"type":"mathviz.v1","widget":"geometry_3d","title":"$...$",
+ "solid":"cuboid"|"square_pyramid"|"triangular_pyramid"|"triangular_prism"|"cone"|"cylinder"|"regular_polygon"|"sphere"|"ellipsoid"|"frustum"|"mobius_strip"|"klein_bottle"|"torus"|"tesseract_4d"|"boys_surface"|"cross_cap"|"trefoil_knot",
+ "dims":{...chỉ các khóa liên quan: a,b,h cho cuboid / a,h cho square_pyramid,triangular_pyramid,triangular_prism / r,h cho cone,cylinder / r cho sphere / a,b,c cho ellipsoid / r1,r2,h cho frustum / r,h,n cho regular_polygon / w cho mobius_strip / r cho torus,klein_bottle,trefoil_knot / angle_4d cho tesseract_4d},
+ "show_cross_section":false,"cross_section_height":0}
+Ví dụ: {"type":"mathviz.v1","widget":"geometry_3d","title":"Hình chóp tứ giác đều $S.ABCD$, đáy $a=4$, cao $h=6$",
+ "solid":"square_pyramid","dims":{"a":4,"h":6},"show_cross_section":true,"cross_section_height":2}
+Ví dụ Bình Klein 3D: {"type":"mathviz.v1","widget":"geometry_3d","title":"Mặt topology Bình Klein 3D (Klein Bottle)",
+ "solid":"klein_bottle","dims":{"r":2}}
+Ví dụ Siêu Lập Phương 4D (Tesseract): {"type":"mathviz.v1","widget":"geometry_3d","title":"Siêu lập phương 4D (Tesseract / Hypercube)",
+ "solid":"tesseract_4d","dims":{"r":2,"angle_4d":0}}
+Ví dụ Mặt Boy (Boy's Surface): {"type":"mathviz.v1","widget":"geometry_3d","title":"Mặt Boy (Boy's Surface - Kỳ quan Topology)",
+ "solid":"boys_surface","dims":{"r":2}}
+Ví dụ Nút Trefoil: {"type":"mathviz.v1","widget":"geometry_3d","title":"Nút Trefoil Knot 3D",
+ "solid":"trefoil_knot","dims":{"r":2}}
+Ví dụ Dải Möbius 3D: {"type":"mathviz.v1","widget":"geometry_3d","title":"Dải Möbius 3D",
+ "solid":"mobius_strip","dims":{"w":1.5}}
+''',
+
+"inequality_region": '''
+## SCHEMA cho widget "inequality_region":
+{"type":"mathviz.v1","widget":"inequality_region","title":"$...$",
+ "inequalities":[{"expr":"x + y \\\\le 4","color":"#hex"},...],
+ "domain":{"x":[min,max],"y":[min,max]},"highlight_feasible_region":true,
+ "vertices_of_region":[[x1,y1],[x2,y2],...]}
+Ví dụ: {"type":"mathviz.v1","widget":"inequality_region","title":"Miền nghiệm hệ bất phương trình",
+ "inequalities":[{"expr":"x + y \\\\le 4","color":"#39FF14"},{"expr":"x - y \\\\ge -1","color":"#00E5FF"},
+ {"expr":"x \\\\ge 0","color":"#FFD400"},{"expr":"y \\\\ge 0","color":"#FF3CAC"}],
+ "domain":{"x":[-2,6],"y":[-2,6]},"highlight_feasible_region":true,
+ "vertices_of_region":[[0,0],[4,0],[1.5,2.5],[0,4]]}
+''',
+
+"venn_sets": '''
+## SCHEMA cho widget "venn_sets":
+{"type":"mathviz.v1","widget":"venn_sets","title":"$...$",
+ "sets":[{"id":"A","label":{"vi":"...","en":"..."},"color":"#hex","elements":[...]}, ...(2-3 tập)],
+ "highlight_operation":"intersection"|"union"|"difference"|"complement"|"none"}
+Ví dụ: {"type":"mathviz.v1","widget":"venn_sets","title":"$A \\\\cap B$",
+ "sets":[{"id":"A","label":{"vi":"Tập A","en":"Set A"},"color":"#39FF14","elements":[1,2,3,4]},
+ {"id":"B","label":{"vi":"Tập B","en":"Set B"},"color":"#00E5FF","elements":[3,4,5,6]}],
+ "highlight_operation":"intersection"}
+''',
+
+"sequence_series": '''
+## SCHEMA cho widget "sequence_series":
+{"type":"mathviz.v1","widget":"sequence_series","title":"$...$","kind":"arithmetic"|"geometric",
+ "params":{"u1":{...},"d_or_q":{...},"n_terms":{...}},"show_partial_sum":true,"highlight_term":null}
+Ví dụ: {"type":"mathviz.v1","widget":"sequence_series","title":"Cấp số cộng $u_n=u_1+(n-1)d$",
+ "kind":"arithmetic","params":{"u1":{"min":-10,"max":10,"default":2,"step":1},
+ "d_or_q":{"min":-5,"max":5,"default":3,"step":1},"n_terms":{"min":3,"max":30,"default":10,"step":1}},
+ "show_partial_sum":true,"highlight_term":5}
+''',
+
+"complex_plane": '''
+## SCHEMA cho widget "complex_plane":
+{"type":"mathviz.v1","widget":"complex_plane","title":"$...$",
+ "points":[{"re":...,"im":...,"label":{"vi":"...","en":"..."},"color":"#hex"},...],
+ "show_modulus_argument":true,"operation":{"kind":"add"|"multiply"|"conjugate","with":{"re":...,"im":...}}}
+Ví dụ: {"type":"mathviz.v1","widget":"complex_plane","title":"$z=3+4i,\\\\ |z|=5$",
+ "points":[{"re":3,"im":4,"label":{"vi":"z","en":"z"},"color":"#39FF14"}],
+ "show_modulus_argument":true,"operation":{"kind":"multiply","with":{"re":0,"im":1}}}
+''',
+
+"distribution": '''
+## SCHEMA cho widget "distribution":
+{"type":"mathviz.v1","widget":"distribution","title":"$...$","kind":"binomial"|"normal"|"uniform"|"histogram",
+ "params":{...tùy kind: n,p cho binomial / mean,stddev cho normal},"highlight_k":null}
+Ví dụ: {"type":"mathviz.v1","widget":"distribution","title":"Phân phối nhị thức $B(10,\\\\ 0.5)$",
+ "kind":"binomial","params":{"n":{"min":1,"max":40,"default":10,"step":1},
+ "p":{"min":0,"max":1,"default":0.5,"step":0.01}},"highlight_k":5}
+''',
+}
+
+# ── MathViz Validation & Retry Helpers ───────────────────────────────────────
+import re as _re_mathviz
+
+_MATHVIZ_EXPR_RE = _re_mathviz.compile(r'^[0-9a-zA-Z\s\.\+\-\*\/\^\(\),πθ]*$')
+
+# Risk 2 mitigation: best-effort JSON repair for near-valid mathviz blocks
+# (trailing commas, unescaped quotes, truncated output). Defensive import —
+# mirrors the _CV2_AVAILABLE / _TORCH_AVAILABLE pattern already used in
+# video_enhancer.py — so a not-yet-deployed dependency degrades to the old
+# behavior (drop the block) instead of crashing the whole endpoint.
+try:
+    from json_repair import repair_json as _repair_json
+    _JSON_REPAIR_AVAILABLE = True
+except ImportError:
+    _JSON_REPAIR_AVAILABLE = False
+
+_VALID_3D_SOLIDS = {
+    "cuboid", "square_pyramid", "triangular_pyramid", "triangular_prism",
+    "cone", "cylinder", "regular_polygon", "sphere", "ellipsoid", "frustum",
+    "mobius_strip", "klein_bottle", "torus",
+    "tesseract_4d", "boys_surface", "cross_cap", "trefoil_knot"
+}
+_VALID_2D_MODES = {"triangle", "quadrilateral", "circle", "ellipse", "polygon", "composite"}
+
+_REQUIRED_KEYS: dict[str, set] = {
+    "function_plot":     {"expr", "params"},
+    "unit_circle_wave":  {"function", "params"},
+    "geometry_2d":       {"mode"},
+    "geometry_3d":       {"solid", "dims"},
+    "inequality_region": {"inequalities", "domain"},
+    "venn_sets":         {"sets"},
+    "sequence_series":   {"kind", "params"},
+    "complex_plane":     {"points"},
+    "distribution":      {"kind", "params"},
+}
+
+def validate_mathviz(widget: str, data: dict) -> list[str]:
+    """Returns a list of error strings (empty = valid)."""
+    errors: list[str] = []
+    if data.get("type") != "mathviz.v1":
+        errors.append("thiếu hoặc sai 'type': phải là 'mathviz.v1'")
+    if data.get("widget") != widget:
+        errors.append(f"'widget' phải đúng bằng '{widget}'")
+    
+    # For geometry_2d, if layers is present, mode is optional
+    if widget == "geometry_2d" and ("layers" in data or data.get("mode") == "composite"):
+        pass
+    else:
+        missing = _REQUIRED_KEYS.get(widget, set()) - data.keys()
+        if missing:
+            errors.append(f"thiếu khóa bắt buộc: {sorted(missing)}")
+            
+    if widget == "geometry_3d" and data.get("solid") not in _VALID_3D_SOLIDS:
+        errors.append(f"giá trị 'solid' không hợp lệ: '{data.get('solid')}'. Phải thuộc {_VALID_3D_SOLIDS}")
+    if widget == "geometry_2d" and "mode" in data and data.get("mode") not in _VALID_2D_MODES:
+        errors.append(f"giá trị 'mode' không hợp lệ: '{data.get('mode')}'. Phải thuộc {_VALID_2D_MODES}")
+
+    return errors
+
+
+
+def _extract_mathviz_block(raw: str) -> tuple[str, dict | None]:
+    """
+    Split raw LLM response into (text_part, mathviz_dict | None).
+
+    Risk 2 mitigation: previously, any JSON error inside the fenced block
+    (trailing comma, unescaped quote, a truncated response cut off mid-
+    object) silently discarded the ENTIRE widget — the reply would fall
+    back to plain text with no visual, with no attempt to fix it. Now a
+    parse failure first tries json_repair before giving up, so a nearly-
+    valid block still renders instead of vanishing.
+    """
+    import json as _json
+    match = _re_mathviz.search(r'```mathviz\s*\n?([\s\S]*?)```', raw)
+    if not match:
+        return raw, None
+    text = raw[:match.start()].rstrip() + raw[match.end():].lstrip()
+    fenced = match.group(1).strip()
+    try:
+        data = _json.loads(fenced)
+        return text, data
+    except Exception:
+        pass
+    if _JSON_REPAIR_AVAILABLE:
+        try:
+            repaired = _repair_json(fenced, return_objects=True)
+            if isinstance(repaired, str):
+                repaired = _json.loads(repaired)
+            if isinstance(repaired, dict) and repaired:
+                logger.info("[MathViz] json_repair fixed a malformed mathviz block.")
+                return text, repaired
+        except Exception as e_repair:
+            logger.debug(f"[MathViz] json_repair could not fix the block: {e_repair}")
+    return raw, None
+
+
+async def _repair_mathviz_with_free_openrouter(widget: str, broken_json: str, errors: list[str]) -> dict | None:
+    """
+    Risk 2 escalation tier: called only when the same-model Gemini retry in
+    chat() still didn't produce a schema-valid mathviz block. Asks a FREE
+    OpenRouter model for ONLY the corrected JSON object — a narrow repair
+    task, not a full solution regeneration, so it stays cheap (low
+    max_tokens, temperature=0) and works even if Gemini itself is the one
+    that's rate-limited. Returns the corrected dict, or None if this tier
+    also fails (caller keeps the original _viz_block and simply sends the
+    reply without a visual, same graceful degradation as before this patch).
+    """
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not openrouter_key:
+        return None
+    repair_model = os.environ.get("OPENROUTER_VISION_MODEL", "qwen/qwen2.5-vl-72b-instruct:free")
+    prompt = (
+        f"Sua loi JSON sau cho khoi mathviz widget '{widget}'. "
+        f"Loi: {'; '.join(errors)}. "
+        f"CHI tra ve dung 1 object JSON hop le, khong them chu, khong markdown fences.\n\n"
+        f"JSON goc:\n{broken_json}"
+    )
+    headers = {
+        "Authorization": f"Bearer {openrouter_key}",
+        "HTTP-Referer": "https://duomath.local",
+        "X-Title": "DuoMath MathViz Repair",
+        "Content-Type": "application/json",
+    }
+    or_payload = {
+        "model": repair_model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.0,
+        "max_tokens": 1500,
+    }
+    raw = ""
+    try:
+        client = await get_http_client()
+        resp = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=or_payload, timeout=30)
+        resp.raise_for_status()
+        raw = resp.json()["choices"][0]["message"]["content"].strip()
+        cleaned = _re_mathviz.sub(r'^```[a-zA-Z]*\n?|```\s*$', '', raw).strip()
+        data = json.loads(cleaned)
+        if not validate_mathviz(widget, data):
+            logger.info(f"[MathViz] Free OpenRouter repair tier fixed widget '{widget}'.")
+            return data
+    except Exception as e:
+        logger.debug(f"[MathViz] Free OpenRouter repair tier failed on first parse: {e}")
+        if raw and _JSON_REPAIR_AVAILABLE:
+            try:
+                repaired = _repair_json(raw, return_objects=True)
+                if isinstance(repaired, str):
+                    repaired = json.loads(repaired)
+                if isinstance(repaired, dict) and not validate_mathviz(widget, repaired):
+                    logger.info(f"[MathViz] Free OpenRouter repair tier fixed widget '{widget}' via json_repair.")
+                    return repaired
+            except Exception as e2:
+                logger.debug(f"[MathViz] json_repair also failed on the repair-tier response: {e2}")
+    return None
 
 
 @lru_cache(maxsize=128)
@@ -830,6 +1648,159 @@ def init_db():
             answer_b64      TEXT DEFAULT '',
             grading         TEXT DEFAULT '{}'
         )""", None),
+        # ── MathMap Comments & Moderation ──
+        ("""CREATE TABLE IF NOT EXISTS mathmap_comments (
+            id                TEXT PRIMARY KEY,
+            mathmap_id        TEXT NOT NULL,
+            user_id           TEXT NOT NULL,
+            author            TEXT NOT NULL,
+            rank              TEXT DEFAULT 'A',
+            parent_comment_id TEXT,
+            body              TEXT NOT NULL,
+            created_at        TEXT NOT NULL,
+            upvotes           INTEGER DEFAULT 0,
+            report_count      INTEGER DEFAULT 0,
+            status            TEXT DEFAULT 'visible'
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS comment_upvotes (
+            user_id    TEXT NOT NULL,
+            comment_id TEXT NOT NULL,
+            PRIMARY KEY (user_id, comment_id)
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS comment_reports (
+            id          TEXT PRIMARY KEY,
+            comment_id  TEXT NOT NULL,
+            reporter_id TEXT NOT NULL,
+            reason      TEXT NOT NULL,
+            detail      TEXT DEFAULT '',
+            created_at  TEXT NOT NULL
+        )""", None),
+        # ── Math Clans & Clan Battles ──
+        ("""CREATE TABLE IF NOT EXISTS clans (
+            id             TEXT PRIMARY KEY,
+            name           TEXT NOT NULL UNIQUE,
+            tag            TEXT NOT NULL,
+            description    TEXT DEFAULT '',
+            crest_gradient TEXT DEFAULT 'linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)',
+            avatar_url     TEXT DEFAULT '',
+            banner_url     TEXT DEFAULT '',
+            privacy        TEXT DEFAULT 'open',
+            level          INTEGER DEFAULT 1,
+            current_xp     INTEGER DEFAULT 0,
+            xp_to_next     INTEGER DEFAULT 1000,
+            total_xp       INTEGER DEFAULT 0,
+            wins           INTEGER DEFAULT 0,
+            losses         INTEGER DEFAULT 0,
+            created_at     TEXT NOT NULL,
+            owner_user_id  TEXT NOT NULL
+        )""", None),
+        ("ALTER TABLE clans ADD COLUMN avatar_url TEXT DEFAULT ''", None),
+        ("ALTER TABLE clans ADD COLUMN banner_url TEXT DEFAULT ''", None),
+        ("""CREATE TABLE IF NOT EXISTS clan_members (
+            clan_id        TEXT NOT NULL,
+            user_id        TEXT NOT NULL,
+            username       TEXT NOT NULL,
+            role           TEXT DEFAULT 'member',
+            rank           TEXT DEFAULT 'A',
+            xp_contributed INTEGER DEFAULT 0,
+            joined_at      TEXT NOT NULL,
+            PRIMARY KEY (clan_id, user_id)
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS clan_battles (
+            id             TEXT PRIMARY KEY,
+            clan_a_id      TEXT NOT NULL,
+            clan_b_id      TEXT NOT NULL,
+            battle_type    TEXT NOT NULL DEFAULT 'realtime',
+            status         TEXT DEFAULT 'active',
+            clan_a_score   INTEGER DEFAULT 0,
+            clan_b_score   INTEGER DEFAULT 0,
+            winner_clan_id TEXT,
+            starts_at      TEXT,
+            ends_at        TEXT,
+            created_at     TEXT NOT NULL
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS clan_messages (
+            id         TEXT PRIMARY KEY,
+            clan_id    TEXT NOT NULL,
+            user_id    TEXT NOT NULL,
+            username   TEXT NOT NULL,
+            avatar_url TEXT DEFAULT '',
+            role       TEXT DEFAULT 'member',
+            message    TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )""", None),
+        # ── Tournaments, Events & Changelog ──
+        ("""CREATE TABLE IF NOT EXISTS tournaments (
+            id               TEXT PRIMARY KEY,
+            title            TEXT NOT NULL,
+            tag              TEXT DEFAULT 'Giải đấu mùa',
+            description      TEXT DEFAULT '',
+            rules            TEXT DEFAULT '',
+            status           TEXT DEFAULT 'upcoming',
+            size             TEXT DEFAULT 'small',
+            xp_multiplier    REAL DEFAULT 1.2,
+            starts_at        TEXT NOT NULL,
+            ends_at          TEXT NOT NULL,
+            play_mode        TEXT DEFAULT 'individual',
+            min_clan_members INTEGER DEFAULT 2,
+            max_participants INTEGER DEFAULT 0,
+            prize_json       TEXT DEFAULT '[]',
+            is_featured      INTEGER DEFAULT 0,
+            created_by       TEXT DEFAULT '',
+            pending_approval INTEGER DEFAULT 0,
+            approved_by      TEXT DEFAULT '',
+            created_at       TEXT NOT NULL
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS tournament_participants (
+            tournament_id  TEXT NOT NULL,
+            user_id        TEXT NOT NULL,
+            username       TEXT NOT NULL,
+            clan_id        TEXT DEFAULT '',
+            score          INTEGER DEFAULT 0,
+            matches_played INTEGER DEFAULT 0,
+            registered_at  TEXT NOT NULL,
+            status         TEXT DEFAULT 'active',
+            PRIMARY KEY (tournament_id, user_id)
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS event_organizers (
+            tournament_id TEXT NOT NULL,
+            user_id       TEXT NOT NULL,
+            username      TEXT NOT NULL,
+            role          TEXT DEFAULT 'organizer',
+            assigned_at   TEXT NOT NULL,
+            PRIMARY KEY (tournament_id, user_id)
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS tournament_rooms (
+            id            TEXT PRIMARY KEY,
+            tournament_id TEXT NOT NULL,
+            host_user_id  TEXT NOT NULL,
+            host_username TEXT NOT NULL,
+            room_mode     TEXT DEFAULT 'individual',
+            clan_a_id     TEXT DEFAULT '',
+            clan_b_id     TEXT DEFAULT '',
+            max_players   INTEGER DEFAULT 2,
+            status        TEXT DEFAULT 'waiting',
+            mathmap_id    TEXT DEFAULT '',
+            created_at    TEXT NOT NULL
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS events (
+            id          TEXT PRIMARY KEY,
+            title       TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            status      TEXT DEFAULT 'Sắp diễn ra',
+            event_date  TEXT NOT NULL,
+            link        TEXT DEFAULT '#rules',
+            created_at  TEXT NOT NULL
+        )""", None),
+        ("""CREATE TABLE IF NOT EXISTS changelog_entries (
+            id          TEXT PRIMARY KEY,
+            date        TEXT NOT NULL,
+            tag         TEXT NOT NULL,
+            tag_label   TEXT NOT NULL,
+            title       TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            created_at  TEXT NOT NULL
+        )""", None),
     ]
     for sql, _ in migrations:
         try:
@@ -960,7 +1931,7 @@ _http_client: httpx.AsyncClient | None = None
 async def get_http_client() -> httpx.AsyncClient:
     global _http_client
     if _http_client is None or _http_client.is_closed:
-        _http_client = httpx.AsyncClient(timeout=httpx.Timeout(connect=3, read=15, write=5, pool=5))
+        _http_client = httpx.AsyncClient(timeout=httpx.Timeout(connect=10, read=90, write=15, pool=15))
     return _http_client
 
 
@@ -1447,164 +2418,89 @@ async def chat(request: Request):
     history = ensure_session(session_id)
     is_viz_request = "visualizer" in user_message or "viz" in user_message or "instructions" in user_message
 
+    gemini_api_key = os.environ.get("GEMINI_API_KEY", "")
+    if not gemini_api_key:
+        logger.warning("[Chat] GEMINI_API_KEY is not set — Gemini calls will fail over to the OpenRouter/local fallback tiers.")
+
+    # Detect mathviz widget from graph nodes + keyword fallback
+    _matched_node_ids = extract_graph_entities(user_message)
+    _widget = detect_widget(user_message, _matched_node_ids)
+
+    # Image pre-processing & Stage 1 Vision Agent (Qwen2.5-VL-72B via OpenRouter)
+    raw_b64 = ""
+    media_type = "image/jpeg"
+    vision_description = None
+
     if image_data:
         if "," in image_data:
-            header, b64 = image_data.split(",", 1)
-            media_type  = header.split(":")[1].split(";")[0]
+            header, raw_b64 = image_data.split(",", 1)
+            media_type = header.split(":")[1].split(";")[0]
         else:
-            b64, media_type = image_data, "image/jpeg"
+            raw_b64 = image_data
 
-        gemini_api_key = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6J0P2bjKP175mWC2WefMm4hejW0sm-PmhEd0iGXt9W1Bg")
-        
-        # Build prompt variant according to mode
-        img_prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "image"
-        system_prompt = cached_system_prompt(img_prompt_variant)
-        
-        if is_viz_request:
-            system_prompt = (
-                "You are an expert mathematical visualizer and graph plotter.\n"
-                "Your task is to analyze the math problem and output ONLY a valid JSON object matching the requested schema.\n"
-                "You MUST ensure that the returned math steps ('stepsVI', 'stepsEN') wrap ALL math symbols, variables, fractions, and equations in dollar signs ($...$ for inline, $$...$$ for block).\n"
-                "You MUST use vibrant neon colors for drawing instructions (lines, shapes, points) instead of plain white/black, label all vertices clearly, and highlight sub-regions.\n"
-                "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
-            )
-            
-        retrieved_kb = retrieve_math_context(user_message)
-        full_system_prompt = (
-            f"{system_prompt}\n\n"
-            f"## REFERENCE MATHEMATICAL KNOWLEDGE (DO NOT COPY DIRECTLY):\n"
-            f"The following context contains formulas and examples for reference. "
-            f"You MUST only use it as a general conceptual reference. "
-            f"NEVER solve or copy the example equations, functions, or numbers from this reference context. "
-            f"Only solve the exact problem and numbers specified in the User Request.\n\n"
-            f"{retrieved_kb}"
-        )
-        
-        # Map conversation history to Gemini structure
-        gemini_contents = []
-        for h in history[-5:]:
-            role = "model" if h["role"] == "assistant" else "user"
-            content = h.get("content") or ""
-            if content.startswith("[Image] "):
-                content = content[8:]
-            if content.strip():
-                gemini_contents.append({
-                    "role": role,
-                    "parts": [{"text": content}]
-                })
-            
-        # Add current user turn with the image
-        gemini_contents.append({
-            "role": "user",
-            "parts": [
-                {"text": user_message},
-                {
-                    "inlineData": {
-                        "mimeType": media_type,
-                        "data": b64
-                    }
-                }
-            ]
-        })
-        
-        history.append({"role": "user", "content": f"[Image] {user_message}"})
-        client = await get_http_client()
-        
-        if use_stream:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:streamGenerateContent?key={gemini_api_key}&alt=sse"
-            payload = {
-                "contents": gemini_contents,
-                "systemInstruction": {
-                    "parts": [{"text": full_system_prompt}]
-                },
-                "generationConfig": {
-                    "temperature": 0.3,
-                    "maxOutputTokens": 2000 if chat_mode in ("solution", "raw_solution") else 1024
-                }
-            }
-            
-            async def generate():
-                full_reply = []
-                try:
-                    async with client.stream("POST", url, json=payload, timeout=30) as resp:
-                        resp.raise_for_status()
-                        async for raw_line in resp.aiter_lines():
-                            if not raw_line:
-                                continue
-                            line = raw_line
-                            if line.startswith("data: "):
-                                data_str = line[6:]
-                                try:
-                                    chunk = json.loads(data_str)
-                                    token = chunk["candidates"][0]["content"]["parts"][0].get("text", "")
-                                    if token:
-                                        full_reply.append(token)
-                                        yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
-                                except Exception:
-                                    continue
-                except Exception as e:
-                    yield f"data: {orjson.dumps({'error': str(e)}).decode()}\n\n"
-                    return
+        # Risk 3 mitigation: aspect-preserving resize + letterbox pad BEFORE
+        # the bytes reach OCR, the Gemini inlineData fallback below, or the
+        # vision agent. A raw `.resize()` to a fixed box (what happened
+        # implicitly downstream before this patch, via whatever the phone
+        # camera/screenshot's native aspect ratio was) stretches circles into
+        # ellipses and skews every angle; this keeps geometry undistorted and
+        # also gives image/preprocessing.py's sha256 a stable cache key for
+        # Risk 5. media_type is forced to JPEG since that's what comes out.
+        try:
+            raw_b64, _img_meta = preprocess_image_b64(raw_b64)
+            media_type = "image/jpeg"
+        except Exception as e_prep:
+            logger.debug(f"Image preprocessing skipped, using original bytes: {e_prep}")
 
-                reply_text = "".join(full_reply)
-                history.append({"role": "assistant", "content": reply_text})
-                save_history(session_id, history)
-                yield f"data: {orjson.dumps({'done': True, 'session_id': session_id}).decode()}\n\n"
-
-            return StreamingResponse(
-                generate(),
-                media_type="text/event-stream",
-                headers={
-                    "Cache-Control": "no-cache",
-                    "X-Accel-Buffering": "no",
-                    "Access-Control-Allow-Origin": "*",
-                },
-            )
-        else:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key={gemini_api_key}"
-            payload = {
-                "contents": gemini_contents,
-                "systemInstruction": {
-                    "parts": [{"text": full_system_prompt}]
-                },
-                "generationConfig": {
-                    "temperature": 0.3,
-                    "maxOutputTokens": 2000 if chat_mode in ("solution", "raw_solution") else 1024
-                }
-            }
+        # Stage 1: Attempt specialized Olympiad geometry diagram extraction via OpenRouter
+        if _vision_agent.is_configured():
             try:
-                resp = await client.post(url, json=payload, timeout=30)
-                resp.raise_for_status()
-                reply = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+                print("[Chat] Invoking Stage 1 Vision Agent (Qwen2.5-VL-72B via OpenRouter)...")
+                vision_description, success = await _vision_agent.extract_with_fallback(
+                    raw_b64, media_type=media_type, user_hint=user_message
+                )
+                if success and vision_description:
+                    print("[Chat] Stage 1 Vision extraction succeeded! Passing structured geometry to Gemini Canvas Engine.")
+                    if _widget is None:
+                        _widget = "geometry_2d"
+            except Exception as ex:
+                print(f"[Chat] Stage 1 Vision Agent error: {ex}. Falling back to default Gemini vision.")
+
+        # If widget not detected and vision agent not used, try local OCR fallback
+        if not vision_description and _widget is None:
+            try:
+                img_bytes = base64.b64decode(raw_b64)
+                if _ocr_available and ocr_reader:
+                    ocr_text = extract_text_from_image(img_bytes)
+                    if ocr_text:
+                        ocr_nodes = extract_graph_entities(ocr_text)
+                        _widget = detect_widget(ocr_text, ocr_nodes)
             except Exception as e:
-                import traceback
-                traceback.print_exc()
-                if hasattr(e, "response") and e.response is not None:
-                    print("[ERROR] Gemini API response text:", e.response.text)
-                    return JSONResponse({"error": True, "reply": f"AI unavailable: {e} - {e.response.text}"}, status_code=502)
-                return JSONResponse({"error": True, "reply": f"AI unavailable: {e}"}, status_code=502)
+                logger.debug(f"OCR widget pre-detection skipped: {e}")
 
-            history.append({"role": "assistant", "content": reply})
-            save_history(session_id, history)
-            return JSONResponse({"reply": reply, "session_id": session_id, "history_length": len(history)})
+    # Build prompt variant according to mode & widget
+    if is_viz_request:
+        system_prompt = (
+            "You are an expert mathematical visualizer and graph plotter.\n"
+            "Your task is to analyze the math problem and output ONLY a valid JSON object matching the requested schema.\n"
+            "You MUST ensure that the returned math steps ('stepsVI', 'stepsEN') wrap ALL math symbols, variables, fractions, and equations in dollar signs ($...$ for inline, $$...$$ for block).\n"
+            "You MUST use vibrant neon colors for drawing instructions (lines, shapes, points) instead of plain white/black, label all vertices clearly, and highlight sub-regions.\n"
+            "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
+        )
     else:
-        user_content  = user_message
-        
-        if is_viz_request:
-            model         = "llama-3.3-70b-versatile"
-            system_prompt = (
-                "You are an expert mathematical visualizer and graph plotter.\n"
-                "Your task is to analyze the math problem and output ONLY a valid JSON object matching the requested schema.\n"
-                "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
-            )
+        if chat_mode in ("visualizer", "threeD"):
+            prompt_variant = "visualizer"
+        elif chat_mode in ("solution", "raw_solution"):
+            prompt_variant = chat_mode
+        elif vision_description:
+            prompt_variant = "image_with_vision"
+        elif image_data:
+            prompt_variant = "image"
         else:
-            # mode="solution" → giải đầy đủ + bài phái sinh; mặc định → Socratic hint
-            prompt_variant = chat_mode if chat_mode in ("solution", "raw_solution") else "text"
-            model         = "llama-3.1-8b-instant"
-            system_prompt = cached_system_prompt(prompt_variant)
-        history.append({"role": "user", "content": user_message})
+            prompt_variant = "text"
+        system_prompt = cached_system_prompt(prompt_variant, _widget)
 
-    # Retrieve mathematical context using LightRAG-style retriever
+
     retrieved_kb = retrieve_math_context(user_message)
     full_system_prompt = (
         f"{system_prompt}\n\n"
@@ -1616,63 +2512,108 @@ async def chat(request: Request):
         f"{retrieved_kb}"
     )
 
-    # Build messages without mutating history dicts (slicing shares dict refs in Python)
-    context_history = [] if is_viz_request else history[-5:-1]  # previous turns, excluding the just-appended user turn
-    
-    if "vision" in model and isinstance(user_content, list):
-        # Merge system prompt into user_content text part
-        new_user_content = []
-        for item in user_content:
-            if item.get("type") == "text":
-                new_user_content.append({
-                    "type": "text",
-                    "text": f"{full_system_prompt}\n\nUser request:\n{item.get('text', '')}"
-                })
-            else:
-                new_user_content.append(item)
-        messages = context_history + [{"role": "user", "content": new_user_content}]
-    else:
-        messages = (
-            [{"role": "system", "content": full_system_prompt}]
-            + context_history
-            + [{"role": "user", "content": user_content}]
-        )
+    # Map conversation history to Gemini structure (keep last 12 for long proofs)
+    gemini_contents = []
+    for h in history[-12:]:
+        role = "model" if h["role"] == "assistant" else "user"
+        content = h.get("content") or ""
+        if content.startswith("[Image] "):
+            content = content[8:]
+        if content.startswith("[Image + Vision AI] "):
+            content = content[20:]
+        if content.strip():
+            gemini_contents.append({
+                "role": role,
+                "parts": [{"text": content}]
+            })
 
-    # Solution mode cần nhiều token hơn để sinh cả lời giải + bài phái sinh
-    max_tokens = 2000 if chat_mode in ("solution", "raw_solution") else 1024
-    payload = {
-        "model": model, "messages": messages,
-        "max_tokens": max_tokens, "temperature": 0.3,
-        "stream": use_stream,
-    }
+    # Add current user turn with the image or structured vision text
+    if image_data:
+        if vision_description:
+            # Stage 2 Handoff: Provide structured geometric primitives to Gemini for precision canvas generation
+            enhanced_user_message = (
+                f"{user_message}\n\n"
+                f"## CẤU TRÚC HÌNH HỌC TỪ HÌNH ẢNH (Bóc tách chi tiết bởi Vision AI Qwen2.5-VL-72B):\n"
+                f"{vision_description}\n\n"
+                f"YÊU CẦU QUAN TRỌNG CHO CANVAS VÀ GIẢI TOÁN:\n"
+                f"1. Dựa trên các điểm (points), đường tròn (circles), đoạn thẳng (lines) và quan hệ không gian ở trên, hãy đưa ra phân tích và gợi ý định hướng giải chuẩn xác.\n"
+                f"2. BẮT BUỘC dựng khối ```mathviz ... ``` với widget \"geometry_2d\" (cấu trúc \"layers\" đa tầng) thể hiện đầy đủ, chính xác tất cả các điểm, đường tròn, tiếp tuyến, đoạn thẳng tương ứng."
+            )
+            gemini_contents.append({
+                "role": "user",
+                "parts": [{"text": enhanced_user_message}]
+            })
+            history.append({"role": "user", "content": f"[Image + Vision AI] {user_message}"})
+        else:
+            # Fallback: send raw image bytes to Gemini Vision directly
+            gemini_contents.append({
+                "role": "user",
+                "parts": [
+                    {"text": user_message},
+                    {
+                        "inlineData": {
+                            "mimeType": media_type,
+                            "data": raw_b64
+                        }
+                    }
+                ]
+            })
+            history.append({"role": "user", "content": f"[Image] {user_message}"})
+    else:
+        gemini_contents.append({
+            "role": "user",
+            "parts": [{"text": user_message}]
+        })
+        history.append({"role": "user", "content": user_message})
+
+    # Token budget calculation — generous for image/solution to avoid truncation
+    _has_widget = chat_mode not in ("solution", "raw_solution") and _widget is not None
+    if image_data:
+        max_tokens = 8192   # Complex geometry proofs from images need full output
+    elif chat_mode in ("solution", "raw_solution"):
+        max_tokens = 4096   # Full solutions need room for derivations
+    elif _has_widget:
+        max_tokens = 2048   # Widget-annotated responses (JSON + explanation)
+    else:
+        max_tokens = 1500   # Socratic hints — concise by design
 
     client = await get_http_client()
 
+    gemini_model = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
+    print(f"[Chat] model={gemini_model}, mode={chat_mode}, widget={_widget}, has_image={'yes' if image_data else 'no'}, max_tokens={max_tokens}")
+
     if use_stream:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:streamGenerateContent?key={gemini_api_key}&alt=sse"
+        payload = {
+            "contents": gemini_contents,
+            "systemInstruction": {
+                "parts": [{"text": full_system_prompt}]
+            },
+            "generationConfig": {
+                "temperature": 0.3,
+                "maxOutputTokens": max_tokens
+            }
+        }
+
         async def generate():
             full_reply = []
             try:
-                async with client.stream(
-                    "POST", f"{GROQ_BASE}/chat/completions",
-                    headers=groq_headers(), json=payload,
-                ) as resp:
+                async with client.stream("POST", url, json=payload, timeout=90) as resp:
                     resp.raise_for_status()
                     async for raw_line in resp.aiter_lines():
                         if not raw_line:
                             continue
                         line = raw_line
                         if line.startswith("data: "):
-                            line = line[6:]
-                        if line == "[DONE]":
-                            break
-                        try:
-                            chunk = json.loads(line)
-                            token = chunk["choices"][0]["delta"].get("content", "")
-                            if token:
-                                full_reply.append(token)
-                                yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
-                        except (json.JSONDecodeError, KeyError, IndexError):
-                            continue
+                            data_str = line[6:]
+                            try:
+                                chunk = json.loads(data_str)
+                                token = chunk["candidates"][0]["content"]["parts"][0].get("text", "")
+                                if token:
+                                    full_reply.append(token)
+                                    yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
+                            except Exception:
+                                continue
             except Exception as e:
                 yield f"data: {orjson.dumps({'error': str(e)}).decode()}\n\n"
                 return
@@ -1691,27 +2632,204 @@ async def chat(request: Request):
                 "Access-Control-Allow-Origin": "*",
             },
         )
+    else:
+        payload = {
+            "contents": gemini_contents,
+            "tools": GEMINI_TOOLS,
+            "systemInstruction": {
+                "parts": [{"text": full_system_prompt}]
+            },
+            "generationConfig": {
+                "temperature": 0.3,
+                "maxOutputTokens": max_tokens
+            }
+        }
+        fallback_models = [
+            gemini_model,
+            "gemini-3.6-flash"
+        ]
+        seen_models = set()
+        fallback_models = [m for m in fallback_models if m and not (m in seen_models or seen_models.add(m))]
 
-    # Non-streaming
-    try:
-        resp = await client.post(
-            f"{GROQ_BASE}/chat/completions",
-            headers=groq_headers(),
-            json={**payload, "stream": False},
-        )
-        resp.raise_for_status()
-        reply = resp.json()["choices"][0]["message"]["content"]
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        if hasattr(e, "response") and e.response is not None:
-            print("[ERROR] Groq API response text:", e.response.text)
-            return JSONResponse({"error": True, "reply": f"AI unavailable: {e} - {e.response.text}"}, status_code=502)
-        return JSONResponse({"error": True, "reply": f"AI unavailable: {e}"}, status_code=502)
+        reply = None
+        for current_model in fallback_models:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent?key={gemini_api_key}"
+            for attempt in range(1):
+                try:
+                    curr_payload = json.loads(json.dumps(payload))
+                    # Tool calling multi-turn execution loop (up to 4 iterations)
+                    for tool_step in range(4):
+                        resp = await client.post(url, json=curr_payload, timeout=18)
+                        if resp.status_code in (429, 503):
+                            print(f"[WARN] {current_model} returned {resp.status_code}")
+                            break
+                        resp.raise_for_status()
+                        res_data = resp.json()
+                        candidate = res_data.get("candidates", [{}])[0]
+                        candidate_content = candidate.get("content", {})
+                        parts = candidate_content.get("parts", [])
 
-    history.append({"role": "assistant", "content": reply})
-    save_history(session_id, history)
-    return JSONResponse({"reply": reply, "session_id": session_id, "history_length": len(history)})
+                        # Check for functionCall
+                        has_func = False
+                        for p in parts:
+                            if "functionCall" in p:
+                                has_func = True
+                                fc = p["functionCall"]
+                                fc_name = fc.get("name")
+                                fc_args = fc.get("args", {})
+                                if fc_name == "evaluate_math":
+                                    math_expr = fc_args.get("expression", "")
+                                    math_res = evaluate_math_expression(math_expr)
+                                    print(f"[MathTool] evaluate_math('{math_expr}') -> {math_res.get('numeric') or math_res.get('exact')}")
+                                    curr_payload["contents"].append({
+                                        "role": "model",
+                                        "parts": [p]
+                                    })
+                                    curr_payload["contents"].append({
+                                        "role": "user",
+                                        "parts": [{
+                                            "functionResponse": {
+                                                "name": "evaluate_math",
+                                                "response": math_res
+                                            }
+                                        }]
+                                    })
+                                break
+
+                        if not has_func:
+                            # Final text received - concatenate all text parts
+                            text_parts = [p.get("text", "") for p in parts if "text" in p]
+                            reply = "".join(text_parts).strip()
+                            break
+
+                    if reply:
+                        break
+                except Exception as e:
+                    print(f"[WARN] Error with {current_model} ({e}) — switching to fast fallback")
+            if reply:
+                break
+
+        if not reply:
+            # Fallback to OpenRouter LLM if Gemini is unavailable or returns 503
+            if _vision_agent.is_configured():
+                try:
+                    print("[Chat] Gemini unavailable/503. Calling OpenRouter LLM for intelligent canvas response...")
+                    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
+                    openrouter_model = os.environ.get("OPENROUTER_VISION_MODEL", "qwen/qwen2.5-vl-72b-instruct:free")
+                    or_headers = {
+                        "Authorization": f"Bearer {openrouter_key}",
+                        "HTTP-Referer": "https://duomath.local",
+                        "X-Title": "DuoMath AI",
+                        "Content-Type": "application/json"
+                    }
+                    or_messages = [
+                        {"role": "system", "content": full_system_prompt}
+                    ]
+                    for gc in gemini_contents[-8:]:
+                        role = "assistant" if gc.get("role") == "model" else "user"
+                        t_parts = [p.get("text", "") for p in gc.get("parts", []) if "text" in p]
+                        if t_parts:
+                            or_messages.append({"role": role, "content": " ".join(t_parts)})
+
+                    or_payload = {
+                        "model": openrouter_model,
+                        "messages": or_messages,
+                        "temperature": 0.2
+                    }
+                    or_resp = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=or_headers, json=or_payload, timeout=60)
+                    if or_resp.status_code == 200:
+                        reply = or_resp.json()["choices"][0]["message"]["content"]
+                        print("[Chat] Successfully generated reply via OpenRouter fallback!")
+                except Exception as ex_or:
+                    print(f"[Chat] OpenRouter fallback failed: {ex_or}")
+
+        if not reply:
+            print("[INFO] Using local MathGPT Engine for instant, reliable response")
+            reply = generate_mock_mathgpt_reply(user_message, _widget, chat_mode)
+
+
+
+
+        # ── MathViz validation, bounded retry + free-tier escalation
+        #    (Risk 2), then geometric regularization (Risk 1) ─────────────
+        _reply_text, _viz_block = _extract_mathviz_block(reply)
+        if _viz_block is not None and not is_viz_request:
+            actual_widget = _viz_block.get("widget") or _widget or "geometry_3d"
+            _viz_errors = validate_mathviz(actual_widget, _viz_block)
+
+            # Tier 1 (existing): one same-model Gemini retry with the errors appended.
+            if _viz_errors:
+                print(f"[MathViz] Schema errors for widget '{actual_widget}': {_viz_errors} — retrying once with Gemini")
+                retry_contents = gemini_contents + [
+                    {"role": "model", "parts": [{"text": reply}]},
+                    {"role": "user", "parts": [{"text": f"Khối mathviz bị lỗi: {'; '.join(_viz_errors)}. Hãy trả lại TOÀN BỘ câu trả lời, sửa đúng schema."}]}
+                ]
+                retry_payload = {**payload, "contents": retry_contents}
+                try:
+                    resp2 = await client.post(url, json=retry_payload, timeout=30)
+                    resp2.raise_for_status()
+                    reply2 = resp2.json()["candidates"][0]["content"]["parts"][0]["text"]
+                    _reply2_text, _viz2 = _extract_mathviz_block(reply2)
+                    _viz2_errors = validate_mathviz(actual_widget, _viz2) if _viz2 is not None else _viz_errors
+                    if _viz2 is not None and not _viz2_errors:
+                        reply = reply2
+                        _reply_text, _viz_block = _reply2_text, _viz2
+                        _viz_errors = []
+                    else:
+                        _viz_errors = _viz2_errors
+                except Exception as ex:
+                    logger.debug(f"Mathviz retry failed: {ex}")
+                    print(f"[MathViz] Gemini retry tier failed: {ex} — escalating to free OpenRouter repair tier")
+
+            # Tier 2 (new): still broken after the Gemini retry -> one
+            # targeted repair call to a FREE OpenRouter model asking for
+            # ONLY the corrected JSON, not a whole new reply. Cheaper than
+            # another full-reply retry and works even when Gemini itself is
+            # the one that's rate-limited.
+            if _viz_errors and _viz_block is not None:
+                _fixed = await _repair_mathviz_with_free_openrouter(
+                    actual_widget, json.dumps(_viz_block, ensure_ascii=False), _viz_errors
+                )
+                if _fixed is not None:
+                    _viz_block = _fixed
+                    reply = f"{_reply_text}\n\n```mathviz\n{json.dumps(_viz_block, ensure_ascii=False, indent=2)}\n```"
+                    print(f"[MathViz] Free-tier OpenRouter escalation repaired widget '{actual_widget}'.")
+                else:
+                    logger.debug(f"[MathViz] Widget '{actual_widget}' still invalid after all repair tiers — sending reply without a visual.")
+
+        # Geometric regularization for geometry_2d: exact Olympiad solver
+        # first (existing, most precise when it matches a known template),
+        # then the general angle/collinearity snapper (new), gated by
+        # numeric verification so a snap is applied only if it does not
+        # measurably make the figure LESS consistent than the model produced.
+        if _viz_block is not None:
+            actual_widget = _viz_block.get("widget") or _widget or "geometry_2d"
+            if actual_widget == "geometry_2d" and "layers" in _viz_block:
+                try:
+                    from geometry_canvas_solver import auto_align_geometry_mathviz
+                    from geometry_snapping import snap_geometry_2d, verify_snap_safe
+                    _viz_block = auto_align_geometry_mathviz(_viz_block)
+                    _snapped = snap_geometry_2d(_viz_block)
+                    if verify_snap_safe(_viz_block, _snapped):
+                        _viz_block = _snapped
+                    reply = f"{_reply_text}\n\n```mathviz\n{json.dumps(_viz_block, ensure_ascii=False, indent=2)}\n```"
+                except Exception as e_align:
+                    logger.debug(f"MathViz auto-align/snap skipped: {e_align}")
+
+                # Risk 4: cheap, non-blocking confirmation pass. Logged only
+                # — never gates the response — to keep the hot path fast and
+                # free-tier-cheap (one small flat-schema Flash call).
+                try:
+                    _confirm = await confirm_mathviz_understanding(actual_widget, _viz_block)
+                    if not _confirm.get("understood", True) or _confirm.get("issues"):
+                        logger.info(f"[MathViz] Confirmation flagged widget '{actual_widget}': {_confirm.get('issues')}")
+                except Exception as e_confirm:
+                    logger.debug(f"MathViz confirmation skipped: {e_confirm}")
+
+
+        history.append({"role": "assistant", "content": reply})
+        save_history(session_id, history)
+        return JSONResponse({"reply": reply, "session_id": session_id, "history_length": len(history)})
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -4367,14 +5485,14 @@ AI_MOCK_MODE = not bool(GEMINI_KEY)
 # ── Gemini helpers ─────────────────────────────────────────────────────────────
 import random as _rand
 
-async def _gemini_json(prompt: str, schema: dict) -> dict:
+async def _gemini_json(prompt: str, schema: dict, temperature: float = 0.7) -> dict:
     url = f"{GEMINI_BASE}/{GEMINI_MODEL}:generateContent?key={GEMINI_KEY}"
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "responseMimeType": "application/json",
             "responseSchema": schema,
-            "temperature": 0.7,
+            "temperature": temperature,
         }
     }
     client = await get_http_client()
@@ -4403,6 +5521,47 @@ async def _gemini_vision_json(prompt: str, img_b64: str, mime: str, schema: dict
     r.raise_for_status()
     raw = r.json()["candidates"][0]["content"]["parts"][0]["text"]
     return json.loads(raw)
+
+# ── MathViz confirmation pass (Risk 4 mitigation) ────────────────────────────
+# Deliberately FLAT (no nesting) — Gemini's responseSchema mode only accepts a
+# subset of JSON Schema and can reject deeply nested schemas outright. Kept
+# flat here so it always fits that subset no matter how complex the mathviz
+# payload itself gets; the payload is passed as plain prompt text, never
+# bound to responseSchema (see confirm_mathviz_understanding below).
+MATHVIZ_CONFIRM_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "understood": {"type": "BOOLEAN"},
+        "element_count": {"type": "INTEGER"},
+        "issues": {"type": "ARRAY", "items": {"type": "STRING"}},
+    },
+    "required": ["understood", "element_count", "issues"],
+}
+
+async def confirm_mathviz_understanding(widget: str, viz_block: dict) -> dict:
+    """
+    Cheap, non-blocking pre-flight sanity check on a mathviz block, reusing
+    the existing _gemini_json() structured-output helper rather than
+    inventing a new calling convention. Called only for geometry_2d (see
+    chat()) — the widget type with the deepest/most error-prone payload —
+    to keep the extra call limited to where it actually earns its cost.
+    Fails OPEN: any error here (bad key, rate limit, timeout) returns an
+    "understood: True" stub so it can never block a response from reaching
+    the user; callers should only ever log its output, not gate on it.
+    """
+    try:
+        summary = json.dumps(viz_block, ensure_ascii=False)[:4000]  # cap prompt size for token efficiency
+        prompt = (
+            f"Widget type: {widget}\n"
+            f"MathViz JSON to sanity-check:\n{summary}\n\n"
+            f"Does this look like a complete, internally consistent '{widget}' diagram "
+            f"(no missing coordinates, no obviously contradictory values)? "
+            f"Report element_count as the total number of points/shapes/layers found."
+        )
+        return await _gemini_json(prompt, MATHVIZ_CONFIRM_SCHEMA, temperature=0.1)
+    except Exception as e:
+        logger.debug(f"[MathViz] Confirmation step skipped: {e}")
+        return {"understood": True, "element_count": -1, "issues": []}
 
 # ── Mock helpers (no API key needed) ─────────────────────────────────────────
 def _mock_analyze(filename: str) -> dict:
@@ -4898,9 +6057,1058 @@ async def ai_test_review(attempt_id: str):
     return {**review, "total_score": attempt["total_score"], "max_score": attempt["max_score"]}
 
 
+# ═════════════════════════════════════════════════════════════════════════════
+# ── DUOMATH: MATHMAP COMMENTS, CLANS, EVENTS & CHANGELOG API ─────────────────
+# ═════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/mathmaps/{map_id}/comments")
+async def get_mathmap_comments(map_id: str, request: Request, page: int = 1, limit: int = 20):
+    db = get_db()
+    try:
+        current_uid = None
+        try:
+            current_uid = await resolve_user_id(request)
+        except Exception:
+            pass
+
+        rows = db.execute(
+            """SELECT * FROM mathmap_comments 
+               WHERE mathmap_id=? AND status='visible' 
+               ORDER BY created_at DESC LIMIT ? OFFSET ?""",
+            (map_id, limit, (page - 1) * limit)
+        ).fetchall()
+
+        upvoted_ids = set()
+        if current_uid:
+            up_rows = db.execute(
+                "SELECT comment_id FROM comment_upvotes WHERE user_id=?", (str(current_uid),)
+            ).fetchall()
+            upvoted_ids = {r["comment_id"] for r in up_rows}
+
+        comments = []
+        top_level = []
+        replies_by_parent = {}
+
+        for r in rows:
+            c = {
+                "id": r["id"],
+                "mathmapId": r["mathmap_id"],
+                "author": r["author"],
+                "rank": r["rank"],
+                "body": r["body"],
+                "createdAt": r["created_at"],
+                "upvotes": r["upvotes"],
+                "hasUpvoted": r["id"] in upvoted_ids,
+                "parentCommentId": r["parent_comment_id"],
+                "replies": []
+            }
+            if r["parent_comment_id"]:
+                replies_by_parent.setdefault(r["parent_comment_id"], []).append(c)
+            else:
+                top_level.append(c)
+
+        for c in top_level:
+            c["replies"] = replies_by_parent.get(c["id"], [])
+
+        return {"comments": top_level, "page": page, "limit": limit}
+    finally:
+        db.close()
+
+
+@app.post("/api/mathmaps/{map_id}/comments")
+async def post_mathmap_comment(map_id: str, request: Request):
+    data = await request.json()
+    body = (data.get("body") or "").strip()
+    if not body:
+        raise HTTPException(400, "Comment body cannot be empty")
+
+    author = data.get("author", "Học Viên")
+    user_rank = data.get("rank", "A")
+    parent_id = data.get("parentCommentId")
+
+    comment_id = "c_" + str(uuid.uuid4())[:8]
+    now_str = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+
+    db = get_db()
+    try:
+        db.execute(
+            """INSERT INTO mathmap_comments (id, mathmap_id, user_id, author, rank, parent_comment_id, body, created_at, upvotes)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)""",
+            (comment_id, map_id, "u_anon", author, user_rank, parent_id, body, now_str)
+        )
+        db.commit()
+        return {"success": True, "comment_id": comment_id, "created_at": now_str}
+    finally:
+        db.close()
+
+
+@app.post("/api/comments/{comment_id}/upvote")
+async def toggle_comment_upvote(comment_id: str, request: Request):
+    data = await request.json()
+    user_id = data.get("userId", "u_guest")
+    db = get_db()
+    try:
+        existing = db.execute(
+            "SELECT 1 FROM comment_upvotes WHERE user_id=? AND comment_id=?", (user_id, comment_id)
+        ).fetchone()
+
+        if existing:
+            db.execute("DELETE FROM comment_upvotes WHERE user_id=? AND comment_id=?", (user_id, comment_id))
+            db.execute("UPDATE mathmap_comments SET upvotes = MAX(0, upvotes - 1) WHERE id=?", (comment_id,))
+            upvoted = False
+        else:
+            db.execute("INSERT INTO comment_upvotes (user_id, comment_id) VALUES (?, ?)", (user_id, comment_id))
+            db.execute("UPDATE mathmap_comments SET upvotes = upvotes + 1 WHERE id=?", (comment_id,))
+            upvoted = True
+
+        db.commit()
+        updated = db.execute("SELECT upvotes FROM mathmap_comments WHERE id=?", (comment_id,)).fetchone()
+        return {"success": True, "upvoted": upvoted, "upvotes": updated["upvotes"] if updated else 0}
+    finally:
+        db.close()
+
+
+@app.post("/api/comments/{comment_id}/report")
+async def report_comment(comment_id: str, request: Request):
+    data = await request.json()
+    reason = data.get("reason", "spam")
+    detail = data.get("detail", "")
+    reporter_id = data.get("reporterId", "u_guest")
+
+    report_id = "rep_" + str(uuid.uuid4())[:8]
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    db = get_db()
+    try:
+        db.execute(
+            """INSERT INTO comment_reports (id, comment_id, reporter_id, reason, detail, created_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (report_id, comment_id, reporter_id, reason, detail, now_str)
+        )
+        db.execute("UPDATE mathmap_comments SET report_count = report_count + 1 WHERE id=?", (comment_id,))
+        db.commit()
+        return {"success": True, "message": "Báo cáo đã được ghi nhận"}
+    finally:
+        db.close()
+
+
+# ── Clans API ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/clans")
+async def list_clans():
+    db = get_db()
+    try:
+        rows = db.execute("SELECT * FROM clans ORDER BY total_xp DESC LIMIT 50").fetchall()
+        clans = [dict(r) for r in rows]
+        if not clans:
+            clans = [
+                {
+                    "id": "thth",
+                    "name": "Thánh Toán Học",
+                    "tag": "#THTH",
+                    "description": "Clan luyện đề thi chuyên toán và THPT QG, sinh hoạt mỗi tối thứ 3 & thứ 6.",
+                    "crest_gradient": "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)",
+                    "avatar_url": "",
+                    "banner_url": "",
+                    "level": 24, "current_xp": 8200, "xp_to_next": 12000,
+                    "total_xp": 142000, "wins": 23, "losses": 6, "members_count": 86
+                },
+                {
+                    "id": "shb",
+                    "name": "Đội Số Học Bay",
+                    "tag": "#SHB",
+                    "description": "Đội ngũ chuyên toán hình không gian và đại số tổ hợp, giao lưu thi đấu hàng tuần.",
+                    "crest_gradient": "linear-gradient(135deg, #fbbf24 0%, #f97316 50%, #ef4444 100%)",
+                    "avatar_url": "",
+                    "banner_url": "",
+                    "level": 21, "current_xp": 6400, "xp_to_next": 10000,
+                    "total_xp": 128000, "wins": 19, "losses": 8, "members_count": 72
+                },
+                {
+                    "id": "vtsp",
+                    "name": "Vòng Tròn Số Pi",
+                    "tag": "#VTSP",
+                    "description": "Môi trường học tập cởi mở cho học sinh thích giải đố toán học và tư duy logic.",
+                    "crest_gradient": "linear-gradient(135deg, #34d399 0%, #14b8a6 50%, #06b6d4 100%)",
+                    "avatar_url": "",
+                    "banner_url": "",
+                    "level": 19, "current_xp": 4900, "xp_to_next": 9000,
+                    "total_xp": 115000, "wins": 17, "losses": 5, "members_count": 64
+                }
+            ]
+        return {"clans": clans}
+    finally:
+        db.close()
+
+
+@app.post("/api/clans")
+async def create_clan(request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    try:
+        if is_fb:
+            u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+        else:
+            u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+        if not u:
+            raise HTTPException(404, "User not found")
+
+        body = await request.json()
+        cid = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        db.execute("""
+            INSERT INTO clans (id, name, tag, description, crest_gradient, avatar_url, banner_url, privacy, level, current_xp, xp_to_next, total_xp, wins, losses, created_at, owner_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1000, 0, 0, 0, ?, ?)
+        """, (
+            cid,
+            body.get("name", "New Clan"),
+            body.get("tag", "#CLAN"),
+            body.get("description", ""),
+            body.get("crest_gradient", "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)"),
+            body.get("avatar_url", ""),
+            body.get("banner_url", ""),
+            body.get("privacy", "open"),
+            now,
+            str(u["id"])
+        ))
+
+        # Add creator as owner
+        db.execute("""
+            INSERT OR REPLACE INTO clan_members (clan_id, user_id, username, role, rank, xp_contributed, joined_at)
+            VALUES (?, ?, ?, 'owner', 'SS', 0, ?)
+        """, (cid, str(u["id"]), u["username"], now))
+
+        db.commit()
+        return {"ok": True, "clan_id": cid}
+    finally:
+        db.close()
+
+
+@app.get("/api/clans/{clan_id}")
+async def get_clan_detail(clan_id: str):
+    db = get_db()
+    try:
+        row = db.execute("SELECT * FROM clans WHERE id=?", (clan_id,)).fetchone()
+        if not row:
+            if clan_id == "thth":
+                return {
+                    "id": "thth", "name": "Thánh Toán Học", "tag": "#THTH",
+                    "description": "Clan luyện đề thi chuyên toán và THPT QG, sinh hoạt mỗi tối thứ 3 & thứ 6.",
+                    "level": 24, "current_xp": 8200, "xp_to_next": 12000,
+                    "total_xp": 142000, "wins": 23, "losses": 6, "member_count": 86,
+                    "avatar_url": "", "banner_url": "",
+                    "crest_gradient": "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)",
+                    "achievements": [
+                        {"title": "🏆 Quán Quân Giải Đấu Mùa Hè 2026", "date": "10/09/2026", "badge": "Gold", "xp": "+15,000 XP"},
+                        {"title": "🥈 Á Quân Đấu Trường Clan Liên Trường", "date": "05/09/2026", "badge": "Silver", "xp": "+8,000 XP"},
+                        {"title": "⭐ Top 1 Bảng Xếp Hạng Tháng 8", "date": "31/08/2026", "badge": "SeasonTop", "xp": "+5,000 XP"}
+                    ]
+                }
+            raise HTTPException(404, "Clan not found")
+
+        clan = dict(row)
+        members = db.execute("SELECT * FROM clan_members WHERE clan_id=? ORDER BY xp_contributed DESC", (clan_id,)).fetchall()
+        clan["members"] = [dict(m) for m in members]
+        clan["member_count"] = len(members) if members else clan.get("member_count", 1)
+        clan["achievements"] = [
+            {"title": "🏆 Quán Quân Giải Đấu Mùa Hè 2026", "date": "10/09/2026", "badge": "Gold", "xp": "+15,000 XP"},
+            {"title": "🥈 Á Quân Đấu Trường Clan Liên Trường", "date": "05/09/2026", "badge": "Silver", "xp": "+8,000 XP"},
+            {"title": "⭐ Top 1 Bảng Xếp Hạng Tháng 8", "date": "31/08/2026", "badge": "SeasonTop", "xp": "+5,000 XP"}
+        ]
+        return clan
+    finally:
+        db.close()
+
+
+@app.get("/api/clans/{clan_id}/messages")
+async def get_clan_messages(clan_id: str, limit: int = 50):
+    db = get_db()
+    try:
+        rows = db.execute(
+            "SELECT * FROM clan_messages WHERE clan_id=? ORDER BY created_at ASC LIMIT ?",
+            (clan_id, limit)
+        ).fetchall()
+        msgs = [dict(r) for r in rows]
+        if not msgs:
+            # Seed default welcome messages for demo
+            msgs = [
+                {"id": "m1", "clan_id": clan_id, "user_id": "u1", "username": "william_math", "role": "owner", "avatar_url": "", "message": "Chào mừng các thành viên mới gia nhập Clan! Lịch sinh hoạt tối nay lúc 20:00 nhé.", "created_at": "2026-08-23T19:00:00"},
+                {"id": "m2", "clan_id": clan_id, "user_id": "u2", "username": "co_giao_lan", "role": "officer", "avatar_url": "", "message": "Tất cả mọi người nhớ đăng ký Giải Đấu Mùa Hè trên trang Sự Kiện để nhận x1.5 XP nhé! ⚡", "created_at": "2026-08-23T19:15:00"},
+                {"id": "m3", "clan_id": clan_id, "user_id": "u3", "username": "minh_toan_hoc", "role": "officer", "avatar_url": "", "message": "Ai cần luyện chung đề tổ hợp xác suất thì tạo phòng Đấu Nhóm nhé!", "created_at": "2026-08-23T19:40:00"}
+            ]
+        return {"messages": msgs}
+    finally:
+        db.close()
+
+
+@app.post("/api/clans/{clan_id}/messages")
+async def post_clan_message(clan_id: str, request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    try:
+        if is_fb:
+            u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+        else:
+            u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+        if not u:
+            raise HTTPException(404, "User not found")
+
+        body = await request.json()
+        msg_text = body.get("message", "").strip()
+        if not msg_text:
+            raise HTTPException(400, "Message cannot be empty")
+
+        mid = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+
+        # Check clan role
+        mem = db.execute("SELECT role FROM clan_members WHERE clan_id=? AND user_id=?", (clan_id, str(u["id"]))).fetchone()
+        role = mem["role"] if mem else "member"
+
+        db.execute("""
+            INSERT INTO clan_messages (id, clan_id, user_id, username, avatar_url, role, message, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (mid, clan_id, str(u["id"]), u["username"], u["avatar_url"] or "", role, msg_text, now))
+        db.commit()
+
+        return {
+            "ok": True,
+            "message": {
+                "id": mid,
+                "clan_id": clan_id,
+                "user_id": str(u["id"]),
+                "username": u["username"],
+                "avatar_url": u["avatar_url"] or "",
+                "role": role,
+                "message": msg_text,
+                "created_at": now
+            }
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/users/{user_id}/clan")
+async def get_user_clan(user_id: str):
+    db = get_db()
+    try:
+        mem = db.execute("SELECT * FROM clan_members WHERE user_id=?", (user_id,)).fetchone()
+        if not mem:
+            # Fallback default clan for demo
+            return {
+                "has_clan": True,
+                "clan": {
+                    "id": "thth",
+                    "name": "Thánh Toán Học",
+                    "tag": "#THTH",
+                    "description": "Clan luyện đề thi chuyên toán và THPT QG, sinh hoạt mỗi tối thứ 3 & thứ 6.",
+                    "level": 24, "current_xp": 8200, "xp_to_next": 12000,
+                    "total_xp": 142000, "wins": 23, "losses": 6, "member_count": 86,
+                    "avatar_url": "", "banner_url": "",
+                    "crest_gradient": "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)",
+                    "achievements": [
+                        {"title": "🏆 Quán Quân Giải Đấu Mùa Hè 2026", "date": "10/09/2026", "badge": "Gold", "xp": "+15,000 XP"},
+                        {"title": "🥈 Á Quân Đấu Trường Clan Liên Trường", "date": "05/09/2026", "badge": "Silver", "xp": "+8,000 XP"},
+                        {"title": "⭐ Top 1 Bảng Xếp Hạng Tháng 8", "date": "31/08/2026", "badge": "SeasonTop", "xp": "+5,000 XP"}
+                    ],
+                    "members": [
+                        {"id": "u1", "username": "william_math", "role": "owner", "rank": "SS", "xp_contributed": 42800, "matches_played": 28},
+                        {"id": "u2", "username": "co_giao_lan", "role": "officer", "rank": "SS", "xp_contributed": 38400, "matches_played": 24},
+                        {"id": "u3", "username": "minh_toan_hoc", "role": "officer", "rank": "A", "xp_contributed": 26100, "matches_played": 19},
+                        {"id": "u4", "username": "huy_math99", "role": "member", "rank": "B", "xp_contributed": 18500, "matches_played": 15},
+                        {"id": "u5", "username": "thu_trang_2k9", "role": "member", "rank": "S", "xp_contributed": 16200, "matches_played": 14},
+                    ]
+                },
+                "user_role": "owner",
+                "xp_contributed": 42800
+            }
+
+        c_row = db.execute("SELECT * FROM clans WHERE id=?", (mem["clan_id"],)).fetchone()
+        if not c_row:
+            return {"has_clan": False}
+
+        c_dict = dict(c_row)
+        members = db.execute("SELECT * FROM clan_members WHERE clan_id=? ORDER BY xp_contributed DESC", (mem["clan_id"],)).fetchall()
+        c_dict["members"] = [dict(m) for m in members]
+        c_dict["member_count"] = len(members)
+        c_dict["achievements"] = [
+            {"title": "🏆 Quán Quân Giải Đấu Mùa Hè 2026", "date": "10/09/2026", "badge": "Gold", "xp": "+15,000 XP"},
+            {"title": "🥈 Á Quân Đấu Trường Clan Liên Trường", "date": "05/09/2026", "badge": "Silver", "xp": "+8,000 XP"},
+            {"title": "⭐ Top 1 Bảng Xếp Hạng Tháng 8", "date": "31/08/2026", "badge": "SeasonTop", "xp": "+5,000 XP"}
+        ]
+
+        return {
+            "has_clan": True,
+            "clan": c_dict,
+            "user_role": mem["role"],
+            "xp_contributed": mem["xp_contributed"]
+        }
+    finally:
+        db.close()
+
+
+@app.get("/api/clans/leaderboard")
+async def get_clan_leaderboard(period: str = "week"):
+    DATA = {
+        "week": [
+            {"rank": 1, "id": "thth", "name": "Thánh Toán Học", "tag": "TH", "members": 86, "xp": 18420, "delta": 3},
+            {"rank": 2, "id": "shb",  name: "Đội Số Học Bay", tag: "SH", "members": 72, "xp": 17955, "delta": -1},
+            {"rank": 3, "id": "vtsp", name: "Vòng Tròn Số Pi", tag: "PI", "members": 64, "xp": 16110, "delta": 5},
+            {"rank": 4, "id": "hsvc", name: "Hàm Số Vô Cực", tag: "HS", "members": 51, "xp": 14870, "delta": -2},
+            {"rank": 5, "id": "mtvn", name: "Ma Trận Việt Nam", tag: "MT", "members": 43, "xp": 13200, "delta": 1},
+        ],
+        "month": [
+            {"rank": 1, "id": "thth", "name": "Thánh Toán Học", "tag": "TH", "members": 86, "xp": 78500, "delta": 2},
+            {"rank": 2, "id": "vtsp", name: "Vòng Tròn Số Pi", tag: "PI", "members": 64, "xp": 71200, "delta": 3},
+            {"rank": 3, "id": "shb",  name: "Đội Số Học Bay", tag: "SH", "members": 72, "xp": 69800, "delta": -1},
+            {"rank": 4, "id": "hsvc", name: "Hàm Số Vô Cực", tag: "HS", "members": 51, "xp": 62400, "delta": 0},
+        ],
+        "season": [
+            {"rank": 1, "id": "thth", "name": "Thánh Toán Học", "tag": "TH", "members": 86, "xp": 142000, "delta": 1},
+            {"rank": 2, "id": "shb",  name: "Đội Số Học Bay", tag: "SH", "members": 72, "xp": 138500, "delta": 0},
+            {"rank": 3, "id": "vtsp", name: "Vòng Tròn Số Pi", tag: "PI", "members": 64, "xp": 115000, "delta": 2},
+            {"rank": 4, "id": "mtvn", name: "Ma Trận Việt Nam", tag: "MT", "members": 43, "xp": 98000, "delta": -1},
+        ],
+        "alltime": [
+            {"rank": 1, "id": "thth", "name": "Thánh Toán Học", "tag": "TH", "members": 86, "xp": 482000, "delta": 0},
+            {"rank": 2, "id": "shb",  name: "Đội Số Học Bay", tag: "SH", "members": 72, "xp": 415000, "delta": 0},
+            {"rank": 3, "id": "vtsp", name: "Vòng Tròn Số Pi", tag: "PI", "members": 64, "xp": 368000, "delta": 1},
+            {"rank": 4, "id": "mtvn", name: "Ma Trận Việt Nam", tag: "MT", "members": 43, "xp": 294000, "delta": -1},
+            {"rank": 5, "id": "hsvc", name: "Hàm Số Vô Cực", tag: "HS", "members": 51, "xp": 248000, "delta": 0},
+        ]
+    }
+    return {
+        "period": period,
+        "leaderboard": DATA.get(period, DATA["week"])
+    }
+
+
+# ── Tournaments, Events & Changelog API ───────────────────────────────────────
+
+@app.get("/api/tournaments/featured")
+async def get_featured_tournament():
+    db = get_db()
+    row = db.execute(
+        "SELECT * FROM tournaments WHERE is_featured=1 AND status != 'finished' ORDER BY created_at DESC LIMIT 1"
+    ).fetchone()
+    db.close()
+    if row:
+        return {
+            "id": row["id"], "title": row["title"], "tag": row["tag"],
+            "description": row["description"], "rules": row["rules"] or "",
+            "status": row["status"], "size": row["size"],
+            "xp_multiplier": row["xp_multiplier"],
+            "starts_at": row["starts_at"], "ends_at": row["ends_at"],
+            "play_mode": row["play_mode"],
+            "min_clan_members": row["min_clan_members"],
+            "prize_json": json.loads(row["prize_json"] or "[]"),
+            "is_featured": row["is_featured"],
+        }
+    # Fallback stub
+    return {
+        "id": "tourney_summer_2026",
+        "title": "Giải Đấu Toán Học Mùa Hè 2026",
+        "tag": "GIẢI ĐẤU MÙA",
+        "description": "Tranh tài cùng hơn 4,000 học sinh trên toàn quốc trong đấu trường toán học chuẩn hóa. Top 3 nhận huy hiệu độc quyền, điểm thưởng XP và Cúp Vinh Danh toàn quốc.",
+        "status": "upcoming",
+        "size": "large",
+        "xp_multiplier": 1.5,
+        "starts_at": "2026-08-28T00:00:00",
+        "ends_at": "2026-09-10T23:59:59",
+        "play_mode": "individual",
+        "min_clan_members": 2,
+        "prize_json": [
+            {"tier": 1, "name": "Quán Quân (Vô Địch)", "prize": "5,000 XP + Cúp Vô Địch + Huy hiệu Vàng Độc Quyền"},
+            {"tier": 2, "name": "Á Quân (Hạng Nhì)", "prize": "3,000 XP + Huy hiệu Bạc Độc Quyền"},
+            {"tier": 3, "name": "Quý Quân (Hạng Ba)", "prize": "1,500 XP + Huy hiệu Đồng Độc Quyền"},
+            {"tier": 4, "name": "Top 10 Chung Cuộc", "prize": "800 XP + Khung Avatar Danh Dự"},
+        ],
+        "is_featured": 1,
+    }
+
+
+@app.get("/api/tournaments")
+async def list_tournaments(status: str = "", size: str = "", limit: int = 20):
+    db = get_db()
+    q = "SELECT * FROM tournaments WHERE 1=1"
+    params = []
+    if status:
+        q += " AND status=?"; params.append(status)
+    if size:
+        q += " AND size=?"; params.append(size)
+    q += " ORDER BY created_at DESC LIMIT ?"
+    params.append(limit)
+    rows = db.execute(q, params).fetchall()
+    db.close()
+    return {"tournaments": [dict(r) for r in rows]}
+
+
+@app.post("/api/tournaments")
+async def create_tournament(request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+
+    # Look up user
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u:
+        db.close(); raise HTTPException(404, "User not found")
+
+    body = await request.json()
+    size = body.get("size", "small")
+
+    # Permission check:
+    # admin → can create any size
+    # event_organizer_global → can create small, large requires approval
+    # others → forbidden
+    is_admin = bool(u["is_admin"])
+    is_global_organizer = False
+    org_row = db.execute(
+        "SELECT 1 FROM event_organizers WHERE user_id=? AND tournament_id='*'",
+        (str(u["id"]),)
+    ).fetchone()
+    if org_row:
+        is_global_organizer = True
+
+    if not is_admin and not is_global_organizer:
+        db.close(); raise HTTPException(403, "Insufficient permissions to create tournaments")
+
+    pending = 0
+    if not is_admin and size == "large":
+        pending = 1  # Requires admin approval
+
+    tid = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    xp_mult = 1.5 if size == "large" else 1.2
+
+    db.execute("""
+        INSERT INTO tournaments
+        (id, title, tag, description, rules, status, size, xp_multiplier, starts_at, ends_at,
+         play_mode, min_clan_members, max_participants, prize_json, is_featured,
+         created_by, pending_approval, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    """, (
+        tid,
+        body.get("title", "Giải Đấu Mới"),
+        body.get("tag", "Giải đấu"),
+        body.get("description", ""),
+        body.get("rules", ""),
+        "upcoming" if not pending else "pending_approval",
+        size, xp_mult,
+        body.get("starts_at", now),
+        body.get("ends_at", now),
+        body.get("play_mode", "individual"),
+        int(body.get("min_clan_members", 2)),
+        int(body.get("max_participants", 0)),
+        json.dumps(body.get("prize_json", [])),
+        int(body.get("is_featured", 0)),
+        str(u["id"]),
+        pending, now
+    ))
+    db.commit()
+    db.close()
+    return {"ok": True, "id": tid, "pending_approval": bool(pending)}
+
+
+@app.get("/api/tournaments/{tid}")
+async def get_tournament(tid: str):
+    db = get_db()
+    row = db.execute("SELECT * FROM tournaments WHERE id=?", (tid,)).fetchone()
+    db.close()
+    if not row:
+        raise HTTPException(404, "Tournament not found")
+    d = dict(row)
+    d["prize_json"] = json.loads(d.get("prize_json") or "[]")
+    return d
+
+
+@app.put("/api/tournaments/{tid}")
+async def update_tournament(tid: str, request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u:
+        db.close(); raise HTTPException(404, "User not found")
+
+    row = db.execute("SELECT * FROM tournaments WHERE id=?", (tid,)).fetchone()
+    if not row:
+        db.close(); raise HTTPException(404, "Tournament not found")
+
+    is_admin = bool(u["is_admin"])
+    is_organizer = bool(db.execute(
+        "SELECT 1 FROM event_organizers WHERE tournament_id=? AND user_id=?",
+        (tid, str(u["id"]))
+    ).fetchone())
+
+    if not is_admin and not is_organizer:
+        db.close(); raise HTTPException(403, "Not authorized to edit this tournament")
+
+    body = await request.json()
+    fields, vals = [], []
+    for key in ["title", "tag", "description", "rules", "status", "starts_at", "ends_at",
+                "play_mode", "min_clan_members", "max_participants", "is_featured"]:
+        if key in body:
+            fields.append(f"{key}=?"); vals.append(body[key])
+    if "prize_json" in body:
+        fields.append("prize_json=?"); vals.append(json.dumps(body["prize_json"]))
+
+    # Large tournament approval: if non-admin tries to set size=large, flag pending
+    if "size" in body:
+        new_size = body["size"]
+        fields.append("size=?"); vals.append(new_size)
+        mult = 1.5 if new_size == "large" else 1.2
+        fields.append("xp_multiplier=?"); vals.append(mult)
+        if not is_admin and new_size == "large":
+            fields.append("pending_approval=?"); vals.append(1)
+            fields.append("status=?"); vals.append("pending_approval")
+
+    if fields:
+        vals.append(tid)
+        db.execute(f"UPDATE tournaments SET {', '.join(fields)} WHERE id=?", vals)
+        db.commit()
+    db.close()
+    return {"ok": True}
+
+
+@app.post("/api/tournaments/{tid}/approve")
+async def approve_tournament(tid: str, request: Request):
+    """Admin approves a large tournament."""
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u or not u["is_admin"]:
+        db.close(); raise HTTPException(403, "Admin only")
+    db.execute(
+        "UPDATE tournaments SET pending_approval=0, status='upcoming', approved_by=? WHERE id=?",
+        (str(u["id"]), tid)
+    )
+    db.commit(); db.close()
+    return {"ok": True}
+
+
+@app.delete("/api/tournaments/{tid}")
+async def delete_tournament(tid: str, request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u or not u["is_admin"]:
+        db.close(); raise HTTPException(403, "Admin only")
+    db.execute("DELETE FROM tournaments WHERE id=?", (tid,))
+    db.commit(); db.close()
+    return {"ok": True}
+
+
+# ── Tournament Participants ────────────────────────────────────────────────────
+
+@app.post("/api/tournaments/{tid}/register")
+async def register_tournament(tid: str, request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u:
+        db.close(); raise HTTPException(404, "User not found")
+
+    tour = db.execute("SELECT * FROM tournaments WHERE id=?", (tid,)).fetchone()
+    if not tour:
+        db.close(); raise HTTPException(404, "Tournament not found")
+    if tour["status"] not in ("upcoming", "active"):
+        db.close(); raise HTTPException(400, "Tournament is not open for registration")
+
+    body = await request.json()
+    clan_id = body.get("clan_id", "")
+    existing = db.execute(
+        "SELECT 1 FROM tournament_participants WHERE tournament_id=? AND user_id=?",
+        (tid, str(u["id"]))
+    ).fetchone()
+    if existing:
+        db.close()
+        return {"ok": True, "already_registered": True, "play_url": f"/mrm/multiplayer?tournament={tid}&mode=tournament"}
+
+    now = datetime.now(timezone.utc).isoformat()
+    db.execute("""
+        INSERT INTO tournament_participants (tournament_id, user_id, username, clan_id, registered_at)
+        VALUES (?,?,?,?,?)
+    """, (tid, str(u["id"]), u["username"], clan_id, now))
+    db.commit()
+
+    count = db.execute(
+        "SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id=?", (tid,)
+    ).fetchone()["c"]
+    db.close()
+
+    return {
+        "ok": True,
+        "registered": True,
+        "participant_count": count,
+        "play_url": f"/mrm/multiplayer?tournament={tid}&mode=tournament",
+    }
+
+
+@app.delete("/api/tournaments/{tid}/register")
+async def unregister_tournament(tid: str, request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u:
+        db.close(); raise HTTPException(404, "User not found")
+    db.execute(
+        "DELETE FROM tournament_participants WHERE tournament_id=? AND user_id=?",
+        (tid, str(u["id"]))
+    )
+    db.commit(); db.close()
+    return {"ok": True}
+
+
+@app.get("/api/tournaments/{tid}/participants")
+async def get_tournament_participants(tid: str, limit: int = 50):
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM tournament_participants WHERE tournament_id=? ORDER BY score DESC LIMIT ?",
+        (tid, limit)
+    ).fetchall()
+    db.close()
+    return {"participants": [dict(r) for r in rows]}
+
+
+@app.get("/api/tournaments/{tid}/leaderboard")
+async def get_tournament_leaderboard(tid: str, limit: int = 10):
+    db = get_db()
+    rows = db.execute(
+        """SELECT p.*, u.avatar_url FROM tournament_participants p
+           LEFT JOIN users u ON u.id = p.user_id
+           WHERE p.tournament_id=? ORDER BY p.score DESC LIMIT ?""",
+        (tid, limit)
+    ).fetchall()
+    result = []
+    for i, r in enumerate(rows):
+        result.append({
+            "rank": i + 1,
+            "user_id": r["user_id"],
+            "username": r["username"],
+            "score": r["score"],
+            "matches_played": r["matches_played"],
+            "avatar_url": r["avatar_url"] or "",
+            "clan_id": r["clan_id"],
+        })
+    db.close()
+    return {"leaderboard": result}
+
+
+@app.post("/api/tournaments/{tid}/participants/{uid}/score")
+async def add_participant_score(tid: str, uid: str, request: Request):
+    """Called by game engine after a tournament match ends. Applies xp_multiplier to XP."""
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    tour = db.execute("SELECT * FROM tournaments WHERE id=?", (tid,)).fetchone()
+    if not tour:
+        db.close(); raise HTTPException(404, "Tournament not found")
+
+    body = await request.json()
+    points_earned = int(body.get("points", 0))
+    xp_earned = int(body.get("xp", 0))
+    multiplier = float(tour["xp_multiplier"]) if tour["xp_multiplier"] else 1.2
+    bonus_xp = int(xp_earned * multiplier)
+
+    db.execute("""
+        UPDATE tournament_participants
+        SET score = score + ?, matches_played = matches_played + 1
+        WHERE tournament_id=? AND user_id=?
+    """, (points_earned, tid, uid))
+
+    # Apply bonus XP to user account
+    db.execute("UPDATE users SET xp = COALESCE(xp, 0) + ? WHERE id=?", (bonus_xp, uid))
+    db.commit(); db.close()
+    return {"ok": True, "bonus_xp": bonus_xp, "multiplier": multiplier}
+
+
+# ── Event Organizers ──────────────────────────────────────────────────────────
+
+@app.get("/api/tournaments/{tid}/organizers")
+async def get_organizers(tid: str, request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u or not u["is_admin"]:
+        db.close(); raise HTTPException(403, "Admin only")
+    rows = db.execute(
+        "SELECT * FROM event_organizers WHERE tournament_id=?", (tid,)
+    ).fetchall()
+    db.close()
+    return {"organizers": [dict(r) for r in rows]}
+
+
+@app.post("/api/tournaments/{tid}/organizers")
+async def assign_organizer(tid: str, request: Request):
+    """Admin assigns an event organizer to a tournament."""
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u or not u["is_admin"]:
+        db.close(); raise HTTPException(403, "Admin only")
+
+    body = await request.json()
+    target_uid = str(body.get("user_id", ""))
+    role = body.get("role", "organizer")
+
+    target = db.execute("SELECT * FROM users WHERE id=?", (target_uid,)).fetchone()
+    if not target:
+        db.close(); raise HTTPException(404, "Target user not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+    db.execute("""
+        INSERT OR REPLACE INTO event_organizers (tournament_id, user_id, username, role, assigned_at)
+        VALUES (?,?,?,?,?)
+    """, (tid, target_uid, target["username"], role, now))
+    db.commit(); db.close()
+    return {"ok": True}
+
+
+@app.delete("/api/tournaments/{tid}/organizers/{uid}")
+async def remove_organizer(tid: str, uid: str, request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u or not u["is_admin"]:
+        db.close(); raise HTTPException(403, "Admin only")
+    db.execute(
+        "DELETE FROM event_organizers WHERE tournament_id=? AND user_id=?", (tid, uid)
+    )
+    db.commit(); db.close()
+    return {"ok": True}
+
+
+@app.post("/api/organizers/grant-global")
+async def grant_global_organizer(request: Request):
+    """Admin grants user ability to create small tournaments independently."""
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u or not u["is_admin"]:
+        db.close(); raise HTTPException(403, "Admin only")
+
+    body = await request.json()
+    target_uid = str(body.get("user_id", ""))
+    target = db.execute("SELECT * FROM users WHERE id=?", (target_uid,)).fetchone()
+    if not target:
+        db.close(); raise HTTPException(404, "User not found")
+
+    now = datetime.now(timezone.utc).isoformat()
+    db.execute("""
+        INSERT OR REPLACE INTO event_organizers (tournament_id, user_id, username, role, assigned_at)
+        VALUES ('*',?,?,'global_organizer',?)
+    """, (target_uid, target["username"], now))
+    db.commit(); db.close()
+    return {"ok": True, "message": f"{target['username']} can now create small tournaments"}
+
+
+# ── Tournament Rooms (Multiplayer) ────────────────────────────────────────────
+
+@app.get("/api/tournaments/{tid}/rooms")
+async def get_tournament_rooms(tid: str):
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM tournament_rooms WHERE tournament_id=? AND status='waiting' ORDER BY created_at DESC",
+        (tid,)
+    ).fetchall()
+    db.close()
+    return {"rooms": [dict(r) for r in rows]}
+
+
+@app.post("/api/tournaments/{tid}/rooms")
+async def create_tournament_room(tid: str, request: Request):
+    identity, is_fb = await get_firebase_uid_or_backend_id(request)
+    db = get_db()
+    if is_fb:
+        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
+    else:
+        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
+    if not u:
+        db.close(); raise HTTPException(404, "User not found")
+
+    # Must be registered in the tournament
+    reg = db.execute(
+        "SELECT 1 FROM tournament_participants WHERE tournament_id=? AND user_id=? AND status='active'",
+        (tid, str(u["id"]))
+    ).fetchone()
+    if not reg:
+        db.close(); raise HTTPException(403, "You must register for this tournament first")
+
+    body = await request.json()
+    room_mode = body.get("room_mode", "individual")
+    clan_a_id = body.get("clan_a_id", "")
+    clan_b_id = body.get("clan_b_id", "")
+    max_players = int(body.get("max_players", 2))
+    mathmap_id = body.get("mathmap_id", "")
+
+    # Clan mode: verify user is clan leader/sub-leader
+    if room_mode == "clan" and clan_a_id:
+        clan_role = db.execute(
+            "SELECT role FROM clan_members WHERE clan_id=? AND user_id=?",
+            (clan_a_id, str(u["id"]))
+        ).fetchone()
+        if not clan_role or clan_role["role"] not in ("owner", "leader", "sub_leader"):
+            db.close(); raise HTTPException(403, "Only clan leader or sub-leader can create clan tournament rooms")
+
+    rid = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    db.execute("""
+        INSERT INTO tournament_rooms
+        (id, tournament_id, host_user_id, host_username, room_mode, clan_a_id, clan_b_id,
+         max_players, mathmap_id, created_at)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
+    """, (rid, tid, str(u["id"]), u["username"], room_mode, clan_a_id, clan_b_id,
+          max_players, mathmap_id, now))
+    db.commit(); db.close()
+
+    return {
+        "ok": True,
+        "room_id": rid,
+        "redirect_url": f"/mrm/multiplayer?tournament={tid}&room={rid}&mode=tournament",
+    }
+
+
+@app.patch("/api/tournaments/{tid}/rooms/{rid}")
+async def update_tournament_room_status(tid: str, rid: str, request: Request):
+    body = await request.json()
+    new_status = body.get("status", "waiting")
+    db = get_db()
+    db.execute(
+        "UPDATE tournament_rooms SET status=? WHERE id=? AND tournament_id=?",
+        (new_status, rid, tid)
+    )
+    db.commit(); db.close()
+    return {"ok": True}
+
+
+@app.get("/api/events")
+async def get_events():
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM events ORDER BY created_at DESC LIMIT 20"
+    ).fetchall()
+    db.close()
+    if rows:
+        return {"events": [dict(r) for r in rows]}
+    return {
+        "events": [
+            {"id": "ev1", "status": "Sắp diễn ra", "date": "28/08", "title": "Thử thách Tốc độ Đại số 10 phút", "description": "Giải 20 câu trắc nghiệm tốc độ cao."},
+            {"id": "ev2", "status": "Sắp diễn ra", "date": "05/09", "title": "Đại chiến Clan liên trường Mùa Thu", "description": "Vòng loại khu vực toàn quốc."},
+            {"id": "ev3", "status": "Định kỳ", "date": "Hàng tuần", "title": "MathMap của tuần (Double XP)", "description": "Nhận x2 XP toàn bộ chủ đề."},
+            {"id": "ev4", "status": "Sắp diễn ra", "date": "15/09", "title": "Đấu trường SAT Math 800", "description": "Bài thi chuẩn hóa quốc tế 54 câu hỏi tiếng Anh."},
+        ]
+    }
+
+
+@app.get("/api/changelog")
+async def get_changelog():
+    db = get_db()
+    rows = db.execute(
+        "SELECT * FROM changelog_entries ORDER BY date DESC LIMIT 20"
+    ).fetchall()
+    db.close()
+    if rows:
+        return {"changelog": [dict(r) for r in rows]}
+    return {
+        "changelog": [
+            {"id": "cl1", "date": "23/08/2026", "tag": "new", "tagLabel": "Mới", "title": "Ra mắt tính năng Math Clans & Đấu Nhóm thời gian thực", "description": "So tài trực tiếp theo cặp đấu với thanh điểm đồng bộ."},
+            {"id": "cl2", "date": "18/08/2026", "tag": "improve", "tagLabel": "Nâng cấp", "title": "Tối ưu hóa tốc độ tải trang MathMap Detail & KaTeX Render", "description": "Giảm 40% thời gian tải trang chi tiết MathMap."},
+            {"id": "cl3", "date": "12/08/2026", "tag": "new", "tagLabel": "Mới", "title": "Hệ thống Thảo luận & Báo cáo bình luận cộng đồng", "description": "Hỗ trợ hỏi đáp đa tầng dưới từng MathMap."},
+        ]
+    }
+
+
+# ── AI Addons: Geometry Engine & Video Enhancer ───────────────────────────────
+@app.post("/api/geometry/preprocess")
+async def api_geometry_preprocess(req: Request):
+    """Bóc tách sơ đồ hình học (GeoSolver + Qwen2.5-VL) và sinh mã AlphaGeometry DSL."""
+    try:
+        data = await req.json()
+        img = data.get("image")
+        text = data.get("text", "")
+        vision_text = ""
+        if img and _vision_agent.is_configured():
+            v_text, v_ok = await _vision_agent.extract_with_fallback(img, user_hint=text)
+            if v_ok and v_text:
+                vision_text = v_text
+        from geometry_engine import process_geometry_image
+        res = process_geometry_image(img, text, vision_text=vision_text)
+        return JSONResponse(res)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/geometry/alphageometry/translate")
+async def api_alphageometry_translate(req: Request):
+    """Chuyển đổi bài toán hình học sang ngôn ngữ hình thức AlphaGeometry DSL."""
+    try:
+        data = await req.json()
+        text = data.get("text", "")
+        from geometry_engine import AlphaGeometryTranslator, SymbolicGeometryEngine
+        formal_info = AlphaGeometryTranslator.to_formal_dsl(text)
+        deduction = SymbolicGeometryEngine.deduce(formal_info)
+        return JSONResponse({**formal_info, **deduction})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/video/enhance")
+async def api_video_enhance(req: Request):
+    """Khởi động pipeline phục hồi & nâng cấp video AI (CodeFormer + Real-ESRGAN + RIFE)."""
+    try:
+        data = await req.json()
+        video_path = data.get("video_path") or data.get("url")
+        options = data.get("options", {})
+        from video_enhancer import enhance_user_video_async
+        task_id = enhance_user_video_async(video_path, options)
+        return JSONResponse({"task_id": task_id, "status": "queued", "message": "Video enhancement job started"})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.get("/api/video/enhance/status/{task_id}")
+async def api_video_enhance_status(task_id: str):
+    """Kiểm tra tiến trình % và trạng thái xử lý video."""
+    try:
+        from video_enhancer import get_video_task_status
+        st = get_video_task_status(task_id)
+        if not st:
+            return JSONResponse({"error": "Task not found"}, status_code=404)
+        return JSONResponse(st)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn # pyright: ignore[reportMissingImports]
     port = int(os.environ.get("PORT", 5000))
     print(f"DuoMath API v4 (FastAPI + MathGPT) -> http://localhost:{port}")
     uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info")
+

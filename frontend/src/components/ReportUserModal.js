@@ -335,7 +335,7 @@ export default function ReportUserModal({ targetUsername, targetUserId, onClose 
                 Báo cáo đã được gửi!
               </div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 24 }}>
-                Cảm ơn bạn đã giúp duy trì môi trường DuoMath lành mạnh.<br/>
+                Cảm ơn bạn đã giúp duy trì môi trường BingMath lành mạnh.<br/>
                 Admin sẽ xem xét báo cáo về <span style={{ color: "#f87171", fontWeight: 700 }}>@{targetUsername}</span> trong vòng 24h.
               </div>
               <button

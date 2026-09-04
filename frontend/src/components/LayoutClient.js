@@ -30,62 +30,88 @@ function isLessonPath(pathname) {
   return false;
 }
 
-/** Floating language toggle pill — rendered in bottom-left corner */
+/** Floating language toggle pill — rendered in bottom-left corner across all pages */
 function LangToggleButton() {
   const { lang, toggleLang } = useLanguage();
   const isVi = lang === "vi";
 
   return (
-    <button
+    <div
       id="lang-toggle-btn"
       onClick={toggleLang}
-      title={isVi ? "Switch to English" : "Chuyển sang Tiếng Việt"}
+      title={isVi ? "Switch to English (Chuyển sang Tiếng Anh)" : "Switch to Vietnamese (Chuyển sang Tiếng Việt)"}
       aria-label={isVi ? "Switch to English" : "Switch to Vietnamese"}
       style={{
         position: "fixed",
         bottom: 24,
         left: 24,
-        zIndex: 9000,
-        display: "flex",
+        zIndex: 9999,
+        display: "inline-flex",
         alignItems: "center",
-        gap: 6,
-        padding: "8px 14px",
+        padding: "4px",
         borderRadius: 999,
-        border: isVi
-          ? "1px solid rgba(20,184,166,0.5)"
-          : "1px solid rgba(56,189,248,0.5)",
-        background: isVi
-          ? "rgba(20,184,166,0.12)"
-          : "rgba(56,189,248,0.12)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
-        color: "rgba(255,255,255,0.92)",
-        fontSize: 13,
-        fontWeight: 700,
+        border: "1px solid rgba(255,255,255,0.15)",
+        background: "rgba(2,8,24,0.85)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(34,211,238,0.15)",
         cursor: "pointer",
         transition: "all 0.25s cubic-bezier(0.2,0.8,0.2,1)",
-        boxShadow: isVi
-          ? "0 0 12px rgba(20,184,166,0.35), 0 2px 8px rgba(0,0,0,0.3)"
-          : "0 0 12px rgba(56,189,248,0.35), 0 2px 8px rgba(0,0,0,0.3)",
-        letterSpacing: 0.4,
         userSelect: "none",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
-        e.currentTarget.style.boxShadow = isVi
-          ? "0 0 22px rgba(20,184,166,0.7), 0 4px 16px rgba(0,0,0,0.4)"
-          : "0 0 22px rgba(56,189,248,0.7), 0 4px 16px rgba(0,0,0,0.4)";
+        e.currentTarget.style.transform = "translateY(-3px) scale(1.04)";
+        e.currentTarget.style.borderColor = "rgba(34,211,238,0.4)";
+        e.currentTarget.style.boxShadow = "0 12px 36px rgba(0,0,0,0.6), 0 0 25px rgba(34,211,238,0.3)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "none";
-        e.currentTarget.style.boxShadow = isVi
-          ? "0 0 12px rgba(20,184,166,0.35), 0 2px 8px rgba(0,0,0,0.3)"
-          : "0 0 12px rgba(56,189,248,0.35), 0 2px 8px rgba(0,0,0,0.3)";
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
+        e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(34,211,238,0.15)";
       }}
     >
-      <span style={{ fontSize: 16, lineHeight: 1 }}>{isVi ? "🇻🇳" : "🇬🇧"}</span>
-      <span>{isVi ? "VI" : "EN"}</span>
-    </button>
+      {/* VI Option */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "6px 12px",
+        borderRadius: 999,
+        background: isVi
+          ? "linear-gradient(135deg, #f43f5e 0%, #ec4899 100%)"
+          : "transparent",
+        color: isVi ? "white" : "rgba(255,255,255,0.45)",
+        fontSize: 12,
+        fontWeight: 800,
+        letterSpacing: 0.5,
+        boxShadow: isVi ? "0 2px 10px rgba(244,63,94,0.4)" : "none",
+        transition: "all 0.2s ease",
+      }}>
+        <span style={{ fontSize: 14 }}>🇻🇳</span>
+        <span>VI</span>
+      </div>
+
+      {/* EN Option */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 5,
+        padding: "6px 12px",
+        borderRadius: 999,
+        background: !isVi
+          ? "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)"
+          : "transparent",
+        color: !isVi ? "white" : "rgba(255,255,255,0.45)",
+        fontSize: 12,
+        fontWeight: 800,
+        letterSpacing: 0.5,
+        boxShadow: !isVi ? "0 2px 10px rgba(14,165,233,0.4)" : "none",
+        transition: "all 0.2s ease",
+      }}>
+        <span style={{ fontSize: 14 }}>🇬🇧</span>
+        <span>EN</span>
+      </div>
+    </div>
   );
 }
 

@@ -848,45 +848,68 @@ export default function SingleplayerListing() {
                   </div>
 
                   {/* Action buttons */}
-                  <div style={{ display: "flex", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <Link
+                        href={`/mrm/singleplayer/${selectedMap}`}
+                        style={{ flex: 1, textDecoration: "none" }}
+                        onClick={() => {
+                          // Persist opacity so SingleplayerGame can read it
+                          try { localStorage.setItem("duomath_bg_opacity", String(bgOpacity / 100)); } catch(e) {}
+                        }}
+                      >
+                        <button style={{
+                          width: "100%", padding: "10px 0",
+                          background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
+                          color: "#000", border: "none", borderRadius: 8,
+                          fontSize: 13, fontWeight: 800, cursor: "pointer",
+                          boxShadow: "0 4px 14px rgba(34,211,238,0.3)",
+                          transition: "all 0.2s",
+                        }}
+                          onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; }}
+                          onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+                        >
+                          ▶ Chơi ngay
+                        </button>
+                      </Link>
+                      <button
+                        onClick={() => handleDownloadMap(selectedMapData)}
+                        style={{
+                          padding: "10px 12px",
+                          background: "rgba(34,211,238,0.1)",
+                          border: "1px solid rgba(34,211,238,0.3)",
+                          color: "#22d3ee", borderRadius: 8,
+                          fontSize: 12, fontWeight: 700, cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                        title="Download MathMap"
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,211,238,0.2)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,211,238,0.1)"; }}
+                      >
+                        ⬇
+                      </button>
+                    </div>
+
+                    {/* View Details & Discussion Link */}
                     <Link
-                      href={`/mrm/singleplayer/${selectedMap}`}
-                      style={{ flex: 1, textDecoration: "none" }}
-                      onClick={() => {
-                        // Persist opacity so SingleplayerGame can read it
-                        try { localStorage.setItem("duomath_bg_opacity", String(bgOpacity / 100)); } catch(e) {}
-                      }}
+                      href={`/mathmap/${selectedMap}`}
+                      style={{ textDecoration: "none" }}
                     >
                       <button style={{
-                        width: "100%", padding: "10px 0",
-                        background: "linear-gradient(135deg, #22d3ee, #0ea5e9)",
-                        color: "#000", border: "none", borderRadius: 8,
-                        fontSize: 13, fontWeight: 800, cursor: "pointer",
-                        boxShadow: "0 4px 14px rgba(34,211,238,0.3)",
+                        width: "100%", padding: "8px 0",
+                        background: "rgba(236,72,153,0.12)",
+                        border: "1px solid rgba(236,72,153,0.35)",
+                        color: "#f472b6", borderRadius: 8,
+                        fontSize: 12, fontWeight: 700, cursor: "pointer",
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                         transition: "all 0.2s",
                       }}
-                        onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.02)"; }}
-                        onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)"; }}
+                        onMouseEnter={e => { e.currentTarget.style.background = "rgba(236,72,153,0.22)"; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = "rgba(236,72,153,0.12)"; }}
                       >
-                        ▶ Chơi ngay
+                        📖 Xem Chi Tiết &amp; Thảo Luận
                       </button>
                     </Link>
-                    <button
-                      onClick={() => handleDownloadMap(selectedMapData)}
-                      style={{
-                        padding: "10px 12px",
-                        background: "rgba(34,211,238,0.1)",
-                        border: "1px solid rgba(34,211,238,0.3)",
-                        color: "#22d3ee", borderRadius: 8,
-                        fontSize: 12, fontWeight: 700, cursor: "pointer",
-                        transition: "all 0.2s",
-                      }}
-                      title="Download MathMap"
-                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(34,211,238,0.2)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(34,211,238,0.1)"; }}
-                    >
-                      ⬇
-                    </button>
                   </div>
                 </div>
               </>

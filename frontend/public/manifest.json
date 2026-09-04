@@ -1,6 +1,6 @@
 {
-  "name": "DuoMath — Học Toán Song Ngữ",
-  "short_name": "DuoMath",
+  "name": "BingMath — Học Toán Song Ngữ",
+  "short_name": "BingMath",
   "description": "Nền tảng học toán song ngữ Anh-Việt cho học sinh chuyên STEM. Đề thi thử, mini-games, đấu hạng và AI chatbot toán học.",
   "start_url": "/",
   "scope": "/",
@@ -31,7 +31,7 @@
       "sizes": "1280x720",
       "type": "image/webp",
       "form_factor": "wide",
-      "label": "DuoMath — Trang bài học Lớp 10"
+      "label": "BingMath — Trang bài học Lớp 10"
     }
   ],
   "shortcuts": [

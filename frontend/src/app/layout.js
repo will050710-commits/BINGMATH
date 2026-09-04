@@ -21,24 +21,24 @@ const inter = Inter({
 });
 
 export const metadata = {
-  title: "DuoMath — Học Toán Song Ngữ",
+  title: "BingMath — Học Toán Song Ngữ",
   description: "Nền tảng học toán song ngữ Anh-Việt cho học sinh chuyên STEM. Đề thi thử SAT & IELTS, mini-games, đấu hạng realtime và AI chatbot toán học.",
   keywords: ["toán học", "song ngữ", "STEM", "SAT", "IELTS", "học sinh", "lớp 10", "lớp 11", "lớp 12"],
-  authors: [{ name: "DuoMath Team" }],
-  creator: "DuoMath",
-  publisher: "DuoMath",
-  applicationName: "DuoMath",
+  authors: [{ name: "BingMath Team" }],
+  creator: "BingMath",
+  publisher: "BingMath",
+  applicationName: "BingMath",
   // PWA manifest
   manifest: "/manifest.json",
   // Apple PWA meta tags
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "DuoMath",
+    title: "BingMath",
   },
   // Open Graph for social sharing
   openGraph: {
-    title: "DuoMath — Học Toán Song Ngữ",
+    title: "BingMath — Học Toán Song Ngữ",
     description: "Học toán STEM song ngữ Anh-Việt, luyện SAT & IELTS cùng AI",
     type: "website",
     locale: "vi_VN",

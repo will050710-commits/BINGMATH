@@ -1,0 +1,244 @@
+{
+  "suite_name": "DuoMath End-to-End Mathematical Regression Benchmark",
+  "version": "1.0",
+  "description": "Comprehensive benchmark across Algebra, Calculus, Geometry, Probability, and Multiple-Choice problems to evaluate mathematical accuracy and detect calculation hallucinations.",
+  "test_cases": [
+    {
+      "id": "ALG-01",
+      "category": "Algebra",
+      "question": "Giải phương trình bậc hai: $x^2 - 5x + 6 = 0$.",
+      "expected_answer": "x = 2 hoặc x = 3",
+      "ground_truth_numeric": [2, 3],
+      "check_type": "roots"
+    },
+    {
+      "id": "ALG-02",
+      "category": "Algebra",
+      "question": "Cho phương trình $2x^2 - 7x + 3 = 0$. Tính tổng $S = x_1 + x_2$ và tích $P = x_1 x_2$ của hai nghiệm theo định lý Viète.",
+      "expected_answer": "S = 3.5 (hoặc 7/2), P = 1.5 (hoặc 3/2)",
+      "ground_truth_numeric": [3.5, 1.5],
+      "check_type": "numeric"
+    },
+    {
+      "id": "ALG-03",
+      "category": "Algebra",
+      "question": "Rút gọn biểu thức $A = \\frac{x^3 - 8}{x - 2}$ với $x \\neq 2$.",
+      "expected_answer": "x^2 + 2x + 4",
+      "check_type": "symbolic"
+    },
+    {
+      "id": "ALG-04",
+      "category": "Algebra",
+      "question": "Giải hệ phương trình tuyến tính: $\\begin{cases} 2x + 3y = 13 \\\\ 5x - 2y = 4 \\end{cases}$.",
+      "expected_answer": "x = 2, y = 3",
+      "ground_truth_numeric": [2, 3],
+      "check_type": "roots"
+    },
+    {
+      "id": "ALG-05",
+      "category": "Algebra",
+      "question": "Tìm giá trị nhỏ nhất của hàm số $f(x) = x^2 - 6x + 14$ trên $\\mathbb{R}$.",
+      "expected_answer": "5 tại x = 3",
+      "ground_truth_numeric": [5],
+      "check_type": "numeric"
+    },
+    {
+      "id": "ALG-06",
+      "category": "Algebra",
+      "question": "Giải bất phương trình: $\\frac{x - 1}{x + 2} \\le 0$.",
+      "expected_answer": "-2 < x <= 1",
+      "check_type": "interval"
+    },
+    {
+      "id": "ALG-07",
+      "category": "Algebra",
+      "question": "Tính giá trị của biểu thức $P = \\log_2(32) + \\log_3(81) - \\log_5(125)$.",
+      "expected_answer": "6",
+      "ground_truth_numeric": [6],
+      "check_type": "numeric"
+    },
+    {
+      "id": "CALC-01",
+      "category": "Calculus",
+      "question": "Tính đạo hàm của hàm số $y = x^3 - 4x^2 + 5x - 7$ tại điểm $x = 2$.",
+      "expected_answer": "y'(2) = 3*(2)^2 - 8*(2) + 5 = 1",
+      "ground_truth_numeric": [1],
+      "check_type": "numeric"
+    },
+    {
+      "id": "CALC-02",
+      "category": "Calculus",
+      "question": "Tính tích phân xác định $I = \\int_{0}^{2} (3x^2 - 2x + 1) dx$.",
+      "expected_answer": "I = [x^3 - x^2 + x]_0^2 = (8 - 4 + 2) = 6",
+      "ground_truth_numeric": [6],
+      "check_type": "numeric"
+    },
+    {
+      "id": "CALC-03",
+      "category": "Calculus",
+      "question": "Tính tích phân $J = \\int_{0}^{\\pi/2} \\sin(x) dx$.",
+      "expected_answer": "1",
+      "ground_truth_numeric": [1],
+      "check_type": "numeric"
+    },
+    {
+      "id": "CALC-04",
+      "category": "Calculus",
+      "question": "Tìm tiệm cận ngang của đồ thị hàm số $y = \\frac{4x - 1}{2x + 3}$.",
+      "expected_answer": "y = 2",
+      "ground_truth_numeric": [2],
+      "check_type": "numeric"
+    },
+    {
+      "id": "CALC-05",
+      "category": "Calculus",
+      "question": "Tính giới hạn $L = \\lim_{x \\to 0} \\frac{\\sin(5x)}{x}$.",
+      "expected_answer": "5",
+      "ground_truth_numeric": [5],
+      "check_type": "numeric"
+    },
+    {
+      "id": "CALC-06",
+      "category": "Calculus",
+      "question": "Tìm toạ độ điểm cực đại của hàm số $y = -x^3 + 3x + 2$.",
+      "expected_answer": "(1, 4)",
+      "ground_truth_numeric": [1, 4],
+      "check_type": "roots"
+    },
+    {
+      "id": "CALC-07",
+      "category": "Calculus",
+      "question": "Tính diện tích hình phẳng giới hạn bởi parabol $y = x^2$ và đường thẳng $y = 2x$.",
+      "expected_answer": "4/3 ≈ 1.3333",
+      "ground_truth_numeric": [1.333333],
+      "check_type": "numeric"
+    },
+    {
+      "id": "GEO-01",
+      "category": "Geometry",
+      "question": "Cho tam giác $ABC$ có đường cao $BE$ và $CF$ cắt nhau tại trực tâm $H$. Chứng minh 4 điểm $A, E, H, F$ cùng thuộc một đường tròn và xác định đường kính.",
+      "expected_answer": "Tứ giác AEHF nội tiếp đường tròn đường kính AH vì góc AEH = AFH = 90°.",
+      "check_type": "proof_cyclic"
+    },
+    {
+      "id": "GEO-02",
+      "category": "Geometry",
+      "question": "Cho tứ giác $ABCD$ nội tiếp $(O)$. Gọi $P = AB \\cap CD, Q = AD \\cap BC, R = AC \\cap BD$. Theo định lý Brocard, điểm $O$ là gì của tam giác $PQR$?",
+      "expected_answer": "O là trực tâm của tam giác PQR.",
+      "check_type": "brocard"
+    },
+    {
+      "id": "GEO-03",
+      "category": "Geometry",
+      "question": "Tính thể tích của hình chóp tứ giác đều $S.ABCD$ có cạnh đáy $a = 6$ và chiều cao $h = 4$.",
+      "expected_answer": "V = 1/3 * a^2 * h = 1/3 * 36 * 4 = 48",
+      "ground_truth_numeric": [48],
+      "check_type": "numeric"
+    },
+    {
+      "id": "GEO-04",
+      "category": "Geometry",
+      "question": "Tính diện tích mặt cầu và thể tích của khối cầu có bán kính $R = 3$.",
+      "expected_answer": "S = 4*pi*R^2 = 36*pi ≈ 113.097, V = 4/3*pi*R^3 = 36*pi ≈ 113.097",
+      "ground_truth_numeric": [113.097],
+      "check_type": "numeric"
+    },
+    {
+      "id": "GEO-05",
+      "category": "Geometry",
+      "question": "Tính thể tích của khối nón có bán kính đáy $r = 3$ và chiều cao $h = 5$.",
+      "expected_answer": "V = 1/3 * pi * r^2 * h = 15*pi ≈ 47.1239",
+      "ground_truth_numeric": [47.1239],
+      "check_type": "numeric"
+    },
+    {
+      "id": "GEO-06",
+      "category": "Geometry",
+      "question": "Cho tam giác vuông tại $A$ có $AB = 6, AC = 8$. Tính bán kính đường tròn ngoại tiếp $R$ và đường tròn nội tiếp $r$.",
+      "expected_answer": "BC = 10, R = 5, r = (AB + AC - BC)/2 = 2",
+      "ground_truth_numeric": [5, 2],
+      "check_type": "numeric"
+    },
+    {
+      "id": "PROB-01",
+      "category": "Probability",
+      "question": "Một tổ có 6 nam và 4 nữ. Chọn ngẫu nhiên 3 người. Tính số cách chọn sao cho có ít nhất 1 nữ.",
+      "expected_answer": "C(10, 3) - C(6, 3) = 120 - 20 = 100",
+      "ground_truth_numeric": [100],
+      "check_type": "numeric"
+    },
+    {
+      "id": "PROB-02",
+      "category": "Probability",
+      "question": "Gieo một con xúc xắc cân đối 2 lần. Tính xác suất để tổng số chấm xuất hiện bằng 7.",
+      "expected_answer": "6/36 = 1/6 ≈ 0.1667",
+      "ground_truth_numeric": [0.166667],
+      "check_type": "numeric"
+    },
+    {
+      "id": "PROB-03",
+      "category": "Probability",
+      "question": "Tính số chỉnh hợp chập 3 của 7 phần tử $A_7^3$.",
+      "expected_answer": "7 * 6 * 5 = 210",
+      "ground_truth_numeric": [210],
+      "check_type": "numeric"
+    },
+    {
+      "id": "TRAP-01",
+      "category": "Anti-Hallucination Multiple Choice",
+      "question": "Một vật chuyển động có vận tốc $v(t) = -3(t - 2)^2 + 9$ (m/s). Tính vận tốc của vật tại thời điểm $t = 2.5$ giây. Các phương án trắc nghiệm cho sẵn:\nA. 8.50\nB. 7.75\nC. 9.00\nD. 8.79",
+      "expected_answer": "v(2.5) = -3(0.5)^2 + 9 = -3(0.25) + 9 = -0.75 + 9 = 8.25. Lưu ý: Kết quả chính xác là 8.25 m/s, không khớp chính xác với đáp án nào trong 4 phương án cho sẵn.",
+      "ground_truth_numeric": [8.25],
+      "forbidden_hallucinations": ["8.7854", "8.79", "dùng máy tính: v ≈ 8.7854"],
+      "check_type": "anti_hallucination"
+    },
+    {
+      "id": "TRAP-02",
+      "category": "Anti-Hallucination Multiple Choice",
+      "question": "Tính giá trị của $E = \\sqrt{50} - \\sqrt{18} + \\sqrt{8}$. Cho các lựa chọn:\nA. $3\\sqrt{2}$\nB. $4\\sqrt{2}$\nC. $5\\sqrt{2}$\nD. $6\\sqrt{2}$",
+      "expected_answer": "5*sqrt(2) - 3*sqrt(2) + 2*sqrt(2) = 4*sqrt(2) (Phương án B)",
+      "ground_truth_numeric": [5.656854],
+      "check_type": "numeric"
+    },
+    {
+      "id": "TRAP-03",
+      "category": "Anti-Hallucination Multiple Choice",
+      "question": "Tính $K = 125^{2/3} + 16^{3/4}$. Cho các phương án:\nA. 31\nB. 33\nC. 35\nD. 37",
+      "expected_answer": "25 + 8 = 33 (Phương án B)",
+      "ground_truth_numeric": [33],
+      "check_type": "numeric"
+    },
+    {
+      "id": "TRAP-04",
+      "category": "Anti-Hallucination Multiple Choice",
+      "question": "Tính tổng cấp số nhân lùi vô hạn $S = 1 + \\frac{1}{3} + \\frac{1}{9} + \\frac{1}{27} + \\dots$.",
+      "expected_answer": "S = 1 / (1 - 1/3) = 1.5 (hoặc 3/2)",
+      "ground_truth_numeric": [1.5],
+      "check_type": "numeric"
+    },
+    {
+      "id": "NUM-01",
+      "category": "Arithmetic",
+      "question": "Tính chính xác giá trị của biểu thức: $M = \\frac{2^{10} \\cdot 3^5 - 4^5 \\cdot 9^2}{2^9 \\cdot 3^4}$.",
+      "expected_answer": "M = (1024*243 - 1024*81)/(512*81) = 1024*162 / (512*81) = 2 * 2 = 4",
+      "ground_truth_numeric": [4],
+      "check_type": "numeric"
+    },
+    {
+      "id": "NUM-02",
+      "category": "Arithmetic",
+      "question": "Tìm số dư khi chia $2^{100}$ cho 7.",
+      "expected_answer": "2^3 ≡ 1 (mod 7) => 2^100 = (2^3)^33 * 2 ≡ 1^33 * 2 = 2 (mod 7)",
+      "ground_truth_numeric": [2],
+      "check_type": "numeric"
+    },
+    {
+      "id": "NUM-03",
+      "category": "Arithmetic",
+      "question": "Tính tổng $S = 1 + 2 + 3 + \\dots + 100$.",
+      "expected_answer": "100 * 101 / 2 = 5050",
+      "ground_truth_numeric": [5050],
+      "check_type": "numeric"
+    }
+  ]
+}

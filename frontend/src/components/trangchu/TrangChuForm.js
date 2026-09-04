@@ -717,6 +717,66 @@ export default function TrangChuForm() {
           </div>
         </div>
 
+        {/* ── My Clan Section in Profile Drawer ── */}
+        <div style={{ padding: "12px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#f472b6", textTransform: "uppercase", letterSpacing: 0.5 }}>
+              {t("🛡️ Math Clan của tôi", "🛡️ My Math Clan")}
+            </div>
+            <Link href="/clans" onClick={() => setShowProfile(false)} style={{ textDecoration: "none", fontSize: 10, color: "#22d3ee", fontWeight: 700 }}>
+              {t("Xem tất cả →", "View all →")}
+            </Link>
+          </div>
+
+          <div style={{
+            background: "linear-gradient(135deg, rgba(236,72,153,0.1) 0%, rgba(99,102,241,0.1) 100%)",
+            border: "1px solid rgba(244,114,182,0.25)",
+            borderRadius: 10, padding: "10px 12px",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <div style={{
+                width: 32, height: 32, borderRadius: 8,
+                background: "linear-gradient(135deg, #ec4899, #8b5cf6)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 900, fontSize: 11, color: "white", flexShrink: 0,
+              }}>
+                TH
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 800, color: "white", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  Thánh Toán Học
+                </div>
+                <div style={{ fontSize: 10, color: "#22d3ee", fontFamily: "monospace" }}>
+                  #THTH · Trưởng Clan 👑
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+              <div style={{ background: "rgba(0,0,0,0.25)", padding: "5px 8px", borderRadius: 6 }}>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>Cấp độ Clan</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#fbbf24" }}>Level 24</div>
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.25)", padding: "5px 8px", borderRadius: 6 }}>
+                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.4)" }}>BXH Tháng</div>
+                <div style={{ fontSize: 12, fontWeight: 800, color: "#34d399" }}>Top #1 🏆</div>
+              </div>
+            </div>
+
+            <Link href="/mrm/profile/me" onClick={() => setShowProfile(false)} style={{ textDecoration: "none" }}>
+              <button style={{
+                width: "100%", padding: "7px 0",
+                background: "linear-gradient(135deg, #f472b6, #8b5cf6)",
+                border: "none", borderRadius: 6,
+                color: "white", fontWeight: 800, fontSize: 11, cursor: "pointer",
+                boxShadow: "0 2px 8px rgba(244,114,182,0.3)",
+              }}>
+                💬 Chat & BXH Clan Thành Viên →
+              </button>
+            </Link>
+          </div>
+        </div>
+
         {/* Stats Button */}
         <div style={{ padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.1)" }}>
           <Link href="/stats" onClick={() => setShowProfile(false)} style={{ textDecoration: "none" }}>
@@ -890,9 +950,9 @@ export default function TrangChuForm() {
 
           {/* Logo & Owl Mascot */}
           <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10, transform: "skewX(-8deg)" }}>
-            <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
+            <img src="/images/duosteamicon-removebg-preview.webp" alt="BingMath" style={{ width: 34, height: 34, objectFit: "contain", borderRadius: 6, animation: "bounceMascot 4s ease-in-out infinite" }} />
             <span style={{ fontWeight: 950, fontSize: 22, color: "white", letterSpacing: 1.5, background: "linear-gradient(135deg, #00d2ff, #7c3aed)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-              DUOMATH
+              BINGMATH
             </span>
           </Link>
 
@@ -1020,7 +1080,7 @@ export default function TrangChuForm() {
                 alignItems: "center",
                 justifyContent: "center",
               }}>
-                <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath mascot" style={{ width: "220px", maxWidth: "90%", filter: "drop-shadow(0 0 30px rgba(0,200,255,0.5)) drop-shadow(0 8px 30px rgba(0,100,200,0.4))", animation: "floatMascot 6s ease-in-out infinite" }} />
+                <img src="/images/duosteamicon-removebg-preview.webp" alt="BingMath mascot" style={{ width: "220px", maxWidth: "90%", filter: "drop-shadow(0 0 30px rgba(0,200,255,0.5)) drop-shadow(0 8px 30px rgba(0,100,200,0.4))", animation: "floatMascot 6s ease-in-out infinite" }} />
                 <div style={{ position: "absolute", bottom: "10%", background: "rgba(4,18,48,0.75)", padding: "8px 18px", borderRadius: 20, border: "1px solid rgba(0,210,255,0.35)", backdropFilter: "blur(12px)", fontSize: 12, color: "#38bdf8", fontWeight: 700, letterSpacing: 0.8, boxShadow: "0 4px 20px rgba(0,150,255,0.2), 0 0 0 1px rgba(0,200,255,0.1)", animation: "badgeFloat 5s ease-in-out infinite" }}>
                   🌌 Explore the Universe of Math
                 </div>
@@ -1046,7 +1106,7 @@ export default function TrangChuForm() {
                     <TypewriterText text={t(`Chào bạn, ${user.username}! 👋`, `Welcome, ${user.username}! 👋`)} speed={70} />
                   </h1>
                 ) : (
-                  <FadeInTitle text={t("Chào mừng tới DUOMATH!", "Welcome to DUOMATH!")} />
+                  <FadeInTitle text={t("Chào mừng tới BINGMATH!", "Welcome to BINGMATH!")} />
                 )}
                 <p style={{ color: "#bae6fd", fontSize: 20, lineHeight: 1.5, fontWeight: 500, marginBottom: 16 }}>
                   {t(
@@ -1056,8 +1116,8 @@ export default function TrangChuForm() {
                 </p>
                 <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 15.5, lineHeight: 1.65, marginBottom: 26 }}>
                   {t(
-                    <span>Chúng tôi tin rằng tương lai của <strong>STEM</strong> gắn liền với <strong>năng lực song ngữ</strong>. DuoMath mang tới trải nghiệm học tập đỉnh cao kết hợp bài học chuẩn hóa, AI chatbot thông minh và đấu hạng thời gian thực.</span>,
-                    <span>We believe the future of <strong>STEM</strong> goes hand-in-hand with <strong>bilingual proficiency</strong>. DuoMath delivers a premium learning experience with standardized lessons, smart AI chatbot, and real-time competitive ranking.</span>
+                    <span>Chúng tôi tin rằng tương lai của <strong>STEM</strong> gắn liền với <strong>năng lực song ngữ</strong>. BingMath mang tới trải nghiệm học tập đỉnh cao kết hợp bài học chuẩn hóa, AI chatbot thông minh và đấu hạng thời gian thực.</span>,
+                    <span>We believe the future of <strong>STEM</strong> goes hand-in-hand with <strong>bilingual proficiency</strong>. BingMath delivers a premium learning experience with standardized lessons, smart AI chatbot, and real-time competitive ranking.</span>
                   )}
                 </p>
 
@@ -1363,14 +1423,14 @@ export default function TrangChuForm() {
                {/* Left branding */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 220 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <img src="/images/duosteamicon-removebg-preview.webp" alt="DuoMath" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />
-                  <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 0.5 }}>DUOMATH</span>
+                  <img src="/images/duosteamicon-removebg-preview.webp" alt="BingMath" style={{ width: 44, height: 44, objectFit: "contain", borderRadius: 8 }} />
+                  <span style={{ fontWeight: 900, fontSize: 20, color: "white", letterSpacing: 0.5 }}>BINGMATH</span>
                 </div>
                 <span style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", fontStyle: "italic" }}>
                   {t("Học toán song ngữ cho học sinh chuyên STEM", "Bilingual math education for STEM students")}
                 </span>
                 <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginTop: 4 }}>
-                  {t("© 2026 DuoMath. Mọi quyền được bảo lưu.", "© 2026 DuoMath. All rights reserved.")}
+                  {t("© 2026 BingMath. Mọi quyền được bảo lưu.", "© 2026 BingMath. All rights reserved.")}
                 </span>
               </div>
 

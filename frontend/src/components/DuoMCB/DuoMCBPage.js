@@ -1,11 +1,30 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import dynamic from "next/dynamic";
 import styles from "./DuoMCBPage.module.css";
 import Image from "next/image";
 import { createSession, chat, generateVideo } from "./duoServer";
 import Link from "next/link";
 import katex from "katex";
 import "katex/dist/katex.min.css";
+
+const MathVizRenderer = dynamic(() => import("./mathviz/MathVizRenderer"), { ssr: false });
+
+function extractMathvizBlock(content) {
+  if (!content) return { text: "", vizData: null };
+  const match = content.match(/```mathviz\s*\n?([\s\S]*?)```/);
+  if (!match) return { text: content, vizData: null };
+  const text = (content.substring(0, match.index) + content.substring(match.index + match[0].length)).trim();
+  try {
+    const vizData = JSON.parse(match[1].trim());
+    if (vizData && vizData.type === "mathviz.v1") {
+      return { text, vizData };
+    }
+  } catch (err) {
+    console.warn("[MathViz] Failed to parse mathviz JSON:", err);
+  }
+  return { text: content, vizData: null };
+}
 
 const isClient = typeof window !== "undefined";
 
@@ -74,7 +93,7 @@ const TOOLS = [
   { id: "hint",     icon: "💡", label: "Gợi Ý Socratic",     desc: "Hướng dẫn từng bước nhỏ" },
   { id: "solution", icon: "📖", label: "Giải Đầy Đủ",        desc: "Lời giải chi tiết hoàn chỉnh" },
   { id: "video",    icon: "🎬", label: "Tạo Video Giải",      desc: "Video hoạt hình giải bài" },
-  { id: "threeD",   icon: "🌐", label: "Minh Họa 3D",        desc: "Mô hình 3D tương tác" },
+  { id: "threeD",   icon: "📐", label: "Minh Họa Tương Tác",  desc: "Đồ thị & mô hình 2D/3D" },
 ];
 
 
@@ -128,6 +147,79 @@ function parseMathAndText(text) {
   return tokens;
 }
 
+function renderVerificationBadge(item, itemIdx = 0) {
+  if (typeof item !== "string") return item;
+  if (!item.includes("[Đã kiểm chứng") && !item.includes("[⚠ Chưa kiểm chứng") && !item.includes("[Chưa kiểm chứng")) {
+    return item;
+  }
+
+  const badgeRegex = /(\[Đã kiểm chứng bằng toạ độ số\s*✅?\]|\[(?:⚠\s*)?Chưa kiểm chứng được\])/g;
+  const parts = [];
+  let lastIdx = 0;
+  let match;
+
+  while ((match = badgeRegex.exec(item)) !== null) {
+    if (match.index > lastIdx) {
+      parts.push(item.substring(lastIdx, match.index));
+    }
+    const isVerified = match[1].includes("Đã kiểm chứng");
+    if (isVerified) {
+      parts.push(
+        <span
+          key={`verif-${itemIdx}-${match.index}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            backgroundColor: "rgba(16, 185, 129, 0.15)",
+            color: "#10b981",
+            border: "1px solid rgba(16, 185, 129, 0.35)",
+            borderRadius: "12px",
+            padding: "2px 8px",
+            fontSize: "0.75rem",
+            fontWeight: "600",
+            marginLeft: "6px",
+            verticalAlign: "middle"
+          }}
+          title="Đã kiểm chứng số học và toạ độ thực tế qua Geometry Verifier"
+        >
+          <span>✅</span> Đã kiểm chứng số
+        </span>
+      );
+    } else {
+      parts.push(
+        <span
+          key={`unverif-${itemIdx}-${match.index}`}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "4px",
+            backgroundColor: "rgba(245, 158, 11, 0.15)",
+            color: "#f59e0b",
+            border: "1px solid rgba(245, 158, 11, 0.35)",
+            borderRadius: "12px",
+            padding: "2px 8px",
+            fontSize: "0.75rem",
+            fontWeight: "600",
+            marginLeft: "6px",
+            verticalAlign: "middle"
+          }}
+          title="Bước hình học chưa có toạ độ kiểm chứng số"
+        >
+          <span>⚠</span> Chưa kiểm chứng
+        </span>
+      );
+    }
+    lastIdx = badgeRegex.lastIndex;
+  }
+
+  if (lastIdx < item.length) {
+    parts.push(item.substring(lastIdx));
+  }
+
+  return parts;
+}
+
 function renderTextWithMarkdown(text, key, styles) {
   const lines = text.split("\n");
   return (
@@ -163,17 +255,17 @@ function renderTextWithMarkdown(text, key, styles) {
         
         while ((match = boldRegex.exec(content)) !== null) {
           if (match.index > lastIdx) {
-            parts.push(content.substring(lastIdx, match.index));
+            parts.push(...[].concat(renderVerificationBadge(content.substring(lastIdx, match.index), lastIdx)));
           }
-          parts.push(<strong key={match.index}>{match[1]}</strong>);
+          parts.push(<strong key={match.index}>{renderVerificationBadge(match[1], match.index)}</strong>);
           lastIdx = boldRegex.lastIndex;
         }
         
         if (lastIdx < content.length) {
-          parts.push(content.substring(lastIdx));
+          parts.push(...[].concat(renderVerificationBadge(content.substring(lastIdx), lastIdx)));
         }
         
-        const renderedLine = parts.length > 0 ? parts : content;
+        const renderedLine = parts.length > 0 ? parts : renderVerificationBadge(content, lineIdx);
         
         if (isHeader) {
           return (
@@ -722,17 +814,234 @@ function convertLegacyToInstructions(data) {
   return instructions;
 }
 
+function drawBingMathOwl(ctx, x, y, size, t) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Bobbing / breathing animation
+  const bob = Math.sin(t * Math.PI * 6) * 3;
+  ctx.translate(0, bob);
+
+  // Shadow
+  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.beginPath();
+  ctx.ellipse(0, size * 0.48, size * 0.35, size * 0.1, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Feet
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.arc(-size * 0.15, size * 0.44, size * 0.08, 0, Math.PI * 2);
+  ctx.arc(size * 0.15, size * 0.44, size * 0.08, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Body (Green Owl)
+  const bodyGrad = ctx.createLinearGradient(-size * 0.3, -size * 0.4, size * 0.3, size * 0.4);
+  bodyGrad.addColorStop(0, "#10b981");
+  bodyGrad.addColorStop(1, "#059669");
+  ctx.fillStyle = bodyGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, size * 0.38, size * 0.44, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#047857";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Ear tufts
+  ctx.fillStyle = "#059669";
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.3, -size * 0.32);
+  ctx.lineTo(-size * 0.38, -size * 0.52);
+  ctx.lineTo(-size * 0.18, -size * 0.42);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.moveTo(size * 0.3, -size * 0.32);
+  ctx.lineTo(size * 0.38, -size * 0.52);
+  ctx.lineTo(size * 0.18, -size * 0.42);
+  ctx.fill();
+
+  // Belly (cream / mint)
+  ctx.fillStyle = "#ecfdf5";
+  ctx.beginPath();
+  ctx.ellipse(0, size * 0.12, size * 0.24, size * 0.26, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Feather markings on belly
+  ctx.strokeStyle = "#a7f3d0";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-size * 0.1, size * 0.05); ctx.lineTo(0, size * 0.1); ctx.lineTo(size * 0.1, size * 0.05);
+  ctx.moveTo(-size * 0.12, size * 0.18); ctx.lineTo(0, size * 0.23); ctx.lineTo(size * 0.12, size * 0.18);
+  ctx.stroke();
+
+  // Eyes (Big expressive circles)
+  const eyeR = size * 0.15;
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(-size * 0.15, -size * 0.12, eyeR, 0, Math.PI * 2);
+  ctx.arc(size * 0.15, -size * 0.12, eyeR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "#047857";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Pupils with expression based on phase
+  let pupilShiftX = 0;
+  let pupilShiftY = 0;
+  if (t < 0.25) {
+    pupilShiftX = Math.sin(t * 10) * 2;
+  } else if (t < 0.85) {
+    pupilShiftX = 3.5;
+    pupilShiftY = -2;
+  } else {
+    pupilShiftY = -3;
+  }
+
+  ctx.fillStyle = "#0f172a";
+  ctx.beginPath();
+  ctx.arc(-size * 0.15 + pupilShiftX, -size * 0.12 + pupilShiftY, eyeR * 0.55, 0, Math.PI * 2);
+  ctx.arc(size * 0.15 + pupilShiftX, -size * 0.12 + pupilShiftY, eyeR * 0.55, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sparkles in eyes
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(-size * 0.18 + pupilShiftX, -size * 0.15 + pupilShiftY, eyeR * 0.2, 0, Math.PI * 2);
+  ctx.arc(size * 0.12 + pupilShiftX, -size * 0.15 + pupilShiftY, eyeR * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Beak (Golden Orange)
+  ctx.fillStyle = "#f59e0b";
+  ctx.beginPath();
+  ctx.moveTo(0, -size * 0.05);
+  ctx.lineTo(size * 0.07, size * 0.04);
+  ctx.lineTo(-size * 0.07, size * 0.04);
+  ctx.closePath();
+  ctx.fill();
+
+  // Blush cheeks
+  ctx.fillStyle = "rgba(244, 114, 182, 0.4)";
+  ctx.beginPath();
+  ctx.arc(-size * 0.28, size * 0.02, size * 0.06, 0, Math.PI * 2);
+  ctx.arc(size * 0.28, size * 0.02, size * 0.06, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wings & Pointer stick
+  if (t < 0.25) {
+    // Phase 1: Waving wing
+    const wave = Math.sin(t * Math.PI * 16) * 0.3;
+    ctx.save();
+    ctx.translate(-size * 0.35, -size * 0.05);
+    ctx.rotate(-0.5 + wave);
+    ctx.fillStyle = "#047857";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.12, size * 0.25, -0.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    ctx.fillStyle = "#047857";
+    ctx.beginPath();
+    ctx.ellipse(size * 0.35, size * 0.08, size * 0.1, size * 0.22, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (t < 0.85) {
+    // Phase 2 & 3: Pointer stick pointing to math
+    ctx.fillStyle = "#047857";
+    ctx.beginPath();
+    ctx.ellipse(-size * 0.35, size * 0.08, size * 0.1, size * 0.22, -0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.save();
+    ctx.translate(size * 0.3, size * 0.02);
+    ctx.rotate(0.3);
+    ctx.fillStyle = "#047857";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, size * 0.12, size * 0.2, 0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Pointer stick
+    ctx.strokeStyle = "#fbbf24";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(size * 0.9, -size * 0.4);
+    ctx.stroke();
+
+    // Glowing tip
+    ctx.fillStyle = "#fef08a";
+    ctx.shadowColor = "#fbbf24";
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(size * 0.9, -size * 0.4, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  } else {
+    // Phase 4: Celebration jump
+    ctx.save();
+    ctx.fillStyle = "#047857";
+    ctx.beginPath();
+    ctx.ellipse(-size * 0.38, -size * 0.18, size * 0.12, size * 0.26, -0.7, 0, Math.PI * 2);
+    ctx.ellipse(size * 0.38, -size * 0.18, size * 0.12, size * 0.26, 0.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    const sparkleAngle = t * Math.PI * 6;
+    ctx.fillStyle = "#fbbf24";
+    for (let s = 0; s < 3; s++) {
+      const sx = Math.cos(sparkleAngle + s * 2.1) * size * 0.55;
+      const sy = -size * 0.35 + Math.sin(sparkleAngle + s * 2.1) * size * 0.25;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // Name badge: "BingMath"
+  ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(-28, size * 0.5, 56, 15, 6);
+  else ctx.rect(-28, size * 0.5, 56, 15);
+  ctx.fill();
+  ctx.font = "bold 9px 'Sora', sans-serif";
+  ctx.fillStyle = "#34d399";
+  ctx.textAlign = "center";
+  ctx.fillText("BingMath 🦉", 0, size * 0.5 + 11);
+
+  ctx.restore();
+}
+
 function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
-  const pad = { top: 44, bottom: 36, left: 42, right: 14 };
+  // Pad: left=95 leaves space for the BingMath Owl teacher on the left!
+  const pad = { top: 46, bottom: 34, left: 95, right: 14 };
   const plotW = panelW - pad.left - pad.right;
   const plotH = panelH - pad.top - pad.bottom;
 
   resetLabelBoxes();
   ctx.save();
 
-  // Dark Manim-like background
-  ctx.fillStyle = "#0c0c0b";
+  // Classroom Wooden Frame
+  ctx.fillStyle = "#381d0e";
   ctx.fillRect(0, 0, panelW, panelH);
+
+  // Authentic Deep Green Chalkboard
+  ctx.fillStyle = "#0e291b";
+  ctx.fillRect(6, 6, panelW - 12, panelH - 12);
+
+  // Golden brass inner chalkboard border
+  ctx.strokeStyle = "#854d0e";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(6, 6, panelW - 12, panelH - 12);
+
+  // Top chalkboard header banner
+  ctx.save();
+  ctx.font = "bold 10.5px 'Sora', sans-serif";
+  ctx.fillStyle = "#a7f3d0";
+  ctx.textAlign = "left";
+  ctx.fillText("🏫 BẢNG GIẢNG TOÁN BINGMATH", 16, 24);
+  ctx.restore();
+
+  // Draw BingMath Green Owl Mascot on the left (25% chalkboard space)
+  drawBingMathOwl(ctx, 48, panelH - 60, 52, t);
 
   // Parse instructions
   let instructions = [];
@@ -952,9 +1261,11 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
       }
 
     } else if (cmd === "line") {
-      const { p1, p2, color = "#faf9f5", width = 2.0, isVector = false, isPhoton = false, label, startAt = 0.2, endAt = startAt + 0.4, dashed = false, dashPattern = [4, 4] } = inst;
+      const { p1: rawP1, p2: rawP2, points: rawPoints, color = "#faf9f5", width = 2.0, isVector = false, isPhoton = false, label, startAt = 0.2, endAt = startAt + 0.4, dashed = false, dashPattern = [4, 4] } = inst;
+      const p1 = rawP1 || (rawPoints && rawPoints[0]) || [inst.x1 || 0, inst.y1 || 0];
+      const p2 = rawP2 || (rawPoints && rawPoints[1]) || [inst.x2 || 0, inst.y2 || 0];
       const lineT = Math.min(1, Math.max(0, (t - startAt) / (endAt - startAt)));
-      if (lineT > 0) {
+      if (lineT > 0 && Array.isArray(p1) && Array.isArray(p2)) {
         ctx.save();
         ctx.strokeStyle = color;
         ctx.lineWidth = width;
@@ -1020,7 +1331,9 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
         ctx.clip();
         
         if (shapeType === "circle") {
-          const { cx: scx, cy: scy, r: sr } = inst;
+          const scx = inst.cx !== undefined ? inst.cx : (inst.center ? inst.center[0] : (inst.x || 0));
+          const scy = inst.cy !== undefined ? inst.cy : (inst.center ? inst.center[1] : (inst.y || 0));
+          const sr = inst.r !== undefined ? inst.r : (inst.radius !== undefined ? inst.radius : 1);
           const baseRad = Math.abs(cx(scx + sr) - cx(scx));
           ctx.beginPath(); ctx.arc(cx(scx), cy(scy), baseRad, 0, Math.PI * 2 * shapeT); ctx.stroke();
           if (fill && shapeT >= 1.0) {
@@ -1030,7 +1343,10 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
           if (shapeT >= 0.8 && label) drawAvoidanceText(ctx, label, cx(scx), cy(scy), color);
 
         } else if (shapeType === "rect") {
-          const { x: rx, y: ry, w: rw, h: rh } = inst;
+          const rx = inst.x !== undefined ? inst.x : 0;
+          const ry = inst.y !== undefined ? inst.y : 0;
+          const rw = inst.w !== undefined ? inst.w : (inst.width || 1);
+          const rh = inst.h !== undefined ? inst.h : (inst.height || 1);
           const screenW = cx(rx + rw) - cx(rx); const screenH = cy(ry) - cy(ry + rh);
           const sx = cx(rx); const sy = cy(ry + rh);
           ctx.beginPath(); ctx.rect(sx, sy, screenW * shapeT, screenH); ctx.stroke();
@@ -1040,8 +1356,8 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
           ctx.restore();
           if (shapeT >= 0.8 && label) drawAvoidanceText(ctx, label, sx + screenW / 2, sy + screenH / 2, color);
 
-        } else if ((shapeType === "triangle" || shapeType === "polygon") && inst.pts) {
-          const pts = inst.pts; const n = pts.length;
+        } else if ((shapeType === "triangle" || shapeType === "polygon") && (inst.pts || inst.points)) {
+          const pts = inst.pts || inst.points; const n = pts.length;
           ctx.beginPath(); ctx.moveTo(cx(pts[0][0]), cy(pts[0][1]));
           const drawSides = Math.floor(n * shapeT);
           for (let i = 1; i <= drawSides; i++) ctx.lineTo(cx(pts[i % n][0]), cy(pts[i % n][1]));
@@ -1103,193 +1419,8 @@ function drawGenericViz(ctx, data, panelW, panelH, t, lang = "vi") {
   ctx.restore();
 }
 
-// ── Interactive 3D Math Model Player ──
-function InlineThreeDPlayer({ question }) {
-  const containerRef = useRef(null);
-  const canvasRef = useRef(null);
-  const [loading, setLoading] = useState(true);
-  const [modelType, setModelType] = useState("Math Concept");
-
-  useEffect(() => {
-    let animId;
-    let canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const initThree = () => {
-      const THREE = window.THREE;
-      if (!THREE || !canvasRef.current) return;
-      
-      setLoading(false);
-      const W = canvasRef.current.clientWidth || 400;
-      const H = canvasRef.current.clientHeight || 300;
-      
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color("#0c0a1a");
-      
-      const camera = new THREE.PerspectiveCamera(60, W / H, 0.1, 1000);
-      const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current, antialias: true });
-      renderer.setSize(W, H);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      
-      // Grid & Axes
-      const gridHelper = new THREE.GridHelper(20, 20, "#14b8a6", "#334155");
-      scene.add(gridHelper);
-      
-      const axesHelper = new THREE.AxesHelper(5);
-      scene.add(axesHelper);
-      
-      // Determine model from question
-      const q = (question || "").toLowerCase();
-      let geom;
-      let title = "Conceptual Model";
-      
-      if (q.includes("nón") || q.includes("cone")) {
-        geom = new THREE.ConeGeometry(2, 4, 32);
-        title = "3D Cone (Hình nón)";
-      } else if (q.includes("trụ") || q.includes("cylinder") || q.includes("prism") || q.includes("lăng trụ")) {
-        geom = new THREE.CylinderGeometry(2, 2, 4, 32);
-        title = "3D Cylinder (Hình trụ)";
-      } else if (q.includes("cầu") || q.includes("sphere") || q.includes("tròn") || q.includes("circle")) {
-        geom = new THREE.SphereGeometry(2, 32, 32);
-        title = "3D Sphere (Hình cầu)";
-      } else if (q.includes("hộp") || q.includes("cube") || q.includes("lập phương") || q.includes("box")) {
-        geom = new THREE.BoxGeometry(3, 3, 3);
-        title = "3D Box (Hình hộp)";
-      } else {
-        geom = new THREE.TorusKnotGeometry(1.5, 0.5, 100, 16);
-        title = "3D Mathematical Knot";
-      }
-      
-      setModelType(title);
-      
-      const mat = new THREE.MeshNormalMaterial({ wireframe: true });
-      const mesh = new THREE.Mesh(geom, mat);
-      scene.add(mesh);
-      
-      // Lights
-      const light = new THREE.DirectionalLight(0xffffff, 1);
-      light.position.set(5, 5, 5);
-      scene.add(light);
-      
-      const ambientLight = new THREE.AmbientLight(0x404040);
-      scene.add(ambientLight);
-      
-      // Camera orbit controls
-      let theta = 0;
-      let phi = Math.PI / 3;
-      let radius = 10;
-      
-      const updateCamera = () => {
-        camera.position.x = radius * Math.sin(phi) * Math.sin(theta);
-        camera.position.y = radius * Math.cos(phi);
-        camera.position.z = radius * Math.sin(phi) * Math.cos(theta);
-        camera.lookAt(0, 0, 0);
-      };
-      
-      updateCamera();
-      
-      let isDragging = false;
-      let previousMousePosition = { x: 0, y: 0 };
-      
-      const handleMouseDown = (e) => {
-        isDragging = true;
-        previousMousePosition = { x: e.clientX, y: e.clientY };
-      };
-      const handleMouseMove = (e) => {
-        if (!isDragging) return;
-        const deltaX = e.clientX - previousMousePosition.x;
-        const deltaY = e.clientY - previousMousePosition.y;
-        theta -= deltaX * 0.005;
-        phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi - deltaY * 0.005));
-        previousMousePosition = { x: e.clientX, y: e.clientY };
-        updateCamera();
-      };
-      const handleMouseUp = () => { isDragging = false; };
-      const handleWheel = (e) => {
-        e.preventDefault();
-        radius = Math.max(3, Math.min(30, radius + e.deltaY * 0.01));
-        updateCamera();
-      };
-      
-      canvas.addEventListener("mousedown", handleMouseDown);
-      canvas.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-      canvas.addEventListener("wheel", handleWheel, { passive: false });
-      
-      const animate = () => {
-        mesh.rotation.y += 0.005;
-        renderer.render(scene, camera);
-        animId = requestAnimationFrame(animate);
-      };
-      animate();
-      
-      return () => {
-        cancelAnimationFrame(animId);
-        if (canvas) {
-          canvas.removeEventListener("mousedown", handleMouseDown);
-          canvas.removeEventListener("mousemove", handleMouseMove);
-          canvas.removeEventListener("wheel", handleWheel);
-        }
-        window.removeEventListener("mouseup", handleMouseUp);
-      };
-    };
-
-    const existingScript = document.getElementById("three-cdn");
-    if (!existingScript) {
-      const script = document.createElement("script");
-      script.src = "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
-      script.id = "three-cdn";
-      script.async = true;
-      script.onload = () => initThree();
-      document.body.appendChild(script);
-    } else {
-      if (window.THREE) {
-        initThree();
-      } else {
-        existingScript.addEventListener("load", initThree);
-      }
-    }
-
-    return () => {
-      cancelAnimationFrame(animId);
-    };
-  }, [question]);
-
-  return (
-    <div style={{ display: "flex", width: "100%", background: "#0c0a1a", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 12, overflow: "hidden", minHeight: 380 }}>
-      <div ref={containerRef} style={{ flex: 1, position: "relative", minHeight: 380 }}>
-        {loading && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0c0a1a" }}>
-            <div style={{ width: 32, height: 32, border: "3px solid #14b8a6", borderTopColor: "transparent", borderRadius: "50%", animation: "three-spin 1s linear infinite" }} />
-            <p style={{ marginTop: 12, fontSize: 13, color: "rgba(255,255,255,0.5)" }}>Khởi động WebGL 3D...</p>
-          </div>
-        )}
-        <canvas ref={canvasRef} style={{ width: "100%", height: "100%", display: "block" }} />
-        <div style={{ position: "absolute", bottom: 12, left: 12, background: "rgba(0,0,0,0.6)", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, color: "#14b8a6" }}>
-          🎮 Xoay mô hình để soi xét | Cuộn để phóng to
-        </div>
-      </div>
-      
-      <div style={{ width: 280, background: "rgba(255,255,255,0.02)", borderLeft: "1px solid rgba(255,255,255,0.06)", padding: 20, display: "flex", flexDirection: "column" }}>
-        <div style={{ fontSize: 10, fontWeight: 800, color: "#14b8a6", textTransform: "uppercase", letterSpacing: 1, marginBottom: 8 }}>
-          {modelType}
-        </div>
-        <h4 style={{ fontSize: 14, fontWeight: 900, color: "white", margin: "0 0 10px 0" }}>
-          Đề Bài
-        </h4>
-        <div style={{ flex: 1, fontSize: 12.5, color: "rgba(255,255,255,0.7)", overflowY: "auto", lineHeight: 1.6 }}>
-          {question}
-        </div>
-      </div>
-      
-      <style jsx>{`
-        @keyframes three-spin { to { transform: rotate(360deg); } }
-      `}</style>
-    </div>
-  );
-}
-
 // ── Inline Video Player (renders in chat message, not a modal overlay) ──
+
 function InlineVideoPlayer({ question, imageBase64, sessionId }) {
 
   const canvasRef = useRef(null);
@@ -1308,10 +1439,11 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
   const [videoUrl, setVideoUrl] = useState(null);
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [loadingVideoText, setLoadingVideoText] = useState("Đang kết xuất chuyển động...");
-  const [videoDuration, setVideoDuration] = useState(16);
+  const [videoDuration, setVideoDuration] = useState(25);
+  const [viewMode, setViewMode] = useState("chalkboard"); // "chalkboard" | "video"
   const frameRef = useRef(0);
   const progressTickRef = useRef(0); // throttle counter
-  const totalFrames = 480;
+  const totalFrames = Math.max(300, Math.round(videoDuration * 30));
 
   // Keep ref in sync with state (for buttons that toggle play/pause)
   function setIsPlaying(val) {
@@ -1348,44 +1480,64 @@ function InlineVideoPlayer({ question, imageBase64, sessionId }) {
       try {
         const { chat: chatFn } = await import("./duoServer");
 
-        const vizSchemaDoc = `Format the JSON visualization data as a sequence of drawing instructions to represent the math problem visually.
+        const vizSchemaDoc = `Format the JSON visualization data as a sequence of drawing instructions to represent the math problem visually on a chalkboard.
 We support a set of visual commands in the "instructions" array:
-1. {"cmd": "setup", "xRange": [min, max], "yRange": [min, max]} -> Sets up the coordinate bounds. Always run this first.
+1. {"cmd": "setup", "xRange": [min, max], "yRange": [min, max]} -> Sets up the coordinate bounds. Always run this first (e.g. xRange: [-6, 6], yRange: [-6, 6]).
 2. {"cmd": "grid"} -> Draws Cartesian coordinates grid.
-3. {"cmd": "axes", "xLabel": "TEXT", "yLabel": "TEXT"} -> Draws coordinate X and Y axes with custom labels (e.g. xLabel="t (h)", yLabel="v (km/h)").
-4. {"cmd": "function", "expr": "MATH_EXPR_IN_JS", "color": "HEX", "label": "TEXT", "glow": true, "startAt": float, "endAt": float, "domain": [min, max]} -> Plots a function f(x) curve. Use standard JavaScript Math operators or x (e.g. "x*x - 2*x", "Math.sin(x)"). Use "domain" (e.g. [0, 3]) to restrict the drawing domain of the function instead of drawing infinitely.
-5. {"cmd": "point", "x": float, "y": float, "color": "HEX", "label": "TEXT", "glow": true, "startAt": float, "showDot": bool} -> Draws a point at (x, y). Set "showDot": false to only show the label without the circular bullet.
-6. {"cmd": "line", "p1": [x,y], "p2": [x,y], "color": "HEX", "width": float, "isVector": bool, "isPhoton": bool, "label": "TEXT", "startAt": float, "endAt": float, "dashed": bool, "dashPattern": [4, 4]} -> Draws a line. Set "dashed": true for dashed guidelines.
-7. {"cmd": "text", "x": float, "y": float, "text": "TEXT", "color": "HEX", "size": int, "align": "center|left|right", "startAt": float} -> Draws an arbitrary text label at coordinates (x, y) to mark ticks or write variables.
-8. {"cmd": "shape", "type": "rect|circle|triangle|polygon|petal_tile|generic_pulse", "color": "HEX", "fill": bool, "label": "TEXT", "startAt": float, "endAt": float, ...dims} -> Draws geometric shapes.
-9. {"cmd": "camera", "targetX": float, "targetY": float, "zoom": float, "startAt": float, "endAt": float} -> Smoothly pans/zooms camera to focus on a coordinate.
+3. {"cmd": "axes", "xLabel": "x", "yLabel": "y"} -> Draws coordinate X and Y axes.
+4. {"cmd": "point", "x": float, "y": float, "color": "HEX", "label": "A", "glow": true, "startAt": float, "showDot": true} -> Draws a point and its label.
+5. {"cmd": "line", "p1": [x,y], "p2": [x,y], "color": "HEX", "width": float, "label": "TEXT", "startAt": float, "endAt": float, "dashed": bool} -> Draws a line segment between 2 points.
+6. {"cmd": "shape", "type": "circle", "cx": float, "cy": float, "r": float, "color": "HEX", "fill": bool, "label": "(O)", "startAt": float, "endAt": float} -> Draws a circle.
+7. {"cmd": "shape", "type": "triangle|polygon", "pts": [[x1,y1], [x2,y2], ...], "color": "HEX", "fill": bool, "label": "TEXT", "startAt": float, "endAt": float} -> Draws a polygon or triangle.
+8. {"cmd": "function", "expr": "MATH_EXPR_IN_JS", "color": "HEX", "label": "TEXT", "glow": true, "startAt": float, "endAt": float, "domain": [min, max]} -> Plots a function f(x).
+9. {"cmd": "text", "x": float, "y": float, "text": "TEXT", "color": "HEX", "size": int, "align": "center", "startAt": float} -> Draws text label at (x, y).
 
-Example viz object:
-{"instructions": [
-  {"cmd": "setup", "xRange": [-1, 4], "yRange": [-1, 11]},
-  {"cmd": "grid"},
-  {"cmd": "axes", "xLabel": "t (h)", "yLabel": "v (km/h)"},
-  {"cmd": "function", "expr": "-0.75*x*x + 3*x + 6", "domain": [0, 3], "color": "#00d8fe", "label": "v = -0.75t² + 3t + 6", "startAt": 0.2, "glow": true},
-  {"cmd": "line", "p1": [2, 0], "p2": [2, 9], "color": "#9ca3af", "dashed": true, "startAt": 0.7},
-  {"cmd": "line", "p1": [0, 9], "p2": [2, 9], "color": "#9ca3af", "dashed": true, "startAt": 0.7},
-  {"cmd": "point", "x": 2, "y": 9, "color": "#fbbf24", "label": "I(2; 9)", "startAt": 0.75},
-  {"cmd": "text", "x": 2, "y": -0.5, "text": "2", "startAt": 0.75},
-  {"cmd": "text", "x": -0.3, "y": 9, "text": "9", "startAt": 0.75},
-  {"cmd": "text", "x": -0.3, "y": 6, "text": "6", "startAt": 0.75},
-  {"cmd": "camera", "targetX": 2, "targetY": 9, "zoom": 1.5, "startAt": 0.75}
-]}`;
+FOR GEOMETRY / EUCLIDEAN PROBLEMS (Triangles, Circles, Altitudes, Chords, Secants, Harmonic Bundles, etc.):
+- YOU MUST calculate visually accurate 2D Cartesian coordinates for ALL named points mentioned in the image/problem ($A, B, C, H, E, U, L, X, S, M, D, K, R, T$, etc.).
+- MUST draw ALL lines and connections between the points using multiple 'line' commands (e.g. AB, BC, CA, AH, AX, UL, ES, DR...) with vibrant neon colors (#00E5FF, #FFD400, #39FF14, #FF3CAC, #E0E7FF).
+- MUST draw any circles mentioned (e.g. circumcircle (O), circle with diameter AH) using 'shape' type 'circle'.
+- MUST draw and label EVERY named point using 'point' with its letter label.
+- Set xRange and yRange in 'setup' so that ALL points, circles, and lines fit comfortably on screen with generous padding.`;
+
+        const videoSystemPrompt = `Role: AI Generator tạo kịch bản/hình ảnh video bài giảng Toán học trực quan.
+
+1. NHÂN VẬT CHÍNH (SUBJECT):
+- Chú Cú Xanh BingMath của nền tảng DUOMATH / DUOSTEAM (Thân thiện, hóm hỉnh, dẫn dắt học sinh từng bước).
+
+2. BỐI CẢNH & GÓC NHÌN (SETTING & CAMERA):
+- Góc nhìn chính diện (Eye-level shot), phẳng cân đối, phong cách bảng phấn lớp học hiện đại.
+- Bảng xanh lá cây lớn (Chalkboard) chiếm 75% không gian phía sau, bề mặt phẳng rộng.
+- Màn hình 2/3 bên phải dành riêng làm vùng hiển thị nội dung toán học và vẽ hình/đồ thị.
+
+3. NỘI DUNG BÀI HỌC & THỜI LƯỢNG LINH HOẠT (FLEXIBLE TIMING):
+- Thời lượng video KHÔNG cố định 1 phút, mà LINH HOẠT tùy theo độ dài và độ phức tạp của bài toán (từ 15s đến 60s+):
+  + Bài ngắn/đơn giản (1-3 bước): ~15 - 25 giây ("estimated_duration": 20).
+  + Bài trung bình (4-6 bước): ~30 - 45 giây ("estimated_duration": 35).
+  + Bài dài/nhiều bước biến đổi (7-10 bước): ~50 - 75+ giây ("estimated_duration": 60).
+- Tiến trình 4 Frames (Phân bổ linh hoạt theo tỷ lệ thời gian):
+  + Frame 1 (Intro ~10-15% tổng thời lượng): Cú vẫy tay chào vui nhộn, bảng hiện tiêu đề bài học.
+  + Frame 2 (Problem & Setup ~20-25% tổng thời lượng): Cú chỉ que vào đề bài kèm hình vẽ minh họa/đồ thị ban đầu.
+  + Frame 3 (Solving Steps ~50-60% tổng thời lượng): Dành phần lớn thời gian để Cú hướng dẫn giải chi tiết từng bước, chia đều startAt/endAt cho các nét vẽ tương ứng.
+  + Frame 4 (Conclusion ~10-15% tổng thời lượng): Cú reo vui nhảy múa khi xuất hiện đáp án đúng đóng khung nổi bật!
+
+4. QUY TẮC ĐẦU RA (OUTPUT RULES):
+- Tỷ lệ khung hình: 16:9.
+- Giữ nhất quán nét vẽ nhân vật cú xanh giữa các khung hình.
+- Phông chữ trên bảng nét phấn trắng/vàng neon rõ ràng, chuẩn phong cách lớp học.`;
 
         const prompt = imageBase64
-          ? `You are an expert math tutor and visualizer.
-Analyze the math problem in the provided image and generate both:
+          ? `${videoSystemPrompt}
+
+Analyze the math problem in the provided image and generate:
 1. Detailed step-by-step solution in Vietnamese (up to 10 steps).
 2. Detailed step-by-step solution in English (up to 10 steps).
-3. A sequence of drawing instructions to represent the problem visually.
+3. A sequence of drawing instructions to represent the problem visually on the chalkboard.
 
 Return ONLY a single valid JSON object with the following schema:
 {
   "type": "custom",
   "title": "SHORT_TITLE_OF_THE_PROBLEM",
+  "estimated_duration": 35,
   "stepsVI": ["Bước 1...", "Bước 2..."],
   "stepsEN": ["Step 1...", "Step 2..."],
   "viz": {
@@ -1396,43 +1548,30 @@ Return ONLY a single valid JSON object with the following schema:
 Guidelines:
 - stepsVI/stepsEN: Use LaTeX for ALL math expressions (inline $like this$, block $$like this$$).
 - stepsVI must end with "✓ Đáp án: [kết quả]". stepsEN must end with "✓ Answer: [final answer]".
+- estimated_duration: An integer in seconds (15 to 75) tailored to the problem complexity.
 - viz instructions: Use the following schema:
 ${vizSchemaDoc}
 
 CRITICAL RULES FOR MATHEMATHICAL CONSISTENCY & ACCURACY:
-1. All steps and explanations must be mathematically correct, highly concise, and directly solve the problem. Avoid rambling, off-topic, or conversational filler.
+1. All steps and explanations must be mathematically correct, highly concise, and directly solve the problem.
 2. The coordinate ranges (xRange, yRange) and drawn elements MUST match the math values in the steps.
-3. For geometric tile problems (e.g., painting a square tile of side length A containing a flower petal):
-   - Setup a coordinate range fitting the tile (e.g. xRange=[-1, A+1], yRange=[-1, A+1]).
-   - Draw a "petal_tile" shape command centered at x=A/2, y=A/2, with size=A.
-   - Example for side length 4: {"cmd": "shape", "type": "petal_tile", "x": 2, "y": 2, "size": 4, "startAt": 0.1, "endAt": 0.9}
-   - NEVER draw random circles or arbitrary squares that do not represent the actual tile side length.
-4. For functions, the equations, domain limits, vertices, and points plotted in "instructions" MUST BE IDENTICAL to the values calculated in stepsVI and stepsEN.
-5. REPRESENTATIVE DIAGRAMS FOR NUMBER-LESS PROBLEMS:
-   - If the problem does not contain any numerical values (e.g. a general geometry proof or theorem like "tam giác ABC vuông tại A, đường cao AH"), you MUST still generate a representative visualization diagram!
-   - Assume standard, clean, and reasonable numerical coordinates to represent the geometric entities.
-   - Example: For a right triangle ABC at A, define A=[0,0], B=[0,3], C=[4,0] and draw the lines.
-   - NEVER skip drawing or return "Không có đủ thông tin" on the visualization panel just because the problem is symbolic. Always illustrate it with a representative figure.
-6. COLOR & LABELS RULE FOR PREMIUM VISUALS:
-   - Use vibrant, contrasting hex colors (#f43f5e for red, #3b82f6 for blue, #10b981 for green, #eab308 for yellow, #a855f7 for purple) for lines and shapes to distinguish different geometric parts. Do NOT draw everything in plain white/black.
-   - Label all vertices (A, B, C, D, etc.) clearly using point commands with "label": "A" or text commands next to the coordinates.
-   - Highlight sub-regions or key parts of the geometry using the "shape" command with fill: true (draws semi-transparent color fill) to make it easy to follow.
-7. ABSOLUTE LATEX DELIMITER RULE:
-   - You MUST wrap EVERY single math symbol, fraction, variable, or equation in stepsVI and stepsEN in dollar signs (e.g. use $x$, $\\frac{AB}{\\sin C}$, $18^\\circ$, NOT x, \\frac{AB}{\\sin C}, or 18^o).
-   - If a step does not have dollar signs around its LaTeX math elements, the math rendering will fail.
+3. Use vibrant neon colors (#00E5FF, #FFD400, #39FF14, #FF3CAC) for chalkboard lines and curves.
+4. Wrap every math symbol in dollar signs in stepsVI/stepsEN.
 
-Output ONLY raw JSON. No markdown code block wrappers, no preamble, no extra text.`
-          : `You are an expert math tutor and visualizer.
+Output ONLY raw JSON. No markdown code block wrappers, no preamble.`
+          : `${videoSystemPrompt}
+
 Solve this math problem: "${question}"
-Generate both:
+Generate:
 1. Detailed step-by-step solution in Vietnamese (up to 10 steps).
 2. Detailed step-by-step solution in English (up to 10 steps).
-3. A sequence of drawing instructions to represent the problem visually.
+3. A sequence of drawing instructions to represent the problem visually on the chalkboard.
 
 Return ONLY a single valid JSON object with the following schema:
 {
   "type": "custom",
   "title": "SHORT_TITLE_OF_THE_PROBLEM",
+  "estimated_duration": 35,
   "stepsVI": ["Bước 1...", "Bước 2..."],
   "stepsEN": ["Step 1...", "Step 2..."],
   "viz": {
@@ -1443,36 +1582,21 @@ Return ONLY a single valid JSON object with the following schema:
 Guidelines:
 - stepsVI/stepsEN: Use LaTeX for ALL math expressions (inline $like this$, block $$like this$$).
 - stepsVI must end with "✓ Đáp án: [kết quả]". stepsEN must end with "✓ Answer: [final answer]".
+- estimated_duration: An integer in seconds (15 to 75) tailored to the problem complexity.
 - viz instructions: Use the following schema:
 ${vizSchemaDoc}
 
 CRITICAL RULES FOR MATHEMATHICAL CONSISTENCY & ACCURACY:
-1. All steps and explanations must be mathematically correct, highly concise, and directly solve the problem. Avoid rambling, off-topic, or conversational filler.
+1. All steps and explanations must be mathematically correct, highly concise, and directly solve the problem.
 2. The coordinate ranges (xRange, yRange) and drawn elements MUST match the math values in the steps.
-3. For geometric tile problems (e.g., painting a square tile of side length A containing a flower petal):
-   - Setup a coordinate range fitting the tile (e.g. xRange=[-1, A+1], yRange=[-1, A+1]).
-   - Draw a "petal_tile" shape command centered at x=A/2, y=A/2, with size=A.
-   - Example for side length 4: {"cmd": "shape", "type": "petal_tile", "x": 2, "y": 2, "size": 4, "startAt": 0.1, "endAt": 0.9}
-   - NEVER draw random circles or arbitrary squares that do not represent the actual tile side length.
-4. For functions, the equations, domain limits, vertices, and points plotted in "instructions" MUST BE IDENTICAL to the values calculated in stepsVI and stepsEN.
-5. REPRESENTATIVE DIAGRAMS FOR NUMBER-LESS PROBLEMS:
-   - If the problem does not contain any numerical values (e.g. a general geometry proof or theorem like "tam giác ABC vuông tại A, đường cao AH"), you MUST still generate a representative visualization diagram!
-   - Assume standard, clean, and reasonable numerical coordinates to represent the geometric entities.
-   - Example: For a right triangle ABC at A, define A=[0,0], B=[0,3], C=[4,0] and draw the lines.
-   - NEVER skip drawing or return "Không có đủ thông tin" on the visualization panel just because the problem is symbolic. Always illustrate it with a representative figure.
-6. COLOR & LABELS RULE FOR PREMIUM VISUALS:
-   - Use vibrant, contrasting hex colors (#f43f5e for red, #3b82f6 for blue, #10b981 for green, #eab308 for yellow, #a855f7 for purple) for lines and shapes to distinguish different geometric parts. Do NOT draw everything in plain white/black.
-   - Label all vertices (A, B, C, D, etc.) clearly using point commands with "label": "A" or text commands next to the coordinates.
-   - Highlight sub-regions or key parts of the geometry using the "shape" command with fill: true (draws semi-transparent color fill) to make it easy to follow.
-7. ABSOLUTE LATEX DELIMITER RULE:
-   - You MUST wrap EVERY single math symbol, fraction, variable, or equation in stepsVI and stepsEN in dollar signs (e.g. use $x$, $\\frac{AB}{\\sin C}$, $18^\\circ$, NOT x, \\frac{AB}{\\sin C}, or 18^o).
-   - If a step does not have dollar signs around its LaTeX math elements, the math rendering will fail.
+3. Use vibrant neon colors (#00E5FF, #FFD400, #39FF14, #FF3CAC) for chalkboard lines and curves.
+4. Wrap every math symbol in dollar signs in stepsVI/stepsEN.
 
 Output ONLY raw JSON. No markdown, no preamble.`;
 
         const response = await chatFn(sessionId, prompt, {
           image: imageBase64 || null,
-          mode: "solution",
+          mode: "raw_solution",
         });
         const reply = response?.reply || "";
 
@@ -1536,7 +1660,17 @@ Output ONLY raw JSON. No markdown, no preamble.`;
           ? [problemTitle, ...rawStepsVI]
           : [problemTitle, "Bước 1: Phân tích đề bài", "Bước 2: Áp dụng công thức", "✓ Xem lời giải đầy đủ"];
 
-        setVideoData({ ...vizParsed, stepsEN, stepsVI });
+        // Dynamic flexible duration: from AI estimated_duration or calculated from step count
+        const stepCount = Math.max(1, rawStepsVI.length);
+        let dynamicDuration = 25;
+        if (vizParsed.estimated_duration && typeof vizParsed.estimated_duration === "number" && vizParsed.estimated_duration > 0) {
+          dynamicDuration = Math.min(120, Math.max(15, vizParsed.estimated_duration));
+        } else {
+          dynamicDuration = Math.min(90, Math.max(18, 10 + stepCount * 5));
+        }
+        setVideoDuration(dynamicDuration);
+
+        setVideoData({ ...vizParsed, stepsEN, stepsVI, dynamicDuration });
 
         // Dựng video bằng Matplotlib trên backend
         const instructions = vizParsed.viz?.instructions || [];
@@ -1597,7 +1731,7 @@ Output ONLY raw JSON. No markdown, no preamble.`;
       drawVisualizationPanel(ctx, videoData, W, H, t, lang);
       ctx.save(); ctx.globalAlpha = 0.15;
       ctx.font = "8px 'Sora',sans-serif"; ctx.fillStyle = "#00d8fe"; ctx.textAlign = "left";
-      ctx.fillText("DuoMath AI", 8, H - 5);
+      ctx.fillText("BingMath AI", 8, H - 5);
       ctx.restore();
     }
 
@@ -1625,7 +1759,7 @@ Output ONLY raw JSON. No markdown, no preamble.`;
     drawFrame(frameRef.current);
     animRef.current = requestAnimationFrame(tick);
     return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
-  }, [loadingSteps, videoData, lang]); // lang is added here to update visual immediately on language change
+  }, [loadingSteps, videoData, lang, videoDuration]); // videoDuration is added here to update visual immediately on duration change
 
   const totalSec = videoUrl ? Math.round(videoDuration) : Math.round(totalFrames / 30);
 
@@ -1635,10 +1769,49 @@ Output ONLY raw JSON. No markdown, no preamble.`;
       <div className={styles.inlineVideoHeader}>
         <div className={styles.videoModalTitle}>
           <span>🎬</span>
-          <span>DuoMath Video Giải</span>
+          <span>DuoMath Video Bài Giảng</span>
           <span className={styles.videoBadge}>AI Generated</span>
           {videoData?.type && videoData.type !== "other" && (
             <span className={styles.videoTypeBadge}>{videoData.type.toUpperCase()}</span>
+          )}
+        </div>
+        {/* View mode switcher */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button
+            style={{
+              padding: "3px 9px",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              border: "1px solid",
+              borderColor: viewMode === "chalkboard" ? "#10b981" : "rgba(255,255,255,0.15)",
+              background: viewMode === "chalkboard" ? "rgba(16,185,129,0.2)" : "transparent",
+              color: viewMode === "chalkboard" ? "#34d399" : "#94a3b8",
+              cursor: "pointer",
+            }}
+            onClick={() => setViewMode("chalkboard")}
+            title="Bảng phấn Cú Xanh BingMath"
+          >
+            🦉 Bảng Cú Xanh
+          </button>
+          {videoUrl && (
+            <button
+              style={{
+                padding: "3px 9px",
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 600,
+                border: "1px solid",
+                borderColor: viewMode === "video" ? "#38bdf8" : "rgba(255,255,255,0.15)",
+                background: viewMode === "video" ? "rgba(56,189,248,0.2)" : "transparent",
+                color: viewMode === "video" ? "#38bdf8" : "#94a3b8",
+                cursor: "pointer",
+              }}
+              onClick={() => setViewMode("video")}
+              title="Xem video MP4 Render"
+            >
+              🎥 MP4
+            </button>
           )}
         </div>
       </div>
@@ -1650,14 +1823,9 @@ Output ONLY raw JSON. No markdown, no preamble.`;
           {loadingSteps ? (
             <div className={styles.videoLoadingOverlay}>
               <div className={styles.videoLoadingSpinner} />
-              <p className={styles.videoLoadingText}>AI đang phân tích...</p>
+              <p className={styles.videoLoadingText}>AI đang phân tích & lên bảng...</p>
             </div>
-          ) : loadingVideo ? (
-            <div className={styles.videoLoadingOverlay}>
-              <div className={styles.videoLoadingSpinner} />
-              <p className={styles.videoLoadingText}>{loadingVideoText}</p>
-            </div>
-          ) : videoUrl ? (
+          ) : viewMode === "video" && videoUrl ? (
             <video 
               ref={videoRef}
               src={videoUrl} 
@@ -1684,7 +1852,7 @@ Output ONLY raw JSON. No markdown, no preamble.`;
               style={{ width: "100%", height: "100%", borderRadius: "8px", objectFit: "contain" }}
             />
           ) : (
-            <canvas ref={canvasRef} className={styles.inlineCanvas} />
+            <canvas ref={canvasRef} className={styles.inlineCanvas} style={{ width: "100%", height: "100%", display: "block" }} />
           )}
         </div>
 
@@ -1866,7 +2034,6 @@ export default function DuoMCBPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
-  const [showImageModal, setShowImageModal] = useState(false);
   const [savedHistory, setSavedHistory] = useState([]);
 
   useEffect(() => {
@@ -1992,21 +2159,21 @@ export default function DuoMCBPage() {
   };
 
   const processDroppedFile = (file) => {
-    if (file.type.startsWith("image/")) {
+    if (!file) return;
+    const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg|heic|avif|ico|tiff)$/i.test(file.name || "");
+    if (isImg) {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        setImagePreview(ev.target.result);
-        setImageBase64(ev.target.result);
-        setShowImageModal(true);
+        const res = ev.target.result;
+        setImagePreview(res);
+        setImageBase64(res);
       };
       reader.readAsDataURL(file);
-    } else if (
-      file.type.startsWith("text/") ||
-      file.name.endsWith(".txt") ||
-      file.name.endsWith(".md") ||
-      file.name.endsWith(".json") ||
-      file.name.endsWith(".csv")
-    ) {
+      return;
+    }
+
+    const isTextDoc = file.type?.startsWith("text/") || /\.(txt|md|json|csv|py|js|ts|jsx|tsx|html|css|tex|doc|docx|pdf)$/i.test(file.name || "");
+    if (isTextDoc) {
       const reader = new FileReader();
       reader.onload = (ev) => {
         const fileContent = ev.target.result;
@@ -2017,10 +2184,74 @@ export default function DuoMCBPage() {
         }, 100);
       };
       reader.readAsText(file);
-    } else {
-      alert("Hệ thống chỉ hỗ trợ kéo thả ảnh hoặc file văn bản (.txt, .md, .json)!");
+      return;
+    }
+
+    // Default fallback: Try reading as dataURL for any other file format
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const res = ev.target.result;
+      setImagePreview(res);
+      setImageBase64(res);
+    };
+    reader.onerror = () => {
+      alert("Hệ thống hỗ trợ tất cả các định dạng ảnh (.png, .jpg, .webp, v.v.) và tài liệu văn bản (.txt, .md, .json)!");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e) => {
+    const clipboardData = e.clipboardData || window.clipboardData;
+    if (!clipboardData) return;
+
+    // Check items for images (handles Win+Shift+S screenshots and copied image blobs)
+    const items = clipboardData.items;
+    if (items && items.length > 0) {
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type && item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (file) {
+            e.preventDefault();
+            processDroppedFile(file);
+            return;
+          }
+        }
+      }
+    }
+
+    // Check files (copied image/doc files from File Explorer)
+    if (clipboardData.files && clipboardData.files.length > 0) {
+      const file = clipboardData.files[0];
+      const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg|heic|avif|ico|tiff)$/i.test(file.name || "");
+      if (isImg) {
+        e.preventDefault();
+        processDroppedFile(file);
+        return;
+      }
     }
   };
+
+  // Global paste listener (catches Ctrl+V anywhere on the page)
+  useEffect(() => {
+    const onGlobalPaste = (e) => {
+      const items = e.clipboardData?.items;
+      if (items) {
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type && items[i].type.startsWith("image/")) {
+            const file = items[i].getAsFile();
+            if (file) {
+              e.preventDefault();
+              processDroppedFile(file);
+              return;
+            }
+          }
+        }
+      }
+    };
+    window.addEventListener("paste", onGlobalPaste);
+    return () => window.removeEventListener("paste", onGlobalPaste);
+  }, []);
 
   function handleImageSelect(e) {
     const file = e.target.files[0];
@@ -2029,91 +2260,72 @@ export default function DuoMCBPage() {
     e.target.value = "";
   }
 
+  async function sendMessage(text, mode = "hint") {
+    const rawMsg = (text !== undefined && text !== null) ? text : input.trim();
+    const currentPreview = imagePreview;
+    const currentBase64 = imageBase64;
 
-  async function sendImageMessage(mode) {
-    setShowImageModal(false);
+    if (!rawMsg && !currentBase64) return;
+    if (loading) return;
+
+    // Reset input fields immediately
+    setInput("");
+    setImagePreview(null);
+    setImageBase64(null);
+
+    const sid = await ensureSession();
+    const promptText = rawMsg || (mode === "hint" ? "Gợi ý bài toán từ ảnh" : "Giải bài toán từ ảnh");
+
     if (mode === "video") {
-      const sid = await ensureSession();
-      const videoMsg = {
-        id: Date.now(), role: "assistant", type: "video",
-        question: input.trim() || "Bài toán từ ảnh",
-        imageBase64: imageBase64,
+      if (messages.length === 0) pushToHistory(promptText, sid);
+      setMessages(prev => [...prev, {
+        id: Date.now(),
+        role: "assistant",
+        type: "video",
+        question: promptText,
+        imageBase64: currentBase64,
         sessionId: sid,
-      };
-      if (messages.length === 0) pushToHistory("Bài toán từ ảnh", sid);
-      setMessages(prev => [...prev, videoMsg]);
-      setImagePreview(null); setImageBase64(null);
+      }]);
       return;
     }
+
+    let chatPrompt = rawMsg;
+    let actualMode = mode === "solution" ? "solution" : "hint";
+
     if (mode === "threeD") {
-      const threeDMsg = {
-        id: Date.now(), role: "assistant", type: "threeD",
-        question: input.trim() || "Bài toán hình học từ ảnh",
-      };
-      if (messages.length === 0) pushToHistory("Minh họa 3D bài toán từ ảnh", sid);
-      setMessages(prev => [...prev, threeDMsg]);
-      setImagePreview(null); setImageBase64(null);
-      return;
+      actualMode = "visualizer";
+      if (!chatPrompt) {
+        chatPrompt = "Hãy tạo mô hình trực quan hóa tương tác MathViz (2D/3D/đồ thị) cho hình ảnh/bài toán này, kèm thuyết minh ngắn gọn về các thông số chính.";
+      } else {
+        chatPrompt = `${rawMsg}\n\n[Hãy tạo mô hình trực quan hóa MathViz tương tác kèm thuyết minh ngắn gọn về thông số.]`;
+      }
+    } else if (!chatPrompt) {
+      chatPrompt = actualMode === "solution" ? "Hãy giải chi tiết bài toán trong ảnh này cho em." : "Hãy gợi ý cách giải bài toán trong ảnh này.";
     }
-    const modeText = mode === "hint"
-      ? "Provide A FEW HINTS to solve this problem without giving the answer"
-      : "Look at the problem in this image and solve it STEP BY STEP for me.";
-    const userMsg = { role: "user", content: modeText, image: imagePreview, id: Date.now() };
+
+    const userMsg = {
+      role: "user",
+      content: rawMsg || (mode === "threeD" ? "Minh họa tương tác cho bài toán này." : (mode === "solution" ? "Giải chi tiết bài toán trong ảnh này." : "Gợi ý bài toán trong ảnh này.")),
+      image: currentPreview || null,
+      id: Date.now()
+    };
     setMessages(prev => [...prev, userMsg]);
     setLoading(true);
-    const sid = await ensureSession();
+
     if (messages.length === 0) {
-      const cleanTitle = mode === "hint" ? "Gợi ý bài toán từ ảnh" : "Giải bài toán từ ảnh";
+      const cleanTitle = rawMsg || (mode === "threeD" ? "Minh họa tương tác" : (mode === "hint" ? "Gợi ý bài toán từ ảnh" : "Giải bài toán từ ảnh"));
       pushToHistory(cleanTitle, sid);
     }
+
     try {
-      const data = await chat(sid, modeText, { image: imageBase64, mode: mode === "hint" ? "hint" : "solution" });
+      const data = await chat(sid, chatPrompt, {
+        image: currentBase64 || null,
+        mode: actualMode,
+      });
       if (data.error) throw new Error();
       setMessages(prev => [...prev, { role: "assistant", content: data.reply || "", id: Date.now() + 1 }]);
     } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Không thể xử lý ảnh. Vui lòng thử lại.", id: Date.now() + 1 }]);
-    } finally {
-      setLoading(false); setImagePreview(null); setImageBase64(null);
-    }
-  }
-
-  async function sendMessage(text, mode = "hint") {
-    const msg = text || input.trim();
-    if (!msg || loading) return;
-
-    if (mode === "video") {
-      const sid = await ensureSession();
-      if (messages.length === 0) pushToHistory(msg, sid);
-      setMessages(prev => [...prev, {
-        id: Date.now(), role: "assistant", type: "video",
-        question: msg, imageBase64: null, sessionId: sid,
-      }]);
-      setInput("");
-      return;
-    }
-
-    if (mode === "threeD") {
-      const sid = await ensureSession();
-      if (messages.length === 0) pushToHistory(msg, sid);
-      setMessages(prev => [...prev, {
-        id: Date.now(), role: "assistant", type: "threeD",
-        question: msg,
-      }]);
-      setInput("");
-      return;
-    }
-
-    setInput("");
-    const sid = await ensureSession();
-    if (messages.length === 0) pushToHistory(msg, sid);
-    setMessages(prev => [...prev, { role: "user", content: msg, id: Date.now() }]);
-    setLoading(true);
-    try {
-      const data = await chat(sid, msg, { mode: mode === "hint" ? "hint" : "solution" });
-      if (data.error) throw new Error();
-      setMessages(prev => [...prev, { role: "assistant", content: data.reply, id: Date.now() + 1 }]);
-    } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Không thể kết nối. Vui lòng thử lại.", id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Không thể kết nối hoặc xử lý ảnh. Vui lòng thử lại.", id: Date.now() + 1 }]);
     } finally {
       setLoading(false);
     }
@@ -2121,7 +2333,6 @@ export default function DuoMCBPage() {
 
   function handleToolSelect(toolId) {
     const msg = input.trim();
-    if (!msg && toolId !== "video") return;
     sendMessage(msg || null, toolId);
   }
 
@@ -2161,27 +2372,6 @@ export default function DuoMCBPage() {
           <div style={{ fontSize: 72, marginBottom: 16 }}>📥</div>
           <h2 style={{ color: "white", fontSize: 24, fontWeight: 900 }}>Thả file vào đây để tải lên</h2>
           <p style={{ color: "#38bdf8", fontSize: 14, fontWeight: 600, marginTop: 8 }}>Hỗ trợ ảnh đề bài (.png, .jpg) hoặc tài liệu văn bản (.txt, .md, .json)</p>
-        </div>
-      )}
-
-      {/* ── IMAGE MODAL ── */}
-      {showImageModal && (
-        <div className={styles.modalOverlay} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <span>🖼️ Ảnh đã tải lên</span>
-              <button className={styles.modalClose} onClick={() => { setShowImageModal(false); setImagePreview(null); setImageBase64(null); }}>✕</button>
-            </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imagePreview} alt="Preview" className={styles.modalPreview} />
-            <p className={styles.modalQuestion}>Bạn muốn DuoMCB làm gì với bài toán này?</p>
-            <div className={styles.modalActions}>
-              <button className={styles.hintBtn} onClick={() => sendImageMessage("hint")}>💡 Gợi ý</button>
-              <button className={styles.answerBtn} onClick={() => sendImageMessage("answer")}>📖 Giải đầy đủ</button>
-              <button className={styles.videoModalBtn} onClick={() => sendImageMessage("video")}>🎬 Video Giải</button>
-              <button className={styles.videoModalBtn} style={{ background: "linear-gradient(135deg, #14b8a6, #0d9488)", border: "1px solid rgba(20,184,166,0.3)" }} onClick={() => sendImageMessage("threeD")}>🌐 Minh Họa 3D</button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -2277,18 +2467,6 @@ export default function DuoMCBPage() {
           ) : (
             <div className={styles.messages}>
               {messages.map(m => {
-                if (m.type === "threeD") {
-                  return (
-                    <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`} style={{ maxWidth: "100%" }}>
-                      <div className={styles.avatar}>
-                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
-                      </div>
-                      <div style={{ flex: 1, overflow: "hidden", borderRadius: 12 }}>
-                        <InlineThreeDPlayer question={m.question} />
-                      </div>
-                    </div>
-                  );
-                }
                 if (m.type === "video") {
                   return (
                     <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`}>
@@ -2305,28 +2483,36 @@ export default function DuoMCBPage() {
                     </div>
                   );
                 }
+                const { text: cleanContent, vizData } = extractMathvizBlock(m.content || "");
                 return (
-                  <div key={m.id} className={`${styles.msgRow} ${m.role === "user" ? styles.userRow : styles.botRow}`}>
+                  <div key={m.id} className={`${styles.msgRow} ${m.role === "user" ? styles.userRow : styles.botRow}`} style={{ maxWidth: vizData ? "100%" : undefined }}>
                     {m.role === "assistant" && (
                       <div className={styles.avatar}>
                         <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
                       </div>
                     )}
-                    <div className={`${styles.bubble} ${m.role === "user" ? styles.userBubble : styles.botBubble}`}>
-                      {m.image && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={m.image} alt="Uploaded" className={styles.bubbleImage} />
+                    <div style={{ display: "flex", flexDirection: "column", maxWidth: "100%", width: vizData ? "100%" : undefined }}>
+                      <div className={`${styles.bubble} ${m.role === "user" ? styles.userBubble : styles.botBubble}`}>
+                        {m.image && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={m.image} alt="Uploaded" className={styles.bubbleImage} />
+                        )}
+                        {parseMathAndText(cleanContent).map((token, idx) => {
+                          if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
+                          try {
+                            const html = katex.renderToString(token.content.trim(), { displayMode: token.isBlock, throwOnError: false });
+                            return (
+                              <span key={idx} dangerouslySetInnerHTML={{ __html: html }}
+                                style={token.isBlock ? { display: "block", margin: "0.5em 0" } : {}} />
+                            );
+                          } catch { return <code key={idx}>{token.content}</code>; }
+                        })}
+                      </div>
+                      {vizData && m.role === "assistant" && (
+                        <div style={{ marginTop: 8, width: "100%" }}>
+                          <MathVizRenderer data={vizData} />
+                        </div>
                       )}
-                      {parseMathAndText(m.content || "").map((token, idx) => {
-                        if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
-                        try {
-                          const html = katex.renderToString(token.content.trim(), { displayMode: token.isBlock, throwOnError: false });
-                          return (
-                            <span key={idx} dangerouslySetInnerHTML={{ __html: html }}
-                              style={token.isBlock ? { display: "block", margin: "0.5em 0" } : {}} />
-                          );
-                        } catch { return <code key={idx}>{token.content}</code>; }
-                      })}
                     </div>
                     {m.role === "user" && <div className={styles.userAvatar}>👤</div>}
                   </div>
@@ -2350,23 +2536,49 @@ export default function DuoMCBPage() {
         {/* ── Input bar ── */}
         <div className={styles.inputBar}>
           <div className={styles.inputWrapper}>
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageSelect} />
-            <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Tải ảnh lên" disabled={loading}>+</button>
-            <textarea
-              ref={inputRef}
-              className={styles.input}
-              placeholder="Hỏi DuoMCB... hoặc tải ảnh đề bài lên"
-              value={input}
-              rows={1}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
-            />
-            <ToolsDropdown onSelect={handleToolSelect} disabled={loading} />
-            <button
-              className={`${styles.sendBtn} ${input.trim() && !loading ? styles.sendActive : ""}`}
-              onClick={() => sendMessage(null, "hint")}
-              disabled={!input.trim() || loading}
-            >➤</button>
+            {/* Attachment preview inside prompt box (Claude style) */}
+            {imagePreview && (
+              <div className={styles.attachmentContainer}>
+                <div className={styles.attachmentThumbWrapper}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Attached preview" className={styles.attachmentThumb} />
+                  <button
+                    className={styles.attachmentRemoveBtn}
+                    onClick={() => { setImagePreview(null); setImageBase64(null); }}
+                    title="Xóa ảnh đính kèm"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+            <div className={styles.inputInnerRow}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.svg,.heic,.avif,.txt,.md,.json,.csv,.pdf"
+                style={{ display: "none" }}
+                onChange={handleImageSelect}
+              />
+              <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Tải ảnh hoặc tài liệu lên" disabled={loading}>+</button>
+              <textarea
+                ref={inputRef}
+                className={styles.input}
+                placeholder={imagePreview ? "Nhập yêu cầu thêm hoặc chọn công cụ bên dưới..." : "Hỏi DuoMCB... kéo thả hoặc dán (Ctrl+V) ảnh/tài liệu bất kỳ"}
+                value={input}
+                rows={1}
+                onChange={e => setInput(e.target.value)}
+                onPaste={handlePaste}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
+              />
+              <ToolsDropdown onSelect={handleToolSelect} disabled={loading} />
+              <button
+                className={`${styles.sendBtn} ${(input.trim() || imageBase64) && !loading ? styles.sendActive : ""}`}
+                onClick={() => sendMessage(null, "hint")}
+                disabled={(!input.trim() && !imageBase64) || loading}
+                title="Gửi"
+              >➤</button>
+            </div>
           </div>
           <p className={styles.disclaimer}>DuoMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
         </div>

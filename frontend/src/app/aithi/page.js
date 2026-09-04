@@ -223,14 +223,14 @@ function StepUpload({ onDone }) {
           AI Test Studio
         </h1>
         <p style={{ color: "#64748b", marginTop: 8, fontSize: 15 }}>
-          Tải tài liệu lên — Gemini sẽ phân tích và tạo đề thi cá nhân hoá cho bạn
+          Tải PDF/ảnh tài liệu — Unlimited-OCR & Gemini sẽ đọc công thức và tạo đề thi sát nhất
         </p>
       </div>
 
       <div className="aithi-glass" style={{ padding: "28px", marginBottom: 16 }}>
         {/* Tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-          {[["text", "✏️ Dán nội dung"], ["file", "📁 Tải file"]].map(([v, label]) => (
+          {[["text", "✏️ Dán nội dung"], ["file", "📁 Tải file PDF / Ảnh"]].map(([v, label]) => (
             <button key={v} className={`aithi-btn aithi-btn-secondary ${tab === v ? "active" : ""}`}
               style={{ flex: 1 }} onClick={() => setTab(v)}>{label}</button>
           ))}
@@ -248,7 +248,7 @@ function StepUpload({ onDone }) {
             onDrop={handleDrop}
             onClick={() => fileRef.current?.click()}
           >
-            <input ref={fileRef} type="file" accept="application/pdf,image/*,video/*"
+            <input ref={fileRef} type="file" accept="application/pdf,image/*"
               style={{ display: "none" }} onChange={e => pickFile(e.target.files[0])} />
             {file ? (
               <>
@@ -262,7 +262,7 @@ function StepUpload({ onDone }) {
               <>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>☁️</div>
                 <div style={{ fontWeight: 600, color: "#94a3b8" }}>Kéo thả file vào đây</div>
-                <div style={{ color: "#475569", fontSize: 13, marginTop: 6 }}>hoặc click để chọn — PDF, ảnh, video</div>
+                <div style={{ color: "#475569", fontSize: 13, marginTop: 6 }}>Hỗ trợ tài liệu PDF nhiều trang, ảnh đề cương, công thức toán</div>
               </>
             )}
           </div>
@@ -272,7 +272,7 @@ function StepUpload({ onDone }) {
 
         <button className="aithi-btn aithi-btn-primary" style={{ width: "100%", marginTop: 18 }}
           onClick={analyze} disabled={busy}>
-          {busy ? <><div className="aithi-spinner" style={{ width: 18, height: 18 }} /> Đang phân tích…</> : "Phân tích tài liệu →"}
+          {busy ? <><div className="aithi-spinner" style={{ width: 18, height: 18 }} /> Đang đọc OCR & phân tích…</> : "Phân tích tài liệu →"}
         </button>
       </div>
     </div>
@@ -282,7 +282,8 @@ function StepUpload({ onDone }) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  STEP 2 — Analysis
 // ══════════════════════════════════════════════════════════════════════════════
-function StepAnalysis({ analysis, mock, onBack, onNext }) {
+function StepAnalysis({ analysis, ocrInfo, mock, onBack, onNext }) {
+  const [showOcr, setShowOcr] = useState(false);
   const diff = { basic: "Cơ bản", intermediate: "Trung bình", advanced: "Nâng cao" };
   const diffColor = { basic: "#22c55e", intermediate: "#f59e0b", advanced: "#ef4444" };
 
@@ -290,8 +291,20 @@ function StepAnalysis({ analysis, mock, onBack, onNext }) {
     <div style={{ animation: "fadeUp .4s ease" }}>
       <BackBtn onClick={onBack} />
       <div className="aithi-glass" style={{ padding: 28, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-          <span className="aithi-tag">✅ Phân tích xong</span>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span className="aithi-tag">✅ Phân tích xong</span>
+            {ocrInfo?.used && (
+              <span className="aithi-tag" style={{ background: "rgba(16,185,129,0.15)", borderColor: "rgba(16,185,129,0.4)", color: "#34d399" }}>
+                ✨ Unlimited-OCR
+              </span>
+            )}
+            {!ocrInfo?.used && ocrInfo?.engine === "gemini_vision_fallback" && (
+              <span className="aithi-tag" style={{ background: "rgba(99,102,241,0.15)", borderColor: "rgba(99,102,241,0.4)", color: "#a5b4fc" }}>
+                👁️ Gemini Vision
+              </span>
+            )}
+          </div>
           {mock && <span className="aithi-tag" style={{ background: "rgba(245,158,11,0.15)", borderColor: "rgba(245,158,11,0.4)", color: "#fcd34d" }}>⚡ DEMO MODE</span>}
         </div>
 
@@ -329,14 +342,48 @@ function StepAnalysis({ analysis, mock, onBack, onNext }) {
             ))}
           </div>
         </div>
+
+        {/* Collapsible OCR Content Preview */}
+        {ocrInfo?.preview && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+            <button
+              type="button"
+              className="aithi-btn aithi-btn-secondary"
+              style={{ width: "100%", justifyContent: "space-between", padding: "10px 16px", fontSize: 13 }}
+              onClick={() => setShowOcr(prev => !prev)}
+            >
+              <span>📝 Nội dung văn bản OCR trích xuất</span>
+              <span>{showOcr ? "▲ Thu gọn" : "▼ Xem chi tiết"}</span>
+            </button>
+            {showOcr && (
+              <div style={{
+                marginTop: 10,
+                padding: "14px 16px",
+                background: "rgba(0,0,0,0.3)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                borderRadius: 12,
+                fontSize: 13,
+                lineHeight: 1.6,
+                color: "#cbd5e1",
+                whiteSpace: "pre-wrap",
+                maxHeight: 220,
+                overflowY: "auto",
+                fontFamily: "var(--font-mono, monospace)"
+              }}>
+                {ocrInfo.preview}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <button className="aithi-btn aithi-btn-primary" style={{ width: "100%" }} onClick={onNext}>
-        Tạo đề thi →
+        Cấu hình & Tạo đề thi →
       </button>
     </div>
   );
 }
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  STEP 3 — Configure
@@ -665,6 +712,7 @@ export default function AiThiPage() {
   const [step, setStep] = useState(0); // 0..5
   const [analysis, setAnalysis] = useState(null);
   const [materialId, setMaterialId] = useState("");
+  const [ocrInfo, setOcrInfo] = useState(null); // { used, preview, engine }
   const [mock, setMock] = useState(false);
   const [attemptData, setAttemptData] = useState(null); // {attempt_id, total_questions, current_question}
   const [qNum, setQNum] = useState(1);
@@ -683,10 +731,11 @@ export default function AiThiPage() {
     document.head.appendChild(s);
   }, []);
 
-  const handleAnalyzeDone = ({ material_id, analysis: a, mock: m }) => {
+  const handleAnalyzeDone = ({ material_id, analysis: a, mock: m, ocr_used: ou, ocr_preview: op, ocr_engine: oe }) => {
     setMaterialId(material_id);
     setAnalysis(a);
     setMock(!!m);
+    setOcrInfo({ used: !!ou, preview: op || "", engine: oe || "" });
     setStep(1);
   };
 
@@ -730,7 +779,7 @@ export default function AiThiPage() {
   }, [loadingReview, review]);
 
   const restart = () => {
-    setStep(0); setAnalysis(null); setMaterialId(""); setMock(false);
+    setStep(0); setAnalysis(null); setMaterialId(""); setMock(false); setOcrInfo(null);
     setAttemptData(null); setQNum(1); setGrading(null); setCompleted(false);
     setNextQuestion(null); setReview(null);
   };
@@ -738,8 +787,9 @@ export default function AiThiPage() {
   const renderStep = () => {
     switch (step) {
       case 0: return <StepUpload onDone={handleAnalyzeDone} />;
-      case 1: return <StepAnalysis analysis={analysis} mock={mock}
+      case 1: return <StepAnalysis analysis={analysis} ocrInfo={ocrInfo} mock={mock}
         onBack={() => setStep(0)} onNext={() => setStep(2)} />;
+
       case 2: return <StepConfig analysis={analysis} materialId={materialId}
         onBack={() => setStep(1)} onDone={handleStartDone} />;
       case 3: return (

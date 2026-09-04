@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 /**
  * MRMLeaderboard.js — Bảng xếp hạng osu!-style, rank theo ELO
  * 3 tab: Global | Country | School
@@ -173,6 +173,7 @@ function LeaderboardRow({ entry, myUserId, index }) {
 export default function MRMLeaderboard() {
   const { user } = useAuth();
   const [tab, setTab] = useState("global"); // global | country | school
+  const [timeframe, setTimeframe] = useState("alltime"); // alltime | season | month | week
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -192,7 +193,7 @@ export default function MRMLeaderboard() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    let path = `/api/mrm/leaderboard?type=${tab}&page=${page}&limit=${LIMIT}`;
+    let path = `/api/mrm/leaderboard?type=${tab}&timeframe=${timeframe}&page=${page}&limit=${LIMIT}`;
     if (tab === "country") path += `&country=${encodeURIComponent(userCountry)}`;
     if (tab === "school" && userSchool) path += `&school=${encodeURIComponent(userSchool)}`;
     const { ok, data } = await apiFetch(path);
@@ -206,7 +207,7 @@ export default function MRMLeaderboard() {
       }
     }
     setLoading(false);
-  }, [tab, page, userCountry, userSchool, user]);
+  }, [tab, timeframe, page, userCountry, userSchool, user]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -218,6 +219,13 @@ export default function MRMLeaderboard() {
     { key: "global",  label: "🌍 Toàn Cầu", desc: "Xếp hạng ELO toàn thế giới" },
     { key: "country", label: `${COUNTRY_FLAGS[userCountry] || "🌏"} Quốc Gia`, desc: `Top ${userCountry}` },
     { key: "school",  label: "🏫 Trường học", desc: userSchool || "Cập nhật trường để xem" },
+  ];
+
+  const TIMEFRAMES = [
+    { key: "alltime", label: "TOÀN THỜI GIAN 🌐" },
+    { key: "season",  label: "MÙA GIẢI 🏆" },
+    { key: "month",   label: "THÁNG NÀY 📅" },
+    { key: "week",    label: "TUẦN NÀY ⚡" },
   ];
 
   return (
@@ -274,8 +282,8 @@ export default function MRMLeaderboard() {
             </div>
           )}
 
-          {/* Tabs */}
-          <div style={{ display: "flex", gap: 6, marginBottom: 20, background: "rgba(255,255,255,0.02)", borderRadius: 12, padding: 4 }}>
+          {/* Tabs (Scope) */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 12, background: "rgba(255,255,255,0.02)", borderRadius: 12, padding: 4 }}>
             {TABS.map(t => (
               <button
                 key={t.key}
@@ -292,6 +300,35 @@ export default function MRMLeaderboard() {
                 {t.label}
               </button>
             ))}
+          </div>
+
+          {/* Timeframe Filter (osu!-style) */}
+          <div style={{
+            display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap",
+            background: "rgba(2,6,23,0.6)", padding: "6px 8px", borderRadius: 10,
+            border: "1px solid rgba(255,255,255,0.06)",
+          }}>
+            {TIMEFRAMES.map(tf => {
+              const active = timeframe === tf.key;
+              return (
+                <button
+                  key={tf.key}
+                  onClick={() => { setTimeframe(tf.key); setPage(1); }}
+                  style={{
+                    padding: "6px 14px", borderRadius: 7, border: "none", cursor: "pointer",
+                    fontSize: 11, fontWeight: 800, letterSpacing: 0.5,
+                    background: active ? "linear-gradient(135deg, #f472b6, #ec4899)" : "transparent",
+                    color: active ? "white" : "rgba(255,255,255,0.45)",
+                    transition: "all 0.2s",
+                    boxShadow: active ? "0 2px 10px rgba(244,114,182,0.3)" : "none",
+                  }}
+                  onMouseEnter={e => { if (!active) e.currentTarget.style.color = "white"; }}
+                  onMouseLeave={e => { if (!active) e.currentTarget.style.color = "rgba(255,255,255,0.45)"; }}
+                >
+                  {tf.label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Search */}

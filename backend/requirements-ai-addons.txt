@@ -1,0 +1,11 @@
+# Requirements for DuoMCB AI Geometry & Video Enhancement Engine
+opencv-python>=4.8.0
+numpy>=1.24.0
+easyocr>=1.7.0
+sympy>=1.12
+shapely>=2.0.0
+torch>=2.0.0
+torchvision>=0.15.0
+realesrgan>=0.3.0
+basicsr>=1.4.2
+reportlab>=4.0.0

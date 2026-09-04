@@ -267,7 +267,7 @@ export default function AppDownloadSection() {
           WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
           letterSpacing: 0.3,
         }}>
-          {t("Tải DuoMath — Trải Nghiệm Mượt Mà Nhất", "Download DuoMath — Fluid Mobile Experience")}
+          {t("Tải BingMath — Trải Nghiệm Mượt Mà Nhất", "Download BingMath — Fluid Mobile Experience")}
         </h2>
 
         {/* Underline */}
@@ -285,8 +285,8 @@ export default function AppDownloadSection() {
           maxWidth: 560, lineHeight: 1.6, margin: "20px auto 0",
         }}>
           {t(
-            "Tải ứng dụng DuoMath Native trực tiếp để học tập và đấu hạng với tốc độ tối đa, đầy đủ các tính năng ngoại tuyến và nhắc nhở học tập.",
-            "Download the DuoMath Native app directly to study and rank up at maximum speed, complete with offline mode and smart streak notifications."
+            "Tải ứng dụng BingMath Native trực tiếp để học tập và đấu hạng với tốc độ tối đa, đầy đủ các tính năng ngoại tuyến và nhắc nhở học tập.",
+            "Download the BingMath Native app directly to study and rank up at maximum speed, complete with offline mode and smart streak notifications."
           )}
         </p>
       </div>

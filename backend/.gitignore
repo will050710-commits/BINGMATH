@@ -1,0 +1,20 @@
+﻿# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables
+.env
+
+# SQLite & Cache databases
+vision_cache.db
+vision_cache.db-wal
+vision_cache.db-shm
+*.db-wal
+*.db-shm
+
+# Backup and temp files
+*.bak
+archive/
+output.txt
+output_all.txt

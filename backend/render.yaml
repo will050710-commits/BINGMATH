@@ -23,3 +23,22 @@ services:
         sync: false
       - key: SELF_URL
         sync: false
+      # ── Added: these were used by main.py / vision_agent.py but not
+      #    declared here, so Render's dashboard had no slot for them and a
+      #    fresh deploy would silently run with GEMINI_API_KEY/
+      #    OPENROUTER_API_KEY unset. Secrets stay sync:false (set their
+      #    values in the Render dashboard, never in this file); the two
+      #    model-name vars are plain config, not secrets, so they're
+      #    checked in with the confirmed-free defaults from this patch.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-3.6-flash"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_VISION_MODEL
+        value: "qwen/qwen2.5-vl-72b-instruct:free"
+      - key: OPENROUTER_VISION_FALLBACK_MODELS
+        value: "qwen/qwen2.5-vl-32b-instruct:free,google/gemma-3-27b-it:free"
+      - key: VISION_AGENT_ENABLED
+        value: "true"

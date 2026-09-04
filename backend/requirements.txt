@@ -19,7 +19,10 @@ cryptography>=42.0.0
 orjson>=3.9.0
 sympy>=1.12
 numpy>=1.26
+Pillow>=10.0.0
+json-repair>=0.30.0
 
-# easyocr and Pillow removed — easyocr loads a ~1.5 GB model on startup
-# which crashes Render's free tier (512 MB RAM limit).
-# Images are handled directly by the Llama 4 Scout vision model instead.
+# ── Unlimited-OCR Spaces API & Multi-page PDF (lightweight client) ──
+gradio_client>=2.0.0
+pymupdf>=1.27.0
+

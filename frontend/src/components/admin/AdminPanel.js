@@ -1187,7 +1187,23 @@ export default function AdminPanel() {
             marginBottom: -1, transition: "all 0.2s", whiteSpace: "nowrap",
           }}>{t.label}</button>
         ))}
+        {/* Tournaments — links to dedicated page */}
+        <Link href="/admin/tournaments" style={{ textDecoration: "none" }}>
+          <button style={{
+            padding: "13px 18px", border: "none", cursor: "pointer",
+            background: "transparent", fontSize: 13, fontWeight: 400,
+            color: "rgba(251,191,36,0.75)",
+            borderBottom: "2px solid transparent",
+            marginBottom: -1, transition: "all 0.2s", whiteSpace: "nowrap",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#fbbf24"; e.currentTarget.style.borderBottom = "2px solid #fbbf24"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "rgba(251,191,36,0.75)"; e.currentTarget.style.borderBottom = "2px solid transparent"; }}
+          >
+            🏆 Giải Đấu
+          </button>
+        </Link>
       </div>
+
 
       {/* Content */}
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "24px 28px" }}>

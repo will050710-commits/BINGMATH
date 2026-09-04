@@ -513,11 +513,283 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* DuoMCB drag and drop Dropzone active overlay state */
+/* BingMCB drag and drop Dropzone active overlay state */
 .mcb-dropzone-active {
   outline: 2px dashed #00d4ff !important;
   outline-offset: -8px;
   background-color: rgba(0, 212, 255, 0.05) !important;
   transition: all 0.3s ease;
+}
+
+/* Shimmer sweep variant (alternative to pulse — brighter, more dynamic) */
+@keyframes shimmerSweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.03) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmerSweep 1.6s linear infinite;
+  border-radius: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UI PRIMITIVES — PressableScale (web version)
+   Matches the RN PressableScale scale-down (0.96) + easing.
+═══════════════════════════════════════════════════════════ */
+
+.pressable-scale {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 90ms ease-out, opacity 90ms ease-out;
+  transform-origin: center;
+}
+
+.pressable-scale:active {
+  transform: scale(0.96);
+  opacity: 0.88;
+  transition-duration: 90ms;
+}
+
+.pressable-scale:not(:active) {
+  transform: scale(1);
+  opacity: 1;
+  transition-duration: 140ms;
+}
+
+@media (hover: hover) {
+  .pressable-scale:hover {
+    opacity: 0.92;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   UI PRIMITIVES — GlassCard
+   Semi-transparent card surface matching Colors.bgCard token.
+═══════════════════════════════════════════════════════════ */
+
+.glass-card {
+  background-color: rgba(8, 18, 42, 0.75);           /* Colors.bgCard */
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.08);        /* Colors.border */
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+}
+
+.glass-card-glow {
+  background-color: rgba(8, 18, 42, 0.75);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid rgba(0, 210, 255, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 0 24px rgba(0, 210, 255, 0.12), 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* XP bar fill animation — mirrors RN Animated.timing 700ms */
+.xp-bar-track {
+  height: 6px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  height: 100%;
+  background-color: #00d4ff;                          /* Colors.cyan */
+  border-radius: 9999px;
+  transition: width 700ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BENTO GRID RESPONSIVE LAYOUT (Grades 6 - 12)
+   Fixes narrow squished cards on portrait & landscape mobile.
+═══════════════════════════════════════════════════════════ */
+.bento-grid-container {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 20px;
+  width: 100%;
+}
+
+.bento-col-large  { grid-column: span 5; }
+.bento-col-medium { grid-column: span 4; }
+.bento-col-small  { grid-column: span 3; }
+.bento-col-wide   { grid-column: span 12; }
+
+@media (max-width: 1024px) {
+  .bento-grid-container {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+  }
+  .bento-col-large,
+  .bento-col-medium,
+  .bento-col-small,
+  .bento-col-wide {
+    grid-column: span 1 !important;
+  }
+  .bento-col-wide {
+    grid-column: span 2 !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .bento-grid-container {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .bento-col-large,
+  .bento-col-medium,
+  .bento-col-small,
+  .bento-col-wide {
+    grid-column: span 1 !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PREMIUM LESSON ENGINE RESPONSIVE SPLIT & NAV
+═══════════════════════════════════════════════════════════ */
+.lesson-split-layout {
+  width: 1400px;
+  max-width: 96%;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 32px;
+  padding-top: 28px;
+  padding-bottom: 80px;
+  align-items: start;
+}
+
+.lesson-sticky-game {
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.lesson-nav-scroll {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 4px 0;
+  max-width: 100%;
+}
+.lesson-nav-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.lesson-nav-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .lesson-split-layout {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+    padding-top: 16px !important;
+  }
+  .lesson-sticky-game {
+    position: static !important;
+    max-height: none !important;
+    overflow-y: visible !important;
+  }
+}
+
+/* Landscape on mobile phones (height <= 500px) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .lesson-split-layout {
+    padding-top: 10px !important;
+    padding-bottom: 40px !important;
+  }
+  .lesson-nav-bar {
+    padding: 6px 0 !important;
+  }
+}
+
+/* Floating Action Button (FAB) responsiveness on mobile */
+@media (max-width: 768px) {
+  #lang-toggle-btn {
+    bottom: 16px !important;
+    left: 16px !important;
+    padding: 6px 10px !important;
+    font-size: 11px !important;
+    opacity: 0.88;
+  }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+  #lang-toggle-btn {
+    bottom: 10px !important;
+    left: 10px !important;
+    padding: 4px 8px !important;
+    font-size: 10px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   DUOMATH SIGNATURE MOTIFS & CUT-CORNER UTILITIES
+═══════════════════════════════════════════════════════════ */
+
+/* Diagonal cut corners */
+.cut-lg {
+  clip-path: polygon(0 0, calc(100% - 28px) 0, 100% 28px, 100% 100%, 28px 100%, 0 calc(100% - 28px));
+}
+
+.cut-md {
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 16px 100%, 0 calc(100% - 16px));
+}
+
+.cut-sm {
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+
+.cut-chip {
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+
+/* Live battle score bar keyframes */
+@keyframes growScoreL {
+  from { width: 0%; }
+  to { width: var(--score-pct-l, 50%); }
+}
+
+@keyframes growScoreR {
+  from { width: 0%; }
+  to { width: var(--score-pct-r, 50%); }
+}
+
+.animate-score-l {
+  animation: growScoreL 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-score-r {
+  animation: growScoreR 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Live indicator pulse */
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.85); }
+}
+
+.animate-live-pulse {
+  animation: livePulse 1.4s ease-in-out infinite;
 }
 
