@@ -55,10 +55,10 @@ Output your findings using the following schema:
 # Keep this list ordered best-quality-first; extract_geometry_primitives()
 # walks it top to bottom on 4xx/5xx/timeout so a single model's rate limit
 # degrades quality before it ever produces a hard failure.
-DEFAULT_MODEL = "qwen/qwen2.5-vl-72b-instruct:free"
+DEFAULT_MODEL = "minimax/minimax-m3:free"
 DEFAULT_FALLBACK_MODELS = [
-    "qwen/qwen2.5-vl-32b-instruct:free",
-    "google/gemma-3-27b-it:free",
+    "google/gemma-4-31b-it:free",
+    "google/gemma-4-26b-a4b-it:free",
 ]
 
 

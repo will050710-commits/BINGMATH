@@ -774,9 +774,12 @@ def generate_mock_mathgpt_reply(user_message: str, widget: str | None = None, mo
             return (
                 "## 🔍 Cấu Trúc Hình Học Phẳng Phức Tạp & Hệ Thống Đường Đồng Quy\n\n"
                 "**1. Phân tích cấu trúc hình học**\n"
-                "Cho $\\triangle ABC$ nội tiếp đường tròn $(O)$, trực tâm $H$, tâm ngoại tiếp $O$, tâm nội tiếp $I$.\n"
-                "Các đường cao $AD, BE, CF$ đồng quy tại trực tâm $H$. Đoạn thẳng $EF$ nối hai chân đường cao tạo tam giác trực tâm $\\triangle DEF$.\n"
-                "Các đường thẳng $AP, AQ, PE, QD$ và các giao điểm $M, N, P, Q, K, L, S$ tạo thành mạng lưới các đường đồng quy và thẳng hàng kinh điển.\n\n"
+                "Cho tam giác nhọn $\\triangle ABC$ ($AB < AC$) nội tiếp đường tròn $(O)$, ba đường cao $AD, BE, CF$ đồng quy tại trực tâm $H$.\n"
+                "- Đường tròn tâm $I$ đường kính $AH$ đi qua các điểm $A, F, H, E$ và cắt đoạn thẳng $GLK$ tại điểm $G$.\n"
+                "- Cạnh $AB$ kéo dài về phía $B$ cắt đường thẳng $PD$ tại điểm $P$.\n"
+                "- Qua $F$ kẻ đường thẳng song song với cạnh đáy $BC$, cắt $AD$ tại $J$, cắt $GLK$ tại $L$ và cắt $AC$ tại $Q$.\n"
+                "- Đường cevian $AK$ (hoặc $AML$) xuất phát từ $A$, cắt $FE$ tại $M$ và cắt đường song song $FQ$ tại $L$.\n"
+                "- Đoạn thẳng $GLK$ nối $G, L, K$ thẳng hàng, đoạn $DN$ nối chân đường cao $D$ với $N$ trên $AC$.\n\n"
                 "**2. Hệ thống đường liên kết & Đo góc tương tác**\n"
                 "Mô hình bên dưới tái hiện đầy đủ các đoạn thẳng liên kết, góc vuông $90^\\circ$ tại các chân đường cao và cho phép em kéo-nối các điểm để khám phá thêm các tính chất hình học!\n\n"
                 "*Em có thể kéo-thả giữa 2 điểm bất kỳ để vẽ thêm đường nối và xem góc đo tự động! 🎯*\n\n"
@@ -784,36 +787,44 @@ def generate_mock_mathgpt_reply(user_message: str, widget: str | None = None, mo
                 "{\n"
                 '  "type": "mathviz.v1",\n'
                 '  "widget": "geometry_2d",\n'
-                '  "title": "Cấu trúc hình học phẳng phức tạp $\\\\triangle ABC$ với các đường đồng quy & trực tâm $H$",\n'
+                '  "title": "Cấu trúc hình học phẳng $\\\\triangle ABC$ với các đường đồng quy & trực tâm $H$",\n'
                 '  "mode": "composite",\n'
                 '  "layers": [\n'
                 '    {\n'
                 '      "kind": "polygon",\n'
-                '      "points": [{"id": "A", "x": -1.0, "y": 3.5}, {"id": "B", "x": -2.5, "y": -1.8}, {"id": "C", "x": 3.0, "y": -1.8}],\n'
-                '      "fill": "rgba(59, 130, 246, 0.06)",\n'
-                '      "color": "#39FF14",\n'
+                '      "points": [{"id": "A", "x": -0.8, "y": 3.5}, {"id": "B", "x": -2.5, "y": -1.8}, {"id": "C", "x": 3.0, "y": -1.8}],\n'
+                '      "fill": "rgba(59, 130, 246, 0.05)",\n'
+                '      "color": "#ffffff",\n'
                 '      "strokeWidth": 2.0\n'
                 '    },\n'
                 '    {\n'
                 '      "kind": "circle",\n'
-                '      "center": {"x": 0.25, "y": 0.28},\n'
-                '      "r": 3.45,\n'
+                '      "center": {"x": 0.25, "y": 0.24},\n'
+                '      "r": 3.42,\n'
                 '      "color": "#3b82f6",\n'
-                '      "label": "Đường tròn (O)",\n'
+                '      "label": "Đường tròn ngoại tiếp (O)",\n'
                 '      "style": "solid"\n'
                 '    },\n'
                 '    {\n'
                 '      "kind": "circle",\n'
-                '      "center": {"x": -1.0, "y": 1.42},\n'
-                '      "r": 2.08,\n'
+                '      "center": {"x": -0.8, "y": 1.46},\n'
+                '      "r": 2.04,\n'
                 '      "color": "#ec4899",\n'
-                '      "label": "Đường tròn (AEF)",\n'
+                '      "label": "Đường tròn đường kính AH (I)",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "circle",\n'
+                '      "center": {"x": -0.28, "y": -0.17},\n'
+                '      "r": 1.71,\n'
+                '      "color": "#10b981",\n'
+                '      "label": "Đường tròn Euler (9 điểm)",\n'
                 '      "style": "dashed"\n'
                 '    },\n'
                 '    {\n'
                 '      "kind": "line",\n'
-                '      "from": {"id": "A", "x": -1.0, "y": 3.5},\n'
-                '      "to": {"id": "D", "x": -1.0, "y": -1.8},\n'
+                '      "from": {"id": "A", "x": -0.8, "y": 3.5},\n'
+                '      "to": {"id": "D", "x": -0.8, "y": -1.8},\n'
                 '      "color": "#f43f5e",\n'
                 '      "label": "Đường cao AD",\n'
                 '      "style": "solid"\n'
@@ -821,7 +832,7 @@ def generate_mock_mathgpt_reply(user_message: str, widget: str | None = None, mo
                 '    {\n'
                 '      "kind": "line",\n'
                 '      "from": {"id": "B", "x": -2.5, "y": -1.8},\n'
-                '      "to": {"id": "E", "x": 1.0, "y": 0.85},\n'
+                '      "to": {"id": "E", "x": 1.13, "y": 0.81},\n'
                 '      "color": "#f43f5e",\n'
                 '      "label": "Đường cao BE",\n'
                 '      "style": "solid"\n'
@@ -829,70 +840,87 @@ def generate_mock_mathgpt_reply(user_message: str, widget: str | None = None, mo
                 '    {\n'
                 '      "kind": "line",\n'
                 '      "from": {"id": "C", "x": 3.0, "y": -1.8},\n'
-                '      "to": {"id": "F", "x": -2.09, "y": -0.36},\n'
+                '      "to": {"id": "F", "x": -1.99, "y": -0.2},\n'
                 '      "color": "#f43f5e",\n'
                 '      "label": "Đường cao CF",\n'
                 '      "style": "solid"\n'
                 '    },\n'
                 '    {\n'
                 '      "kind": "line",\n'
-                '      "from": {"id": "F", "x": -2.09, "y": -0.36},\n'
-                '      "to": {"id": "E", "x": 1.0, "y": 0.85},\n'
+                '      "from": {"id": "B", "x": -2.5, "y": -1.8},\n'
+                '      "to": {"id": "P", "x": -2.925, "y": -3.125},\n'
+                '      "color": "#ffffff",\n'
+                '      "label": "Kéo dài cạnh AB (BP)",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "P", "x": -2.925, "y": -3.125},\n'
+                '      "to": {"id": "D", "x": -0.8, "y": -1.8},\n'
+                '      "color": "#a855f7",\n'
+                '      "label": "Đoạn thẳng PD",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "F", "x": -1.99, "y": -0.2},\n'
+                '      "to": {"id": "Q", "x": 1.85, "y": -0.2},\n'
                 '      "color": "#00E5FF",\n'
+                '      "label": "Đường thẳng qua F song song BC (FQ)",\n'
+                '      "style": "solid"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "F", "x": -1.99, "y": -0.2},\n'
+                '      "to": {"id": "E", "x": 1.13, "y": 0.81},\n'
+                '      "color": "#39FF14",\n'
                 '      "label": "Đoạn FE",\n'
                 '      "style": "solid"\n'
                 '    },\n'
                 '    {\n'
                 '      "kind": "line",\n'
-                '      "from": {"id": "P", "x": -5.8, "y": -1.8},\n'
-                '      "to": {"id": "E", "x": 1.0, "y": 0.85},\n'
-                '      "color": "#a855f7",\n'
-                '      "label": "Đoạn PE",\n'
-                '      "style": "dashed"\n'
-                '    },\n'
-                '    {\n'
-                '      "kind": "line",\n'
-                '      "from": {"id": "A", "x": -1.0, "y": 3.5},\n'
-                '      "to": {"id": "P", "x": -5.8, "y": -1.8},\n'
-                '      "color": "#e2e8f0",\n'
-                '      "label": "Cát tuyến AP",\n'
-                '      "style": "dashed"\n'
-                '    },\n'
-                '    {\n'
-                '      "kind": "line",\n'
-                '      "from": {"id": "A", "x": -1.0, "y": 3.5},\n'
-                '      "to": {"id": "K", "x": 0.2, "y": -1.8},\n'
+                '      "from": {"id": "G", "x": 0.65, "y": 2.9},\n'
+                '      "to": {"id": "K", "x": 0.6, "y": -1.8},\n'
                 '      "color": "#FFD400",\n'
-                '      "label": "Đoạn AK",\n'
+                '      "label": "Đường thẳng GLK",\n'
                 '      "style": "solid"\n'
                 '    },\n'
                 '    {\n'
                 '      "kind": "line",\n'
-                '      "from": {"id": "E", "x": 1.0, "y": 0.85},\n'
-                '      "to": {"id": "Q", "x": 2.5, "y": 1.44},\n'
-                '      "color": "#00E5FF",\n'
-                '      "label": "FE kéo dài Q",\n'
+                '      "from": {"id": "A", "x": -0.8, "y": 3.5},\n'
+                '      "to": {"id": "L", "x": 0.62, "y": -0.2},\n'
+                '      "color": "#ec4899",\n'
+                '      "label": "Cevian AML",\n'
+                '      "style": "dashed"\n'
+                '    },\n'
+                '    {\n'
+                '      "kind": "line",\n'
+                '      "from": {"id": "D", "x": -0.8, "y": -1.8},\n'
+                '      "to": {"id": "N", "x": 2.42, "y": -0.99},\n'
+                '      "color": "#64748b",\n'
+                '      "label": "Đoạn DN",\n'
                 '      "style": "dashed"\n'
                 '    },\n'
                 '    {\n'
                 '      "kind": "points",\n'
                 '      "data": [\n'
-                '        {"id": "A", "x": -1.0, "y": 3.5, "color": "#f0f6fc"},\n'
+                '        {"id": "A", "x": -0.8, "y": 3.5, "color": "#f0f6fc"},\n'
                 '        {"id": "B", "x": -2.5, "y": -1.8, "color": "#f0f6fc"},\n'
                 '        {"id": "C", "x": 3.0, "y": -1.8, "color": "#f0f6fc"},\n'
-                '        {"id": "D", "x": -1.0, "y": -1.8, "color": "#FFD400"},\n'
-                '        {"id": "E", "x": 1.0, "y": 0.85, "color": "#FFD400"},\n'
-                '        {"id": "F", "x": -2.09, "y": -0.36, "color": "#FFD400"},\n'
-                '        {"id": "H", "x": -1.0, "y": -0.67, "color": "#f43f5e"},\n'
-                '        {"id": "O", "x": 0.25, "y": 0.28, "color": "#3b82f6"},\n'
-                '        {"id": "I", "x": -1.0, "y": 1.42, "color": "#ec4899"},\n'
-                '        {"id": "J", "x": -1.0, "y": 0.07, "color": "#00E5FF"},\n'
-                '        {"id": "M", "x": -0.55, "y": 0.25, "color": "#a855f7"},\n'
-                '        {"id": "L", "x": 1.0, "y": -0.48, "color": "#a855f7"},\n'
-                '        {"id": "K", "x": 0.2, "y": -1.8, "color": "#FFD400"},\n'
-                '        {"id": "P", "x": -5.8, "y": -1.8, "color": "#f0f6fc"},\n'
-                '        {"id": "Q", "x": 2.5, "y": 1.44, "color": "#f0f6fc"},\n'
-                '        {"id": "G", "x": 1.25, "y": 3.25, "color": "#f0f6fc"}\n'
+                '        {"id": "D", "x": -0.8, "y": -1.8, "color": "#FFD400"},\n'
+                '        {"id": "E", "x": 1.13, "y": 0.81, "color": "#FFD400"},\n'
+                '        {"id": "F", "x": -1.99, "y": -0.2, "color": "#FFD400"},\n'
+                '        {"id": "H", "x": -0.8, "y": -0.58, "color": "#f43f5e"},\n'
+                '        {"id": "O", "x": 0.25, "y": 0.24, "color": "#3b82f6"},\n'
+                '        {"id": "I", "x": -0.8, "y": 1.46, "color": "#ec4899"},\n'
+                '        {"id": "P", "x": -2.925, "y": -3.125, "color": "#a855f7"},\n'
+                '        {"id": "G", "x": 0.65, "y": 2.9, "color": "#FFD400"},\n'
+                '        {"id": "Q", "x": 1.85, "y": -0.2, "color": "#00E5FF"},\n'
+                '        {"id": "K", "x": 0.6, "y": -1.8, "color": "#FFD400"},\n'
+                '        {"id": "L", "x": 0.62, "y": -0.2, "color": "#a855f7"},\n'
+                '        {"id": "M", "x": 0.33, "y": 0.55, "color": "#39FF14"},\n'
+                '        {"id": "J", "x": -0.8, "y": 0.19, "color": "#00E5FF"},\n'
+                '        {"id": "N", "x": 2.42, "y": -0.99, "color": "#64748b"}\n'
                 '      ]\n'
                 '    }\n'
                 '  ]\n'
@@ -2890,7 +2918,6 @@ async def chat(request: Request):
     else:
         payload = {
             "contents": gemini_contents,
-            "tools": GEMINI_TOOLS,
             "systemInstruction": {
                 "parts": [{"text": full_system_prompt}]
             },
@@ -2899,6 +2926,10 @@ async def chat(request: Request):
                 "maxOutputTokens": max_tokens
             }
         }
+        # Only attach tools for pure text calculations (not for vision, visualizer, or widget generation)
+        if not (image_data or is_viz_request or _widget):
+            payload["tools"] = GEMINI_TOOLS
+
         fallback_models = [
             gemini_model,
             "gemini-3.6-flash"
@@ -2915,6 +2946,10 @@ async def chat(request: Request):
                     # Tool calling multi-turn execution loop (up to 4 iterations)
                     for tool_step in range(4):
                         resp = await client.post(url, json=curr_payload, timeout=18)
+                        if resp.status_code == 400 and "tools" in curr_payload:
+                            print(f"[WARN] {current_model} returned 400 during tool call — retrying without tools")
+                            curr_payload.pop("tools", None)
+                            resp = await client.post(url, json=curr_payload, timeout=18)
                         if resp.status_code in (429, 503):
                             print(f"[WARN] {current_model} returned {resp.status_code}")
                             break
@@ -2938,7 +2973,7 @@ async def chat(request: Request):
                                     print(f"[MathTool] evaluate_math('{math_expr}') -> {math_res.get('numeric') or math_res.get('exact')}")
                                     curr_payload["contents"].append({
                                         "role": "model",
-                                        "parts": [p]
+                                        "parts": parts
                                     })
                                     curr_payload["contents"].append({
                                         "role": "user",
@@ -2960,7 +2995,18 @@ async def chat(request: Request):
                     if reply:
                         break
                 except Exception as e:
-                    print(f"[WARN] Error with {current_model} ({e}) — switching to fast fallback")
+                    print(f"[WARN] Error with {current_model} ({e}) — retrying once without tools")
+                    try:
+                        no_tools_payload = json.loads(json.dumps(payload))
+                        no_tools_payload.pop("tools", None)
+                        resp = await client.post(url, json=no_tools_payload, timeout=20)
+                        if resp.status_code == 200:
+                            res_data = resp.json()
+                            candidate_parts = res_data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                            text_parts = [p.get("text", "") for p in candidate_parts if "text" in p]
+                            reply = "".join(text_parts).strip()
+                    except Exception as e2:
+                        print(f"[WARN] Direct retry failed: {e2}")
             if reply:
                 break
 
@@ -2970,7 +3016,7 @@ async def chat(request: Request):
                 try:
                     print("[Chat] Gemini unavailable/503. Calling OpenRouter LLM for intelligent canvas response...")
                     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
-                    openrouter_model = os.environ.get("OPENROUTER_VISION_MODEL", "qwen/qwen2.5-vl-72b-instruct:free")
+                    openrouter_model = os.environ.get("OPENROUTER_VISION_MODEL", "minimax/minimax-m3:free")
                     or_headers = {
                         "Authorization": f"Bearer {openrouter_key}",
                         "HTTP-Referer": "https://duomath.local",
