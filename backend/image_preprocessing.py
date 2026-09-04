@@ -19,11 +19,16 @@ import base64
 import hashlib
 from typing import Tuple, Dict, Any
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, ImageDraw
 
 TARGET_SIZE = 1024          # standard square canvas fed to every downstream consumer
 PAD_COLOR = (255, 255, 255)  # neutral fill — won't be mistaken for drawn geometry
 JPEG_QUALITY = 90
+GRID_MAJOR_STEP = 100        # px between labeled gridlines
+GRID_MINOR_STEP = 20         # px between unlabeled gridlines
+GRID_COLOR = (255, 0, 180)   # high-contrast magenta — unlikely to match diagram ink
+GRID_ALPHA_MINOR = 60        # 0-255, kept low so it never occludes the geometry
+GRID_ALPHA_MAJOR = 130
 
 
 def _decode_b64(raw_b64: str) -> bytes:
@@ -33,13 +38,57 @@ def _decode_b64(raw_b64: str) -> bytes:
     return base64.b64decode(raw_b64)
 
 
+def draw_coordinate_grid(
+    img: Image.Image,
+    major_step: int = GRID_MAJOR_STEP,
+    minor_step: int = GRID_MINOR_STEP,
+) -> Image.Image:
+    """
+    Overlay a labeled pixel-coordinate grid on an already-padded square
+    image. Drawn on a separate RGBA layer and alpha-composited so the
+    diagram underneath is never fully occluded, then flattened back to RGB.
+    Origin (0,0) is top-left, matching both PIL's own pixel order and the
+    0-1000 normalized coordinate convention Qwen-VL grounds against — so a
+    coordinate read off the grid needs no axis flip before comparing it to
+    what the vision model reports.
+    """
+    w, h = img.size
+    overlay = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(overlay)
+    minor_rgba = (*GRID_COLOR, GRID_ALPHA_MINOR)
+    major_rgba = (*GRID_COLOR, GRID_ALPHA_MAJOR)
+
+    for x in range(0, w + 1, minor_step):
+        draw.line([(x, 0), (x, h)], fill=minor_rgba, width=1)
+    for y in range(0, h + 1, minor_step):
+        draw.line([(0, y), (w, y)], fill=minor_rgba, width=1)
+    for x in range(0, w + 1, major_step):
+        draw.line([(x, 0), (x, h)], fill=major_rgba, width=1)
+        draw.text((min(x + 2, w - 22), 2), str(x), fill=major_rgba)
+    for y in range(0, h + 1, major_step):
+        draw.line([(0, y), (w, y)], fill=major_rgba, width=1)
+        draw.text((2, min(y + 2, h - 12)), str(y), fill=major_rgba)
+
+    return Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
+
+
 def preprocess_image_b64(
     raw_b64: str,
     target_size: int = TARGET_SIZE,
+    with_grid: bool = False,
 ) -> Tuple[str, Dict[str, Any]]:
     """
     Decode -> EXIF-correct orientation -> uniform-scale resize -> letterbox
-    pad to `target_size` x `target_size` -> re-encode as JPEG base64.
+    pad to `target_size` x `target_size` -> optional grid overlay -> re-encode
+    as JPEG base64.
+
+    `with_grid=False` by default: the model's own grounding already returns
+    normalized coordinates without needing a visible grid, and burning grid
+    lines into every image sent to the vision model risks adding visual
+    clutter on top of the actual diagram. Pass `with_grid=True` for cases
+    where reading exact pixel coordinates off the image matters more than a
+    perfectly clean image — e.g. manual debugging, or a model/prompt that
+    explicitly asks to read coordinates off an overlaid grid.
 
     Returns (new_b64, meta) where meta carries everything needed to map a
     coordinate detected on the padded image back to the original image, or
@@ -49,6 +98,7 @@ def preprocess_image_b64(
           "orig_width": ..., "orig_height": ...,
           "scale": ...,            # uniform scale factor applied
           "pad_x": ..., "pad_y": ...,  # top-left offset of the pasted image
+          "grid": True|False,
           "sha256": "...",         # hash of the STANDARDIZED bytes — feed this to vision_cache
         }
 
@@ -74,6 +124,9 @@ def preprocess_image_b64(
     pad_x, pad_y = (target_size - new_w) // 2, (target_size - new_h) // 2
     canvas.paste(resized, (pad_x, pad_y))
 
+    if with_grid:
+        canvas = draw_coordinate_grid(canvas)
+
     buf = io.BytesIO()
     canvas.save(buf, format="JPEG", quality=JPEG_QUALITY)
     out_bytes = buf.getvalue()
@@ -86,6 +139,7 @@ def preprocess_image_b64(
         "scale": round(scale, 6),
         "pad_x": pad_x,
         "pad_y": pad_y,
+        "grid": with_grid,
         "sha256": hashlib.sha256(out_bytes).hexdigest(),
     }
     return new_b64, meta

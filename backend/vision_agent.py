@@ -136,7 +136,8 @@ class GeometryVisionAgent:
             raise ValueError("OPENROUTER_API_KEY is not configured.")
 
         # Risk 3 — standardize the image before it goes anywhere.
-        std_b64, meta = preprocess_image_b64(image_data)
+        _with_grid = os.environ.get("VISION_GRID_OVERLAY", "false").lower() in ("true", "1", "yes")
+        std_b64, meta = preprocess_image_b64(image_data, with_grid=_with_grid)
         phash = vision_cache.compute_phash(std_b64)
 
         # Risk 5 — cache check (skips ALL network calls on a hit).

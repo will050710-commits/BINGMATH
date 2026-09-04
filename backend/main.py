@@ -2447,7 +2447,8 @@ async def chat(request: Request):
         # also gives image/preprocessing.py's sha256 a stable cache key for
         # Risk 5. media_type is forced to JPEG since that's what comes out.
         try:
-            raw_b64, _img_meta = preprocess_image_b64(raw_b64)
+            _with_grid = os.environ.get("VISION_GRID_OVERLAY", "false").lower() in ("true", "1", "yes")
+            raw_b64, _img_meta = preprocess_image_b64(raw_b64, with_grid=_with_grid)
             media_type = "image/jpeg"
         except Exception as e_prep:
             logger.debug(f"Image preprocessing skipped, using original bytes: {e_prep}")
