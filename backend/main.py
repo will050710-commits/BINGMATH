@@ -467,10 +467,13 @@ def cached_system_prompt(variant: str = "text", widget: str | None = None) -> st
             + "3. Đặt câu hỏi dẫn dắt học sinh tự thực hiện phép biến đổi/chứng minh tiếp theo.\n"
             + _LATEX_RULES
         )
-    # Append mathviz visual rules + per-widget schema snippet when widget is known
+    # Append mathviz visual rules + per-widget schema snippet + golden few-shot demo when widget is known
     if widget and widget in _WIDGET_PROMPT_SNIPPETS:
         base += _VISUAL_RULES
         base += _WIDGET_PROMPT_SNIPPETS[widget]
+        if widget in _WIDGET_FEW_SHOT_DEMOS:
+            base += "\n\n## VÍ DỤ MẪU HOÀN CHỈNH (FEW-SHOT GOLDEN CALIBRATION - HỌC THEO ĐỊNH DẠNG NÀY):\n"
+            base += _WIDGET_FEW_SHOT_DEMOS[widget]
     elif variant in ("image", "solution"):
         base += _VISUAL_RULES
         base += (
@@ -1164,6 +1167,257 @@ Ví dụ: {"type":"mathviz.v1","widget":"distribution","title":"Phân phối nh�
  "p":{"min":0,"max":1,"default":0.5,"step":0.01}},"highlight_k":5}
 ''',
 }
+
+# ── Dynamic Few-Shot Golden Calibration Demonstrations ────────────────────────
+_WIDGET_FEW_SHOT_DEMOS: dict[str, str] = {
+    "geometry_2d": '''
+[HỌC SINH]: Cho tam giác $ABC$ vuông tại $A$, $AB = 3$, $AC = 4$. Dựng đường cao $AH$ và đường tròn ngoại tiếp tam giác.
+[DUOMCB]:
+Chào bạn! Dưới đây là phân tích hình học và mô hình tương tác trực quan:
+
+**1. Phân tích cấu hình & Tọa độ giải tích:**
+- Tam giác $ABC$ vuông tại $A(0, 3)$, đặt chân đường vuông góc trên trục tọa độ với $B(-4, 0)$ và $C(0, 0)$ hoặc chuẩn hóa tâm ngoại tiếp $O$ tại trung điểm cạnh huyền $BC$.
+- Độ dài cạnh huyền $BC = \\sqrt{AB^2 + AC^2} = \\sqrt{3^2 + 4^2} = 5$.
+- Đường cao $AH = \\frac{AB \\cdot AC}{BC} = \\frac{3 \\cdot 4}{5} = 2.4$.
+- Tâm đường tròn ngoại tiếp $O$ là trung điểm cạnh huyền $BC$, bán kính $R = 2.5$.
+
+**2. Mô hình trực quan tương tác (Canvas):**
+Bạn có thể kéo thả các đỉnh trên hình để quan sát đường cao và đường tròn ngoại tiếp:
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "geometry_2d",
+  "title": "$\\\\triangle ABC$ vuông tại $A$ và Đường cao $AH$",
+  "layers": [
+    {"kind": "circle", "center": {"x": 0, "y": 0}, "r": 2.5, "label": "(O)", "color": "#3b82f6"},
+    {"kind": "polygon", "points": [{"id": "A", "x": 0.7, "y": 2.4}, {"id": "B", "x": -2.5, "y": 0}, {"id": "C", "x": 2.5, "y": 0}], "color": "#10b981"},
+    {"kind": "line", "from": {"x": 0.7, "y": 2.4}, "to": {"x": 0.7, "y": 0}, "label": "AH", "style": "dashed", "color": "#ef4444"},
+    {"kind": "points", "data": [{"id": "A", "x": 0.7, "y": 2.4}, {"id": "B", "x": -2.5, "y": 0}, {"id": "C", "x": 2.5, "y": 0}, {"id": "H", "x": 0.7, "y": 0}, {"id": "O", "x": 0, "y": 0}]}
+  ]
+}
+```
+''',
+
+    "geometry_3d": '''
+[HỌC SINH]: Cho hình chóp tam giác đều $S.ABC$ có cạnh đáy bằng $4$, chiều cao $h = 6$. Hãy mô hình hóa không gian.
+[DUOMCB]:
+Chào bạn! Dưới đây là mô hình không gian 3D tương tác của khối chóp tam giác đều:
+
+**1. Đặc điểm hình học:**
+- Đáy $ABC$ là tam giác đều cạnh $a = 4$.
+- Đỉnh $S$ nằm trên trục đối xứng vuông góc với tâm đáy, chiều cao $h = 6$.
+
+**2. Mô hình 3D tương tác:**
+Bạn có thể xoay khối chóp 360° trên canvas Three.js để quan sát mọi góc nhìn:
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "geometry_3d",
+  "title": "Hình chóp tam giác đều $S.ABC$ ($a=4, h=6$)",
+  "solid": "triangular_pyramid",
+  "dims": {"a": 4, "h": 6},
+  "show_cross_section": false,
+  "cross_section_height": 0
+}
+```
+''',
+
+    "function_plot": '''
+[HỌC SINH]: Khảo sát sự biến thiên và vẽ đồ thị hàm số bậc ba $y = x^3 - 3x + 1$.
+[DUOMCB]:
+Chào bạn! Dưới đây là các bước khảo sát và đồ thị hàm số bậc ba:
+
+**1. Khảo sát hàm số:**
+- Tập xác định: $D = \\mathbb{R}$.
+- Đạo hàm: $y' = 3x^2 - 3 = 3(x^2 - 1) = 0 \\Leftrightarrow x = \\pm 1$.
+- Điểm cực đại: $A(-1, 3)$, Điểm cực tiểu: $B(1, -1)$.
+- Đồ thị cắt trục tung tại $(0, 1)$.
+
+**2. Đồ thị hàm số tương tác:**
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "function_plot",
+  "title": "Đồ thị hàm số $y = x^3 - 3x + 1$",
+  "expr": "x^3 - 3*x + 1",
+  "params": {"a": {"min": -2, "max": 2, "default": 1, "step": 0.1}},
+  "overlays": [
+    {"kind": "extrema"},
+    {"kind": "tangent_at", "x0": 0}
+  ],
+  "x_domain": [-3, 3]
+}
+```
+''',
+
+    "unit_circle_wave": '''
+[HỌC SINH]: Vẽ vòng tròn lượng giác và đồ thị hàm số sóng $y = 2\\sin(3x)$.
+[DUOMCB]:
+Chào bạn! Dưới đây là mô hình liên hệ giữa chuyển động tròn lượng giác và sóng hình sin:
+
+**1. Phân tích hàm số sóng:**
+- Biên độ $A = 2$.
+- Tần số góc $\\omega = 3$, chu kỳ $T = \\frac{2\\pi}{3}$.
+
+**2. Mô hình sóng lượng giác:**
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "unit_circle_wave",
+  "title": "Vòng tròn lượng giác & Đồ thị sóng $y = 2\\\\sin(3x)$",
+  "function": {"preset": "sin(x)", "custom_expr": null},
+  "params": {
+    "amplitude": {"min": 0, "max": 4, "default": 2, "step": 0.1},
+    "frequency": {"min": 0.1, "max": 5, "default": 3, "step": 0.1},
+    "phase": {"min": -3.14, "max": 3.14, "default": 0, "step": 0.01},
+    "vertical_shift": {"min": -3, "max": 3, "default": 0, "step": 0.1},
+    "x_range": {"min": 1, "max": 4, "default": 2, "step": 1},
+    "speed": {"min": 0, "max": 3, "default": 1, "step": 0.1}
+  },
+  "radius_expr": "1",
+  "display": {"show_sine_line": true, "show_cosine_line": true, "graph_color": "#3b82f6"}
+}
+```
+''',
+
+    "inequality_region": '''
+[HỌC SINH]: Biểu diễn miền nghiệm của hệ bất phương trình: $x + y \\le 4$, $x - y \\ge -1$, $x \\ge 0$, $y \\ge 0$.
+[DUOMCB]:
+Chào bạn! Dưới đây là miền nghiệm đa giác của hệ bất phương trình bậc nhất hai ẩn:
+
+**1. Xác định các đường biên và đỉnh miền nghiệm:**
+- Các đỉnh của miền tứ giác nghiệm: $O(0, 0)$, $A(4, 0)$, $B(1.5, 2.5)$, $C(0, 1)$.
+
+**2. Miền nghiệm tương tác:**
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "inequality_region",
+  "title": "Miền nghiệm hệ bất phương trình bậc nhất hai ẩn",
+  "inequalities": [
+    {"expr": "x + y <= 4", "color": "#10b981"},
+    {"expr": "x - y >= -1", "color": "#3b82f6"},
+    {"expr": "x >= 0", "color": "#f59e0b"},
+    {"expr": "y >= 0", "color": "#ec4899"}
+  ],
+  "domain": {"x": [-1, 5], "y": [-1, 5]},
+  "highlight_feasible_region": true,
+  "vertices_of_region": [[0, 0], [4, 0], [1.5, 2.5], [0, 1]]
+}
+```
+''',
+
+    "venn_sets": '''
+[HỌC SINH]: Cho tập $A = \\{1, 2, 3, 4\\}$ và tập $B = \\{3, 4, 5, 6\\}$. Minh họa biểu đồ Ven phần giao $A \\cap B$.
+[DUOMCB]:
+Chào bạn! Dưới đây là sơ đồ Ven trực quan:
+
+**1. Phép toán tập hợp:**
+- Giao của hai tập hợp: $A \\cap B = \\{3, 4\\}$.
+
+**2. Biểu đồ Ven tương tác:**
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "venn_sets",
+  "title": "Giao của hai tập hợp $A \\\\cap B = \\\\{3, 4\\\\}$",
+  "sets": [
+    {"id": "A", "label": {"vi": "Tập A", "en": "Set A"}, "color": "#10b981", "elements": [1, 2, 3, 4]},
+    {"id": "B", "label": {"vi": "Tập B", "en": "Set B"}, "color": "#3b82f6", "elements": [3, 4, 5, 6]}
+  ],
+  "highlight_operation": "intersection"
+}
+```
+''',
+
+    "sequence_series": '''
+[HỌC SINH]: Tìm số hạng thứ 10 và tổng 10 số hạng đầu của cấp số cộng với $u_1 = 2$, công sai $d = 3$.
+[DUOMCB]:
+Chào bạn! Dưới đây là công thức và bảng trực quan hóa dãy số:
+
+**1. Tính toán lý thuyết:**
+- Số hạng tổng quát: $u_n = u_1 + (n-1)d = 2 + (n-1)3$.
+- Với $n = 10$: $u_{10} = 2 + 9 \\times 3 = 29$.
+- Tổng $S_{10} = \\frac{10(u_1 + u_{10})}{2} = \\frac{10(2 + 29)}{2} = 155$.
+
+**2. Mô hình trực quan dãy số:**
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "sequence_series",
+  "title": "Cấp số cộng $u_n = 2 + 3(n-1)$",
+  "kind": "arithmetic",
+  "params": {
+    "u1": {"min": -10, "max": 10, "default": 2, "step": 1},
+    "d_or_q": {"min": -5, "max": 5, "default": 3, "step": 1},
+    "n_terms": {"min": 3, "max": 30, "default": 10, "step": 1}
+  },
+  "show_partial_sum": true,
+  "highlight_term": 10
+}
+```
+''',
+
+    "complex_plane": '''
+[HỌC SINH]: Cho số phức $z = 3 + 4i$. Tính môđun của $z$ và biểu diễn trên mặt phẳng toạ độ phức.
+[DUOMCB]:
+Chào bạn! Dưới đây là biểu diễn hình học của số phức:
+
+**1. Phân tích số phức:**
+- Phần thực: $a = 3$, Phần ảo: $b = 4$.
+- Môđun: $|z| = \\sqrt{3^2 + 4^2} = 5$.
+- Số phức liên hợp: $\\bar{z} = 3 - 4i$.
+
+**2. Mặt phẳng phức tương tác:**
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "complex_plane",
+  "title": "Số phức $z = 3 + 4i$, $|z| = 5$",
+  "points": [
+    {"re": 3, "im": 4, "label": {"vi": "z (3+4i)", "en": "z"}, "color": "#10b981"}
+  ],
+  "show_modulus_argument": true,
+  "operation": {"kind": "conjugate", "with": {"re": 3, "im": -4}}
+}
+```
+''',
+
+    "distribution": '''
+[HỌC SINH]: Tính xác suất trong phân phối nhị thức $B(10, 0.5)$ và vẽ biểu đồ phân phối xác suất.
+[DUOMCB]:
+Chào bạn! Dưới đây là phân tích phân phối nhị thức:
+
+**1. Công thức xác suất:**
+- Công thức: $P(X = k) = C_{10}^k (0.5)^k (0.5)^{10-k}$.
+- Kỳ vọng: $E(X) = n \\cdot p = 5$.
+
+**2. Biểu đồ phân phối xác suất:**
+
+```mathviz
+{
+  "type": "mathviz.v1",
+  "widget": "distribution",
+  "title": "Phân phối nhị thức $B(10, 0.5)$",
+  "kind": "binomial",
+  "params": {
+    "n": {"min": 1, "max": 30, "default": 10, "step": 1},
+    "p": {"min": 0, "max": 1, "default": 0.5, "step": 0.01}
+  },
+  "highlight_k": 5
+}
+```
+'''
+}
+
 
 # ── MathViz Validation & Retry Helpers ───────────────────────────────────────
 import re as _re_mathviz
@@ -2580,7 +2834,7 @@ async def chat(request: Request):
 
     client = await get_http_client()
 
-    gemini_model = os.environ.get("GEMINI_MODEL", "gemini-3.7-flash")
+    gemini_model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
     print(f"[Chat] model={gemini_model}, mode={chat_mode}, widget={_widget}, has_image={'yes' if image_data else 'no'}, max_tokens={max_tokens}")
 
     if use_stream:
