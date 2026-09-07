@@ -52,13 +52,25 @@ Output your findings using the following schema:
 """
 
 # Confirmed-$0 OpenRouter models as of the free-tier audit behind this change.
-# Keep this list ordered best-quality-first; extract_geometry_primitives()
-# walks it top to bottom on 4xx/5xx/timeout so a single model's rate limit
-# degrades quality before it ever produces a hard failure.
-DEFAULT_MODEL = "minimax/minimax-m3:free"
+# Keep this list ordered best-quality-first for THIS specific task (dense
+# OCR + spatial reasoning over Olympiad diagrams with 10+ labeled points):
+# large, DEDICATED vision-language models first, general-purpose multimodal
+# models last as a floor rather than a default. This was regressed once
+# already — a previous edit set DEFAULT_MODEL to minimax/minimax-m3:free
+# (a general agentic/coding model) with nvidia/nemotron-3-nano-omni-30b-a3b
+# (an explicitly small "nano", 3B-active-parameter model marketed as a
+# *perception sub-agent* for handing off to a bigger reasoning model, not a
+# standalone diagram parser) as the only fallback. Both technically accept
+# image input, so this wasn't a hard crash — but neither is built for dense
+# single-shot geometric OCR, which plausibly explains a real quality drop
+# in recognition even though nothing was throwing errors. qwen2.5-vl-72b
+# was NOT pulled from OpenRouter's free tier (re-verified live) — there
+# was no forcing reason to have moved off it.
+DEFAULT_MODEL = "qwen/qwen2.5-vl-72b-instruct:free"
 DEFAULT_FALLBACK_MODELS = [
+    "qwen/qwen2.5-vl-32b-instruct:free",
     "google/gemma-4-31b-it:free",
-    "google/gemma-4-26b-a4b-it:free",
+    "minimax/minimax-m3:free",  # general-purpose floor, not a quality pick for this task
 ]
 
 

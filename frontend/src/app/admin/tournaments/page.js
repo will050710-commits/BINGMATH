@@ -10,7 +10,7 @@ const BASE =
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
     ? "https://duomath.onrender.com"
-    : "http://localhost:5000");
+    : "http://localhost:8000");
 
 const PANEL_STYLE = {
   background: "linear-gradient(135deg, rgba(2,8,24,0.92) 0%, rgba(4,12,36,0.88) 100%)",

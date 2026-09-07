@@ -8,6 +8,10 @@ Hướng dẫn toàn diện về quy trình thu thập dữ liệu Toán học s
 
 | File / Script | Chức Năng |
 |---|---|
+| `generate_mathviz_sft_dataset.py` | Sinh tập dữ liệu SFT chuyên biệt cho 9 loại Canvas Widgets (Geometry 2D, 3D, Function Plot...) định dạng ChatML & DeepSeek-R1 CoT. |
+| `train_hf_mathviz_unsloth.py` | Kịch bản Fine-Tune QLoRA 4-bit với Unsloth cho DeepSeek-R1-Distill-Qwen-7B hoặc Qwen2.5-Math-7B, tự động export GGUF và push Hub. |
+| `DuoMath_MathViz_FineTuning_Colab.ipynb` | Jupyter Notebook 1-Click chạy huấn luyện hoàn toàn miễn phí trên GPU Google Colab T4. |
+| `benchmark_canvas_model.py` | Bộ kiểm thử & đánh giá tỷ lệ sinh widget hợp lệ, độ chính xác hình học qua snapping gate và drop rate. |
 | `sample_olympiad_seed.py` | Bộ dữ liệu hạt giống (Gold-standard Seed) chuẩn Olympiad & THPT Chuyên (Hình học chùm điều hòa, BĐT Cauchy ngược dấu, Tích phân King's property). |
 | `download_datasets.py` | Tải tự động 24+ datasets toán học song ngữ từ Hugging Face (NuminaMath, Omni-MATH, MathNet, MetaMathQA Tiếng Việt, GSM8K). |
 | `translate_and_curate.py` | Biên dịch bài toán tiếng Anh/Trung sang thuật ngữ toán học chuẩn Việt Nam, bảo tồn 100% công thức LaTeX `$ ... $` và `$$ ... $$`. |
@@ -21,35 +25,34 @@ Hướng dẫn toàn diện về quy trình thu thập dữ liệu Toán học s
 
 ## 🛠️ Hướng Dẫn Thực Hiện Từng Bước (Quick Start)
 
-### 1. Cài đặt môi trường
+### 1. Chuẩn bị tập dữ liệu Canvas & Math SFT
 ```bash
-cd backend
-pip install datasets google-generativeai google-cloud-aiplatform httpx
+python training/generate_mathviz_sft_dataset.py --sample-size 200 --eval-ratio 0.1
 ```
+Dữ liệu sẽ được xuất ra `backend/training/tuning_data/`:
+- `hf_mathviz_chatml_train.jsonl` & `hf_mathviz_chatml_val.jsonl` (Chuẩn ChatML)
+- `hf_deepseek_r1_mathviz_train.jsonl` & `hf_deepseek_r1_mathviz_val.jsonl` (Chuẩn DeepSeek-R1 CoT `<think>`)
 
-### 2. Chuẩn bị dữ liệu hạt giống & SFT JSONL
+### 2. Chạy Fine-Tuning Trên Cloud GPU (Google Colab / Kaggle)
+Do laptop Latitude 7300 không có GPU rời, hãy mở file [DuoMath_MathViz_FineTuning_Colab.ipynb](file:///c:/Users/Latitude%207300/OneDrive/M%C3%A1y%20t%C3%ADnh/duosteam%20-%20Copy/duosteam/backend/training/DuoMath_MathViz_FineTuning_Colab.ipynb) trên Google Colab (chọn Runtime: T4 GPU miễn phí):
+- Cài đặt Unsloth.
+- Nạp base model `deepseek-ai/DeepSeek-R1-Distill-Qwen-7B` hoặc `Qwen/Qwen2.5-Math-7B-Instruct`.
+- Huấn luyện trong ~15-25 phút.
+- Tự động đẩy adapter lên Hugging Face Hub của bạn (`push_to_hub`) hoặc export file GGUF.
+
+### 3. Đánh Giá & Benchmark Mô Hình
 ```bash
-python training/sample_olympiad_seed.py
-python training/prepare_vertex_tuning_data.py --eval_ratio 0.1
+python training/benchmark_canvas_model.py
 ```
+Kiểm tra cú pháp JSON, tỷ lệ vượt qua cổng kiểm định hình học `geometry_snapping.py` và đo tỷ lệ drop rate.
 
-### 3. Tải thêm Dataset từ Hugging Face (Tùy chọn theo dung lượng)
-```bash
-python training/download_datasets.py --datasets vi_metamath hendrycks_math --limit 5000
-```
-
-### 4. Chạy Fine-Tuning
-```bash
-# Cách 1: Qua Google AI Studio (Nhanh nhất)
-python training/tune_gemini_aistudio.py --display_name duomcb-olympiad-v1 --epochs 3
-
-# Cách 2: Qua Google Cloud Vertex AI
-python training/tune_gemini_vertex.py --project your-project-id --bucket gs://your-bucket-name
-```
-
-### 5. Cập nhật Model trong Backend DuoMCB
-Cập nhật file `backend/.env`:
+### 4. Cấu Hình Backend DuoMath
+Sau khi có mô hình trên Hugging Face Hub (hoặc chạy qua vLLM / Ollama / OpenRouter), cập nhật file `backend/.env`:
 ```env
-GEMINI_MODEL=tunedModels/duomcb-olympiad-v1
+LLM_PROVIDER=openai_compatible  # hoặc "huggingface", "gemini"
+HF_MODEL_NAME=your-username/duomath-r1-mathviz-7b
+OPENAI_COMPATIBLE_BASE_URL=https://api-inference.huggingface.co/v1  # hoặc URL vLLM/Ollama
+OPENAI_COMPATIBLE_API_KEY=your_api_token
 ```
-Hệ thống chatbot DuoMCB sẽ tự động gọi model fine-tuned mới cho toàn bộ các request giải toán và gợi ý Socratic!
+Backend DuoMath sẽ tự động định tuyến toàn bộ yêu cầu giải toán và sinh Canvas Widget qua mô hình mới, đồng thời tự động kích hoạt bộ đệm phòng vệ snapping và verification gate!
+

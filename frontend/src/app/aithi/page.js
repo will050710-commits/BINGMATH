@@ -3,11 +3,13 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const API =
-  typeof window !== "undefined" &&
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_BACKEND_URL ||
+  (typeof window !== "undefined" &&
   (window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1")
-    ? "http://localhost:5000"
-    : "https://duosteam-api.onrender.com";
+    ? "http://localhost:8000"
+    : "https://duosteam-api.onrender.com");
 
 const DIFFICULTY_COLOR = { easy: "#22c55e", medium: "#f59e0b", hard: "#ef4444" };
 const DIFFICULTY_LABEL = { easy: "Dễ", medium: "Trung bình", hard: "Khó" };

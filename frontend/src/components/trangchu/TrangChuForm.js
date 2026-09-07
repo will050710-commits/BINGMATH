@@ -472,7 +472,7 @@ export default function TrangChuForm() {
   const fetchLeaderboard = useCallback(async () => {
     setLeaderboardLoading(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       let url = `${API_BASE}/api/leaderboard`;
       const queryParams = [];
       if (leaderboardFilter === "school" && user?.school) {
@@ -520,7 +520,7 @@ export default function TrangChuForm() {
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
       }
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const res = await fetch(`${API_BASE}/api/gacha/open`, {
         method: "POST",
         headers,
@@ -1606,7 +1606,7 @@ export default function TrangChuForm() {
       </AnimatePresence>
 
       {/* Global CSS enhancements */}
-      <style jsx global>{`
+      <style dangerouslySetInnerHTML={{ __html: `
         .reveal {
           opacity: 0;
           transform: translateY(24px) scale(0.98);
@@ -1757,7 +1757,7 @@ export default function TrangChuForm() {
             width: 120px !important;
           }
         }
-      `}</style>
+      `}} />
     </div>
   );
 }

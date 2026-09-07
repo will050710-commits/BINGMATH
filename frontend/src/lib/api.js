@@ -5,11 +5,12 @@ import { auth } from "@/lib/firebase";
 
 const BASE =
   process.env.NEXT_PUBLIC_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
   (typeof window !== "undefined" &&
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
     ? "https://duomath.onrender.com"
-    : "http://localhost:5000");
+    : "http://localhost:8000");
 
 async function _fetch(path, opts = {}) {
   const hdrs = { "Content-Type": "application/json", ...opts.headers };

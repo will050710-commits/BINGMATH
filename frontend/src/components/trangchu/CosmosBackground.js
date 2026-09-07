@@ -1,754 +1,900 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
 
 /*
-  CosmosBackground v2 — Saturn 3D + Vector Field + Mouse Attraction
-  =================================================================
-  Layer 1 (WebGL2, fixed): 3D Saturn planet — GLSL fluid shader, ring, nebula
-  Layer 2 (Canvas 2D, absolute): Vector field stars + math symbols
-
-  Performance optimisations
-  ─────────────────────────
-  • All star data in Float32Array / Uint8Array  → CPU cache-friendly
-  • Stars batched into 6 colour bands           → only 6 ctx.stroke() calls / frame
-  • No ctx.save/restore inside hot loops        → avoids state-stack overhead
-  • Mouse position read via ref each frame      → zero event-handler overhead
-  • Physics skips stars outside ATTRACT_RADIUS  → O(n) with early skip
-  • No new object allocation inside drawFrame   → zero GC pressure
-  • shadowBlur used only for cursor glow        → biggest perf win
-  • docH checked only every 30 frames           → avoids forced layout
+  ==============================================================================
+  CELESTIAL MATHEMATICAL COSMOS 3D (Vibe $10k Cinematic)
+  Inspired by:
+    1. getlayers.ai  — Deep obsidian/indigo/cyan cinematic space, 3D hyper-geometric
+                       singularity, relativistic spacetime manifold, floating formulas.
+    2. 60fps.design  — Damped harmonic spring physics, gravitational mouse lens,
+                       constellation Delaunay network, click shockwave, 60 FPS lock.
+    3. navbar.gallery— Seamless glassmorphic coordination & high-tech mathematical HUD.
+  ==============================================================================
 */
 
-// ─── Physics constants — adaptive to device ──────────────────────────────────
-const IS_MOBILE        = typeof window !== "undefined" && window.innerWidth < 768;
-const NUM_STARS        = IS_MOBILE ? 180 : 450;   // mobile: 60% fewer stars
-const SPHERE_STACKS    = IS_MOBILE ? 32  : 64;    // mobile: lower WebGL quality
-const SPHERE_SLICES    = IS_MOBILE ? 32  : 64;
-const NUM_MATH_SYMBOLS = IS_MOBILE ? 10  : 28;    // mobile: fewer math particles
-const ATTRACT_RADIUS   = 200;          // px
-const ATTRACT_RADIUS_SQ = ATTRACT_RADIUS * ATTRACT_RADIUS;
-const ATTRACT_STRENGTH = 0.10;
-const SPRING_K         = 0.032;        // spring back to home
-const DAMPING          = 0.84;
-const ANGLE_LERP_NEAR  = 0.07;        // how fast vector points toward cursor
-const ANGLE_LERP_FAR   = 0.012;       // how fast it returns to base angle
-const COLOR_BANDS      = 6;
-// Cap FPS on mobile to save GPU budget: 30fps on mobile vs 60fps on desktop
-const TARGET_MS        = IS_MOBILE ? 1000 / 30 : 0;
-
-// Band hues: cyan(180) → blue(210) → indigo(235) → violet(255) → purple(270) → magenta-violet(285)
-const BAND_HUES = [180, 210, 235, 255, 270, 285];
-const BAND_SATS = [ 80,  80,  78,  80,  82,  80];
-const BAND_LUMS = [ 72,  70,  68,  68,  65,  65];
-const BAND_ALPHAS = [0.55, 0.52, 0.50, 0.50, 0.48, 0.48];
-
-// ─── Math symbols (for floating overlay) ─────────────────────────────────────
-const MATH_SYMBOLS = [
-  "∑","∫","∂","π","∞","√","∆","θ","≡","∈","∀","∃","α","β","γ","λ",
-  "lim","sin","cos","tan","f(x)","dx","∇f","E=mc²","a²+b²=c²","x→∞",
+// ─── Mathematical Formulas & Glyphs ──────────────────────────────────────────
+const MATH_EQUATIONS = [
+  { text: "e^{iπ} + 1 = 0", sub: "Euler's Identity", color: "#38bdf8" },
+  { text: "∇ × E = -∂B/∂t", sub: "Maxwell-Faraday", color: "#a855f7" },
+  { text: "∫ e^{-x²} dx = √π", sub: "Gaussian Integral", color: "#34d399" },
+  { text: "ζ(s) = ∑ n^{-s}", sub: "Riemann Zeta", color: "#f472b6" },
+  { text: "iℏ ∂ψ/∂t = Ĥψ", sub: "Schrödinger Eq.", color: "#38bdf8" },
+  { text: "R_μν - ½Rg_μν = κT_μν", sub: "Einstein Field Eq.", color: "#fbbf24" },
+  { text: "Φ = (1+√5)/2", sub: "Golden Ratio", color: "#60a5fa" },
+  { text: "∑ 1/n² = π²/6", sub: "Basel Problem", color: "#c084fc" },
+  { text: "∮ F·dr = ∬ (∇×F)·dS", sub: "Stokes' Theorem", color: "#2dd4bf" },
+  { text: "det(A - λI) = 0", sub: "Eigenvalues", color: "#f87171" },
+  { text: "lim (sin x)/x = 1", sub: "Fundamental Limit", color: "#818cf8" },
+  { text: "F = G(m₁m₂)/r²", sub: "Universal Gravitation", color: "#a78bfa" },
 ];
 
-// ─── GLSL — Vertex shader ─────────────────────────────────────────────────────
-const VERT_SRC = `#version 300 es
-precision highp float;
-in vec3 a_pos;
-in vec3 a_normal;
-in vec2 a_uv;
-uniform mat4 u_mvp;
-uniform mat4 u_model;
-uniform float u_time;
-out vec3 v_normal;
-out vec3 v_worldPos;
-out vec2 v_uv;
-out float v_time;
-void main(){
-  v_uv       = a_uv;
-  v_normal   = normalize((u_model * vec4(a_normal,0.0)).xyz);
-  v_worldPos = (u_model * vec4(a_pos,1.0)).xyz;
-  v_time     = u_time;
-  gl_Position= u_mvp * vec4(a_pos,1.0);
-}`;
+const MATH_SYMBOLS = [
+  "∫", "∂", "∇", "∮", "∑", "∏", "∞", "λ", "ψ", "Ω",
+  "ℏ", "Δ", "θ", "≈", "±", "ℝⁿ", "⊂", "∀", "∃", "∝"
+];
 
-// ─── GLSL — Fragment shader (Saturn fluid texture) ────────────────────────────
-const FRAG_SRC = `#version 300 es
-precision highp float;
-in vec3 v_normal;
-in vec3 v_worldPos;
-in vec2 v_uv;
-in float v_time;
-out vec4 fragColor;
+// Helper: Generate crisp Canvas Sprite for Mathematical Equations
+function createMathEquationTexture(eq) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 160;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
 
-float hash(vec2 p){p=fract(p*vec2(127.1,311.7));p+=dot(p,p+19.19);return fract(p.x*p.y);}
-float noise(vec2 p){
-  vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);
-  return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);
-}
-float fbm(vec2 p,int oct){
-  float v=0.0,a=0.5;
-  for(int i=0;i<8;i++){
-    if(i>=oct)break;
-    v+=a*noise(p);p=p*2.0+vec2(1.7,9.2);a*=0.5;
-  }
-  return v;
-}
-vec3 saturnTex(vec2 uv,float t){
-  float bands=uv.y*8.0;
-  float w1=fbm(vec2(uv.x*3.0+t*0.04,uv.y*2.0),5)*0.35;
-  float w2=fbm(vec2(uv.x*2.5-t*0.03+4.0,uv.y*3.0+w1),4)*0.25;
-  float band=fbm(vec2(uv.x*1.5+w2,bands+w1+t*0.02),6);
-  vec3 A=vec3(0.06,0.02,0.22),B=vec3(0.10,0.06,0.45),C=vec3(0.18,0.08,0.62);
-  vec3 D=vec3(0.05,0.22,0.72),E=vec3(0.28,0.48,0.95),F=vec3(0.55,0.20,0.85);
-  vec3 base;
-  float b=band;
-  if(b<0.2)      base=mix(A,B,b/0.2);
-  else if(b<0.4) base=mix(B,D,(b-0.2)/0.2);
-  else if(b<0.6) base=mix(D,C,(b-0.4)/0.2);
-  else if(b<0.8) base=mix(C,E,(b-0.6)/0.2);
-  else           base=mix(E,F,(b-0.8)/0.2);
-  float str=fbm(vec2(uv.x*6.0+w1*2.0+t*0.06,uv.y*4.0),3);
-  base+=vec3(0.15,0.30,0.60)*pow(str,4.0)*0.8;
-  base+=vec3(0.50,0.10,0.70)*pow(1.0-str,6.0)*0.4;
-  float pol=smoothstep(0.3,1.0,abs(uv.y-0.5)*2.0);
-  base=mix(base,base*0.35+vec3(0.02,0.00,0.10),pol*0.7);
-  return base;
-}
-void main(){
-  vec2 uv=v_uv;
-  vec2 animUV=vec2(uv.x+v_time*0.018,uv.y);
-  vec3 col=saturnTex(animUV,v_time);
-  vec3 lightDir=normalize(vec3(-0.6,0.7,0.8));
-  vec3 normal=normalize(v_normal);
-  float diff=max(dot(normal,lightDir),0.0);
-  vec3 viewDir=normalize(vec3(0.0,0.0,1.0)-v_worldPos);
-  vec3 halfV=normalize(lightDir+viewDir);
-  float spec=pow(max(dot(normal,halfV),0.0),48.0)*0.55;
-  float rim=pow(1.0-max(dot(normal,vec3(0.0,0.0,1.0)),0.0),3.5);
-  vec3 lit=col*(0.12+diff*0.88)+vec3(0.90,0.92,1.0)*spec;
-  lit+=vec3(0.40,0.10,0.90)*rim*0.45+vec3(0.05,0.15,0.55)*pow(rim,1.8)*0.6;
-  lit=lit/(lit+0.9);
-  lit=pow(lit,vec3(1.0/2.2));
-  fragColor=vec4(lit,1.0);
-}`;
+  // Background subtle glass pill glow
+  ctx.clearRect(0, 0, 512, 160);
+  const grad = ctx.createLinearGradient(0, 0, 512, 160);
+  grad.addColorStop(0, "rgba(15, 23, 42, 0.75)");
+  grad.addColorStop(1, "rgba(30, 27, 75, 0.65)");
+  
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(16, 16, 480, 128, 24);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = eq.color + "55";
+  ctx.shadowColor = eq.color;
+  ctx.shadowBlur = 14;
+  ctx.stroke();
+  ctx.restore();
 
-// ─── GLSL — Ring shaders ──────────────────────────────────────────────────────
-const RING_VERT = `#version 300 es
-precision highp float;
-in vec2 a_pos;
-uniform float u_rx,u_ry;
-uniform vec2 u_center;
-out float v_t;
-void main(){
-  float angle=atan(a_pos.y,a_pos.x);
-  float r=length(a_pos);
-  v_t=r;
-  vec2 world=vec2(cos(angle)*r*u_rx+u_center.x,sin(angle)*r*u_ry+u_center.y);
-  gl_Position=vec4(world,0.0,1.0);
-}`;
-const RING_FRAG = `#version 300 es
-precision highp float;
-in float v_t;
-out vec4 fragColor;
-void main(){
-  float a=smoothstep(0.0,0.15,v_t)*smoothstep(1.0,0.7,v_t)*0.38;
-  vec3 col=mix(vec3(0.22,0.35,0.90),vec3(0.55,0.18,0.82),v_t);
-  fragColor=vec4(col,a);
-}`;
+  // Equation Main Text
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 34px 'Cambria Math', 'Times New Roman', serif";
+  ctx.fillStyle = "#ffffff";
+  ctx.shadowColor = eq.color;
+  ctx.shadowBlur = 12;
+  ctx.fillText(eq.text, 256, 64);
 
-// ─── WebGL helpers ────────────────────────────────────────────────────────────
-function compileSh(gl, src, type) {
-  const s = gl.createShader(type);
-  gl.shaderSource(s, src); gl.compileShader(s);
-  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); gl.deleteShader(s); return null; }
-  return s;
-}
-function linkProg(gl, vs, fs) {
-  const p = gl.createProgram();
-  gl.attachShader(p, vs); gl.attachShader(p, fs); gl.linkProgram(p);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(p)); return null; }
-  return p;
-}
-function mat4Mul(a, b) {
-  const c = new Float32Array(16);
-  for (let i = 0; i < 4; i++)
-    for (let j = 0; j < 4; j++)
-      c[j*4+i] = a[i]*b[j*4]+a[i+4]*b[j*4+1]+a[i+8]*b[j*4+2]+a[i+12]*b[j*4+3];
-  return c;
-}
-function perspMat(fov, asp, n, f) {
-  const t = 1/Math.tan(fov*0.5);
-  return new Float32Array([t/asp,0,0,0, 0,t,0,0, 0,0,(f+n)/(n-f),-1, 0,0,(2*f*n)/(n-f),0]);
-}
-function buildSphere(stacks, slices) {
-  const pos=[],nrm=[],uvs=[],idx=[];
-  for (let st=0;st<=stacks;st++){const phi=(st/stacks)*Math.PI;for(let sl=0;sl<=slices;sl++){const th=(sl/slices)*Math.PI*2,x=Math.sin(phi)*Math.cos(th),y=Math.cos(phi),z=Math.sin(phi)*Math.sin(th);pos.push(x,y,z);nrm.push(x,y,z);uvs.push(sl/slices,st/stacks);}}
-  for (let st=0;st<stacks;st++)for(let sl=0;sl<slices;sl++){const a=st*(slices+1)+sl,b=a+1,c=a+slices+1,d=c+1;idx.push(a,c,b,b,c,d);}
-  return {pos:new Float32Array(pos),nrm:new Float32Array(nrm),uvs:new Float32Array(uvs),idx:new Uint32Array(idx),count:idx.length};
-}
-function buildRing(inner, outer, segs) {
-  const pos=[];
-  for(let i=0;i<=segs;i++){const a=(i/segs)*Math.PI*2,c=Math.cos(a),s=Math.sin(a);pos.push(c*inner,s*inner,c*outer,s*outer);}
-  const idx=[];
-  for(let i=0;i<segs;i++){const b=i*2;idx.push(b,b+1,b+2,b+1,b+3,b+2);}
-  return {pos:new Float32Array(pos),idx:new Uint32Array(idx),count:idx.length};
+  // Subtitle / Label
+  ctx.font = "600 15px 'Courier New', monospace";
+  ctx.fillStyle = eq.color;
+  ctx.letterSpacing = "2px";
+  ctx.shadowBlur = 6;
+  ctx.fillText(eq.sub.toUpperCase(), 256, 108);
+  ctx.restore();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  return texture;
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
-export default function CosmosBackground() {
-  const glCanvasRef   = useRef(null);
-  const c2dCanvasRef  = useRef(null);
-  const cursorRef     = useRef(null);   // CSS div — zero-lag cursor dot
-  const rafRef        = useRef(null);
-  const mouseRef      = useRef({ x: -9999, y: -9999, onPage: false });
-  // Planet drag rotation state
-  const dragRef = useRef({
-    dragging: false,
-    lastX: 0, lastY: 0,
-    rx: 0, ry: 0,          // accumulated drag rotation (radians)
-    vx: 0, vy: 0,          // inertia velocities
-  });
+// Helper: Generate Canvas Sprite for Single Math Symbols
+function createMathSymbolTexture(sym, color) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
 
-  useEffect(() => {
-    const glCanvas  = glCanvasRef.current;
-    const c2dCanvas = c2dCanvasRef.current;
-    const cursorEl  = cursorRef.current;
-    if (!glCanvas || !c2dCanvas) return;
+  ctx.clearRect(0, 0, 128, 128);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "bold 64px 'Cambria Math', 'Times New Roman', serif";
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 18;
+  ctx.fillText(sym, 64, 64);
 
-    // ── Mouse tracking — update cursor div DIRECTLY (no rAF lag) ────────────
-    const onMove = (e) => {
-      const cx = e.clientX, cy = e.clientY;
-      mouseRef.current.x      = cx;
-      mouseRef.current.y      = cy + window.scrollY;
-      mouseRef.current.onPage = true;
-      // Move cursor div synchronously — zero delay
-      if (cursorEl) cursorEl.style.transform = `translate(${cx}px,${cy}px)`;
-      // Planet drag
-      const drag = dragRef.current;
-      if (drag.dragging) {
-        drag.vy += (cx - drag.lastX) * 0.008;
-        drag.vx += (cy - drag.lastY) * 0.008;
-        drag.lastX = cx; drag.lastY = cy;
-      }
-    };
-    const onLeave = () => {
-      mouseRef.current.onPage = false;
-      mouseRef.current.x = -9999;
-      if (cursorEl) cursorEl.style.opacity = "0";
-    };
-    const onEnter = () => { if (cursorEl) cursorEl.style.opacity = "1"; };
-    const onDown  = (e) => {
-      const drag = dragRef.current;
-      drag.dragging = true; drag.lastX = e.clientX; drag.lastY = e.clientY;
-      drag.vx = 0; drag.vy = 0;
-    };
-    const onUp = () => { dragRef.current.dragging = false; };
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  return texture;
+}
 
-    window.addEventListener("mousemove",  onMove,  { passive: true });
-    window.addEventListener("mousedown",  onDown,  { passive: true });
-    window.addEventListener("mouseup",   onUp,    { passive: true });
-    document.documentElement.addEventListener("mouseleave", onLeave);
-    document.documentElement.addEventListener("mouseenter", onEnter);
-
-    // ── Sizing state ─────────────────────────────────────────────────────────
-    let dpr = Math.min(window.devicePixelRatio || 1, 2);
-    let vw  = window.innerWidth;
-    let vh  = window.innerHeight;
-    let docH = document.documentElement.scrollHeight || vh;
-
-    const ctx2d = c2dCanvas.getContext("2d");
-
-    function resizeAll() {
-      dpr  = Math.min(window.devicePixelRatio || 1, 2);
-      vw   = window.innerWidth;
-      vh   = window.innerHeight;
-      docH = document.documentElement.scrollHeight || vh;
-
-      glCanvas.width  = vw * dpr; glCanvas.height  = vh * dpr;
-      glCanvas.style.width  = vw + "px"; glCanvas.style.height  = vh + "px";
-
-      c2dCanvas.width  = vw * dpr; c2dCanvas.height = docH * dpr;
-      c2dCanvas.style.width  = vw + "px"; c2dCanvas.style.height = docH + "px";
-      ctx2d.scale(dpr, dpr);
-
-      // Rescale star home positions if already initialised
-      if (homeX) {
-        for (let i = 0; i < NUM_STARS; i++) {
-          homeX[i] = normX[i] * vw;
-          homeY[i] = normY[i] * docH;
+// ─── 4D Tesseract Projection Builder ──────────────────────────────────────────
+function createTesseractEdges() {
+  const v4 = [];
+  for (let x = -1; x <= 1; x += 2) {
+    for (let y = -1; y <= 1; y += 2) {
+      for (let z = -1; z <= 1; z += 2) {
+        for (let w = -1; w <= 1; w += 2) {
+          v4.push([x, y, z, w]);
         }
       }
     }
+  }
 
-    // ── WebGL2 setup ─────────────────────────────────────────────────────────
-    const gl = glCanvas.getContext("webgl2", { alpha: true, antialias: true, premultipliedAlpha: false });
-    if (!gl) { console.warn("WebGL2 not supported"); return; }
+  const edges = [];
+  for (let i = 0; i < 16; i++) {
+    for (let j = i + 1; j < 16; j++) {
+      let diff = 0;
+      for (let k = 0; k < 4; k++) {
+        if (v4[i][k] !== v4[j][k]) diff++;
+      }
+      if (diff === 1) {
+        edges.push([i, j]);
+      }
+    }
+  }
+  return { v4, edges };
+}
 
-    const vs   = compileSh(gl, VERT_SRC,  gl.VERTEX_SHADER);
-    const fs   = compileSh(gl, FRAG_SRC,  gl.FRAGMENT_SHADER);
-    const rvs  = compileSh(gl, RING_VERT, gl.VERTEX_SHADER);
-    const rfs  = compileSh(gl, RING_FRAG, gl.FRAGMENT_SHADER);
-    const prog     = linkProg(gl, vs,  fs);
-    const ringProg = linkProg(gl, rvs, rfs);
-    if (!prog || !ringProg) return;
+// Helper: Generate Smooth Circular Glow Texture for Star Particles (eliminates square artifact)
+function createStarParticleTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 64;
+  canvas.height = 64;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
 
-    const sphere = buildSphere(SPHERE_STACKS, SPHERE_SLICES);
-    const ring   = buildRing(0.55, 1.0, IS_MOBILE ? 64 : 128);
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, "rgba(255, 255, 255, 1)");
+  grad.addColorStop(0.2, "rgba(255, 255, 255, 0.85)");
+  grad.addColorStop(0.5, "rgba(255, 255, 255, 0.25)");
+  grad.addColorStop(1, "rgba(255, 255, 255, 0)");
 
-    // Sphere VAO
-    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
-    const mkBuf = (data) => { const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);return b; };
-    const posBuf=mkBuf(sphere.pos); const aNorm=gl.getAttribLocation(prog,"a_normal");
-    const nrmBuf=mkBuf(sphere.nrm);
-    const uvBuf =mkBuf(sphere.uvs);
-    gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
-    const aPos=gl.getAttribLocation(prog,"a_pos"); gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos,3,gl.FLOAT,false,0,0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, nrmBuf);
-    gl.enableVertexAttribArray(aNorm); gl.vertexAttribPointer(aNorm,3,gl.FLOAT,false,0,0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, uvBuf);
-    const aUV=gl.getAttribLocation(prog,"a_uv"); gl.enableVertexAttribArray(aUV); gl.vertexAttribPointer(aUV,2,gl.FLOAT,false,0,0);
-    const idxBuf=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,idxBuf); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,sphere.idx,gl.STATIC_DRAW);
-    gl.bindVertexArray(null);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
 
-    // Ring VAO
-    const ringVao=gl.createVertexArray(); gl.bindVertexArray(ringVao);
-    const rPosBuf=mkBuf(ring.pos);
-    const rAPos=gl.getAttribLocation(ringProg,"a_pos"); gl.enableVertexAttribArray(rAPos); gl.vertexAttribPointer(rAPos,2,gl.FLOAT,false,0,0);
-    const rIdxBuf=gl.createBuffer(); gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,rIdxBuf); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,ring.idx,gl.STATIC_DRAW);
-    gl.bindVertexArray(null);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
+  return texture;
+}
 
-    const uMVP=gl.getUniformLocation(prog,"u_mvp"), uModel=gl.getUniformLocation(prog,"u_model"), uTime=gl.getUniformLocation(prog,"u_time");
-    const rURX=gl.getUniformLocation(ringProg,"u_rx"), rURY=gl.getUniformLocation(ringProg,"u_ry"), rUCen=gl.getUniformLocation(ringProg,"u_center");
+export default function CosmosBackground() {
+  const mountRef = useRef(null);
+  const hudRef = useRef(null);
+  const [hudCoord, setHudCoord] = useState({ x: 0, y: 0, rad: "0.00π", z: "0.0" });
 
-    // ── Star / Vector field data — typed arrays for cache efficiency ─────────
-    let seed = 42;
-    const rng = () => { seed=(seed*1664525+1013904223)&0x7fffffff; return seed/0x7fffffff; };
-    const rr  = (a,b) => a + rng()*(b-a);
+  useEffect(() => {
+    const container = mountRef.current;
+    if (!container) return;
 
-    // Normalised positions (0-1) — preserved across resizes
-    const normX  = new Float32Array(NUM_STARS);
-    const normY  = new Float32Array(NUM_STARS);
+    // ─── Device Tier & Optimization ─────────────────────────────────────────
+    const isMobile = window.innerWidth < 768;
+    const NUM_PARTICLES = isMobile ? 450 : 1200;
+    const MAX_CONSTELLATION_LINES = isMobile ? 120 : 350;
+    const GRID_SIZE = isMobile ? 28 : 42;
 
-    // World-space positions (px)
-    const homeX  = new Float32Array(NUM_STARS);
-    const homeY  = new Float32Array(NUM_STARS);
-    const posX   = new Float32Array(NUM_STARS);
-    const posY   = new Float32Array(NUM_STARS);
+    // ─── Scene, Camera, Renderer ────────────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x020617, 0.0035);
 
-    // Physics
-    const velX   = new Float32Array(NUM_STARS);
-    const velY   = new Float32Array(NUM_STARS);
-
-    // Visual
-    const angle     = new Float32Array(NUM_STARS);  // current display angle (vector dir)
-    const baseAngle = new Float32Array(NUM_STARS);  // resting flow-field angle
-    const starR     = new Float32Array(NUM_STARS);  // outer radius of star sparkle
-    const twPhase   = new Float32Array(NUM_STARS);  // twinkle phase offset per star
-    const bandIdx   = new Uint8Array(NUM_STARS);    // colour band 0-5
-
-    // Pre-computed fill colour strings per band (avoids template literal in hot loop)
-    const bandFills = BAND_HUES.map((h,i) =>
-      `hsla(${h},${BAND_SATS[i]}%,${BAND_LUMS[i]}%,${BAND_ALPHAS[i]})`
+    const camera = new THREE.PerspectiveCamera(
+      55,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1200
     );
-    // Bright version for nearby-cursor glow
-    const bandGlow = BAND_HUES.map((h,i) =>
-      `hsla(${h},95%,88%,0.82)`
+    camera.position.set(0, 5, 88);
+
+    const renderer = new THREE.WebGLRenderer({
+      alpha: true,
+      antialias: true,
+      powerPreference: "high-performance",
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    // ─── Celestial Singularity Assembly ──────────────────────────────────────
+    const celestialGroup = new THREE.Group();
+    // Offset slightly to top-right to frame hero content dynamically
+    celestialGroup.position.set(isMobile ? 0 : 26, isMobile ? 18 : 6, -10);
+    scene.add(celestialGroup);
+
+    // 1. 4D Tesseract Geometry
+    const { v4: tesseractV4, edges: tesseractEdges } = createTesseractEdges();
+    const tesseractEdgePositions = new Float32Array(tesseractEdges.length * 2 * 3);
+    const tesseractGeom = new THREE.BufferGeometry();
+    tesseractGeom.setAttribute(
+      "position",
+      new THREE.BufferAttribute(tesseractEdgePositions, 3)
     );
 
-    // Initialise star data
-    resizeAll(); // sets vw, vh, docH first
-    for (let i = 0; i < NUM_STARS; i++) {
-      normX[i] = rng();
-      normY[i] = rng();
-      homeX[i] = normX[i] * vw;
-      homeY[i] = normY[i] * docH;
-      posX[i]  = homeX[i];
-      posY[i]  = homeY[i];
-      velX[i]  = 0;
-      velY[i]  = 0;
-      // Base flow-field angle: smooth noise via trig combo → natural swirl
-      const nx = normX[i], ny = normY[i];
-      baseAngle[i] = Math.sin(nx * Math.PI * 2.3 + ny * Math.PI * 1.7) * Math.PI
-                   + Math.cos(ny * Math.PI * 2.1 - nx * Math.PI * 0.9) * 0.6;
-      angle[i]   = baseAngle[i];
-      starR[i]   = rr(2.5, 5.5);   // outer radius of the 4-point sparkle
-      twPhase[i] = rng() * Math.PI * 2; // unique twinkle phase
-      // Colour band by normalised Y
-      bandIdx[i] = Math.min(COLOR_BANDS - 1, Math.floor(normY[i] * COLOR_BANDS));
+    const tesseractMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      linewidth: 2,
+    });
+    const tesseractLines = new THREE.LineSegments(tesseractGeom, tesseractMat);
+    celestialGroup.add(tesseractLines);
+
+    // Tesseract Vertex Nodes
+    const vertexPositions = new Float32Array(16 * 3);
+    const vertexGeom = new THREE.BufferGeometry();
+    vertexGeom.setAttribute(
+      "position",
+      new THREE.BufferAttribute(vertexPositions, 3)
+    );
+    const vertexMat = new THREE.PointsMaterial({
+      color: 0xc084fc,
+      size: 1.8,
+      blending: THREE.AdditiveBlending,
+      transparent: true,
+      opacity: 0.95,
+    });
+    const vertexPoints = new THREE.Points(vertexGeom, vertexMat);
+    celestialGroup.add(vertexPoints);
+
+    // 2. Parametric Torus Knot Singularity
+    const torusGeom = new THREE.TorusKnotGeometry(12, 1.8, 120, 16, 2, 3);
+    const torusMat = new THREE.MeshBasicMaterial({
+      color: 0x8b5cf6,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.25,
+      blending: THREE.AdditiveBlending,
+    });
+    const torusKnot = new THREE.Mesh(torusGeom, torusMat);
+    celestialGroup.add(torusKnot);
+
+    // 3. Sacred Armillary & Keplerian Coordinate Rings
+    const createArmillaryRing = (radius, tiltX, tiltZ, color, opacity = 0.5, dashed = false) => {
+      const ringGeom = new THREE.BufferGeometry();
+      const points = [];
+      const segments = 128;
+      for (let i = 0; i <= segments; i++) {
+        const theta = (i / segments) * Math.PI * 2;
+        points.push(new THREE.Vector3(Math.cos(theta) * radius, 0, Math.sin(theta) * radius));
+      }
+      ringGeom.setFromPoints(points);
+      const ringMat = dashed
+        ? new THREE.LineDashedMaterial({
+            color,
+            transparent: true,
+            opacity,
+            dashSize: 2.5,
+            gapSize: 1.5,
+            blending: THREE.AdditiveBlending,
+          })
+        : new THREE.LineBasicMaterial({
+            color,
+            transparent: true,
+            opacity,
+            blending: THREE.AdditiveBlending,
+          });
+      const line = new THREE.Line(ringGeom, ringMat);
+      if (dashed) line.computeLineDistances();
+      line.rotation.x = tiltX;
+      line.rotation.z = tiltZ;
+      return line;
+    };
+
+    const ring1 = createArmillaryRing(22, Math.PI / 4, 0.2, 0x38bdf8, 0.65, true);
+    const ring2 = createArmillaryRing(26, -Math.PI / 3, -0.3, 0xa855f7, 0.55, false);
+    const ring3 = createArmillaryRing(30, 0.3, Math.PI / 5, 0x34d399, 0.45, true);
+    celestialGroup.add(ring1);
+    celestialGroup.add(ring2);
+    celestialGroup.add(ring3);
+
+    // 4. Glowing Quantum Energy Core (Center of Celestial Assembly)
+    const coreGlowGeom = new THREE.SphereGeometry(3.5, 32, 32);
+    const coreGlowMat = new THREE.MeshBasicMaterial({
+      color: 0x60a5fa,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+    });
+    const coreGlow = new THREE.Mesh(coreGlowGeom, coreGlowMat);
+    celestialGroup.add(coreGlow);
+
+    // ─── 2. Einstein Spacetime Curvature Manifold (3D Wireframe Plane) ───────
+    const manifoldW = 260;
+    const manifoldH = 260;
+    const manifoldGeom = new THREE.PlaneGeometry(manifoldW, manifoldH, GRID_SIZE, GRID_SIZE);
+    manifoldGeom.rotateX(-Math.PI / 2.3);
+    manifoldGeom.translate(0, -32, -20);
+
+    const manifoldMat = new THREE.MeshBasicMaterial({
+      color: 0x4f46e5,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.22,
+      blending: THREE.AdditiveBlending,
+    });
+    const spacetimeManifold = new THREE.Mesh(manifoldGeom, manifoldMat);
+    scene.add(spacetimeManifold);
+
+    const baseManifoldPositions = manifoldGeom.attributes.position.array.slice();
+
+    // ─── 3. Vector Field Star Particles & Constellation Links ────────────────
+    const pPositions = new Float32Array(NUM_PARTICLES * 3);
+    const pColors = new Float32Array(NUM_PARTICLES * 3);
+
+    const particleColorsList = [
+      new THREE.Color(0x38bdf8), // Neon cyan
+      new THREE.Color(0xa855f7), // Vibrant purple
+      new THREE.Color(0x60a5fa), // Royal blue
+      new THREE.Color(0x34d399), // Emerald
+      new THREE.Color(0xf472b6), // Soft rose
+    ];
+
+    for (let i = 0; i < NUM_PARTICLES; i++) {
+      const idx = i * 3;
+      pPositions[idx] = (Math.random() - 0.5) * 220;
+      pPositions[idx + 1] = (Math.random() - 0.5) * 160;
+      pPositions[idx + 2] = (Math.random() - 0.5) * 140;
+
+      const c = particleColorsList[i % particleColorsList.length];
+      pColors[idx] = c.r;
+      pColors[idx + 1] = c.g;
+      pColors[idx + 2] = c.b;
     }
 
-    // Math symbol particles — count scaled to device
-    const mathP = Array.from({ length: NUM_MATH_SYMBOLS }, (_, i) => ({
-      sym:   MATH_SYMBOLS[i % MATH_SYMBOLS.length],
-      nx:    rng(), ny: rng(),   // normalised
-      vy:   -rr(0.00006, 0.0002),
-      size:  rr(10, 19),
-      alpha: rr(0.12, 0.45),
-      adrift:(rng()-0.5)*0.0025,
-      rot:   0,
-      rotSp: (rng()-0.5)*0.0015,
-      phase: rng()*Math.PI*2,
-      hue:   rr(210, 285),
-    }));
+    const homePositions = new Float32Array(pPositions);
 
-    window.addEventListener("resize", resizeAll);
+    const particleGeom = new THREE.BufferGeometry();
+    particleGeom.setAttribute("position", new THREE.BufferAttribute(pPositions, 3));
+    particleGeom.setAttribute("color", new THREE.BufferAttribute(pColors, 3));
 
-    // ── Pause animation when tab is hidden (saves 100% GPU on alt-tab) ───────
-    let paused = false;
-    const onVisibilityChange = () => { paused = document.hidden; };
+    const starTexture = createStarParticleTexture();
+    const particleMat = new THREE.PointsMaterial({
+      size: isMobile ? 1.8 : 2.5,
+      map: starTexture || undefined,
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+    });
+    const particleSystem = new THREE.Points(particleGeom, particleMat);
+    scene.add(particleSystem);
+
+    // Dynamic Constellation Mesh Lines (Connects particles near cursor)
+    const linePositions = new Float32Array(MAX_CONSTELLATION_LINES * 2 * 3);
+    const lineGeom = new THREE.BufferGeometry();
+    lineGeom.setAttribute("position", new THREE.BufferAttribute(linePositions, 3));
+    const constellationLinesMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.45,
+      blending: THREE.AdditiveBlending,
+    });
+    const constellationLines = new THREE.LineSegments(lineGeom, constellationLinesMat);
+    scene.add(constellationLines);
+
+    // ─── 4. Floating 3D Mathematical Equation Sprites & Glyphs ───────────────
+    const equationGroup = new THREE.Group();
+    scene.add(equationGroup);
+
+    MATH_EQUATIONS.forEach((eq, i) => {
+      const tex = createMathEquationTexture(eq);
+      if (!tex) return;
+      const spriteMat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.72,
+        blending: THREE.AdditiveBlending,
+      });
+      const sprite = new THREE.Sprite(spriteMat);
+      
+      // Distribute in a spherical arc around the viewport
+      const phi = (i / MATH_EQUATIONS.length) * Math.PI * 2;
+      const radX = 55 + (i % 3) * 18;
+      const radY = 28 + (i % 2) * 12;
+      sprite.position.set(
+        Math.cos(phi) * radX,
+        Math.sin(phi) * radY - 4,
+        (Math.random() - 0.5) * 35 - 10
+      );
+      sprite.scale.set(18, 5.6, 1);
+      sprite.userData = {
+        baseY: sprite.position.y,
+        baseX: sprite.position.x,
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.6 + Math.random() * 0.5,
+      };
+      equationGroup.add(sprite);
+    });
+
+    // Floating Symbols
+    MATH_SYMBOLS.forEach((sym, i) => {
+      const col = particleColorsList[i % particleColorsList.length];
+      const tex = createMathSymbolTexture(sym, "#" + col.getHexString());
+      if (!tex) return;
+      const symMat = new THREE.SpriteMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.55,
+        blending: THREE.AdditiveBlending,
+      });
+      const symSprite = new THREE.Sprite(symMat);
+      symSprite.position.set(
+        (Math.random() - 0.5) * 160,
+        (Math.random() - 0.5) * 110,
+        (Math.random() - 0.5) * 70 - 15
+      );
+      symSprite.scale.set(3.5, 3.5, 1);
+      symSprite.userData = {
+        baseY: symSprite.position.y,
+        phase: Math.random() * Math.PI * 2,
+        drift: (Math.random() - 0.5) * 0.02,
+      };
+      equationGroup.add(symSprite);
+    });
+
+    // ─── 5. 60fps.design Physics & State Variables ───────────────────────────
+    const mouse = {
+      x: 0,
+      y: 0,
+      targetX: 0,
+      targetY: 0,
+      worldPos: new THREE.Vector3(),
+      isDown: false,
+      lastX: 0,
+      lastY: 0,
+    };
+
+    const drag = {
+      rx: 0,
+      ry: 0,
+      vx: 0,
+      vy: 0,
+    };
+
+    // Gravitational Shockwaves on Click
+    const shockwaves = [];
+
+    // Plane for Raycasting Cursor to World coordinates
+    const raycaster = new THREE.Raycaster();
+    const planeZ = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+
+    // Event Handlers
+    const onMouseMove = (e) => {
+      const normX = (e.clientX / window.innerWidth) * 2 - 1;
+      const normY = -(e.clientY / window.innerHeight) * 2 + 1;
+      mouse.targetX = normX;
+      mouse.targetY = normY;
+
+      // Unproject mouse to 3D world plane at Z=0
+      raycaster.setFromCamera(new THREE.Vector2(normX, normY), camera);
+      raycaster.ray.intersectPlane(planeZ, mouse.worldPos);
+
+      // Drag inertia
+      if (mouse.isDown) {
+        const dx = e.clientX - mouse.lastX;
+        const dy = e.clientY - mouse.lastY;
+        drag.vy += dx * 0.0035;
+        drag.vx += dy * 0.0035;
+        mouse.lastX = e.clientX;
+        mouse.lastY = e.clientY;
+      }
+
+      // Fast HUD update
+      if (hudRef.current) {
+        hudRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+      }
+    };
+
+    const onMouseDown = (e) => {
+      mouse.isDown = true;
+      mouse.lastX = e.clientX;
+      mouse.lastY = e.clientY;
+
+      // Spawn Gravitational Shockwave
+      shockwaves.push({
+        center: mouse.worldPos.clone(),
+        radius: 0,
+        maxRadius: 120,
+        strength: 1.0,
+        speed: 2.2,
+      });
+    };
+
+    const onMouseUp = () => {
+      mouse.isDown = false;
+    };
+
+    const onResize = () => {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
+    };
+
+    window.addEventListener("mousemove", onMouseMove, { passive: true });
+    window.addEventListener("mousedown", onMouseDown, { passive: true });
+    window.addEventListener("mouseup", onMouseUp, { passive: true });
+    window.addEventListener("resize", onResize);
+
+    // ─── Animation Loop (60 FPS Solid) ───────────────────────────────────────
+    let clock = new THREE.Clock();
+    let frameId = null;
+    let isHidden = false;
+
+    const onVisibilityChange = () => {
+      isHidden = document.hidden;
+    };
     document.addEventListener("visibilitychange", onVisibilityChange);
 
-    // ── Animation loop ────────────────────────────────────────────────────────
-    let time     = 0;
-    let ringRot  = 0;
-    let frameN   = 0;
-    let lastDocH = docH;
-    let lastFrameTs = 0; // for mobile FPS throttle
+    let hudCounter = 0;
 
-    // Pre-allocated matrix buffers — no new Float32Array() inside drawFrame
-    const modelBuf   = new Float32Array(16);
-    const scaleBuf   = new Float32Array(16);
-    const transBuf   = new Float32Array(16);
-    const rotXBuf    = new Float32Array(16);
-    const tmp16      = new Float32Array(16);  // scratch for in-place multiply
-    // In-place mat4 multiply: dst = a * b  (reuses dst buffer)
-    function mat4MulInto(dst, a, b) {
-      for (let i=0;i<4;i++) for (let j=0;j<4;j++)
-        dst[j*4+i]=a[i]*b[j*4]+a[i+4]*b[j*4+1]+a[i+8]*b[j*4+2]+a[i+12]*b[j*4+3];
-    }
+    const animate = () => {
+      frameId = requestAnimationFrame(animate);
+      if (isHidden) return;
 
-    function drawFrame(ts = 0) {
-      rafRef.current = requestAnimationFrame(drawFrame);
-      // ── Pause when tab is hidden ──────────────────────────────────────────
-      if (paused) return;
-      // ── FPS throttle for mobile (30fps cap) ──────────────────────────────
-      if (TARGET_MS > 0) {
-        const elapsed = ts - lastFrameTs;
-        if (elapsed < TARGET_MS) return;
-        lastFrameTs = ts - (elapsed % TARGET_MS);
-      }
-      time    += 0.016;
-      ringRot += 0.0003;
-      frameN++;
+      const delta = Math.min(clock.getDelta(), 0.1);
+      const time = clock.getElapsedTime();
 
-      // ── Check page height change every 30 frames (avoids forced layout) ───
-      if (frameN % 30 === 0) {
-        const newDocH = document.documentElement.scrollHeight || vh;
-        if (Math.abs(newDocH - lastDocH) > 10) { lastDocH = newDocH; resizeAll(); }
-      }
+      // 1. Camera Parallax (Damped Harmonic Spring)
+      mouse.x += (mouse.targetX - mouse.x) * 0.045;
+      mouse.y += (mouse.targetY - mouse.y) * 0.045;
+      camera.position.x = mouse.x * 6;
+      camera.position.y = 5 + mouse.y * 4;
+      camera.lookAt(0, 0, 0);
 
-      const W = vw, H = vh, DH = docH;
-      const mx = mouseRef.current.x;
-      const my = mouseRef.current.y;
-      const hasMouse = mouseRef.current.onPage;
-
-      // ── Planet drag inertia (apply + dampen each frame) ───────────────────
-      const drag = dragRef.current;
-      if (!drag.dragging) {
-        drag.vx *= 0.94;  // inertia decay
+      // 2. Drag & Rotation Momentum Decay
+      if (!mouse.isDown) {
+        drag.vx *= 0.94;
         drag.vy *= 0.94;
       }
       drag.rx += drag.vx;
       drag.ry += drag.vy;
 
-      // ════════════════════════════════════════════════════════
-      // WEBGL PASS — 3D Saturn
-      // ════════════════════════════════════════════════════════
-      gl.viewport(0, 0, glCanvas.width, glCanvas.height);
-      gl.clearColor(0,0,0,0);
-      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      gl.enable(gl.DEPTH_TEST);
-      gl.enable(gl.BLEND);
-      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      // 3. 4D Tesseract Rotation & Projection
+      const angle1 = time * 0.35 + drag.ry;
+      const angle2 = time * 0.22 + drag.rx;
+      const cos1 = Math.cos(angle1), sin1 = Math.sin(angle1);
+      const cos2 = Math.cos(angle2), sin2 = Math.sin(angle2);
 
-      const aspect = glCanvas.width / glCanvas.height;
+      const d4 = 2.8;
+      const tessScale = 11.5;
+      const p3d = [];
 
-      // Auto Y-rotation + drag X/Y rotation combined
-      const autoY  = time * 0.006;
-      const totalY = autoY + drag.ry;
-      const totalX = drag.rx;
-      const cY = Math.cos(totalY), sY = Math.sin(totalY);
-      const cX = Math.cos(totalX), sX = Math.sin(totalX);
+      for (let i = 0; i < 16; i++) {
+        let [x, y, z, w] = tesseractV4[i];
 
-      // RotY matrix
-      modelBuf.fill(0);
-      modelBuf[0]=cY;  modelBuf[2]=sY;  modelBuf[5]=1;
-      modelBuf[8]=-sY; modelBuf[10]=cY; modelBuf[15]=1;
+        // 4D Rotation in XW and YZ planes
+        const x1 = x * cos1 - w * sin1;
+        const w1 = x * sin1 + w * cos1;
+        const y1 = y * cos2 - z * sin2;
+        const z1 = y * sin2 + z * cos2;
 
-      // RotX matrix
-      rotXBuf.fill(0);
-      rotXBuf[0]=1; rotXBuf[5]=cX; rotXBuf[6]=-sX;
-      rotXBuf[9]=sX; rotXBuf[10]=cX; rotXBuf[15]=1;
+        // Perspective 4D to 3D projection
+        const k = 1 / (d4 - w1);
+        const px = x1 * k * tessScale;
+        const py = y1 * k * tessScale;
+        const pz = z1 * k * tessScale;
 
-      // Combined rotation = RotX * RotY (in-place, no allocation)
-      mat4MulInto(tmp16, rotXBuf, modelBuf);
-
-      // Planet: bottom-right like Saturn reference image
-      // Large sphere, mostly visible at top-left arc, extends off bottom-right
-      const sc = Math.min(W, H) * 0.0042 * 0.38;  // ~half screen width
-      scaleBuf.fill(0); scaleBuf[0]=sc; scaleBuf[5]=sc; scaleBuf[10]=sc; scaleBuf[15]=1;
-      const tx = 0.68, ty = -0.55, tz = -2.0;     // right + lower + closer
-      transBuf.fill(0); transBuf[0]=transBuf[5]=transBuf[10]=transBuf[15]=1;
-      transBuf[12]=tx; transBuf[13]=ty; transBuf[14]=tz;
-
-      // modelFull = Translate * Scale * (RotX*RotY) — no extra allocations
-      mat4MulInto(tmp16, scaleBuf, tmp16);   // tmp16 = Scale * Rot
-      mat4MulInto(modelBuf, transBuf, tmp16); // modelBuf = Trans * Scale * Rot  (reuse modelBuf)
-      const proj = perspMat(1.05, aspect, 0.1, 100);
-      mat4MulInto(tmp16, proj, modelBuf);     // tmp16 = MVP
-
-      gl.useProgram(prog);
-      gl.uniformMatrix4fv(uMVP,   false, tmp16);    // MVP  (no new alloc)
-      gl.uniformMatrix4fv(uModel, false, modelBuf); // model
-      gl.uniform1f(uTime, time);
-      gl.bindVertexArray(vao);
-      gl.drawElements(gl.TRIANGLES, sphere.count, gl.UNSIGNED_INT, 0);
-      gl.bindVertexArray(null);
-
-      // Ring — use same tx/ty/tz/sc as planet above
-      const fov1   = 1 / Math.tan(1.05 * 0.5);
-      const abstz  = Math.abs(tz);
-      const pndx   = (tx / abstz) * fov1 / aspect;
-      const pndy   = (ty / abstz) * fov1;
-      const rscale = (sc * 0.9 / abstz) * fov1;
-
-      gl.useProgram(ringProg);
-      gl.disable(gl.DEPTH_TEST);
-      gl.uniform1f(rURX, rscale * 2.8 / aspect);
-      gl.uniform1f(rURY, rscale * 0.38);
-      gl.uniform2f(rUCen, pndx, pndy);
-      gl.bindVertexArray(ringVao);
-      gl.drawElements(gl.TRIANGLES, ring.count, gl.UNSIGNED_INT, 0);
-      gl.bindVertexArray(null);
-      gl.enable(gl.DEPTH_TEST);
-
-      // ════════════════════════════════════════════════════════
-      // CANVAS 2D PASS — Vector field + Math
-      // ════════════════════════════════════════════════════════
-      ctx2d.clearRect(0, 0, W, DH);
-
-      // ── 1. Physics update (vector field + mouse attraction) ──────────────
-      for (let i = 0; i < NUM_STARS; i++) {
-        const dx = mx - posX[i];
-        const dy = my - posY[i];
-        const dSq = dx*dx + dy*dy;
-
-        if (hasMouse && dSq < ATTRACT_RADIUS_SQ && dSq > 1) {
-          // Attraction force (inverse-square falloff capped)
-          const inv = 1.0 / Math.sqrt(dSq);
-          const factor = ATTRACT_STRENGTH * (1.0 - dSq / ATTRACT_RADIUS_SQ);
-          velX[i] += dx * inv * factor;
-          velY[i] += dy * inv * factor;
-          // Rotate vector toward cursor
-          const targetAng = Math.atan2(dy, dx);
-          let diff = targetAng - angle[i];
-          // Wrap to [-PI, PI]
-          if (diff > Math.PI)  diff -= Math.PI*2;
-          if (diff < -Math.PI) diff += Math.PI*2;
-          angle[i] += diff * ANGLE_LERP_NEAR;
-        } else {
-          // Spring angle back to base flow angle
-          let diff = baseAngle[i] - angle[i];
-          if (diff > Math.PI)  diff -= Math.PI*2;
-          if (diff < -Math.PI) diff += Math.PI*2;
-          angle[i] += diff * ANGLE_LERP_FAR;
-        }
-
-        // Spring position back to home
-        velX[i] += (homeX[i] - posX[i]) * SPRING_K;
-        velY[i] += (homeY[i] - posY[i]) * SPRING_K;
-        velX[i] *= DAMPING;
-        velY[i] *= DAMPING;
-        posX[i] += velX[i];
-        posY[i] += velY[i];
+        p3d.push([px, py, pz]);
+        vertexPositions[i * 3] = px;
+        vertexPositions[i * 3 + 1] = py;
+        vertexPositions[i * 3 + 2] = pz;
       }
 
-      // ── 2. Draw star sparkles — batched by colour band ───────────────────
-      // 4-pointed star (✦) oriented by vector angle, filled per band.
-      // 6 fill() calls for all 450 stars — no save/restore in loop.
-      for (let b = 0; b < COLOR_BANDS; b++) {
-        ctx2d.beginPath();
-        ctx2d.fillStyle = bandFills[b];
-        for (let i = 0; i < NUM_STARS; i++) {
-          if (bandIdx[i] !== b) continue;
-          const x  = posX[i], y = posY[i];
-          // Twinkle: pulse radius ±25% based on time + unique phase
-          const tw = 0.75 + 0.25 * Math.sin(time * 1.8 + twPhase[i]);
-          const R  = starR[i] * tw;        // outer arm tip
-          const r  = R * 0.18;             // inner waist radius
-          // Arm directions from vector angle
-          const ang = angle[i];
-          const c0 = Math.cos(ang),     s0 = Math.sin(ang);     // axis 0 (along vec)
-          const c1 = Math.cos(ang+Math.PI*0.5), s1 = Math.sin(ang+Math.PI*0.5); // axis 1 (perp)
-          // 4-point star: tip0 → waist01 → tip1 → waist10 → tip2 → waist21 → tip3 → waist30
-          ctx2d.moveTo(x + c0*R,  y + s0*R);
-          ctx2d.lineTo(x + c1*r,  y + s1*r);
-          ctx2d.lineTo(x - c0*R,  y - s0*R);
-          ctx2d.lineTo(x - c1*r,  y - s1*r);
-          ctx2d.closePath();
-          ctx2d.moveTo(x + c1*R,  y + s1*R);
-          ctx2d.lineTo(x + c0*r,  y + s0*r);
-          ctx2d.lineTo(x - c1*R,  y - s1*R);
-          ctx2d.lineTo(x - c0*r,  y - s0*r);
-          ctx2d.closePath();
+      vertexGeom.attributes.position.needsUpdate = true;
+
+      // Update Tesseract Edges
+      let edgeIdx = 0;
+      for (let i = 0; i < tesseractEdges.length; i++) {
+        const [u, v] = tesseractEdges[i];
+        tesseractEdgePositions[edgeIdx++] = p3d[u][0];
+        tesseractEdgePositions[edgeIdx++] = p3d[u][1];
+        tesseractEdgePositions[edgeIdx++] = p3d[u][2];
+        tesseractEdgePositions[edgeIdx++] = p3d[v][0];
+        tesseractEdgePositions[edgeIdx++] = p3d[v][1];
+        tesseractEdgePositions[edgeIdx++] = p3d[v][2];
+      }
+      tesseractGeom.attributes.position.needsUpdate = true;
+
+      // Animate Armillary Rings
+      ring1.rotation.y = time * 0.28;
+      ring2.rotation.x = -Math.PI / 3 + time * 0.2;
+      ring3.rotation.z = Math.PI / 5 + time * 0.15;
+
+      // Animate Torus Knot
+      torusKnot.rotation.x = time * 0.3 + drag.rx;
+      torusKnot.rotation.y = time * 0.25 + drag.ry;
+
+      // Core Breath Glow
+      const breath = 1 + 0.15 * Math.sin(time * 3);
+      coreGlow.scale.set(breath, breath, breath);
+
+      // 4. Shockwave Expansion & Physics
+      for (let s = shockwaves.length - 1; s >= 0; s--) {
+        const sw = shockwaves[s];
+        sw.radius += sw.speed;
+        sw.strength *= 0.965;
+        if (sw.radius > sw.maxRadius || sw.strength < 0.02) {
+          shockwaves.splice(s, 1);
         }
-        ctx2d.fill();
       }
 
-      // ── 3. Glow dots for stars near cursor ───────────────────────────────
-      if (hasMouse) {
-        const GLOW_R    = ATTRACT_RADIUS * 0.65;
-        const GLOW_RSQ  = GLOW_R * GLOW_R;
-        ctx2d.shadowBlur = 8;
-        for (let b = 0; b < COLOR_BANDS; b++) {
-          ctx2d.beginPath();
-          ctx2d.fillStyle   = bandGlow[b];
-          ctx2d.shadowColor = bandGlow[b];
-          let any = false;
-          for (let i = 0; i < NUM_STARS; i++) {
-            if (bandIdx[i] !== b) continue;
-            const dx = mx - posX[i], dy = my - posY[i];
-            if (dx*dx + dy*dy > GLOW_RSQ) continue;
-            // Bright enlarged sparkle on top
-            const x  = posX[i], y = posY[i];
-            const R  = starR[i] * 1.6;
-            const r  = R * 0.18;
-            const ang = angle[i];
-            const c0 = Math.cos(ang), s0 = Math.sin(ang);
-            const c1 = Math.cos(ang+Math.PI*0.5), s1 = Math.sin(ang+Math.PI*0.5);
-            ctx2d.moveTo(x+c0*R, y+s0*R); ctx2d.lineTo(x+c1*r, y+s1*r);
-            ctx2d.lineTo(x-c0*R, y-s0*R); ctx2d.lineTo(x-c1*r, y-s1*r);
-            ctx2d.closePath();
-            ctx2d.moveTo(x+c1*R, y+s1*R); ctx2d.lineTo(x+c0*r, y+s0*r);
-            ctx2d.lineTo(x-c1*R, y-s1*R); ctx2d.lineTo(x-c0*r, y-s0*r);
-            ctx2d.closePath();
-            any = true;
+      // 5. Deform Spacetime Curvature Manifold
+      const manifoldPos = manifoldGeom.attributes.position.array;
+      const coreWorld = celestialGroup.position;
+
+      for (let i = 0; i < manifoldPos.length; i += 3) {
+        const bx = baseManifoldPositions[i];
+        const by = baseManifoldPositions[i + 1];
+        const bz = baseManifoldPositions[i + 2];
+
+        // Harmonic wave propagation
+        let wave = Math.sin(bx * 0.08 + time * 1.5) * 2.5 + Math.cos(by * 0.08 + time * 1.2) * 2.2;
+
+        // Gravitational indentation from Celestial Core
+        const distToCore = Math.hypot(bx - coreWorld.x, by - coreWorld.y);
+        const gravWell = -70 / (distToCore * 0.15 + 4);
+
+        // Mouse Gravitational lens indentation
+        const distToMouse = Math.hypot(bx - mouse.worldPos.x, by - mouse.worldPos.y);
+        const mouseIndent = distToMouse < 45 ? -18 * (1 - distToMouse / 45) : 0;
+
+        // Shockwaves impact
+        let shockwaveDisp = 0;
+        for (let s = 0; s < shockwaves.length; s++) {
+          const sw = shockwaves[s];
+          const distToSw = Math.hypot(bx - sw.center.x, by - sw.center.y);
+          const diff = Math.abs(distToSw - sw.radius);
+          if (diff < 16) {
+            shockwaveDisp += Math.sin((diff / 16) * Math.PI) * 12 * sw.strength;
           }
-          if (any) ctx2d.fill();
         }
-        ctx2d.shadowBlur  = 0;
-        ctx2d.shadowColor = "transparent";
 
-        // Attraction field glow (soft radial, no cursor dot — dot is CSS div)
-        ctx2d.save();
-        ctx2d.globalCompositeOperation = "screen";
-        const grad = ctx2d.createRadialGradient(mx, my, 0, mx, my, ATTRACT_RADIUS);
-        grad.addColorStop(0,   "rgba(160,120,255,0.13)");
-        grad.addColorStop(0.5, "rgba(80,60,200,0.04)");
-        grad.addColorStop(1,   "rgba(0,0,0,0)");
-        ctx2d.fillStyle = grad;
-        ctx2d.beginPath(); ctx2d.arc(mx, my, ATTRACT_RADIUS, 0, Math.PI*2); ctx2d.fill();
-        ctx2d.restore();
+        manifoldPos[i + 2] = bz + wave + gravWell + mouseIndent + shockwaveDisp;
+      }
+      manifoldGeom.attributes.position.needsUpdate = true;
+
+      // 6. Vector Field Particle Flow & Dynamic Constellations
+      const pArr = particleGeom.attributes.position.array;
+      let lineVertexIdx = 0;
+      const mouseInfluenceRadius = 26;
+
+      for (let i = 0; i < NUM_PARTICLES; i++) {
+        const idx = i * 3;
+        let px = pArr[idx];
+        let py = pArr[idx + 1];
+        let pz = pArr[idx + 2];
+        const hx = homePositions[idx];
+        const hy = homePositions[idx + 1];
+        const hz = homePositions[idx + 2];
+
+        // Harmonic vector flow
+        const flowTime = time * 0.35 + i * 0.05;
+        const vx = Math.sin(py * 0.03 + flowTime) * 0.06;
+        const vy = Math.cos(px * 0.03 + flowTime) * 0.06;
+        const vz = Math.sin(flowTime * 0.5) * 0.03;
+
+        // Subtle gravitational lens deflection (prevents particles from collapsing into a single line)
+        const dx = mouse.worldPos.x - px;
+        const dy = mouse.worldPos.y - py;
+        const distSq = dx * dx + dy * dy;
+        let pushX = 0, pushY = 0;
+
+        if (distSq < mouseInfluenceRadius * mouseInfluenceRadius && distSq > 0.01) {
+          const dist = Math.sqrt(distSq);
+          const lensForce = (1 - dist / mouseInfluenceRadius) * 0.5;
+          pushX = -(dx / dist) * lensForce;
+          pushY = -(dy / dist) * lensForce;
+
+          // Connect up to 24 delicate constellation lines
+          if (lineVertexIdx < 24 * 6 && dist < 18) {
+            linePositions[lineVertexIdx++] = px;
+            linePositions[lineVertexIdx++] = py;
+            linePositions[lineVertexIdx++] = pz;
+            linePositions[lineVertexIdx++] = mouse.worldPos.x;
+            linePositions[lineVertexIdx++] = mouse.worldPos.y;
+            linePositions[lineVertexIdx++] = 0;
+          }
+        }
+
+        // Spring restoration back towards home position keeps cosmos distributed & stable
+        px += (hx - px) * 0.03 + vx + pushX;
+        py += (hy - py) * 0.03 + vy + pushY;
+        pz += (hz - pz) * 0.02 + vz;
+
+        // Boundary wrap relative to home
+        if (px - hx > 40) px = hx - 40;
+        if (px - hx < -40) px = hx + 40;
+        if (py - hy > 30) py = hy - 30;
+        if (py - hy < -30) py = hy + 30;
+
+        pArr[idx] = px;
+        pArr[idx + 1] = py;
+        pArr[idx + 2] = pz;
+      }
+      particleGeom.attributes.position.needsUpdate = true;
+
+      // Clear remaining constellation lines
+      while (lineVertexIdx < linePositions.length) {
+        linePositions[lineVertexIdx++] = 0;
+      }
+      lineGeom.attributes.position.needsUpdate = true;
+
+      // 7. Float Math Equations & Glyphs
+      equationGroup.children.forEach((child) => {
+        if (child.userData.baseY !== undefined) {
+          child.position.y =
+            child.userData.baseY +
+            Math.sin(time * (child.userData.speed || 1) + child.userData.phase) * 1.8;
+        }
+        if (child.userData.drift !== undefined) {
+          child.position.x += child.userData.drift;
+          if (child.position.x > 90) child.position.x = -90;
+          if (child.position.x < -90) child.position.x = 90;
+        }
+      });
+
+      // 8. Update HUD Info throttled to save CPU
+      hudCounter++;
+      if (hudCounter % 12 === 0) {
+        const rad = Math.atan2(mouse.y, mouse.x);
+        setHudCoord({
+          x: Math.round(mouse.worldPos.x * 10) / 10,
+          y: Math.round(mouse.worldPos.y * 10) / 10,
+          rad: (rad / Math.PI).toFixed(2) + "π",
+          z: Math.round(mouse.worldPos.z * 10) / 10,
+        });
       }
 
-      // ── 4. Math symbol particles ──────────────────────────────────────────
-      // Minimal shadow only for text glyphs
-      ctx2d.textAlign    = "center";
-      ctx2d.textBaseline = "middle";
-      for (const mp of mathP) {
-        mp.ny += mp.vy;
-        mp.rot += mp.rotSp;
-        mp.alpha += mp.adrift;
-        if (mp.ny < -0.04) mp.ny = 1.04;
-        if (mp.ny >  1.04) mp.ny = -0.04;
-        if (mp.alpha < 0.06) { mp.alpha = 0.06; mp.adrift *= -1; }
-        if (mp.alpha > 0.50) { mp.alpha = 0.50; mp.adrift *= -1; }
+      renderer.render(scene, camera);
+    };
 
-        const sx = mp.nx * W;
-        const sy = mp.ny * DH + Math.sin(time * 0.35 + mp.phase) * 14;
-        const hue = mp.hue + Math.sin(time*0.4 + mp.phase)*12;
+    frameId = requestAnimationFrame(animate);
 
-        ctx2d.save();
-        ctx2d.translate(sx, sy);
-        ctx2d.rotate(mp.rot);
-        ctx2d.font        = `${mp.size}px 'Courier New',monospace`;
-        ctx2d.fillStyle   = `hsla(${hue},78%,72%,${mp.alpha.toFixed(2)})`;
-        ctx2d.shadowColor = `hsla(${hue},90%,80%,${(mp.alpha*0.7).toFixed(2)})`;
-        ctx2d.shadowBlur  = mp.size * 0.6;
-        ctx2d.fillText(mp.sym, 0, 0);
-        ctx2d.restore();
-      }
-
-      // ── 5. Nebula glow (soft, screen blend) ──────────────────────────────
-      const ngx = W*0.62, ngy = H*0.48;
-      const nr  = Math.min(W,H)*0.52;
-      const pulse = 0.08 + 0.025*Math.sin(time*0.45);
-      const nebGrad = ctx2d.createRadialGradient(ngx,ngy,0,ngx,ngy,nr);
-      nebGrad.addColorStop(0,   `rgba(75,20,155,${pulse.toFixed(3)})`);
-      nebGrad.addColorStop(0.45,`rgba(18,38,130,${(pulse*0.55).toFixed(3)})`);
-      nebGrad.addColorStop(1,   "rgba(0,0,0,0)");
-      ctx2d.save();
-      ctx2d.globalCompositeOperation = "screen";
-      ctx2d.fillStyle = nebGrad;
-      ctx2d.beginPath();
-      ctx2d.ellipse(ngx, ngy, nr, nr*0.7, 0, 0, Math.PI*2);
-      ctx2d.fill();
-      ctx2d.restore();
-
-    }
-
-    rafRef.current = requestAnimationFrame(drawFrame);
-
+    // ─── Cleanup ─────────────────────────────────────────────────────────────
     return () => {
-      cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(frameId);
       document.removeEventListener("visibilitychange", onVisibilityChange);
-      window.removeEventListener("mousemove",  onMove);
-      window.removeEventListener("mousedown",  onDown);
-      window.removeEventListener("mouseup",   onUp);
-      document.documentElement.removeEventListener("mouseleave", onLeave);
-      document.documentElement.removeEventListener("mouseenter", onEnter);
-      window.removeEventListener("resize", resizeAll);
-      // WebGL cleanup
-      [posBuf, nrmBuf, uvBuf, idxBuf, rPosBuf, rIdxBuf].forEach(b => gl.deleteBuffer(b));
-      gl.deleteVertexArray(vao);
-      gl.deleteVertexArray(ringVao);
-      gl.deleteProgram(prog);
-      gl.deleteProgram(ringProg);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("resize", onResize);
+
+      // Dispose Three.js resources
+      renderer.dispose();
+      tesseractGeom.dispose();
+      tesseractMat.dispose();
+      vertexGeom.dispose();
+      vertexMat.dispose();
+      torusGeom.dispose();
+      torusMat.dispose();
+      manifoldGeom.dispose();
+      manifoldMat.dispose();
+      particleGeom.dispose();
+      particleMat.dispose();
+      if (starTexture) starTexture.dispose();
+      lineGeom.dispose();
+      constellationLinesMat.dispose();
+
+      if (container.contains(renderer.domElement)) {
+        container.removeChild(renderer.domElement);
+      }
     };
   }, []);
 
   return (
     <>
-      {/* WebGL layer — fixed to viewport (planet stays in place while scrolling) */}
-      <canvas
-        ref={glCanvasRef}
-        style={{
-          position: "fixed", top: 0, left: 0,
-          width: "100vw", height: "100vh",
-          zIndex: 0, pointerEvents: "none",
-          willChange: "transform",
-        }}
-      />
-      {/* Canvas 2D layer — scrolls with page content */}
-      <canvas
-        ref={c2dCanvasRef}
-        style={{
-          position: "absolute", top: 0, left: 0,
-          width: "100%", height: "100%",
-          zIndex: 1, pointerEvents: "none",
-          opacity: 0.93,
-          willChange: "transform",
-        }}
-      />
-      {/*
-        Cursor dot — CSS div updated directly in mousemove (zero rAF lag).
-        Uses transform: translate so GPU-composited — no layout reflow.
-      */}
+      {/* 3D WebGL Canvas Mount Container */}
       <div
-        ref={cursorRef}
+        ref={mountRef}
         style={{
           position: "fixed",
-          top: 0, left: 0,
-          width: 10, height: 10,
-          borderRadius: "50%",
-          background: "rgba(230,215,255,0.92)",
-          boxShadow: "0 0 10px 4px rgba(180,140,255,0.7), 0 0 22px 8px rgba(130,90,220,0.35)",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 0,
           pointerEvents: "none",
-          zIndex: 10,
-          transform: "translate(-9999px,-9999px)",
-          willChange: "transform",
-          // Offset: dot appears just below the cursor arrow tip
-          marginLeft: 4, marginTop: 18,
+          overflow: "hidden",
         }}
       />
+
+      {/* Atmospheric Radial Gradient Overlay (getlayers.ai aesthetic) */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: "100vw",
+          height: "100vh",
+          zIndex: 1,
+          pointerEvents: "none",
+          background:
+            "radial-gradient(circle at 75% 25%, rgba(99, 102, 241, 0.12) 0%, transparent 55%), " +
+            "radial-gradient(circle at 20% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 50%), " +
+            "radial-gradient(circle at 50% 50%, rgba(168, 85, 247, 0.06) 0%, transparent 65%)",
+        }}
+      />
+
+      {/* 60fps.design Minimalist High-Tech Mathematical Coordinate Reticle */}
+      <div
+        ref={hudRef}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          pointerEvents: "none",
+          zIndex: 40,
+          transform: "translate(-9999px, -9999px)",
+          willChange: "transform",
+          transition: "opacity 0.25s ease",
+        }}
+      >
+        {/* Reticle Crosshair */}
+        <div
+          style={{
+            position: "relative",
+            width: 32,
+            height: 32,
+            marginLeft: -16,
+            marginTop: -16,
+          }}
+        >
+          {/* Subtle Ring */}
+          <div
+            style={{
+              position: "absolute",
+              top: 4,
+              left: 4,
+              width: 24,
+              height: 24,
+              borderRadius: "50%",
+              border: "1px dashed rgba(56, 189, 248, 0.6)",
+              boxShadow: "0 0 12px rgba(56, 189, 248, 0.35)",
+            }}
+          />
+          {/* Central Dot */}
+          <div
+            style={{
+              position: "absolute",
+              top: 14,
+              left: 14,
+              width: 4,
+              height: 4,
+              borderRadius: "50%",
+              background: "#38bdf8",
+              boxShadow: "0 0 8px #38bdf8",
+            }}
+          />
+          {/* Coordinates readout */}
+          <div
+            style={{
+              position: "absolute",
+              top: 36,
+              left: 18,
+              padding: "4px 8px",
+              background: "rgba(15, 23, 42, 0.75)",
+              backdropFilter: "blur(8px)",
+              border: "1px solid rgba(56, 189, 248, 0.25)",
+              borderRadius: 6,
+              fontSize: 10,
+              fontFamily: "'Courier New', monospace",
+              color: "#38bdf8",
+              whiteSpace: "nowrap",
+              lineHeight: 1.3,
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+            }}
+          >
+            <div>x: {hudCoord.x} | y: {hudCoord.y}</div>
+            <div style={{ color: "#c084fc" }}>θ: {hudCoord.rad}</div>
+          </div>
+        </div>
+      </div>
     </>
   );
 }

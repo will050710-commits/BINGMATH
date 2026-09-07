@@ -18,7 +18,7 @@ const _BACKEND =
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
     ? "https://duomath.onrender.com"
-    : "http://localhost:5000");
+    : "http://localhost:8000");
 
 async function _apiPost(path, body) {
   const hdrs = { "Content-Type": "application/json" };

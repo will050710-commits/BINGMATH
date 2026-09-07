@@ -423,19 +423,13 @@ def cached_system_prompt(variant: str = "text", widget: str | None = None) -> st
         base = (
             _SOCRATIC_BASE
             + "\n\n## CHẾ ĐỘ HIỆN TẠI: PHÂN TÍCH HÌNH HỌC TỪ VISION AI VÀ MÔ HÌNH HÓA MATHVIZ (Olympiad Geometry Mode)"
-            + "\nBạn đã nhận được kết quả trích xuất cấu trúc hình học chi tiết từ mô hình thị giác chuyên sâu Qwen2.5-VL-72B (các điểm, đường tròn, tiếp tuyến, giao điểm, quan hệ vuông góc, đồng quy, đồng viên)."
+            + "\nBạn đã nhận được kết quả trích xuất cấu trúc hình học chi tiết từ mô hình thị giác AI (các điểm, đường tròn, tiếp tuyến, giao điểm, quan hệ vuông góc, đồng quy, đồng viên)."
             + "\nHãy thực hiện quy trình sau:\n"
-            + "1. **Tóm tắt cấu hình & Nhận diện bài toán**: Dựa trên các đối tượng và quan hệ đã trích xuất, nêu bật mô hình hình học cốt lõi.\n"
-            + "2. **Minh họa trực quan MathViz (Canvas) - QUY TẮC DỰNG TỌA ĐỘ GIẢI TÍCH CHUẨN XÁC**:\n"
-            + "   - **TUYỆT ĐỐI KHÔNG DÙNG tam giác cân hoặc tam giác đều** (không đặt xA=0 khi B, C đối xứng) vì sẽ làm các đường dốc (như EF) bị nằm ngang giả tạo!\n"
-            + "   - **BẮT BUỘC dùng tam giác nhọn không cân (AB < AC)**: Đáy BC nằm ngang trên trục hoành, đỉnh A lệch sang trái. Ví dụ tọa độ chuẩn Olympiad:\n"
-            + "     * A(-1.0, 3.5), B(-2.5, -1.8), C(3.0, -1.8)\n"
-            + "     * Chân đường cao D(-1.0, -1.8), E(1.0, 0.85), F(-2.1, -0.36)\n"
-            + "     * Trực tâm H(-1.0, -0.67)\n"
-            + "     * Đường tròn ngoại tiếp (O): tâm O(0.25, 0.28), bán kính r=3.45\n"
-            + "     * Đường tròn (AEF) đường kính AH: tâm I(-1.0, 1.42), bán kính r=2.08 (đi qua A, E, F, H)\n"
-            + "     * Giao điểm P của EF và BC: P(-5.8, -1.8) (thẳng hàng tuyệt đối với B, C và thẳng hàng với E, F)\n"
-            + "   - Sử dụng widget \"geometry_2d\" với cấu trúc \"layers\" đa tầng: định nghĩa đầy đủ polygon, lines, circle, points. Vẽ nét thanh mảnh (strokeWidth: 1.5 - 2), màu sắc rõ ràng (tam giác xanh neon #10b981 hoặc #3b82f6, đường tròn viền xanh/hồng mảnh, đường cao nét đứt màu đỏ hoặc cam).\n"
+            + "1. **Tóm tắt cấu hình & Nhận diện bài toán**: Dựa trên các đối tượng và quan hệ đã trích xuất từ ảnh, nêu bật mô hình hình học cốt lõi.\n"
+            + "2. **Minh họa trực quan MathViz (Canvas) - QUY TẮC DỰNG TỌA ĐỘ CHUẨN XÁC**:\n"
+            + "   - Bám sát CHÍNH XÁC các điểm và đối tượng hình học được trích xuất từ đề bài/hình ảnh (ví dụ: nếu đề bài cho tam giác IaIbIc, tứ giác, đường tròn tâm O... thì dựng đúng các đỉnh đó, KHÔNG tự ý thay bằng tam giác khác).\n"
+            + "   - Tính toán hoặc ước lượng tọa độ giải tích cân đối, trực quan cho các đỉnh và điểm đặc biệt.\n"
+            + "   - Sử dụng widget \"geometry_2d\" với cấu trúc \"layers\" đa tầng: định nghĩa đầy đủ polygon, lines, circle, points. Vẽ nét thanh mảnh (strokeWidth: 1.5 - 2), màu sắc rõ ràng (các đa giác/tam giác xanh neon #10b981 hoặc #3b82f6, đường tròn viền xanh/hồng mảnh, các đường phụ nét đứt màu vàng/đỏ).\n"
             + "3. **Gợi ý định hướng giải (Socratic Hints)**: Nêu 2-3 gợi ý sắc sảo dựa trên cấu hình (bổ đề hình thang, chùm điều hòa, phương tích, trục đẳng phương, góc nội tiếp, tam giác đồng dạng...).\n"
             + _LATEX_RULES
             + "\n" + _VISUAL_RULES
@@ -770,7 +764,7 @@ def generate_mock_mathgpt_reply(user_message: str, widget: str | None = None, mo
         )
 
     elif widget == "geometry_2d":
-        if "phức tạp" in msg_low or "đồng quy" in msg_low or "olympiad" in msg_low or "nhiều lớp" in msg_low or "tiếp xúc" in msg_low or "ảnh" in msg_low:
+        if ("glk" in msg_low or "aml" in msg_low or "cevian" in msg_low) and "trực tâm" in msg_low:
             return (
                 "## 🔍 Cấu Trúc Hình Học Phẳng Phức Tạp & Hệ Thống Đường Đồng Quy\n\n"
                 "**1. Phân tích cấu trúc hình học**\n"
@@ -1119,6 +1113,22 @@ Ví dụ Tam giác & 4 Tâm (Trọng tâm G, Trực tâm H, Tâm ngoại tiếp 
 {"type":"mathviz.v1","widget":"geometry_2d","title":"$\\\\triangle ABC$ và Các Tâm Hình Học",
  "mode":"triangle","points":[{"id":"A","x":-3,"y":-2},{"id":"B","x":3,"y":-2},{"id":"C","x":0,"y":3}],
  "measurements":{"show_side_lengths":true,"show_angles":true,"show_centroid_medians":true,"show_orthocenter":true,"show_circumcircle":true,"show_incenter":true}}
+
+3. QUAN TRỌNG với hình phức tạp nhiều điểm dựng hình (>=6 điểm, ví dụ trực tâm, chân đường cao, tâm nội/ngoại tiếp, giao điểm, trung điểm, điểm đối xứng...): KHÔNG tự đoán tọa độ chính xác cho các điểm này (rất dễ sai/lệch khiến hình bị chồng chéo, điểm văng ra ngoài). Thay vào đó, LUÔN cho x,y ước lượng bình thường trong "layers" NHƯNG THÊM mảng "constructions" khai báo quan hệ dựng hình — hệ thống sẽ tự tính lại tọa độ CHÍNH XÁC bằng công thức giải tích, đè lên giá trị ước lượng, cho BẤT KỲ tên điểm hay số lượng điểm nào (không giới hạn ở A,B,C,H,O,D,E,F,I,P,K,Q,G):
+{"type":"mathviz.v1","widget":"geometry_2d","title":"$...$",
+ "layers":[...điểm/đường/tròn với x,y ước lượng như bình thường...],
+ "constructions":[
+   {"point":"H","type":"orthocenter","of":["A","B","C"]},
+   {"point":"D","type":"foot","of":["A","B","C"]},
+   {"point":"O","type":"circumcenter","of":["A","B","C"]},
+   {"point":"I","type":"incenter","of":["A","B","C"]},
+   {"point":"G","type":"centroid","of":["A","B","C"]},
+   {"point":"M","type":"midpoint","of":["A","H"]},
+   {"point":"K","type":"intersection","of":["E","F","B","C"]},
+   {"point":"N","type":"reflection","of":["A","B","C"]},
+   {"point":"Q","type":"ratio_point","of":["K","E"],"ratio":1.35}
+ ]}
+Quy tắc "of" theo từng "type": orthocenter/circumcenter/incenter/centroid → [3 đỉnh tam giác]; foot/reflection → [điểm cần chiếu, điểm1_của_đường, điểm2_của_đường]; midpoint/ratio_point → [điểm đầu, điểm cuối] (ratio_point cần thêm khóa "ratio", vd 0.5=trung điểm, >1=kéo dài quá điểm cuối); intersection → [điểm1_đường1, điểm2_đường1, điểm1_đường2, điểm2_đường2] (giao 2 đường thẳng). "of" có thể tham chiếu một điểm KHÁC cũng đang được dựng trong "constructions" (ví dụ M ở trên dùng H) — hệ thống tự giải theo đúng thứ tự phụ thuộc.
 ''',
 
 
@@ -1557,7 +1567,7 @@ async def _repair_mathviz_with_free_openrouter(widget: str, broken_json: str, er
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not openrouter_key:
         return None
-    repair_model = os.environ.get("OPENROUTER_VISION_MODEL", "qwen/qwen2.5-vl-72b-instruct:free")
+    repair_model = os.environ.get("OPENROUTER_VISION_MODEL", "minimax/minimax-m3:free")
     prompt = (
         f"Sua loi JSON sau cho khoi mathviz widget '{widget}'. "
         f"Loi: {'; '.join(errors)}. "
@@ -2785,6 +2795,14 @@ async def chat(request: Request):
 
 
     retrieved_kb = retrieve_math_context(user_message)
+    try:
+        from math_problem_retrieval import retrieve_similar_problems
+        retrieved_examples = retrieve_similar_problems(user_message, top_k=2)
+    except Exception as e_retr:
+        logger.debug(f"Problem-bank retrieval skipped: {e_retr}")
+        retrieved_examples = ""
+    if retrieved_examples:
+        retrieved_kb = f"{retrieved_kb}\n\n{retrieved_examples}"
     full_system_prompt = (
         f"{system_prompt}\n\n"
         f"## REFERENCE MATHEMATICAL KNOWLEDGE (DO NOT COPY DIRECTLY):\n"
@@ -2863,58 +2881,134 @@ async def chat(request: Request):
     client = await get_http_client()
 
     gemini_model = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
-    print(f"[Chat] model={gemini_model}, mode={chat_mode}, widget={_widget}, has_image={'yes' if image_data else 'no'}, max_tokens={max_tokens}")
+    llm_provider = os.environ.get("LLM_PROVIDER", "gemini").lower()
+    hf_model_name = os.environ.get("HF_MODEL_NAME", "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B")
+    openai_base_url = os.environ.get("OPENAI_COMPATIBLE_BASE_URL", "").rstrip("/")
+    openai_api_key = os.environ.get("OPENAI_COMPATIBLE_API_KEY", "") or os.environ.get("HF_API_KEY", "")
+
+    # Build standard OpenAI/HuggingFace compatible messages
+    openai_messages = [{"role": "system", "content": full_system_prompt}]
+    for h in history[-12:]:
+        h_role = "assistant" if h["role"] == "assistant" else "user"
+        h_content = h.get("content") or ""
+        if h_content.startswith("[Image] "):
+            h_content = h_content[8:]
+        if h_content.startswith("[Image + Vision AI] "):
+            h_content = h_content[20:]
+        if h_content.strip():
+            openai_messages.append({"role": h_role, "content": h_content})
+    if image_data and vision_description:
+        openai_messages.append({"role": "user", "content": enhanced_user_message})
+    else:
+        openai_messages.append({"role": "user", "content": user_message})
+
+    is_custom_provider = (llm_provider in ("openai_compatible", "huggingface") or bool(openai_base_url)) and llm_provider != "gemini"
+    print(f"[Chat] provider={llm_provider if is_custom_provider else 'gemini'}, model={hf_model_name if is_custom_provider else gemini_model}, mode={chat_mode}, widget={_widget}, has_image={'yes' if image_data else 'no'}, max_tokens={max_tokens}")
 
     if use_stream:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:streamGenerateContent?key={gemini_api_key}&alt=sse"
-        payload = {
-            "contents": gemini_contents,
-            "systemInstruction": {
-                "parts": [{"text": full_system_prompt}]
-            },
-            "generationConfig": {
+        if is_custom_provider:
+            endpoint_url = f"{openai_base_url}/chat/completions" if openai_base_url else "https://api-inference.huggingface.co/v1/chat/completions"
+            hf_headers = {"Authorization": f"Bearer {openai_api_key}", "Content-Type": "application/json"} if openai_api_key else {"Content-Type": "application/json"}
+            hf_payload = {
+                "model": hf_model_name,
+                "messages": openai_messages,
                 "temperature": 0.3,
-                "maxOutputTokens": max_tokens
+                "max_tokens": max_tokens,
+                "stream": True
             }
-        }
 
-        async def generate():
-            full_reply = []
-            try:
-                async with client.stream("POST", url, json=payload, timeout=90) as resp:
-                    resp.raise_for_status()
-                    async for raw_line in resp.aiter_lines():
-                        if not raw_line:
-                            continue
-                        line = raw_line
-                        if line.startswith("data: "):
-                            data_str = line[6:]
-                            try:
-                                chunk = json.loads(data_str)
-                                token = chunk["candidates"][0]["content"]["parts"][0].get("text", "")
-                                if token:
-                                    full_reply.append(token)
-                                    yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
-                            except Exception:
+            async def generate_custom_provider():
+                full_reply = []
+                try:
+                    async with client.stream("POST", endpoint_url, headers=hf_headers, json=hf_payload, timeout=90) as resp:
+                        resp.raise_for_status()
+                        async for raw_line in resp.aiter_lines():
+                            if not raw_line:
                                 continue
-            except Exception as e:
-                yield f"data: {orjson.dumps({'error': str(e)}).decode()}\n\n"
-                return
+                            line = raw_line.strip()
+                            if line.startswith("data: "):
+                                data_str = line[6:]
+                                if data_str.strip() == "[DONE]":
+                                    break
+                                try:
+                                    chunk = json.loads(data_str)
+                                    choices = chunk.get("choices", [])
+                                    if choices:
+                                        delta = choices[0].get("delta", {})
+                                        token = delta.get("content", "")
+                                        if token:
+                                            full_reply.append(token)
+                                            yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
+                                except Exception:
+                                    continue
+                except Exception as e:
+                    yield f"data: {orjson.dumps({'error': str(e)}).decode()}\n\n"
+                    return
 
-            reply_text = "".join(full_reply)
-            history.append({"role": "assistant", "content": reply_text})
-            save_history(session_id, history)
-            yield f"data: {orjson.dumps({'done': True, 'session_id': session_id}).decode()}\n\n"
+                reply_text = "".join(full_reply)
+                history.append({"role": "assistant", "content": reply_text})
+                save_history(session_id, history)
+                yield f"data: {orjson.dumps({'done': True, 'session_id': session_id}).decode()}\n\n"
 
-        return StreamingResponse(
-            generate(),
-            media_type="text/event-stream",
-            headers={
-                "Cache-Control": "no-cache",
-                "X-Accel-Buffering": "no",
-                "Access-Control-Allow-Origin": "*",
-            },
-        )
+            return StreamingResponse(
+                generate_custom_provider(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    "Access-Control-Allow-Origin": "*",
+                },
+            )
+        else:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:streamGenerateContent?key={gemini_api_key}&alt=sse"
+            payload = {
+                "contents": gemini_contents,
+                "systemInstruction": {
+                    "parts": [{"text": full_system_prompt}]
+                },
+                "generationConfig": {
+                    "temperature": 0.3,
+                    "maxOutputTokens": max_tokens
+                }
+            }
+
+            async def generate():
+                full_reply = []
+                try:
+                    async with client.stream("POST", url, json=payload, timeout=90) as resp:
+                        resp.raise_for_status()
+                        async for raw_line in resp.aiter_lines():
+                            if not raw_line:
+                                continue
+                            line = raw_line
+                            if line.startswith("data: "):
+                                data_str = line[6:]
+                                try:
+                                    chunk = json.loads(data_str)
+                                    token = chunk["candidates"][0]["content"]["parts"][0].get("text", "")
+                                    if token:
+                                        full_reply.append(token)
+                                        yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
+                                except Exception:
+                                    continue
+                except Exception as e:
+                    yield f"data: {orjson.dumps({'error': str(e)}).decode()}\n\n"
+                    return
+
+                reply_text = "".join(full_reply)
+                history.append({"role": "assistant", "content": reply_text})
+                save_history(session_id, history)
+                yield f"data: {orjson.dumps({'done': True, 'session_id': session_id}).decode()}\n\n"
+
+            return StreamingResponse(
+                generate(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    "Access-Control-Allow-Origin": "*",
+                },
+            )
     else:
         payload = {
             "contents": gemini_contents,
@@ -2938,7 +3032,28 @@ async def chat(request: Request):
         fallback_models = [m for m in fallback_models if m and not (m in seen_models or seen_models.add(m))]
 
         reply = None
+
+        if is_custom_provider:
+            try:
+                endpoint_url = f"{openai_base_url}/chat/completions" if openai_base_url else "https://api-inference.huggingface.co/v1/chat/completions"
+                hf_headers = {"Authorization": f"Bearer {openai_api_key}", "Content-Type": "application/json"} if openai_api_key else {"Content-Type": "application/json"}
+                hf_payload = {
+                    "model": hf_model_name,
+                    "messages": openai_messages,
+                    "temperature": 0.3,
+                    "max_tokens": max_tokens,
+                    "stream": False
+                }
+                resp = await client.post(endpoint_url, headers=hf_headers, json=hf_payload, timeout=60)
+                if resp.status_code == 200:
+                    reply = resp.json()["choices"][0]["message"]["content"]
+                    print(f"[Chat] Generated reply via {llm_provider} ({hf_model_name})")
+            except Exception as ex_hf:
+                print(f"[WARN] {llm_provider} call failed: {ex_hf}. Falling back to Gemini.")
+
         for current_model in fallback_models:
+            if reply:
+                break
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent?key={gemini_api_key}"
             for attempt in range(1):
                 try:
@@ -3098,17 +3213,29 @@ async def chat(request: Request):
                 else:
                     logger.debug(f"[MathViz] Widget '{actual_widget}' still invalid after all repair tiers — sending reply without a visual.")
 
-        # Geometric regularization for geometry_2d: exact Olympiad solver
-        # first (existing, most precise when it matches a known template),
-        # then the general angle/collinearity snapper (new), gated by
-        # numeric verification so a snap is applied only if it does not
-        # measurably make the figure LESS consistent than the model produced.
+        # Geometric regularization for geometry_2d, in order of generality:
+        #   1. Construction-graph solver (RESTORED — was built but never
+        #      wired in): resolves any point the LLM declared via
+        #      "constructions" exactly, for ANY point names/count. This is
+        #      what fixes diagrams with 10+ labeled points that the fixed
+        #      template below doesn't recognize.
+        #   2. Olympiad template solver — NOTE: this now only activates for
+        #      one specific memorized problem (title contains GLK/CEVIAN/
+        #      AML/"EULER (9 ĐIỂM)", or points G+L+K+P are all present) —
+        #      every other diagram passes through it untouched by design.
+        #      Keep it for that one case; it is no longer a general fallback.
+        #   3. General angle/collinearity snapper — final cleanup, gated by
+        #      numeric verification so it can only help, not hurt.
         if _viz_block is not None:
             actual_widget = _viz_block.get("widget") or _widget or "geometry_2d"
             if actual_widget == "geometry_2d" and "layers" in _viz_block:
                 try:
+                    from geometry_construction_solver import resolve_constructions
                     from geometry_canvas_solver import auto_align_geometry_mathviz
                     from geometry_snapping import snap_geometry_2d, verify_snap_safe
+                    _viz_block, _unsolved = resolve_constructions(_viz_block)
+                    if _unsolved:
+                        logger.info(f"[MathViz] Construction solver left {_unsolved} at their raw LLM coordinates (unknown dependency, cycle, or unsupported type).")
                     _viz_block = auto_align_geometry_mathviz(_viz_block)
                     _snapped = snap_geometry_2d(_viz_block)
                     if verify_snap_safe(_viz_block, _snapped):

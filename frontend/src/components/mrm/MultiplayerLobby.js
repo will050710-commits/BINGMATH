@@ -15,7 +15,7 @@ const BASE =
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
     ? "https://duomath.onrender.com"
-    : "http://localhost:5000");
+    : "http://localhost:8000");
 
 const renderAvatar = (avatar, username) => {
   if (!avatar) {

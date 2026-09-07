@@ -49,10 +49,6 @@ export const metadata = {
     apple: "/images/duosteamicon-removebg-preview.webp",
     shortcut: "/images/duosteamicon-removebg-preview.webp",
   },
-  themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#020c1b" },
-    { media: "(prefers-color-scheme: light)", color: "#0ea5e9" },
-  ],
 };
 
 export const viewport = {
@@ -61,6 +57,10 @@ export const viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#020c1b" },
+    { media: "(prefers-color-scheme: light)", color: "#0ea5e9" },
+  ],
 };
 
 export default function RootLayout({ children }) {

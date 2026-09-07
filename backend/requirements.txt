@@ -21,6 +21,7 @@ sympy>=1.12
 numpy>=1.26
 Pillow>=10.0.0
 json-repair>=0.30.0
+sentence-transformers>=3.0.0
 
 # ── Unlimited-OCR Spaces API & Multi-page PDF (lightweight client) ──
 gradio_client>=2.0.0

@@ -35,5 +35,37 @@ class TestTrainingPipeline(unittest.TestCase):
         self.assertTrue(train_file.exists())
         self.assertTrue(eval_file.exists())
 
+    def test_03_hf_mathviz_dataset(self):
+        from generate_mathviz_sft_dataset import generate_full_sft_dataset
+        tuning_dir = TRAINING_DIR / "tuning_data"
+        generate_full_sft_dataset(tuning_dir, target_samples=20, eval_ratio=0.2)
+        
+        chatml_train = tuning_dir / "hf_mathviz_chatml_train.jsonl"
+        chatml_val = tuning_dir / "hf_mathviz_chatml_val.jsonl"
+        r1_train = tuning_dir / "hf_deepseek_r1_mathviz_train.jsonl"
+        r1_val = tuning_dir / "hf_deepseek_r1_mathviz_val.jsonl"
+
+        self.assertTrue(chatml_train.exists())
+        self.assertTrue(chatml_val.exists())
+        self.assertTrue(r1_train.exists())
+        self.assertTrue(r1_val.exists())
+
+        # Verify JSON syntax and ChatML structure
+        with open(chatml_train, "r", encoding="utf-8") as f:
+            for line in f:
+                item = json.loads(line)
+                self.assertIn("messages", item)
+                self.assertEqual(len(item["messages"]), 3)
+
+    def test_04_canvas_benchmark_pipeline(self):
+        from benchmark_canvas_model import BENCHMARK_PROMPTS, evaluate_response
+        from generate_mathviz_sft_dataset import build_geometry_2d_samples
+        sample = build_geometry_2d_samples()[0]
+        prompt_item = BENCHMARK_PROMPTS[0]
+        res = evaluate_response(prompt_item, sample["assistant_text"])
+        self.assertTrue(res["success"])
+        self.assertEqual(res["widget_found"], "geometry_2d")
+
 if __name__ == "__main__":
     unittest.main()
+

@@ -17,7 +17,7 @@ import {
 } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
-const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" ? "https://duomath.onrender.com" : "http://localhost:5000");
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || (typeof window !== "undefined" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1" ? "https://duomath.onrender.com" : "http://localhost:8000");
 const AuthCtx = createContext(null);
 
 // ── Backend API fetch (no JWT needed — uses Firebase UID as identity) ─────────
@@ -127,7 +127,7 @@ export function AuthProvider({ children }) {
         }
       }
     } catch (err) {
-      console.error("[syncUserToBackend] Error syncing user to backend:", err);
+      console.warn("[syncUserToBackend] Backend sync notice:", err?.message || err);
     }
   }, []);
 

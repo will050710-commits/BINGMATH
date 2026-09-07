@@ -60,7 +60,7 @@ function parseMathAndText(text) {
  * Wrap any lesson page.jsx (must have "use client") with this component:
  *   <DuoTranslate><YourLesson /></DuoTranslate>
  *
- * Requires main.py running at http://localhost:5000
+ * Requires main.py running at http://localhost:8000
  */
 export default function DuoTranslate({ children }) {
   const [isOpen, setIsOpen] = useState(false);

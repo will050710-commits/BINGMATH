@@ -9,7 +9,7 @@ const BASE =
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
     ? "https://duomath.onrender.com"
-    : "http://localhost:5000");
+    : "http://localhost:8000");
 
 const PRESET_CRESTS = [
   { id: "p1", gradient: "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)", label: "Neon" },
