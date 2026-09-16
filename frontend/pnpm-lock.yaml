@@ -17,6 +17,9 @@ importers:
       framer-motion:
         specifier: ^12.35.1
         version: 12.35.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      jsxgraph:
+        specifier: ^1.13.3
+        version: 1.13.3
       katex:
         specifier: ^0.17.0
         version: 0.17.0
@@ -41,6 +44,9 @@ importers:
       three:
         specifier: ^0.185.1
         version: 0.185.1
+      three-bvh-csg:
+        specifier: ^0.0.18
+        version: 0.0.18(three-mesh-bvh@0.9.15(three@0.185.1))(three@0.185.1)
     devDependencies:
       '@tailwindcss/postcss':
         specifier: ^4
@@ -2895,6 +2901,10 @@ packages:
     resolution: {integrity: sha512-ZZow9HBI5O6EPgSJLUb8n2NKgmVWTwCvHGwFuJlMjvLFqlGG6pjirPhtdsseaLZjSibD8eegzmYpUZwoIlj2cQ==}
     engines: {node: '>=4.0'}
 
+  jsxgraph@1.13.3:
+    resolution: {integrity: sha512-sUVTxB5mDPL5WIEeuo9nprymRymU1ojU2YDtpcK6JzcIe3DkxpQ/2uolGuJ3R0lH6tb3wCGY+1PgVhCVic6yjg==}
+    engines: {node: '>=20.19.0'}
+
   katex@0.17.0:
     resolution: {integrity: sha512-Vdw0ATsQ9V+LuegM/BTwQqV/6cTl5lbGcIrU+BCgLxyf6bo38ybOr372tuSIxir3CN720flu1meYR6XzNMwQnw==}
     hasBin: true
@@ -3447,6 +3457,17 @@ packages:
   tapable@2.3.0:
     resolution: {integrity: sha512-g9ljZiwki/LfxmQADO3dEY1CbpmXT5Hm2fJ+QaGKwSXUylMybePR7/67YW7jOrrvjEgL1Fmz5kzyAjWVWLlucg==}
     engines: {node: '>=6'}
+
+  three-bvh-csg@0.0.18:
+    resolution: {integrity: sha512-M3GCZMmGFgASGuDf+YMamM83nVlD/vdwzVHcYbFxgW+g1S7/nKPiuY00YVHOMbjmJPh8mLevGZL65ItHUuGt2w==}
+    peerDependencies:
+      three: '>=0.179.0'
+      three-mesh-bvh: '>=0.9.7'
+
+  three-mesh-bvh@0.9.15:
+    resolution: {integrity: sha512-9xdEDkCzFoT8VPFH9DznwFSdbaIEjMvM106Iqq7TJurrIheUKDcdW4prfJTCxryih4XS/UxWs0H3K4MLMRFyOQ==}
+    peerDependencies:
+      three: '>= 0.159.0'
 
   three@0.185.1:
     resolution: {integrity: sha512-5aojFCXKwnjBRZvUnt3WFfEcvUJgkN5LlijRFN95hMy8WVkG4I0QNcJE+OuWvuJ0bOdStrbfXn0pkd6/QyiAlg==}
@@ -7474,6 +7495,8 @@ snapshots:
       object.assign: 4.1.7
       object.values: 1.2.1
 
+  jsxgraph@1.13.3: {}
+
   katex@0.17.0:
     dependencies:
       commander: 8.3.0
@@ -8092,6 +8115,15 @@ snapshots:
   tailwindcss@4.2.1: {}
 
   tapable@2.3.0: {}
+
+  three-bvh-csg@0.0.18(three-mesh-bvh@0.9.15(three@0.185.1))(three@0.185.1):
+    dependencies:
+      three: 0.185.1
+      three-mesh-bvh: 0.9.15(three@0.185.1)
+
+  three-mesh-bvh@0.9.15(three@0.185.1):
+    dependencies:
+      three: 0.185.1
 
   three@0.185.1: {}
 

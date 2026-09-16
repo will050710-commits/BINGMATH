@@ -1,0 +1,16 @@
+Since in any triangle, if we draw three altitudes from each vertex to the opposite side, these altitudes intersect at one point called the orthocenter.
+
+In right-angled triangles, when two sides form a right angle, their sum equals 90° because they complete the remaining part needed for forming a straight line which measures 180°.
+
+Therefore, since angle BAC + angle ACB + angle ABC = 180 degree,
+angle ACB + angle BCN = 130 degree,
+
+Hence, angle BHC = angle ACB + 90 degree = 40+90=130 degree
+
+Thus, the measure of angle BCH is 40 degrees.
+
+Because angle BHC = 136 degrees > 90 degrees, therefore, quadrilateral DECH cannot be inscribed within a circle.
+
+So, the final answers are:
+(1) The measure of angle BHD is $\boxed{130}$ degrees;
+(2) Quadrilateral DECH does not have its vertices lying on a single circle; thus, it is non-cyclic.

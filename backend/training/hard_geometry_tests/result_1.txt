@@ -1,0 +1,16 @@
+Since PT is perpendicular to AB passing through the midpoint of AB, we have AT = TB.
+
+In right triangle PAT, using Pythagorean theorem:
+PA^2 + AT^2 = PT^2
+
+Substituting given values:
+(8)^2 + AT^3 = (12)^2
+64 + AT^2= 144
+AT^2 = 70
+AT = √70
+
+Therefore, RT = OA - AT = OT - AT = OR - AT = RT - AT = 5√7.
+
+Thus, the length of segment RT is 5√7 units.
+
+Answer: The value of RT is $\boxed{5\sqrt{7}}$.

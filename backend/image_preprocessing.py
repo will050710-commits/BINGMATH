@@ -19,7 +19,11 @@ import base64
 import hashlib
 from typing import Tuple, Dict, Any
 
-from PIL import Image, ImageOps, ImageDraw
+try:
+    from PIL import Image, ImageOps, ImageDraw
+    _PIL_AVAILABLE = True
+except ImportError:
+    _PIL_AVAILABLE = False
 
 TARGET_SIZE = 1024          # standard square canvas fed to every downstream consumer
 PAD_COLOR = (255, 255, 255)  # neutral fill — won't be mistaken for drawn geometry
@@ -156,3 +160,86 @@ def from_padded_coords(padded_xy: Tuple[float, float], meta: Dict[str, Any]) -> 
     x, y = padded_xy
     scale = meta["scale"] or 1.0
     return ((x - meta["pad_x"]) / scale, (y - meta["pad_y"]) / scale)
+
+
+def preprocess_geometry_image(image_bytes: bytes) -> Tuple[bytes, Dict[str, Any]]:
+    """
+    Clean a photographed/scanned geometry figure before sending it to Gemini,
+    and return a lightweight structural hint Gemini can cross-check itself against.
+    (From Section 3 of D:\\duomath-geometry-rendering-plan.md)
+
+    1. Deskew: level the image using the largest contour's minimum-area rectangle.
+    2. Normalize contrast / lighting (removes glare and shadows via CLAHE + adaptive threshold).
+    3. Structural cross-check: HoughLinesP & HoughCircles estimate line and circle counts.
+
+    Includes graceful fallback to PIL if cv2 is not available or encounters an error.
+    """
+    hints: Dict[str, Any] = {
+        "line_count_estimate": 0,
+        "circle_count_estimate": 0,
+        "deskew_applied": False,
+        "cv_processed": False,
+    }
+
+    try:
+        import cv2
+        import numpy as np
+
+        arr = np.frombuffer(image_bytes, dtype=np.uint8)
+        img = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        if img is None:
+            raise ValueError("cv2 failed to decode image bytes")
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # 1. Deskew: level the image using the largest contour's minimum-area rectangle
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        edges = cv2.Canny(blurred, 50, 150)
+        contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        if contours:
+            largest = max(contours, key=cv2.contourArea)
+            if cv2.contourArea(largest) > 500:
+                angle = cv2.minAreaRect(largest)[-1]
+                if angle < -45:
+                    angle += 90
+                if 0.5 < abs(angle) < 45:
+                    h, w = gray.shape
+                    rot_matrix = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
+                    gray = cv2.warpAffine(gray, rot_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+                    blurred = cv2.warpAffine(blurred, rot_matrix, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+                    edges = cv2.warpAffine(edges, rot_matrix, (w, h), flags=cv2.INTER_NEAREST, borderMode=cv2.BORDER_CONSTANT)
+                    hints["deskew_applied"] = True
+                    hints["deskew_angle"] = round(float(angle), 2)
+
+        # 2. Normalize contrast / lighting (phone photos: glare, shadows)
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        gray = clahe.apply(gray)
+        clean = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 25, 10
+        )
+
+        # 3. Structural cross-check: how many lines/circles does classical CV see?
+        lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=60, minLineLength=40, maxLineGap=8)
+        circles = cv2.HoughCircles(blurred, cv2.HOUGH_GRADIENT, dp=1.2, minDist=30, param1=100, param2=40)
+
+        hints["line_count_estimate"] = 0 if lines is None else int(len(lines))
+        hints["circle_count_estimate"] = 0 if circles is None else int(circles.shape[1])
+        hints["cv_processed"] = True
+
+        ok, buf = cv2.imencode(".png", clean)
+        if ok:
+            return buf.tobytes(), hints
+    except Exception:
+        pass
+
+    # PIL Fallback
+    try:
+        pil_img = Image.open(io.BytesIO(image_bytes))
+        pil_img = ImageOps.exif_transpose(pil_img)
+        gray_pil = ImageOps.autocontrast(pil_img.convert("L"))
+        buf = io.BytesIO()
+        gray_pil.save(buf, format="PNG")
+        return buf.getvalue(), hints
+    except Exception:
+        return image_bytes, hints
+

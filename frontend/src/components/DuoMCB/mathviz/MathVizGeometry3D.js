@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Palette } from 'lucide-react';
+import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import MathVizTitle from './MathVizTitle';
 
 export const BASIC_SOLIDS = {
@@ -10,6 +11,7 @@ export const BASIC_SOLIDS = {
   triangular_prism: 'Lăng trụ tam giác',
   cone: 'Hình nón',
   cylinder: 'Hình trụ',
+  cylinder_with_bore: 'Trụ khoét rỗng (CSG)',
   regular_polygon: 'Lăng trụ lục giác',
   sphere: 'Hình cầu',
   ellipsoid: 'Hình Elipsoid',
@@ -57,6 +59,16 @@ function buildGeometry(THREE, solidKey, dims) {
       return new THREE.ConeGeometry(r, h, 48);
     case 'cylinder':
       return new THREE.CylinderGeometry(r, r, h, 48);
+    case 'cylinder_with_bore': {
+      const radius = dims.radius || dims.r || 3;
+      const height = dims.height || dims.h || 5;
+      const boreRadius = dims.bore_radius || dims.r1 || Math.min(radius * 0.5, radius - 0.5);
+      const cylinderBrush = new Brush(new THREE.CylinderGeometry(radius, radius, height, 48));
+      const boreBrush = new Brush(new THREE.CylinderGeometry(boreRadius, boreRadius, height * 1.2, 32));
+      const evaluator = new Evaluator();
+      const resultMesh = evaluator.evaluate(cylinderBrush, boreBrush, SUBTRACTION);
+      return resultMesh.geometry;
+    }
     case 'regular_polygon':
       return new THREE.CylinderGeometry(r, r, h, Math.max(3, n || 6));
     case 'sphere':
@@ -319,6 +331,19 @@ function formulas(solidKey, dims) {
         vText: 'V = π·r²·h',
         sText: 'S = 2πr(r+h)'
       };
+    case 'cylinder_with_bore': {
+      const radius = dims.radius || dims.r || 3;
+      const height = dims.height || dims.h || 5;
+      const boreRadius = dims.bore_radius || dims.r1 || (radius * 0.5);
+      const v = Math.PI * (radius ** 2 - boreRadius ** 2) * height;
+      const s = 2 * Math.PI * (radius + boreRadius) * height + 2 * Math.PI * (radius ** 2 - boreRadius ** 2);
+      return {
+        V: v,
+        S: s,
+        vText: 'V = π(R² - r²)h',
+        sText: 'S = 2π(R+r)h + 2π(R²-r²)'
+      };
+    }
     case 'regular_polygon': {
       const sides = Math.max(3, n || 6);
       const edge = 2 * r * Math.sin(Math.PI / sides);

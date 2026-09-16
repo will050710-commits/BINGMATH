@@ -356,9 +356,10 @@ _SOCRATIC_BASE = f"""Bạn là **DuoMCB** (chú Cú Xanh Toán học thông thá
 - Thân thiện, tôn trọng, truyền cảm hứng học tập và tư duy phản biện. Xưng "DuoMCB" (hoặc "mình") và gọi học sinh là "bạn" hoặc "em".
 - Sử dụng ngôn ngữ sư phạm chuẩn xác, mạch lạc, dễ hiểu, có chèn emoji hợp lý (🦉, 💡, 📐, ✨, 🎯).
 
-## NGUYÊN TẮC GIẢNG DẠY (SOCRATIC METHOD):
+## NGUYÊN TẮC GIẢNG DẠY & ĐẦU RA:
 - Ở chế độ Gợi ý: Hướng dẫn học sinh khám phá từng bước, chỉ ra các mắt xích lý thuyết và bổ đề then chốt để học sinh tự suy luận, không giải tắt làm mất đi cơ hội tư duy.
-- Ở chế độ Giải Đầy Đủ: Trình bày bài giải bài bản, chứng minh chi tiết từng bước, nêu rõ căn cứ định lý và kết luận rõ ràng."""
+- Ở chế độ Giải Đầy Đủ: Trình bày bài giải bài bản, chứng minh chi tiết từng bước, nêu rõ căn cứ định lý và kết luận rõ ràng.
+- **TUYỆT ĐỐI KHÔNG** xuất suy nghĩ nội tâm (internal thought, scratchpad, ghi chú nháp bằng tiếng Anh hay tự độc thoại). LUÔN trả lời trực tiếp cho học sinh bằng tiếng Việt sư phạm, hoàn chỉnh."""
 
 @lru_cache(maxsize=64)
 def cached_system_prompt(variant: str = "text", widget: str | None = None) -> str:
@@ -390,33 +391,20 @@ def cached_system_prompt(variant: str = "text", widget: str | None = None) -> st
             "Do NOT include conversational chatter or filler text. Output clear numbered steps."
         )
     elif variant == "visualizer":
+        target_snippet = _WIDGET_PROMPT_SNIPPETS.get(widget) if widget else _WIDGET_PROMPT_SNIPPETS["geometry_2d"]
         base = (
             "Bạn là chuyên gia trực quan hóa toán học và mô hình hóa hình học tương tác MathViz của DuoMath.\n\n"
             "## NHIỆM VỤ CHÍNH: TẬP TRUNG TẠO MÔ HÌNH HÌNH HỌC / ĐỒ THỊ TƯƠNG TÁC (MATHVIZ)\n"
             "Người dùng đã nhấn chọn chế độ 'Minh Họa Tương Tác'. Mục tiêu số 1 là XEM VÀ TƯƠNG TÁC VỚI HÌNH VẼ / MÔ HÌNH TRỰC QUAN.\n\n"
-            "## QUY TẮC PHÂN LOẠI 2D VÀ 3D CỰC KỲ QUAN TRỌNG (BẮT BUỘC TUÂN THỦ):\n"
-            "1. NẾU ẢNH HOẶC ĐỀ BÀI LÀ HÌNH HỌC PHẲNG 2D (ví dụ: bài toán chứng minh hình phẳng, tam giác ABC, đường tròn (O), tiếp tuyến, trực tâm H, cát tuyến, các điểm đồng phẳng, chùm điều hòa, tứ giác điều hòa, bổ đề hình thang, v.v.):\n"
-            "   -> BẮT BUỘC DÙNG WIDGET \"geometry_2d\"!\n"
-            "   -> Sử dụng cấu trúc \"layers\" để CHỒNG NHIỀU LỚP hình học phẳng lên nhau (đường tròn + tam giác/đa giác + các đoạn thẳng nối + các điểm tọa độ gắn nhãn A, B, C, H, E, T, O, L...).\n"
-            "   -> TUYỆT ĐỐI KHÔNG ĐƯỢC TỰ Ý CHUYỂN THÀNH HÌNH CHÓP 3D (như S.ABC) hay hình không gian 3D!\n"
-            "2. CHỈ DÙNG WIDGET \"geometry_3d\" KHI:\n"
-            "   - Đề bài/ảnh thực sự là hình học không gian 3D (hình chóp S.ABCD, hình lăng trụ, hình trụ, hình nón, hình cầu, khối đa diện, dải Möbius 3D, bình Klein 3D).\n"
-            "3. NẾU LÀ ĐỒ THỊ HÀM SỐ: Dùng widget \"function_plot\".\n\n"
-            "## CẤU TRÚC PHẢN HỒI:\n"
-            "1. BẮT BUỘC đính kèm ĐÚNG MỘT khối ```mathviz ... ``` ở cuối câu trả lời để tạo widget trực quan trên giao diện.\n"
-            "2. TUYỆT ĐỐI KHÔNG viết bài giải chứng minh dài dòng, không viết lời giải từng bước như chế độ 'Giải Đầy Đủ'.\n"
-            "3. Phần văn bản chỉ cần RẤT NGẮN GỌN (1-2 đoạn súc tích):\n"
-            "   - Tên mô hình/khối hình học/đồ thị được minh họa.\n"
-            "   - Các thông số/yếu tố hình học chính (tọa độ các điểm, bán kính đường tròn, các đoạn thẳng nối quan trọng).\n"
-            "   - Hướng dẫn học sinh kéo các điểm trên hình vẽ để quan sát sự tương tác động.\n"
+            "## NGUYÊN TẮC BẮT BUỘC ĐỂ KHÔNG BỊ CẮT NGANG DỮ LIỆU:\n"
+            "1. TUYỆT ĐỐI KHÔNG xuất suy nghĩ nội tâm (internal thought/scratchpad). Trả lời trực tiếp bằng tiếng Việt và khối ```mathviz JSON.\n"
+            "2. Phần văn bản giải thích cực kỳ ngắn gọn (chỉ 2-3 câu tóm tắt các điểm chính).\n"
+            "3. BẮT BUỘC đóng ngoặc JSON đầy đủ và kết thúc câu trả lời bằng ```.\n"
+            "4. KHÔNG cần tự tính toán tọa độ số thập phân cho các điểm phụ (như trực tâm, chân đường cao, trung điểm, tâm ngoại tiếp, giao điểm). Chỉ cần khai báo tọa độ 3 đỉnh chính (A, B, C hoặc Ia, Ib, Ic), các điểm còn lại chỉ cần khai báo ID trong 'layers' hoặc 'constructions', hệ thống giải tích hình học của DuoMath sẽ tự động tính toán tọa độ chuẩn xác 100%!\n\n"
             + _LATEX_RULES
             + _VISUAL_RULES
             + "\n"
-            + _WIDGET_PROMPT_SNIPPETS["geometry_2d"]
-            + "\n"
-            + _WIDGET_PROMPT_SNIPPETS["geometry_3d"]
-            + "\n"
-            + _WIDGET_PROMPT_SNIPPETS["function_plot"]
+            + target_snippet
         )
         return base
     elif variant == "image_with_vision":
@@ -672,7 +660,8 @@ _WIDGET_KEYWORDS: dict[str, list[str]] = {
         "tứ giác điều hòa", "mô hình phẳng", "hình học phẳng", "2d", "chứng minh rằng",
         "phép quay", "đối xứng trục", "tịnh tiến", "vị tự", "vectơ", "vector", "trung tuyến", "trọng tâm",
         "hình elip", "elip", "ellipse", "tiêu cự", "tiêu điểm", "tâm sai", "bán trục",
-        "đa giác đều", "ngũ giác", "lục giác", "bát giác", "đa giác"
+        "đa giác đều", "ngũ giác", "lục giác", "bát giác", "đa giác",
+        "minh họa", "minh hoạ", "vẽ hình", "dựng hình", "hình vẽ", "tương tác", "hình học", "bài toán này"
     ],
     "geometry_3d":       [
         "hình chóp", "hình hộp", "hình lăng trụ", "mặt cầu", "mặt nón", "mặt trụ",
@@ -1126,18 +1115,53 @@ Ví dụ Tam giác & 4 Tâm (Trọng tâm G, Trực tâm H, Tâm ngoại tiếp 
    {"point":"M","type":"midpoint","of":["A","H"]},
    {"point":"K","type":"intersection","of":["E","F","B","C"]},
    {"point":"N","type":"reflection","of":["A","B","C"]},
-   {"point":"Q","type":"ratio_point","of":["K","E"],"ratio":1.35}
+   {"point":"Q","type":"ratio_point","of":["K","E"],"ratio":1.35},
+   {"point":"J","type":"angle_bisector_foot","of":["A","B","C"]},
+   {"point":"P","type":"nine_point_center","of":["A","B","C"]},
+   {"point":"C","type":"point_on_circle","of":["O","A"],"angle":2.094},
+   {"point":"D","type":"point_on_arc","of":["O","B","C"],"arc":"minor","t":0.35},
+   {"point":"S","type":"circle_line_intersection","of":["O","A","B","C"]},
+   {"point":"T","type":"circle_circle_intersection","of":["O","A","I","D"]}
  ]}
-Quy tắc "of" theo từng "type": orthocenter/circumcenter/incenter/centroid → [3 đỉnh tam giác]; foot/reflection → [điểm cần chiếu, điểm1_của_đường, điểm2_của_đường]; midpoint/ratio_point → [điểm đầu, điểm cuối] (ratio_point cần thêm khóa "ratio", vd 0.5=trung điểm, >1=kéo dài quá điểm cuối); intersection → [điểm1_đường1, điểm2_đường1, điểm1_đường2, điểm2_đường2] (giao 2 đường thẳng). "of" có thể tham chiếu một điểm KHÁC cũng đang được dựng trong "constructions" (ví dụ M ở trên dùng H) — hệ thống tự giải theo đúng thứ tự phụ thuộc.
+Quy tắc "of" theo từng "type":
+- orthocenter/circumcenter/incenter/centroid/nine_point_center → [3 đỉnh tam giác];
+- angle_bisector_foot → [đỉnh góc, đỉnh_cạnh1, đỉnh_cạnh2] (chân phân giác trên cạnh1-cạnh2);
+- foot/reflection → [điểm cần chiếu, điểm1_của_đường, điểm2_của_đường];
+- midpoint/ratio_point → [điểm đầu, điểm cuối] (ratio_point cần thêm khóa "ratio", vd 0.5=trung điểm, >1=kéo dài quá điểm cuối);
+- intersection → [điểm1_đường1, điểm2_đường1, điểm1_đường2, điểm2_đường2] (giao 2 đường thẳng, vd AC cắt BD tại E thì of=["A","C","B","D"]);
+- point_on_circle → [tâm, điểm_xác_định_bán_kính] (cần khóa "angle" radian hoặc "chord_len" khoảng cách dây cung từ điểm tham chiếu);
+- point_on_arc → [tâm, điểm_đầu_cung, điểm_cuối_cung] (cần "arc":"minor"|"major", "t":0.0..1.0 vị trí trên cung, vd 0.35);
+- circle_line_intersection → [tâm, điểm_trên_đường_tròn, điểm1_đường, điểm2_đường];
+- circle_circle_intersection → [tâm1, điểm_trên_đường_tròn1, tâm2, điểm_trên_đường_tròn2].
+"of" có thể tham chiếu một điểm KHÁC cũng đang được dựng trong "constructions" — hệ thống tự giải theo đúng thứ tự phụ thuộc.
+
+Ví dụ Đường tròn (O, R) đường kính AB, điểm C trên (O) với AC = R, điểm D trên cung nhỏ BC, AC cắt BD tại E, EH vuông góc AB tại H:
+{"type":"mathviz.v1","widget":"geometry_2d","title":"Đường tròn $(O, R)$ đường kính $AB$",
+ "layers":[
+   {"kind":"circle","center":{"x":0,"y":0},"r":3.5,"label":"(O)","color":"#3b82f6"},
+   {"kind":"polygon","points":[{"id":"A","x":-3.5,"y":0},{"id":"B","x":3.5,"y":0}],"color":"#94a3b8"},
+   {"kind":"line","from":{"id":"A"},"to":{"id":"C"},"label":"AC","color":"#3b82f6"},
+   {"kind":"line","from":{"id":"B"},"to":{"id":"D"},"label":"BD","color":"#3b82f6"},
+   {"kind":"line","from":{"id":"E"},"to":{"id":"H"},"label":"EH","color":"#f43f5e"},
+   {"kind":"points","data":[{"id":"O","x":0,"y":0},{"id":"A","x":-3.5,"y":0},{"id":"B","x":3.5,"y":0}]}
+ ],
+ "constructions":[
+   {"point":"C","type":"point_on_circle","of":["O","A"],"angle":2.094},
+   {"point":"D","type":"point_on_arc","of":["O","B","C"],"arc":"minor","t":0.35},
+   {"point":"E","type":"intersection","of":["A","C","B","D"]},
+   {"point":"H","type":"foot","of":["E","A","B"]}
+ ]}
 ''',
 
 
 "geometry_3d": '''
 ## SCHEMA cho widget "geometry_3d":
 {"type":"mathviz.v1","widget":"geometry_3d","title":"$...$",
- "solid":"cuboid"|"square_pyramid"|"triangular_pyramid"|"triangular_prism"|"cone"|"cylinder"|"regular_polygon"|"sphere"|"ellipsoid"|"frustum"|"mobius_strip"|"klein_bottle"|"torus"|"tesseract_4d"|"boys_surface"|"cross_cap"|"trefoil_knot",
- "dims":{...chỉ các khóa liên quan: a,b,h cho cuboid / a,h cho square_pyramid,triangular_pyramid,triangular_prism / r,h cho cone,cylinder / r cho sphere / a,b,c cho ellipsoid / r1,r2,h cho frustum / r,h,n cho regular_polygon / w cho mobius_strip / r cho torus,klein_bottle,trefoil_knot / angle_4d cho tesseract_4d},
+ "solid":"cuboid"|"square_pyramid"|"triangular_pyramid"|"triangular_prism"|"cone"|"cylinder"|"cylinder_with_bore"|"regular_polygon"|"sphere"|"ellipsoid"|"frustum"|"mobius_strip"|"klein_bottle"|"torus"|"tesseract_4d"|"boys_surface"|"cross_cap"|"trefoil_knot",
+ "dims":{...chỉ các khóa liên quan: a,b,h cho cuboid / a,h cho square_pyramid,triangular_pyramid,triangular_prism / r,h cho cone,cylinder / radius,height,bore_radius cho cylinder_with_bore (khối tròn xoay/trụ khoét rỗng CSG) / r cho sphere / a,b,c cho ellipsoid / r1,r2,h cho frustum / r,h,n cho regular_polygon / w cho mobius_strip / r cho torus,klein_bottle,trefoil_knot / angle_4d cho tesseract_4d},
  "show_cross_section":false,"cross_section_height":0}
+Ví dụ Khối trụ khoét rỗng (Cylinder with bore - CSG Boole): {"type":"mathviz.v1","widget":"geometry_3d","title":"Khối trụ khoét rỗng ($R=3, r=1.5, h=6$)",
+ "solid":"cylinder_with_bore","dims":{"radius":3,"height":6,"bore_radius":1.5},"show_cross_section":false}
 Ví dụ: {"type":"mathviz.v1","widget":"geometry_3d","title":"Hình chóp tứ giác đều $S.ABCD$, đáy $a=4$, cao $h=6$",
  "solid":"square_pyramid","dims":{"a":4,"h":6},"show_cross_section":true,"cross_section_height":2}
 Ví dụ Bình Klein 3D: {"type":"mathviz.v1","widget":"geometry_3d","title":"Mặt topology Bình Klein 3D (Klein Bottle)",
@@ -1532,6 +1556,19 @@ def _extract_mathviz_block(raw: str) -> tuple[str, dict | None]:
     import json as _json
     match = _re_mathviz.search(r'```mathviz\s*\n?([\s\S]*?)```', raw)
     if not match:
+        start_idx = raw.find("```mathviz")
+        if start_idx != -1 and _JSON_REPAIR_AVAILABLE:
+            fenced = raw[start_idx + len("```mathviz"):].strip()
+            text = raw[:start_idx].rstrip()
+            try:
+                repaired = _repair_json(fenced, return_objects=True)
+                if isinstance(repaired, str):
+                    repaired = _json.loads(repaired)
+                if isinstance(repaired, dict) and repaired.get("widget"):
+                    logger.info("[MathViz] json_repair recovered an unclosed mathviz block!")
+                    return text, repaired
+            except Exception as e_rec:
+                logger.debug(f"[MathViz] Unclosed block repair failed: {e_rec}")
         return raw, None
     text = raw[:match.start()].rstrip() + raw[match.end():].lstrip()
     fenced = match.group(1).strip()
@@ -2745,6 +2782,17 @@ async def chat(request: Request):
         except Exception as e_prep:
             logger.debug(f"Image preprocessing skipped, using original bytes: {e_prep}")
 
+        # Section 3 of geometry plan: Deskew, contrast normalization, & Hough cross-check
+        _cv_hints = {}
+        try:
+            from image_preprocessing import preprocess_geometry_image
+            _raw_img_bytes = base64.b64decode(raw_b64)
+            _, _cv_hints = preprocess_geometry_image(_raw_img_bytes)
+            if _cv_hints.get("cv_processed"):
+                logger.info(f"[OpenCV] Structural hints: lines~{_cv_hints.get('line_count_estimate')}, circles~{_cv_hints.get('circle_count_estimate')}")
+        except Exception as e_cv:
+            logger.debug(f"OpenCV structural preprocessing skipped: {e_cv}")
+
         # Stage 1: Attempt specialized Olympiad geometry diagram extraction via OpenRouter
         if _vision_agent.is_configured():
             try:
@@ -2770,6 +2818,9 @@ async def chat(request: Request):
                         _widget = detect_widget(ocr_text, ocr_nodes)
             except Exception as e:
                 logger.debug(f"OCR widget pre-detection skipped: {e}")
+
+        if _widget is None:
+            _widget = "geometry_2d"
 
     # Build prompt variant according to mode & widget
     if is_viz_request:
@@ -2830,15 +2881,24 @@ async def chat(request: Request):
 
     # Add current user turn with the image or structured vision text
     if image_data:
+        cv_hint_text = ""
+        if _cv_hints and (_cv_hints.get("line_count_estimate", 0) > 0 or _cv_hints.get("circle_count_estimate", 0) > 0):
+            cv_hint_text = (
+                f"\n[GỢI Ý TỪ COMPUTER VISION: Phát hiện ước lượng ~{_cv_hints.get('line_count_estimate', 0)} đoạn thẳng "
+                f"và {_cv_hints.get('circle_count_estimate', 0)} đường tròn trong ảnh. Hãy đối soát với hình và khai báo đầy đủ quan hệ dựng hình.]"
+            )
+
         if vision_description:
             # Stage 2 Handoff: Provide structured geometric primitives to Gemini for precision canvas generation
             enhanced_user_message = (
                 f"{user_message}\n\n"
-                f"## CẤU TRÚC HÌNH HỌC TỪ HÌNH ẢNH (Bóc tách chi tiết bởi Vision AI Qwen2.5-VL-72B):\n"
-                f"{vision_description}\n\n"
+                f"## CẤU TRÚC HÌNH HỌC TỪ HÌNH ẢNH (Bóc tách chi tiết bởi Vision AI DuoMath Qwen2.5-VL Fine-Tuned):\n"
+                f"{vision_description}\n"
+                f"{cv_hint_text}\n\n"
                 f"YÊU CẦU QUAN TRỌNG CHO CANVAS VÀ GIẢI TOÁN:\n"
                 f"1. Dựa trên các điểm (points), đường tròn (circles), đoạn thẳng (lines) và quan hệ không gian ở trên, hãy đưa ra phân tích và gợi ý định hướng giải chuẩn xác.\n"
-                f"2. BẮT BUỘC dựng khối ```mathviz ... ``` với widget \"geometry_2d\" (cấu trúc \"layers\" đa tầng) thể hiện đầy đủ, chính xác tất cả các điểm, đường tròn, tiếp tuyến, đoạn thẳng tương ứng."
+                f"2. BẮT BUỘC dựng khối ```mathviz ... ``` với widget \"geometry_2d\" (cấu trúc \"layers\" đa tầng) thể hiện đầy đủ, chính xác tất cả các điểm, đường tròn, tiếp tuyến, đoạn thẳng tương ứng.\n"
+                f"3. TUYỆT ĐỐI KHÔNG tự đoán mò tọa độ cho các điểm dựng hình (trực tâm, giao điểm, tiếp điểm, chân đường vuông góc). Hãy dùng mảng \"constructions\" để hệ thống giải tích tự động tính toán tọa độ chuẩn xác!"
             )
             gemini_contents.append({
                 "role": "user",
@@ -2847,10 +2907,11 @@ async def chat(request: Request):
             history.append({"role": "user", "content": f"[Image + Vision AI] {user_message}"})
         else:
             # Fallback: send raw image bytes to Gemini Vision directly
+            prompt_with_hint = user_message + (f"\n\n{cv_hint_text}" if cv_hint_text else "")
             gemini_contents.append({
                 "role": "user",
                 "parts": [
-                    {"text": user_message},
+                    {"text": prompt_with_hint},
                     {
                         "inlineData": {
                             "mimeType": media_type,
@@ -2870,7 +2931,7 @@ async def chat(request: Request):
     # Token budget calculation — generous for image/solution to avoid truncation
     _has_widget = chat_mode not in ("solution", "raw_solution") and _widget is not None
     if image_data:
-        max_tokens = 8192   # Complex geometry proofs from images need full output
+        max_tokens = 4096   # Optimal for Gemini flash models to avoid 503 high-demand rejects
     elif chat_mode in ("solution", "raw_solution"):
         max_tokens = 4096   # Full solutions need room for derivations
     elif _has_widget:
@@ -3026,7 +3087,11 @@ async def chat(request: Request):
 
         fallback_models = [
             gemini_model,
-            "gemini-3.6-flash"
+            "gemini-3.5-flash",
+            "gemini-3-flash-preview",
+            "gemini-flash-lite-latest",
+            "gemini-3.5-flash-lite",
+            "gemini-3.1-flash-lite",
         ]
         seen_models = set()
         fallback_models = [m for m in fallback_models if m and not (m in seen_models or seen_models.add(m))]
@@ -3055,18 +3120,20 @@ async def chat(request: Request):
             if reply:
                 break
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent?key={gemini_api_key}"
-            for attempt in range(1):
+            for attempt in range(3):
                 try:
                     curr_payload = json.loads(json.dumps(payload))
                     # Tool calling multi-turn execution loop (up to 4 iterations)
                     for tool_step in range(4):
-                        resp = await client.post(url, json=curr_payload, timeout=18)
+                        resp = await client.post(url, json=curr_payload, timeout=60)
                         if resp.status_code == 400 and "tools" in curr_payload:
                             print(f"[WARN] {current_model} returned 400 during tool call — retrying without tools")
                             curr_payload.pop("tools", None)
-                            resp = await client.post(url, json=curr_payload, timeout=18)
+                            resp = await client.post(url, json=curr_payload, timeout=60)
                         if resp.status_code in (429, 503):
-                            print(f"[WARN] {current_model} returned {resp.status_code}")
+                            print(f"[WARN] {current_model} returned {resp.status_code} (attempt {attempt+1}/3)")
+                            if attempt < 2:
+                                await asyncio.sleep(2 * (attempt + 1))
                             break
                         resp.raise_for_status()
                         res_data = resp.json()
@@ -3114,7 +3181,7 @@ async def chat(request: Request):
                     try:
                         no_tools_payload = json.loads(json.dumps(payload))
                         no_tools_payload.pop("tools", None)
-                        resp = await client.post(url, json=no_tools_payload, timeout=20)
+                        resp = await client.post(url, json=no_tools_payload, timeout=60)
                         if resp.status_code == 200:
                             res_data = resp.json()
                             candidate_parts = res_data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
@@ -3230,17 +3297,48 @@ async def chat(request: Request):
             actual_widget = _viz_block.get("widget") or _widget or "geometry_2d"
             if actual_widget == "geometry_2d" and "layers" in _viz_block:
                 try:
+                    from geometry_implicit_extractor import extract_implicit_constructions
                     from geometry_construction_solver import resolve_constructions
                     from geometry_canvas_solver import auto_align_geometry_mathviz
                     from geometry_snapping import snap_geometry_2d, verify_snap_safe
+
+                    # 1. If LLM omitted 'constructions', extract them implicitly from reply text
+                    if not _viz_block.get("constructions"):
+                        _viz_block = extract_implicit_constructions(_reply_text, _viz_block)
+
+                    # 2. Resolve constructions analytically and cascade update lines and circles
                     _viz_block, _unsolved = resolve_constructions(_viz_block)
                     if _unsolved:
                         logger.info(f"[MathViz] Construction solver left {_unsolved} at their raw LLM coordinates (unknown dependency, cycle, or unsupported type).")
+
+                    # 3. Dedicated Olympiad template solver (if matching)
                     _viz_block = auto_align_geometry_mathviz(_viz_block)
+
+                    # 4. General angle & collinearity snapping
                     _snapped = snap_geometry_2d(_viz_block)
                     if verify_snap_safe(_viz_block, _snapped):
                         _viz_block = _snapped
-                    reply = f"{_reply_text}\n\n```mathviz\n{json.dumps(_viz_block, ensure_ascii=False, indent=2)}\n```"
+
+                    # 5. Pre-render QA verification gate (Section 5 of D:\duomath-geometry-rendering-plan.md)
+                    try:
+                        from geometry_verification import verify_geometry_mathviz
+                        _verif = verify_geometry_mathviz(_viz_block)
+                        if _verif.get("all_passed"):
+                            _viz_block["_verification"] = {
+                                "status": "verified",
+                                "passed_count": _verif.get("valid_count", 0),
+                                "total_checked": _verif.get("total_claims", 0)
+                            }
+                        else:
+                            _viz_block["_verification"] = {
+                                "status": "warning",
+                                "passed_count": _verif.get("valid_count", 0),
+                                "total_checked": _verif.get("total_claims", 0),
+                                "issues": [d.get("reason") for d in _verif.get("details", []) if not d.get("verified")]
+                            }
+                    except Exception as e_verif:
+                        logger.debug(f"MathViz QA verification gate skipped: {e_verif}")
+
                 except Exception as e_align:
                     logger.debug(f"MathViz auto-align/snap skipped: {e_align}")
 
@@ -3254,6 +3352,10 @@ async def chat(request: Request):
                 except Exception as e_confirm:
                     logger.debug(f"MathViz confirmation skipped: {e_confirm}")
 
+        if _viz_block is not None:
+            reply = f"{_reply_text}\n\n```mathviz\n{json.dumps(_viz_block, ensure_ascii=False, indent=2)}\n```"
+        elif "```mathviz" in reply:
+            reply = reply.split("```mathviz")[0].rstrip()
 
         history.append({"role": "assistant", "content": reply})
         save_history(session_id, history)
@@ -5906,7 +6008,7 @@ async def mrm_websocket_endpoint(websocket: WebSocket, token: str = None):
 # ══════════════════════════════════════════════════════════════════════════════
 
 GEMINI_KEY   = os.environ.get("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash")
 GEMINI_BASE  = "https://generativelanguage.googleapis.com/v1beta/models"
 AI_MOCK_MODE = not bool(GEMINI_KEY)
 

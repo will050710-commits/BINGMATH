@@ -12,6 +12,7 @@
     "@heroui/react": "^2.8.10",
     "firebase": "^12.14.0",
     "framer-motion": "^12.35.1",
+    "jsxgraph": "^1.13.3",
     "katex": "^0.17.0",
     "lucide-react": "^1.34.0",
     "mathjs": "^15.2.0",
@@ -19,7 +20,8 @@
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.10.1",
-    "three": "^0.185.1"
+    "three": "^0.185.1",
+    "three-bvh-csg": "^0.0.18"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

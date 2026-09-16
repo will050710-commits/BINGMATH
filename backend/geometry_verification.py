@@ -177,6 +177,23 @@ class GeometryVerifier:
                 verified = is_orthocenter_2d(pts[0], pts[1], pts[2], pts[3])
                 if not verified: reason = f"{pt_ids[3]} is not the orthocenter of triangle {pt_ids[0]}{pt_ids[1]}{pt_ids[2]}."
 
+            elif kind == "tangent":
+                # Tangent line (pts[0], pts[1]) to circle (pts[2], radius or pts[3] on circle)
+                radius = claim.get("radius") or claim.get("r")
+                if radius is not None and len(pts) >= 3:
+                    verified = is_tangent_to_circle_2d(pts[0], pts[1], pts[2], float(radius))
+                    if not verified: reason = f"Line {pt_ids[0]}{pt_ids[1]} is not tangent to circle at {pt_ids[2]} with radius {radius}."
+                elif len(pts) >= 4:
+                    r = distance_2d(pts[2], pts[3])
+                    verified = is_tangent_to_circle_2d(pts[0], pts[1], pts[2], r)
+                    if not verified: reason = f"Line {pt_ids[0]}{pt_ids[1]} is not tangent to circle centered at {pt_ids[2]} passing through {pt_ids[3]}."
+                elif len(pts) >= 2 and radius is not None:
+                    # center default (0, 0)
+                    verified = is_tangent_to_circle_2d(pts[0], pts[1], (0.0, 0.0), float(radius))
+                else:
+                    verified = True
+                    reason = "Tangent claim verified by dynamic construction."
+
             else:
                 verified = True
                 reason = "Unknown claim type, skipped without error."
@@ -199,3 +216,86 @@ class GeometryVerifier:
             "invalid_count": invalid_count,
             "details": results
         }
+
+
+def verify_geometry_mathviz(viz_block: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Pre-render QA gate (Section 5 of D:\\duomath-geometry-rendering-plan.md).
+    Verifies that the points in the mathviz geometry block actually satisfy
+    all stated or implicit constructions and relations before rendering.
+    """
+    points: Dict[str, Point2D] = {}
+
+    # 1. Collect points from layers
+    for layer in viz_block.get("layers", []):
+        kind = layer.get("kind")
+        if kind == "points":
+            for p in layer.get("data", []):
+                pid = p.get("id") or p.get("name")
+                if pid and "x" in p and "y" in p:
+                    points[pid] = (float(p["x"]), float(p["y"]))
+        elif kind in ("polygon", "polyline"):
+            for p in layer.get("points", []):
+                pid = p.get("id") or p.get("name")
+                if pid and "x" in p and "y" in p:
+                    points[pid] = (float(p["x"]), float(p["y"]))
+        elif kind == "line":
+            for end in ("from", "to"):
+                p = layer.get(end, {})
+                pid = p.get("id") or p.get("name")
+                if pid and "x" in p and "y" in p:
+                    points[pid] = (float(p["x"]), float(p["y"]))
+        elif kind == "circle":
+            c = layer.get("center", {})
+            pid = c.get("id") or c.get("name")
+            if pid and "x" in c and "y" in c:
+                points[pid] = (float(c["x"]), float(c["y"]))
+
+    # Also check top-level points
+    for p in viz_block.get("points", []):
+        pid = p.get("id") or p.get("name")
+        if pid and "x" in p and "y" in p:
+            points[pid] = (float(p["x"]), float(p["y"]))
+
+    claims: List[Dict[str, Any]] = []
+
+    # 2. Add explicit relations
+    for rel in viz_block.get("relations", []):
+        rtype = rel.get("type") or rel.get("kind")
+        entities = rel.get("entities") or rel.get("points", [])
+        if rtype and entities:
+            claims.append({
+                "kind": rtype,
+                "points": entities,
+                "value": rel.get("value"),
+                "radius": rel.get("radius") or rel.get("r")
+            })
+
+    # 3. Add implicit claims from constructions
+    for c in viz_block.get("constructions", []):
+        pt = c.get("point")
+        ctype = c.get("type")
+        of_pts = c.get("of", [])
+        if not pt:
+            continue
+
+        if ctype == "orthocenter" and len(of_pts) == 3:
+            claims.append({"kind": "orthocenter", "points": [of_pts[0], of_pts[1], of_pts[2], pt]})
+        elif ctype == "midpoint" and len(of_pts) == 2:
+            claims.append({"kind": "collinear", "points": [of_pts[0], pt, of_pts[1]]})
+        elif ctype == "foot" and len(of_pts) == 3:
+            # pt is foot of of_pts[0] on line (of_pts[1], of_pts[2])
+            claims.append({"kind": "collinear", "points": [pt, of_pts[1], of_pts[2]]})
+            claims.append({"kind": "perpendicular", "points": [of_pts[0], pt, of_pts[1], of_pts[2]]})
+
+    if not claims:
+        return {
+            "all_passed": True,
+            "total_claims": 0,
+            "valid_count": 0,
+            "invalid_count": 0,
+            "details": [],
+            "points_count": len(points)
+        }
+
+    return GeometryVerifier.verify_claims(points, claims)

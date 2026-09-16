@@ -1,7 +1,8 @@
 'use client';
-import { useState, useRef, useCallback, useMemo } from 'react';
-import { RotateCcw, Plus, Trash2, Compass, Sparkles, ZoomIn, ZoomOut, Maximize2, Move, Palette } from 'lucide-react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { RotateCcw, Plus, Trash2, Compass, Sparkles, ZoomIn, ZoomOut, Maximize2, Minimize2, Move, Palette, X } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
+import MathVizJSXGraph from './MathVizJSXGraph';
 
 const CANVAS_SIZE = 520;
 const fmt = (n, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : '—');
@@ -150,6 +151,8 @@ const DEFAULT_CIRCLE = { center: { x: 0, y: 0 }, r: 3 };
 const DEFAULT_ELLIPSE = { center: { x: 0, y: 0 }, a: 4, b: 2.5 };
 
 export default function MathVizGeometry2D({ data }) {
+  const [engine, setEngine] = useState('jsxgraph');
+
   const modeMap = {
     composite: 'Tổng hợp (Nhiều lớp)',
     triangle: 'Tam giác',
@@ -191,6 +194,25 @@ export default function MathVizGeometry2D({ data }) {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [bgColor, setBgColor] = useState('#0d1117');
   const [bgTheme, setBgTheme] = useState('dark');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+    if (isFullscreen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
 
   // Drag-to-Connect, Point Focus & Angle Measurement States
   const [connectMode, setConnectMode] = useState(true);
@@ -217,6 +239,8 @@ export default function MathVizGeometry2D({ data }) {
     typeInfo: null,
   });
 
+
+
   const points = mode === 'Tam giác' ? triPts : mode === 'Tứ giác' ? quadPts : null;
   const setPoints = mode === 'Tam giác' ? setTriPts : setQuadPts;
 
@@ -230,64 +254,68 @@ export default function MathVizGeometry2D({ data }) {
     return 0.299 * r + 0.587 * g + 0.114 * b > 0.52;
   }, [bgColor]);
 
-  // 1. Calculate dynamic coordinate bounds across all active elements to prevent clustering and expand spacing
-  const allCoords = [];
-  if (layers && layers.length > 0) {
-    layers.forEach((lay) => {
-      if (lay.points) lay.points.forEach((p) => allCoords.push({ x: p.x, y: p.y }));
-      if (lay.data) lay.data.forEach((p) => allCoords.push({ x: p.x, y: p.y }));
-      if (lay.from) allCoords.push({ x: lay.from.x, y: lay.from.y });
-      if (lay.to) allCoords.push({ x: lay.to.x, y: lay.to.y });
-      if (lay.center && lay.r) {
-        allCoords.push({ x: lay.center.x - lay.r, y: lay.center.y - lay.r });
-        allCoords.push({ x: lay.center.x + lay.r, y: lay.center.y + lay.r });
-      }
-    });
-  }
-  if (mode === 'Tam giác' || mode === 'Tứ giác') {
-    (points || []).forEach((p) => allCoords.push({ x: p.x, y: p.y }));
-  }
-  userLines.forEach((ul) => {
-    if (ul.from) allCoords.push({ x: ul.from.x, y: ul.from.y });
-    if (ul.to) allCoords.push({ x: ul.to.x, y: ul.to.y });
-  });
-  if (mode === 'Đường tròn') {
-    allCoords.push({ x: circle.center.x - circle.r, y: circle.center.y - circle.r });
-    allCoords.push({ x: circle.center.x + circle.r, y: circle.center.y + circle.r });
-  }
-  if (mode === 'Hình Elip') {
-    const ea = ellipse.a || 4, eb = ellipse.b || 2.5;
-    allCoords.push({ x: ellipse.center.x - ea, y: ellipse.center.y - eb });
-    allCoords.push({ x: ellipse.center.x + ea, y: ellipse.center.y + eb });
-  }
-  if (mode === 'Đa giác đều') {
-    allCoords.push({ x: polyCenter.x - polyRadius, y: polyCenter.y - polyRadius });
-    allCoords.push({ x: polyCenter.x + polyRadius, y: polyCenter.y + polyRadius });
-  }
-
-  let minX = -4.5, maxX = 4.5, minY = -4.5, maxY = 4.5;
-  if (allCoords.length > 0) {
-    const xs = allCoords.map((c) => c.x).filter(Number.isFinite);
-    const ys = allCoords.map((c) => c.y).filter(Number.isFinite);
-    if (xs.length > 0 && ys.length > 0) {
-      minX = Math.min(...xs);
-      maxX = Math.max(...xs);
-      minY = Math.min(...ys);
-      maxY = Math.max(...ys);
+  // 1. Calculate stable coordinate bounds across all initial active elements
+  // Using useMemo on `data` prevents coordinates from jittering/jumping when dragging points
+  const { span, centerX, centerY, dynamicScale, dynamicOrigin } = useMemo(() => {
+    const coords = [];
+    if (data?.layers && Array.isArray(data.layers)) {
+      data.layers.forEach((lay) => {
+        if (lay.points) lay.points.forEach((p) => coords.push({ x: p.x, y: p.y }));
+        if (lay.data) lay.data.forEach((p) => coords.push({ x: p.x, y: p.y }));
+        if (lay.from) coords.push({ x: lay.from.x, y: lay.from.y });
+        if (lay.to) coords.push({ x: lay.to.x, y: lay.to.y });
+        if (lay.center && (lay.r != null || lay.radius != null)) {
+          const r = lay.r != null ? lay.r : lay.radius;
+          coords.push({ x: lay.center.x - r, y: lay.center.y - r });
+          coords.push({ x: lay.center.x + r, y: lay.center.y + r });
+        }
+      });
     }
-  }
+    const pts = data?.points || (data?.mode === 'quadrilateral' ? DEFAULT_QUAD : DEFAULT_TRIANGLE);
+    if (Array.isArray(pts)) {
+      pts.forEach((p) => coords.push({ x: p.x, y: p.y }));
+    }
+    if (data?.center && (data?.radius != null || data?.r != null)) {
+      const cr = data.radius != null ? data.radius : data.r;
+      coords.push({ x: data.center.x - cr, y: data.center.y - cr });
+      coords.push({ x: data.center.x + cr, y: data.center.y + cr });
+    }
+    if (data?.ellipse) {
+      const ea = data.ellipse.a || 4, eb = data.ellipse.b || 2.5;
+      const ec = data.ellipse.center || { x: 0, y: 0 };
+      coords.push({ x: ec.x - ea, y: ec.y - eb });
+      coords.push({ x: ec.x + ea, y: ec.y + eb });
+    }
+    let minX = -4.5, maxX = 4.5, minY = -4.5, maxY = 4.5;
+    if (coords.length > 0) {
+      const xs = coords.map((c) => c.x).filter(Number.isFinite);
+      const ys = coords.map((c) => c.y).filter(Number.isFinite);
+      if (xs.length > 0 && ys.length > 0) {
+        minX = Math.min(...xs);
+        maxX = Math.max(...xs);
+        minY = Math.min(...ys);
+        maxY = Math.max(...ys);
+      }
+    }
+    const spanX = Math.max(7.5, (maxX - minX) * 1.38);
+    const spanY = Math.max(7.5, (maxY - minY) * 1.38);
+    const s = Math.max(spanX, spanY);
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
 
-  const spanX = Math.max(7.5, (maxX - minX) * 1.38);
-  const spanY = Math.max(7.5, (maxY - minY) * 1.38);
-  const span = Math.max(spanX, spanY);
-  const centerX = (minX + maxX) / 2;
-  const centerY = (minY + maxY) / 2;
+    const scale = (CANVAS_SIZE * 0.78) / s;
+    const origin = {
+      x: CANVAS_SIZE / 2 - cx * scale,
+      y: CANVAS_SIZE / 2 + cy * scale,
+    };
+    return { span: s, centerX: cx, centerY: cy, dynamicScale: scale, dynamicOrigin: origin };
+  }, [data]);
 
-  const dynamicScale = (CANVAS_SIZE * 0.78) / span;
-  const dynamicOrigin = {
-    x: CANVAS_SIZE / 2 - centerX * dynamicScale,
-    y: CANVAS_SIZE / 2 + centerY * dynamicScale,
-  };
+  // Unified scale: positions (toPx) already use zoomLevel, so ALL lengths
+  // (radii, rx/ry) must use effectiveScale too — otherwise circles shrink on zoom.
+  const effectiveScale = dynamicScale * zoomLevel;
+  const toLen = (m) => (Number.isFinite(m) ? m : 0) * effectiveScale;
+  const decoScale = Math.min(1.4, Math.max(0.75, Math.sqrt(zoomLevel)));
 
   // Coordinate transformations with Zoom & Pan around canvas center
   const toPx = useCallback((x, y) => {
@@ -505,24 +533,80 @@ export default function MathVizGeometry2D({ data }) {
       return;
     }
 
-    if (drag.target === 'vertex' && points) {
-      setPoints((prev) => prev.map((p, i) => (i === drag.index ? { ...p, x: Number(mx.toFixed(2)), y: Number(my.toFixed(2)) } : p)));
-    } else if (drag.target === 'layer_point') {
+    if (drag.target === 'vertex' || drag.target === 'layer_point' || drag.target === 'layer_point_obj') {
+      const ptId = drag.fromPt?.id;
+      const nx = Number(mx.toFixed(2));
+      const ny = Number(my.toFixed(2));
+
+      // 1. Update active standard points
+      if (points) {
+        setPoints((prev) =>
+          prev.map((p, i) =>
+            (drag.target === 'vertex' && i === drag.index) || (ptId && p.id === ptId)
+              ? { ...p, x: nx, y: ny }
+              : p
+          )
+        );
+      }
+
+      // 2. Cascade update to all layers that reference this point or id
       setLayers((prev) =>
         prev.map((lay, li) => {
-          if (li !== drag.layerIndex || !lay.points) return lay;
-          const newPts = lay.points.map((p, pi) => (pi === drag.pointIndex ? { ...p, x: Number(mx.toFixed(2)), y: Number(my.toFixed(2)) } : p));
-          return { ...lay, points: newPts };
+          let nextLay = { ...lay };
+          let changed = false;
+
+          if (nextLay.points) {
+            nextLay.points = nextLay.points.map((p, pi) => {
+              if ((drag.target === 'layer_point' && li === drag.layerIndex && pi === drag.pointIndex) || (ptId && p.id === ptId)) {
+                changed = true;
+                return { ...p, x: nx, y: ny };
+              }
+              return p;
+            });
+          }
+
+          if (nextLay.data) {
+            nextLay.data = nextLay.data.map((p, pi) => {
+              if ((drag.target === 'layer_point_obj' && li === drag.layerIndex && pi === drag.pointIndex) || (ptId && p.id === ptId)) {
+                changed = true;
+                return { ...p, x: nx, y: ny };
+              }
+              return p;
+            });
+          }
+
+          if (ptId && nextLay.from && nextLay.from.id === ptId) {
+            nextLay.from = { ...nextLay.from, x: nx, y: ny };
+            changed = true;
+          }
+
+          if (ptId && nextLay.to && nextLay.to.id === ptId) {
+            nextLay.to = { ...nextLay.to, x: nx, y: ny };
+            changed = true;
+          }
+
+          if (ptId && nextLay.center && nextLay.center.id === ptId) {
+            nextLay.center = { ...nextLay.center, x: nx, y: ny };
+            changed = true;
+          }
+
+          return changed ? nextLay : lay;
         })
       );
-    } else if (drag.target === 'layer_point_obj') {
-      setLayers((prev) =>
-        prev.map((lay, li) => {
-          if (li !== drag.layerIndex || !lay.data) return lay;
-          const newData = lay.data.map((p, pi) => (pi === drag.pointIndex ? { ...p, x: Number(mx.toFixed(2)), y: Number(my.toFixed(2)) } : p));
-          return { ...lay, data: newData };
-        })
-      );
+
+      // 3. Cascade update to user drawn lines
+      if (ptId) {
+        setUserLines((prev) =>
+          prev.map((ul) => {
+            let uFrom = ul.from?.id === ptId ? { ...ul.from, x: nx, y: ny } : ul.from;
+            let uTo = ul.to?.id === ptId ? { ...ul.to, x: nx, y: ny } : ul.to;
+            if (uFrom !== ul.from || uTo !== ul.to) {
+              return { ...ul, from: uFrom, to: uTo };
+            }
+            return ul;
+          })
+        );
+      }
     } else if (drag.target === 'center') {
       if (mode === 'Đường tròn') setCircle((prev) => ({ ...prev, center: { x: Number(mx.toFixed(2)), y: Number(my.toFixed(2)) } }));
       else if (mode === 'Hình Elip') setEllipse((prev) => ({ ...prev, center: { x: Number(mx.toFixed(2)), y: Number(my.toFixed(2)) } }));
@@ -652,10 +736,10 @@ export default function MathVizGeometry2D({ data }) {
       return { lx: px + dx, ly: py + dy, textAnchor, px, py };
     }
 
-    const closeNeighbors = allPts.filter((other, i) => i !== index && Math.hypot(other.x - pt.x, other.y - pt.y) * dynamicScale < 36);
+    const closeNeighbors = allPts.filter((other, i) => i !== index && Math.hypot(other.x - pt.x, other.y - pt.y) * effectiveScale < 36);
     if (closeNeighbors.length > 0) {
-      const isVertAligned = closeNeighbors.some((o) => Math.abs(o.x - pt.x) * dynamicScale < 14);
-      const isHorizAligned = closeNeighbors.some((o) => Math.abs(o.y - pt.y) * dynamicScale < 14);
+      const isVertAligned = closeNeighbors.some((o) => Math.abs(o.x - pt.x) * effectiveScale < 14);
+      const isHorizAligned = closeNeighbors.some((o) => Math.abs(o.y - pt.y) * effectiveScale < 14);
       if (isVertAligned) {
         if (index % 2 === 0) {
           dx = -12;
@@ -691,10 +775,11 @@ export default function MathVizGeometry2D({ data }) {
     return { lx: px + dx, ly: py + dy, textAnchor, px, py };
   };
 
-  // grid lines with dynamic range & contrast
+  // grid lines with dynamic range & contrast (fully covering canvas across zoom/pan)
   const gridLines = [];
-  const gMin = Math.floor(centerX - span / 2) - 6;
-  const gMax = Math.ceil(centerX + span / 2) + 6;
+  const viewSpan = (span / Math.min(1, zoomLevel)) + (Math.hypot(panOffset.x, panOffset.y) / (dynamicScale * zoomLevel));
+  const gMin = Math.floor(centerX - viewSpan / 2) - 8;
+  const gMax = Math.ceil(centerX + viewSpan / 2) + 8;
   const gridStroke = isLightBg ? '#e2e8f0' : '#1b212c';
   const axisStroke = isLightBg ? '#94a3b8' : '#30363d';
   for (let g = gMin; g <= gMax; g++) {
@@ -747,7 +832,10 @@ export default function MathVizGeometry2D({ data }) {
 
         const len1 = dist(s1.from, s1.to);
         const len2 = dist(s2.from, s2.to);
-        if (len1 > 0.4 && len2 > 0.4 && Math.abs(len1 - len2) < 0.03 * Math.max(len1, len2, 0.01)) {
+        // Only consider segments equal if lengths are strictly close (< 0.8% difference AND abs diff < 0.025)
+        // In Composite mode, avoid false positives on random chords/construction rays (< 0.3%)
+        const tol = mode === 'Tổng hợp (Nhiều lớp)' ? 0.003 : 0.008;
+        if (len1 > 0.5 && len2 > 0.5 && Math.abs(len1 - len2) < Math.min(0.025, tol * Math.max(len1, len2))) {
           equalPairs.push([s1.id, s2.id]);
         }
       }
@@ -778,10 +866,33 @@ export default function MathVizGeometry2D({ data }) {
       if (!rootOrder.includes(r)) rootOrder.push(r);
     });
 
+    // Guard against transitive chaining drift: verify every class is strictly uniform
+    const lineMap = new Map(pool.map((s) => [s.id, s]));
+    const classLens = {};
+    equalMembers.forEach((id) => {
+      const r = find(id);
+      const s = lineMap.get(id);
+      if (!s) return;
+      const l = dist(s.from, s.to);
+      classLens[r] = classLens[r] || [];
+      classLens[r].push(l);
+    });
+
+    const validRoots = new Set();
+    Object.entries(classLens).forEach(([r, lens]) => {
+      const minL = Math.min(...lens);
+      const maxL = Math.max(...lens);
+      if (maxL - minL <= 0.03 && (maxL - minL) / Math.max(minL, 0.01) <= 0.015) {
+        validRoots.add(r);
+      }
+    });
+
     const tickCountMap = {};
     equalMembers.forEach((id) => {
       const r = find(id);
-      tickCountMap[id] = (rootOrder.indexOf(r) % 3) + 1;
+      if (validRoots.has(r)) {
+        tickCountMap[id] = (rootOrder.indexOf(r) % 3) + 1;
+      }
     });
 
     const parallelSegSet = new Set();
@@ -797,7 +908,7 @@ export default function MathVizGeometry2D({ data }) {
       tickCountMap,
       parallelSegSet,
     };
-  }, [allSceneLines]);
+  }, [allSceneLines, mode]);
 
   // Angle inspection & active selected line intersections
   const lineIntersectionsAndAngles = useMemo(() => {
@@ -863,7 +974,7 @@ export default function MathVizGeometry2D({ data }) {
   // Geometric Mark Renderers
   const renderRightAngleSquare = (mark, keyId) => {
     const [bx, by] = toPx(mark.at.x, mark.at.y);
-    const s = 11;
+    const s = 11 * decoScale;
     const v1 = normalize({ x: mark.d1.x, y: -mark.d1.y });
     const v2 = normalize({ x: mark.d2.x, y: -mark.d2.y });
 
@@ -890,7 +1001,7 @@ export default function MathVizGeometry2D({ data }) {
     const mid = { x: (p1x + p2x) / 2, y: (p1y + p2y) / 2 };
     const dir = normalize({ x: p2x - p1x, y: p2y - p1y });
     const perp = { x: -dir.y, y: dir.x };
-    const gap = 3.5, len = 6.5;
+    const gap = 3.5 * decoScale, len = 6.5 * decoScale;
     const items = [];
     for (let k = 0; k < count; k++) {
       const off = (k - (count - 1) / 2) * gap;
@@ -965,14 +1076,65 @@ export default function MathVizGeometry2D({ data }) {
 
   const polyToPath = (pts) => pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ') + ' Z';
 
-  const container = { background: '#0d1117', borderRadius: 12, padding: 16, color: '#e2e8f0', margin: '12px 0', border: '1px solid #30363d' };
+  const container = isFullscreen
+    ? {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        zIndex: 999999,
+        background: bgColor,
+        padding: '14px 20px',
+        color: isLightBg ? '#0f172a' : '#e2e8f0',
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+      }
+    : {
+        background: '#0d1117',
+        borderRadius: 12,
+        padding: 16,
+        color: '#e2e8f0',
+        margin: '12px 0',
+        border: '1px solid #30363d',
+      };
   const chipStyle = { background: '#161b22', border: '1px solid #30363d', borderRadius: 8, padding: '8px 12px', marginRight: 8, marginBottom: 8, display: 'inline-block' };
   const labelStyle = { fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em' };
   const valueStyle = { fontSize: 13, fontFamily: 'monospace', color: '#e2e8f0', marginTop: 4 };
 
+  // JSXGraph engine — placed after ALL hooks to satisfy Rules of Hooks
+  if (engine === 'jsxgraph') {
+    return <MathVizJSXGraph data={data} onSwitchToSvg={() => setEngine('svg')} />;
+  }
+
   return (
     <div style={container}>
-      <MathVizTitle icon="📐" title={data?.title} fallback="Hình học phẳng 2D" />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <MathVizTitle icon="📐" title={data?.title} fallback="Hình học phẳng 2D (Simple Display)" />
+        <button
+          onClick={() => setEngine('jsxgraph')}
+          style={{
+            background: 'rgba(56, 189, 248, 0.15)',
+            border: '1px solid rgba(56, 189, 248, 0.4)',
+            color: '#38bdf8',
+            borderRadius: 6,
+            padding: '4px 10px',
+            fontSize: 11,
+            cursor: 'pointer',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+          title="Enable interactive adjusting mode with draggable points"
+        >
+          <Compass size={13} />
+          <span>Adjusting Mode</span>
+        </button>
+      </div>
 
       {/* Mode Selector and Tools Bar */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -1040,6 +1202,31 @@ export default function MathVizGeometry2D({ data }) {
             />
           </div>
 
+          {/* Quick Zoom & Reset Controls */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 3, background: '#161b22', padding: '3px 8px', borderRadius: 20, border: '1px solid #30363d' }}>
+            <button
+              onClick={() => setZoomLevel((z) => Math.min(6.0, Number((z * 1.2).toFixed(2))))}
+              title="Phóng to (Cuộn chuột lên)"
+              style={{ background: 'transparent', border: 'none', color: '#e2e8f0', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center' }}
+            >
+              <ZoomIn size={14} />
+            </button>
+            <button
+              onClick={() => { setZoomLevel(1.0); setPanOffset({ x: 0, y: 0 }); }}
+              title="Đặt lại zoom (100%) và căn giữa"
+              style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: '2px 5px', fontSize: 11, fontWeight: 'bold', fontFamily: 'monospace' }}
+            >
+              {Math.round(zoomLevel * 100)}%
+            </button>
+            <button
+              onClick={() => setZoomLevel((z) => Math.max(0.4, Number((z / 1.2).toFixed(2))))}
+              title="Thu nhỏ (Cuộn chuột xuống)"
+              style={{ background: 'transparent', border: 'none', color: '#e2e8f0', cursor: 'pointer', padding: '3px', display: 'flex', alignItems: 'center' }}
+            >
+              <ZoomOut size={14} />
+            </button>
+          </div>
+
           {/* Connect Mode Toggle */}
           <button
             onClick={() => { setConnectMode((v) => !v); setConnectingFrom(null); }}
@@ -1063,16 +1250,69 @@ export default function MathVizGeometry2D({ data }) {
             <Compass size={13} />
             {connectMode ? '✏️ Nối điểm: BẬT' : '✋ Kéo hình'}
           </button>
+
+          {/* Fullscreen Button */}
+          <button
+            onClick={() => setIsFullscreen((v) => !v)}
+            title={isFullscreen ? 'Thoát toàn màn hình (Phím ESC)' : 'Phóng to toàn màn hình'}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 13px',
+              borderRadius: 20,
+              fontSize: 11.5,
+              fontWeight: 'bold',
+              border: '1px solid',
+              cursor: 'pointer',
+              background: isFullscreen ? '#f59e0b' : 'rgba(59, 130, 246, 0.18)',
+              color: isFullscreen ? '#0f172a' : '#60a5fa',
+              borderColor: isFullscreen ? '#f59e0b' : '#3b82f6',
+              boxShadow: isFullscreen ? '0 0 12px rgba(245, 158, 11, 0.4)' : 'none',
+              transition: 'all 0.2s',
+            }}
+          >
+            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            <span>{isFullscreen ? 'Thu nhỏ (ESC)' : 'Toàn màn hình'}</span>
+          </button>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isFullscreen ? '1fr 340px' : 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: 16,
+        flex: isFullscreen ? 1 : 'unset',
+        minHeight: 0,
+        overflow: isFullscreen ? 'hidden' : 'visible',
+      }}>
         {/* SVG Canvas with Interactive Zoom & Pan */}
-        <div style={{ position: 'relative', background: '#161b22', borderRadius: 10, padding: 8, border: '1px solid #30363d', overflow: 'hidden' }}>
+        <div style={{
+          position: 'relative',
+          background: '#161b22',
+          borderRadius: 10,
+          padding: 8,
+          border: '1px solid #30363d',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: isFullscreen ? '100%' : 'auto',
+          minHeight: 0,
+        }}>
           <svg
             ref={svgRef}
             viewBox={`0 0 ${CANVAS_SIZE} ${CANVAS_SIZE}`}
-            style={{ width: '100%', height: 'auto', background: bgColor, borderRadius: 8, touchAction: 'none', cursor: connectMode ? 'crosshair' : 'grab' }}
+            style={{
+              width: isFullscreen ? 'auto' : '100%',
+              height: isFullscreen ? '100%' : 'auto',
+              maxHeight: isFullscreen ? 'calc(100vh - 120px)' : 'none',
+              maxWidth: '100%',
+              background: bgColor,
+              borderRadius: 8,
+              touchAction: 'none',
+              cursor: connectMode ? 'crosshair' : 'grab',
+            }}
             onWheel={onWheel}
             onPointerDown={onSvgPointerDown}
             onPointerMove={onPointerMove}
@@ -1080,8 +1320,10 @@ export default function MathVizGeometry2D({ data }) {
             onPointerLeave={onPointerUp}
           >
             {gridLines}
-            <line x1="0" y1={dynamicOrigin.y + panOffset.y} x2={CANVAS_SIZE} y2={dynamicOrigin.y + panOffset.y} stroke={axisStroke} strokeWidth="1.2" />
-            <line x1={dynamicOrigin.x + panOffset.x} y1="0" x2={dynamicOrigin.x + panOffset.x} y2={CANVAS_SIZE} stroke={axisStroke} strokeWidth="1.2" />
+            {(() => { const [zeroX, zeroY] = toPx(0, 0); return (<>
+            <line x1="0" y1={zeroY} x2={CANVAS_SIZE} y2={zeroY} stroke={axisStroke} strokeWidth="1.2" />
+            <line x1={zeroX} y1="0" x2={zeroX} y2={CANVAS_SIZE} stroke={axisStroke} strokeWidth="1.2" />
+            </>); })()}
 
             {/* Triangle, Quad, and Regular Polygon Rendering */}
             {(mode === 'Tam giác' || mode === 'Tứ giác' || mode === 'Đa giác đều') && activePoints && (
@@ -1089,7 +1331,7 @@ export default function MathVizGeometry2D({ data }) {
                 {/* Circumcircle (O) */}
                 {showCircumcircle && triGeo && triGeo.circum && mode === 'Tam giác' && (() => {
                   const [ccx, ccy] = toPx(triGeo.circum.x, triGeo.circum.y);
-                  const rr = triGeo.circumradius * dynamicScale;
+                  const rr = toLen(triGeo.circumradius);
                   return (
                     <g>
                       <circle cx={ccx} cy={ccy} r={rr} fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeDasharray="5 4" />
@@ -1102,7 +1344,7 @@ export default function MathVizGeometry2D({ data }) {
                 {/* Incircle (I) */}
                 {showIncenter && triGeo && mode === 'Tam giác' && (() => {
                   const [icx, icy] = toPx(triGeo.incenter.x, triGeo.incenter.y);
-                  const inR = triGeo.inradius * dynamicScale;
+                  const inR = toLen(triGeo.inradius);
                   return (
                     <g>
                       <circle cx={icx} cy={icy} r={inR} fill="none" stroke="#10b981" strokeWidth="1.5" strokeDasharray="4 3" />
@@ -1155,21 +1397,21 @@ export default function MathVizGeometry2D({ data }) {
                   <g stroke="#f59e0b" fill="none" strokeWidth="1.2">
                     {triGeo.exA && (
                       <>
-                        <circle cx={toPx(triGeo.exA.x, triGeo.exA.y)[0]} cy={toPx(triGeo.exA.x, triGeo.exA.y)[1]} r={triGeo.exradiusA * dynamicScale} strokeDasharray="3 3" />
+                        <circle cx={toPx(triGeo.exA.x, triGeo.exA.y)[0]} cy={toPx(triGeo.exA.x, triGeo.exA.y)[1]} r={toLen(triGeo.exradiusA)} strokeDasharray="3 3" />
                         <circle cx={toPx(triGeo.exA.x, triGeo.exA.y)[0]} cy={toPx(triGeo.exA.x, triGeo.exA.y)[1]} r="4" fill="#f59e0b" stroke="#fff" strokeWidth="1" />
                         <text x={toPx(triGeo.exA.x, triGeo.exA.y)[0] + 6} y={toPx(triGeo.exA.x, triGeo.exA.y)[1] - 6} fontSize="10" fill="#f59e0b" stroke="none">Ia</text>
                       </>
                     )}
                     {triGeo.exB && (
                       <>
-                        <circle cx={toPx(triGeo.exB.x, triGeo.exB.y)[0]} cy={toPx(triGeo.exB.x, triGeo.exB.y)[1]} r={triGeo.exradiusB * dynamicScale} strokeDasharray="3 3" />
+                        <circle cx={toPx(triGeo.exB.x, triGeo.exB.y)[0]} cy={toPx(triGeo.exB.x, triGeo.exB.y)[1]} r={toLen(triGeo.exradiusB)} strokeDasharray="3 3" />
                         <circle cx={toPx(triGeo.exB.x, triGeo.exB.y)[0]} cy={toPx(triGeo.exB.x, triGeo.exB.y)[1]} r="4" fill="#f59e0b" stroke="#fff" strokeWidth="1" />
                         <text x={toPx(triGeo.exB.x, triGeo.exB.y)[0] + 6} y={toPx(triGeo.exB.x, triGeo.exB.y)[1] - 6} fontSize="10" fill="#f59e0b" stroke="none">Ib</text>
                       </>
                     )}
                     {triGeo.exC && (
                       <>
-                        <circle cx={toPx(triGeo.exC.x, triGeo.exC.y)[0]} cy={toPx(triGeo.exC.x, triGeo.exC.y)[1]} r={triGeo.exradiusC * dynamicScale} strokeDasharray="3 3" />
+                        <circle cx={toPx(triGeo.exC.x, triGeo.exC.y)[0]} cy={toPx(triGeo.exC.x, triGeo.exC.y)[1]} r={toLen(triGeo.exradiusC)} strokeDasharray="3 3" />
                         <circle cx={toPx(triGeo.exC.x, triGeo.exC.y)[0]} cy={toPx(triGeo.exC.x, triGeo.exC.y)[1]} r="4" fill="#f59e0b" stroke="#fff" strokeWidth="1" />
                         <text x={toPx(triGeo.exC.x, triGeo.exC.y)[0] + 6} y={toPx(triGeo.exC.x, triGeo.exC.y)[1] - 6} fontSize="10" fill="#f59e0b" stroke="none">Ic</text>
                       </>
@@ -1281,7 +1523,7 @@ export default function MathVizGeometry2D({ data }) {
             {/* Circle Mode */}
             {mode === 'Đường tròn' && (() => {
               const [cx, cy] = toPx(circle.center.x, circle.center.y);
-              const rPx = circle.r * dynamicScale;
+              const rPx = toLen(circle.r);
               return (
                 <>
                   <circle cx={cx} cy={cy} r={rPx} fill="#00E5FF" fillOpacity="0.1" stroke="#00E5FF" strokeWidth="2.5" />
@@ -1301,7 +1543,7 @@ export default function MathVizGeometry2D({ data }) {
                   if (layer.kind === 'circle') {
                     const cx = layer.center?.x ?? 0, cy = layer.center?.y ?? 0;
                     const [pcx, pcy] = toPx(cx, cy);
-                    const rPx = (layer.r ?? 3) * dynamicScale;
+                    const rPx = toLen(layer.r ?? 3);
                     return (
                       <g key={`lay_c_${lIdx}`}>
                         <circle
@@ -1492,8 +1734,8 @@ export default function MathVizGeometry2D({ data }) {
             {/* Ellipse Mode */}
             {mode === 'Hình Elip' && (() => {
               const [cx, cy] = toPx(ellipse.center.x, ellipse.center.y);
-              const aPx = elA * dynamicScale;
-              const bPx = elB * dynamicScale;
+              const aPx = toLen(elA);
+              const bPx = toLen(elB);
               const f1 = elA >= elB ? { x: ellipse.center.x - elC, y: ellipse.center.y } : { x: ellipse.center.x, y: ellipse.center.y - elC };
               const f2 = elA >= elB ? { x: ellipse.center.x + elC, y: ellipse.center.y } : { x: ellipse.center.x, y: ellipse.center.y + elC };
               const [f1x, f1y] = toPx(f1.x, f1.y);
@@ -1634,7 +1876,7 @@ export default function MathVizGeometry2D({ data }) {
               const [vx, vy] = toPx(ang.vertex.x, ang.vertex.y);
 
               if (ang.isRight) {
-                const s = 14;
+                const s = 14 * decoScale;
                 const dx1 = ang.uA.x * s;
                 const dy1 = -ang.uA.y * s;
                 const dx2 = ang.uB.x * s;
@@ -1656,7 +1898,7 @@ export default function MathVizGeometry2D({ data }) {
                   </g>
                 );
               } else if (ang.angleDeg > 12 && ang.angleDeg < 168) {
-                const rArc = 28;
+                const rArc = 28 * decoScale;
                 const ax1 = vx + ang.uA.x * rArc;
                 const ay1 = vy - ang.uA.y * rArc;
                 const ax2 = vx + ang.uB.x * rArc;
@@ -1780,11 +2022,37 @@ export default function MathVizGeometry2D({ data }) {
             >
               100%
             </button>
+            <div style={{ width: 1, height: 16, background: isLightBg ? '#cbd5e1' : '#30363d', margin: '0 2px' }} />
+            <button
+              onClick={() => setIsFullscreen((v) => !v)}
+              title={isFullscreen ? 'Thoát toàn màn hình (Phím ESC)' : 'Phóng to toàn màn hình'}
+              style={{
+                background: isFullscreen ? '#f59e0b' : (isLightBg ? '#f1f5f9' : '#21262d'),
+                border: isLightBg ? '1px solid #cbd5e1' : '1px solid #30363d',
+                color: isFullscreen ? '#000' : (isLightBg ? '#0284c7' : '#00e5ff'),
+                borderRadius: 5,
+                padding: '0 8px',
+                height: 28,
+                fontSize: 10.5,
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+              <span>{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
+            </button>
           </div>
         </div>
 
         {/* Readouts & Toggles */}
-        <div>
+        <div style={{
+          height: isFullscreen ? '100%' : 'auto',
+          overflowY: isFullscreen ? 'auto' : 'visible',
+          paddingRight: isFullscreen ? 6 : 0,
+        }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', marginBottom: 12 }}>
             {(mode === 'Tam giác' || mode === 'Tứ giác' || mode === 'Đa giác đều') && (
               <>

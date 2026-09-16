@@ -66,11 +66,10 @@ Output your findings using the following schema:
 # in recognition even though nothing was throwing errors. qwen2.5-vl-72b
 # was NOT pulled from OpenRouter's free tier (re-verified live) — there
 # was no forcing reason to have moved off it.
-DEFAULT_MODEL = "qwen/qwen2.5-vl-72b-instruct:free"
+DEFAULT_MODEL = "inclusionai/ling-3.0-flash-vl:free"
 DEFAULT_FALLBACK_MODELS = [
-    "qwen/qwen2.5-vl-32b-instruct:free",
     "google/gemma-4-31b-it:free",
-    "minimax/minimax-m3:free",  # general-purpose floor, not a quality pick for this task
+    "google/gemma-4-26b-a4b-it:free",
 ]
 
 
@@ -101,10 +100,51 @@ class GeometryVisionAgent:
         self.model = self.models[0]  # kept for backward compatibility (code that reads `.model`)
         self.enabled = os.environ.get("VISION_AGENT_ENABLED", "true").lower() in ("true", "1", "yes")
 
+        # Tier 1: Specialized Fine-Tuned DuoMath Vision Agent on Hugging Face ZeroGPU
+        self.hf_space_id = os.environ.get("VISION_HF_SPACE_ID", "WilliamShakespear/duomath-qwen-vl-demo")
+        self.hf_space_token = os.environ.get("VISION_HF_SPACE_TOKEN", "") or os.environ.get("HF_API_KEY", "")
+        self._hf_client = None
+
     def is_configured(self) -> bool:
-        """Check if OpenRouter API key and feature flag are enabled."""
+        """Check if either Hugging Face Space or OpenRouter API key is enabled."""
+        if not self.enabled:
+            return False
+        if self.hf_space_id and self.hf_space_id.strip():
+            return True
         api_key = self.api_key or os.environ.get("OPENROUTER_API_KEY", "")
-        return bool(api_key and api_key.strip() and self.enabled)
+        return bool(api_key and api_key.strip())
+
+    async def _call_hf_space(self, b64_data: str, user_text: str) -> str:
+        """Call fine-tuned DuoMath Qwen2.5-VL ZeroGPU Space."""
+        import base64
+        import tempfile
+        import asyncio
+        from gradio_client import Client, handle_file
+
+        if self._hf_client is None:
+            self._hf_client = Client(self.hf_space_id, token=self.hf_space_token or None)
+
+        img_bytes = base64.b64decode(b64_data)
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_f:
+            tmp_f.write(img_bytes)
+            tmp_path = tmp_f.name
+
+        try:
+            result = await asyncio.to_thread(
+                self._hf_client.predict,
+                image=handle_file(tmp_path),
+                question=user_text,
+                max_tokens=1024,
+                temperature=0.1,
+                api_name="/solve_geometry"
+            )
+            return str(result)
+        finally:
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
 
     async def _call_openrouter(self, model: str, image_url: str, user_text: str, api_key: str) -> str:
         headers = {
@@ -138,15 +178,9 @@ class GeometryVisionAgent:
     ) -> str:
         """
         Preprocesses the image (aspect-preserving resize+pad), checks the
-        cache, and — on a miss — walks self.models in order until one
-        succeeds. Returns the structured text. Raises only if every model
-        in the list fails (mirrors the original single-model behavior, so
-        extract_with_fallback's except-clause still catches it correctly).
+        cache, attempts our specialized fine-tuned Hugging Face Space first,
+        and — on a miss/failure — walks self.models in order until one succeeds.
         """
-        api_key = self.api_key or os.environ.get("OPENROUTER_API_KEY", "")
-        if not api_key:
-            raise ValueError("OPENROUTER_API_KEY is not configured.")
-
         # Risk 3 — standardize the image before it goes anywhere.
         _with_grid = os.environ.get("VISION_GRID_OVERLAY", "false").lower() in ("true", "1", "yes")
         std_b64, meta = preprocess_image_b64(image_data, with_grid=_with_grid)
@@ -158,11 +192,35 @@ class GeometryVisionAgent:
             logger.info(f"[VisionAgent] Cache hit (distance={cached.get('phash_distance', 0)}) — skipping network call.")
             return cached["vision_text"]
 
-        image_url = f"data:{media_type};base64,{std_b64}"
-        user_text = "Parse all geometric primitives, labels, and spatial relationships from this image."
+        user_text = (
+            "Extract a complete, structured geometric breakdown of this diagram:\n"
+            "1. LABELED POINTS: List every point letter visible and its role.\n"
+            "2. PRIMITIVES: Circles, lines, altitudes, chords, tangents, secants.\n"
+            "3. GIVEN VALUES & TEXT: Extract all explicit numbers, lengths, angles, formulas, or text labeled in the image.\n"
+            "4. RELATIONS: Intersections, tangencies, collinearity, perpendicularities.\n"
+            "Focus purely on faithful diagram extraction."
+        )
         if user_hint:
-            user_text += f" Additional context from user: {user_hint}"
+            user_text += f"\nUser Problem / Context: {user_hint}"
 
+        # Tier 1: Specialized Fine-Tuned DuoMath Qwen2.5-VL LoRA on Hugging Face ZeroGPU Space
+        if self.hf_space_id:
+            try:
+                logger.info(f"[VisionAgent] Sending image to Fine-Tuned DuoMath Space ({self.hf_space_id})...")
+                result = await self._call_hf_space(std_b64, user_text)
+                if result and result.strip():
+                    logger.info("[VisionAgent] Fine-Tuned Space successfully parsed geometry diagram.")
+                    vision_cache.set_cached(meta["sha256"], phash, result.strip(), model_used=f"hf-space:{self.hf_space_id}")
+                    return result.strip()
+            except Exception as e:
+                logger.warning(f"[VisionAgent] Fine-Tuned Space call failed: {e}. Falling back to OpenRouter models.")
+
+        # Tier 2: OpenRouter free models fallback
+        api_key = self.api_key or os.environ.get("OPENROUTER_API_KEY", "")
+        if not api_key:
+            raise ValueError("Both Fine-Tuned Space and OPENROUTER_API_KEY failed or are unconfigured.")
+
+        image_url = f"data:{media_type};base64,{std_b64}"
         last_error: Optional[Exception] = None
         for candidate_model in self.models:
             try:

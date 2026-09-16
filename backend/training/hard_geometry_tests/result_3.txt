@@ -1,0 +1,86 @@
+Given:
+- Triangle \(ABC\) where \(AB = 6\), \(AC = 4\), and \(BC = 5\).
+- Internal angle bisector of \(\angle A\) intersects \(BC\) at point \(D\).
+- External angle bisector of \(A\) intersects extended side \(BC\) at \(E\).
+
+We need to find the length of segments \(CD\) and \(CE\).
+
+
+1. **Calculate the length of AD using Stewart's theorem**:
+
+   According to Stewart's theorem for triangle \(ABC\) with cevian \(AD\):
+   
+   \[
+   b^2m + c^2n - amc = d(b^2 + cn)
+   \]
+   
+   Here,
+   - \(a = BC = 5\),
+   - \(b = CA = 4\),
+   - \[c = AB = 6,\]
+   - \(d = AD\),
+   - Let \(BD = m\) and \(DC = n\). Since \(B\) divides into two parts in ratio as per given lengths:
+     \[
+     BD : DC = AB : AC = 3 : 2 
+     \]
+
+    Therefore, we have:
+    
+    \[
+    m = \frac{3}{5} \times 5 = 3; \quad n = \frac{2}{5} \cdot 5 = 2
+    \]
+
+2. **Apply Stewart’s formula**: 
+
+   Substituting values from above equation,
+
+   \[
+   4^2(3) + 6^2(2) - 5 \cdot 6 \cdot 2 = d(4^2 + 6 \cdot {2})
+   \]
+
+   Simplifying further,
+
+   \[
+      96 + 72 - 60 = d(16+12)
+   \]
+
+   Thus
+
+   \[
+       108 = d \cdot 28
+   \]
+
+   Solving for \(d\):
+
+   \[
+        d = \frac{108}{28}
+   \]
+
+   Hence,
+
+   \[
+        AD = \frac{54}{14} = \frac{4}{7}\sqrt{13}.
+   \]
+
+
+3. **Lengths of \(CD\) and EC**:
+
+   Using the Angle Bisector Length Formula:
+
+   For internal angle bisector \(AD\),
+
+   \[
+   AE = \frac{\left| AB^{2}-AC^{2} \right| }{AB+AC}= \frac{|6^{2}-4^{2}|}{6+4}=\frac{20}{10}=2
+   \]
+
+For external angle bisector \(AE\)
+
+Using the property that the external angle bisector extends beyond vertex \(C\):
+
+\[EC = AE + AC = 2 + 4 = 6.\]
+
+Thus, the lengths required are:
+
+\[
+CD = 2 \text{ units}, \quad CE = 6 \text{ units}.
+\]

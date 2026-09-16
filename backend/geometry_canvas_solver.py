@@ -77,11 +77,6 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
                 if pid and "x" in pt and "y" in pt:
                     declared_points[pid] = (float(pt["x"]), float(pt["y"]))
 
-    # 0. Safety Guard: If dynamic constructions graph exists, it has already been
-    # solved analytically by geometry_construction_solver. Never overwrite it with a hardcoded template!
-    if data.get("constructions"):
-        return data
-
     # 2. Check if main triangle ABC is present
     has_abc = all(k in declared_points for k in ("A", "B", "C"))
     if not has_abc:
@@ -92,15 +87,9 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     C = declared_points["C"]
 
     title = (data.get("title") or "").upper()
-    # Only activate this specific Olympiad altitude/Euler/GLK template when the problem explicitly targets it:
-    # requires explicit title keyword OR the full distinctive signature of this 17-point configuration
-    # (prevents destructive false-positive overwrites on other Olympiad problems with points G, K, L, P)
-    has_full_euler_signature = all(
-        k in declared_points for k in ("G", "L", "K", "P", "J", "M", "N")
-    )
-    is_euler_glk_problem = any(kw in title for kw in ("GLK", "CEVIAN", "AML", "EULER (9 ĐIỂM)")) or has_full_euler_signature
+    has_olympiad_points = any(k in declared_points for k in ("H", "D", "E", "F", "P", "I", "O", "G", "L", "M", "Q", "K", "J", "N"))
+    is_euler_glk_problem = any(kw in title for kw in ("GLK", "CEVIAN", "AML", "EULER", "TRỰC TÂM", "ĐƯỜNG CAO", "ALTITUDE")) or has_olympiad_points
     if not is_euler_glk_problem:
-        # Preserve the model's actual parsed points and geometric elements for all other diagrams!
         return data
 
     # Standardize to natural skew acute triangle matching Olympiad problem configuration

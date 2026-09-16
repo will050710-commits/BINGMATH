@@ -13,16 +13,36 @@ const MathVizRenderer = dynamic(() => import("./mathviz/MathVizRenderer"), { ssr
 function extractMathvizBlock(content) {
   if (!content) return { text: "", vizData: null };
   const match = content.match(/```mathviz\s*\n?([\s\S]*?)```/);
-  if (!match) return { text: content, vizData: null };
-  const text = (content.substring(0, match.index) + content.substring(match.index + match[0].length)).trim();
-  try {
-    const vizData = JSON.parse(match[1].trim());
-    if (vizData && vizData.type === "mathviz.v1") {
-      return { text, vizData };
+  if (match) {
+    const text = (content.substring(0, match.index) + content.substring(match.index + match[0].length)).trim();
+    try {
+      const vizData = JSON.parse(match[1].trim());
+      if (vizData && vizData.type === "mathviz.v1") {
+        return { text, vizData };
+      }
+    } catch (err) {
+      console.warn("[MathViz] Failed to parse mathviz JSON:", err);
     }
-  } catch (err) {
-    console.warn("[MathViz] Failed to parse mathviz JSON:", err);
   }
+
+  // Robust fallback: if ```mathviz exists but closing ``` was truncated or omitted
+  const startIdx = content.indexOf("```mathviz");
+  if (startIdx !== -1) {
+    const text = content.substring(0, startIdx).trim();
+    let rawJson = content.substring(startIdx + "```mathviz".length).trim();
+    rawJson = rawJson.replace(/```+$/, "").trim();
+    try {
+      const vizData = JSON.parse(rawJson);
+      if (vizData && vizData.type === "mathviz.v1") {
+        return { text, vizData };
+      }
+    } catch {
+      // Incomplete/cut-off JSON: return clean text without leaking raw code block
+      return { text, vizData: null };
+    }
+    return { text, vizData: null };
+  }
+
   return { text: content, vizData: null };
 }
 
