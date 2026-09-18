@@ -2863,6 +2863,12 @@ async def chat(request: Request):
         f"Only solve the exact problem and numbers specified in the User Request.\n\n"
         f"{retrieved_kb}"
     )
+    try:
+        from typesafe_guard import typesafe_guard
+        full_system_prompt += typesafe_guard.get_system_guard_prompt_contract(mode=chat_mode, widget=_widget)
+    except Exception as _e_ts:
+        logger.debug(f"TypeSafe prompt contract skipped: {_e_ts}")
+
 
     # Map conversation history to Gemini structure (keep last 12 for long proofs)
     gemini_contents = []
@@ -3088,10 +3094,9 @@ async def chat(request: Request):
         fallback_models = [
             gemini_model,
             "gemini-3.5-flash",
+            "gemini-3.6-flash",
             "gemini-3-flash-preview",
-            "gemini-flash-lite-latest",
-            "gemini-3.5-flash-lite",
-            "gemini-3.1-flash-lite",
+            "gemini-2.0-flash",
         ]
         seen_models = set()
         fallback_models = [m for m in fallback_models if m and not (m in seen_models or seen_models.add(m))]
@@ -3116,6 +3121,7 @@ async def chat(request: Request):
             except Exception as ex_hf:
                 print(f"[WARN] {llm_provider} call failed: {ex_hf}. Falling back to Gemini.")
 
+        # ── Tier 1: Gemini Core Brain ─────────────────────────────────────────
         for current_model in fallback_models:
             if reply:
                 break
@@ -3123,6 +3129,8 @@ async def chat(request: Request):
             for attempt in range(3):
                 try:
                     curr_payload = json.loads(json.dumps(payload))
+                    should_break_model = False
+                    should_continue_attempt = False
                     # Tool calling multi-turn execution loop (up to 4 iterations)
                     for tool_step in range(4):
                         resp = await client.post(url, json=curr_payload, timeout=60)
@@ -3130,12 +3138,24 @@ async def chat(request: Request):
                             print(f"[WARN] {current_model} returned 400 during tool call — retrying without tools")
                             curr_payload.pop("tools", None)
                             resp = await client.post(url, json=curr_payload, timeout=60)
-                        if resp.status_code in (429, 503):
+                        if resp.status_code in (401, 403, 429, 503):
                             print(f"[WARN] {current_model} returned {resp.status_code} (attempt {attempt+1}/3)")
+                            if resp.status_code in (401, 403):
+                                # Bad key or forbidden, abort this model immediately
+                                should_break_model = True
+                                break
                             if attempt < 2:
-                                await asyncio.sleep(2 * (attempt + 1))
+                                await asyncio.sleep(1.5 * (attempt + 1))
+                                should_continue_attempt = True
+                                break
+                            should_break_model = True
                             break
                         resp.raise_for_status()
+                        
+                    if should_break_model:
+                        break
+                    if should_continue_attempt:
+                        continue
                         res_data = resp.json()
                         candidate = res_data.get("candidates", [{}])[0]
                         candidate_content = candidate.get("content", {})
@@ -3192,40 +3212,83 @@ async def chat(request: Request):
             if reply:
                 break
 
-        if not reply:
-            # Fallback to OpenRouter LLM if Gemini is unavailable or returns 503
-            if _vision_agent.is_configured():
+        # ── Tier 2 Fallback: Groq Ultra-Fast SOTA Models ──────────────────────
+        if not reply and GROQ_KEY:
+            groq_candidates = [
+                m.strip()
+                for m in os.environ.get(
+                    "GROQ_CHAT_MODELS", "qwen/qwen3.8-27b,openai/gpt-oss-120b,openai/gpt-oss-20b"
+                ).split(",")
+                if m.strip()
+            ]
+            for groq_m in groq_candidates:
                 try:
-                    print("[Chat] Gemini unavailable/503. Calling OpenRouter LLM for intelligent canvas response...")
-                    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
-                    openrouter_model = os.environ.get("OPENROUTER_VISION_MODEL", "minimax/minimax-m3:free")
-                    or_headers = {
-                        "Authorization": f"Bearer {openrouter_key}",
-                        "HTTP-Referer": "https://duomath.local",
-                        "X-Title": "DuoMath AI",
-                        "Content-Type": "application/json"
+                    print(f"[Chat] Attempting Tier 2 Fallback: Groq ({groq_m})...")
+                    groq_payload = {
+                        "model": groq_m,
+                        "messages": openai_messages,
+                        "temperature": 0.3,
+                        "max_tokens": max_tokens,
+                        "stream": False
                     }
-                    or_messages = [
-                        {"role": "system", "content": full_system_prompt}
-                    ]
-                    for gc in gemini_contents[-8:]:
-                        role = "assistant" if gc.get("role") == "model" else "user"
-                        t_parts = [p.get("text", "") for p in gc.get("parts", []) if "text" in p]
-                        if t_parts:
-                            or_messages.append({"role": role, "content": " ".join(t_parts)})
+                    groq_resp = await client.post(
+                        f"{GROQ_BASE}/chat/completions",
+                        headers=groq_headers(),
+                        json=groq_payload,
+                        timeout=30
+                    )
+                    if groq_resp.status_code == 200:
+                        reply = groq_resp.json()["choices"][0]["message"]["content"]
+                        print(f"[Chat] Successfully generated reply via Groq fallback ({groq_m})!")
+                        break
+                    else:
+                        print(f"[WARN] Groq model {groq_m} returned {groq_resp.status_code}: {groq_resp.text[:100]}")
+                except Exception as ex_groq:
+                    print(f"[WARN] Groq fallback failed with {groq_m}: {ex_groq}")
 
-                    or_payload = {
-                        "model": openrouter_model,
-                        "messages": or_messages,
-                        "temperature": 0.2
-                    }
-                    or_resp = await client.post("https://openrouter.ai/api/v1/chat/completions", headers=or_headers, json=or_payload, timeout=60)
-                    if or_resp.status_code == 200:
-                        reply = or_resp.json()["choices"][0]["message"]["content"]
-                        print("[Chat] Successfully generated reply via OpenRouter fallback!")
-                except Exception as ex_or:
-                    print(f"[Chat] OpenRouter fallback failed: {ex_or}")
+        # ── Tier 3 Fallback: OpenRouter High-Quality Free Models ───────────────
+        if not reply:
+            openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
+            if openrouter_key:
+                or_candidates = [
+                    m.strip()
+                    for m in os.environ.get(
+                        "OPENROUTER_CHAT_MODELS",
+                        "qwen/qwen3.8-27b:free,deepseek/deepseek-v4-flash-0731:free,nvidia/nemotron-3.5-lightning:free"
+                    ).split(",")
+                    if m.strip()
+                ]
+                or_headers = {
+                    "Authorization": f"Bearer {openrouter_key}",
+                    "HTTP-Referer": "https://duomath.local",
+                    "X-Title": "DuoMath AI",
+                    "Content-Type": "application/json"
+                }
+                for or_m in or_candidates:
+                    try:
+                        print(f"[Chat] Attempting Tier 3 Fallback: OpenRouter ({or_m})...")
+                        or_payload = {
+                            "model": or_m,
+                            "messages": openai_messages,
+                            "temperature": 0.2,
+                            "max_tokens": max_tokens
+                        }
+                        or_resp = await client.post(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            headers=or_headers,
+                            json=or_payload,
+                            timeout=45
+                        )
+                        if or_resp.status_code == 200:
+                            reply = or_resp.json()["choices"][0]["message"]["content"]
+                            print(f"[Chat] Successfully generated reply via OpenRouter fallback ({or_m})!")
+                            break
+                        else:
+                            print(f"[WARN] OpenRouter {or_m} returned {or_resp.status_code}: {or_resp.text[:100]}")
+                    except Exception as ex_or:
+                        print(f"[WARN] OpenRouter fallback failed with {or_m}: {ex_or}")
 
+        # ── Tier 4 Fallback: Local MathGPT Deterministic Engine ────────────────
         if not reply:
             print("[INFO] Using local MathGPT Engine for instant, reliable response")
             reply = generate_mock_mathgpt_reply(user_message, _widget, chat_mode)
@@ -3314,10 +3377,11 @@ async def chat(request: Request):
                     # 3. Dedicated Olympiad template solver (if matching)
                     _viz_block = auto_align_geometry_mathviz(_viz_block)
 
-                    # 4. General angle & collinearity snapping
-                    _snapped = snap_geometry_2d(_viz_block)
-                    if verify_snap_safe(_viz_block, _snapped):
-                        _viz_block = _snapped
+                    # 4. General angle & collinearity snapping (skipped if exact Olympiad template already aligned)
+                    if not _viz_block.get("_olympiad_aligned"):
+                        _snapped = snap_geometry_2d(_viz_block)
+                        if verify_snap_safe(_viz_block, _snapped):
+                            _viz_block = _snapped
 
                     # 5. Pre-render QA verification gate (Section 5 of D:\duomath-geometry-rendering-plan.md)
                     try:
@@ -3357,9 +3421,99 @@ async def chat(request: Request):
         elif "```mathviz" in reply:
             reply = reply.split("```mathviz")[0].rstrip()
 
+        # ── TypeSafe AI / JevStyle Hallucination Reduction Guard & Auto-healing ──
+        typesafe_info = {}
+        try:
+            from typesafe_guard import typesafe_guard
+            guard_result = await typesafe_guard.guard_chat_response(
+                reply, user_message=user_message, mode=chat_mode, widget=_widget
+            )
+            reply = guard_result.sanitized_response
+            typesafe_info = {
+                "is_safe": guard_result.is_safe,
+                "hallucination_score": guard_result.hallucination_score,
+                "domain": guard_result.domain,
+                "reflexes_triggered": guard_result.reflexes_triggered,
+                "verified_steps_count": len(guard_result.verified_steps),
+                "active_key": guard_result.active_key_masked,
+                "middleware_model": guard_result.middleware_model,
+                "systemone_eval": guard_result.systemone_eval,
+            }
+            if guard_result.reflexes_triggered:
+                logger.info(f"[TypeSafeGuard] Reflexes triggered: {guard_result.reflexes_triggered} (score={guard_result.hallucination_score})")
+        except Exception as _e_guard:
+            logger.warning(f"[TypeSafeGuard] Post-guard error: {_e_guard}")
+
         history.append({"role": "assistant", "content": reply})
         save_history(session_id, history)
-        return JSONResponse({"reply": reply, "session_id": session_id, "history_length": len(history)})
+        return JSONResponse({
+            "reply": reply,
+            "session_id": session_id,
+            "history_length": len(history),
+            "typesafe": typesafe_info
+        })
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TYPESAFE AI / JEV-STYLE MANAGEMENT & KEY ROTATION ENDPOINTS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.get("/api/typesafe/status")
+async def get_typesafe_status():
+    """Returns TypeSafe AI status, active key, and rotation pool statistics."""
+    try:
+        from typesafe_guard import key_manager, typesafe_guard
+        status = key_manager.get_status()
+        status["enabled"] = typesafe_guard.enabled
+        return JSONResponse(status)
+    except Exception as e:
+        raise HTTPException(500, f"Failed to get TypeSafe status: {e}")
+
+
+@app.post("/api/typesafe/rotate")
+async def rotate_typesafe_key(request: Request):
+    """Manually triggers rotation of TypeSafe AI API key to the secondary key."""
+    try:
+        from typesafe_guard import key_manager
+        body = {}
+        if request.headers.get("content-type") == "application/json":
+            try:
+                body = await request.json()
+            except Exception:
+                body = {}
+        reason = (body.get("reason") if isinstance(body, dict) else "Manual trigger") or "Manual user request"
+        new_key = await key_manager.rotate_key(reason=reason)
+        return JSONResponse({
+            "success": True,
+            "active_key_masked": key_manager.get_masked_key(new_key),
+            "status": key_manager.get_status()
+        })
+    except Exception as e:
+        raise HTTPException(500, f"Key rotation failed: {e}")
+
+
+@app.post("/api/typesafe/validate")
+async def validate_typesafe_text(request: Request):
+    """Validates arbitrary text or math solution with JevStyle contracts & reflexes."""
+    try:
+        d = await request.json()
+        text = d.get("text", "")
+        context = d.get("context", "")
+        mode = d.get("mode", "hint")
+        from typesafe_guard import typesafe_guard
+        res = await typesafe_guard.guard_chat_response(text, user_message=context, mode=mode)
+        return JSONResponse({
+            "is_safe": res.is_safe,
+            "hallucination_score": res.hallucination_score,
+            "domain": res.domain,
+            "verified_steps": [s.model_dump() for s in res.verified_steps],
+            "reflexes_triggered": res.reflexes_triggered,
+            "sanitized_response": res.sanitized_response,
+            "active_key_masked": res.active_key_masked
+        })
+    except Exception as e:
+        raise HTTPException(500, f"Validation failed: {e}")
+
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

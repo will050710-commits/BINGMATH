@@ -444,6 +444,8 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
             const polyPts = layer.points.map((p) => jxgPts[p.id || p.name]).filter(Boolean);
             if (polyPts.length >= 3) {
               board.create('polygon', polyPts, {
+                hasPoint: false,
+                vertices: { visible: false, withLabel: false },
                 borders: {
                   strokeColor: layer.color || '#38bdf8',
                   strokeWidth: layer.strokeWidth || 2,
@@ -480,18 +482,23 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
                 straightLast: true,
                 strokeColor: layer.color || '#60a5fa',
                 strokeWidth: layer.strokeWidth || 1.5,
-                dash: layer.style === 'dashed' ? 3 : 0,
+                dash: layer.style === 'dashed' ? 3 : (layer.style === 'dotted' ? 1 : 0),
               });
             }
           } else if (layer.kind === 'circle') {
+            const dashStyle = layer.style === 'dashed' ? 2 : (layer.style === 'dotted' ? 1 : 0);
             if (layer.through_3pts && layer.through_3pts.length === 3) {
               const [p1, p2, p3] = layer.through_3pts.map((id) => jxgPts[id]).filter(Boolean);
               if (p1 && p2 && p3) {
                 board.create('circumcircle', [p1, p2, p3], {
                   strokeColor: layer.color || '#3b82f6',
                   strokeWidth: layer.strokeWidth || 1.8,
+                  dash: dashStyle,
                   fillColor: layer.color || '#3b82f6',
                   fillOpacity: typeof layer.fillOpacity === 'number' ? layer.fillOpacity : 0.05,
+                  name: layer.label || '',
+                  withLabel: Boolean(layer.label),
+                  label: { offset: [8, -8], fontSize: 11, color: layer.color || '#3b82f6' },
                 });
               }
             } else if (layer.center && layer.through && jxgPts[layer.through?.id || layer.through?.name]) {
@@ -501,8 +508,12 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
               board.create('circle', [centerPt, throughPt], {
                 strokeColor: layer.color || '#3b82f6',
                 strokeWidth: layer.strokeWidth || 1.8,
+                dash: dashStyle,
                 fillColor: layer.color || '#3b82f6',
                 fillOpacity: typeof layer.fillOpacity === 'number' ? layer.fillOpacity : 0.05,
+                name: layer.label || '',
+                withLabel: Boolean(layer.label),
+                label: { offset: [8, -8], fontSize: 11, color: layer.color || '#3b82f6' },
               });
             } else {
               const cId = layer.center?.id || layer.center?.name;
@@ -511,8 +522,12 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
               board.create('circle', [centerPt, r], {
                 strokeColor: layer.color || '#3b82f6',
                 strokeWidth: layer.strokeWidth || 1.8,
+                dash: dashStyle,
                 fillColor: layer.color || '#3b82f6',
                 fillOpacity: typeof layer.fillOpacity === 'number' ? layer.fillOpacity : 0.05,
+                name: layer.label || '',
+                withLabel: Boolean(layer.label),
+                label: { offset: [8, -8], fontSize: 11, color: layer.color || '#3b82f6' },
               });
             }
           } else if (layer.kind === 'arc') {
@@ -558,11 +573,14 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
       }
     }
 
-    // If single mode triangle/polygon
-    if (data?.mode === 'triangle' && Array.isArray(data?.points) && data.points.length === 3) {
+    // If single mode triangle/polygon (skip if polygon layer already rendered)
+    const hasPolygonLayer = Array.isArray(data?.layers) && data.layers.some((l) => l.kind === 'polygon' || l.kind === 'triangle');
+    if (!hasPolygonLayer && data?.mode === 'triangle' && Array.isArray(data?.points) && data.points.length === 3) {
       const triPts = data.points.map((p) => jxgPts[p.id]).filter(Boolean);
       if (triPts.length === 3) {
         board.create('polygon', triPts, {
+          hasPoint: false,
+          vertices: { visible: false, withLabel: false },
           borders: { strokeColor: '#38bdf8', strokeWidth: 2 },
           fillColor: '#38bdf8',
           fillOpacity: 0.1,

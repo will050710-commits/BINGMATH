@@ -85,3 +85,30 @@ export async function generateVideo(instructions) {
     return { error: true, message: "Network error" };
   }
 }
+
+export async function getTypeSafeStatus() {
+  try {
+    const res = await fetch(`${API}/api/typesafe/status`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error("[duoServer] getTypeSafeStatus failed:", err);
+    return null;
+  }
+}
+
+export async function rotateTypeSafeKey(reason = "User requested rotation") {
+  try {
+    const res = await fetch(`${API}/api/typesafe/rotate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason }),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error("[duoServer] rotateTypeSafeKey failed:", err);
+    return { success: false, error: err.message };
+  }
+}
+

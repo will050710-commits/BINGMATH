@@ -68,6 +68,7 @@ Output your findings using the following schema:
 # was no forcing reason to have moved off it.
 DEFAULT_MODEL = "inclusionai/ling-3.0-flash-vl:free"
 DEFAULT_FALLBACK_MODELS = [
+    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "google/gemma-4-31b-it:free",
     "google/gemma-4-26b-a4b-it:free",
 ]
@@ -162,13 +163,15 @@ class GeometryVisionAgent:
                     {"type": "image_url", "image_url": {"url": image_url}}
                 ]}
             ],
-            "temperature": 0.1
+            "temperature": 0.1,
+            "max_tokens": 1500
         }
         async with httpx.AsyncClient(timeout=90.0) as client:
             resp = await client.post(self.OPENROUTER_URL, headers=headers, json=payload)
             resp.raise_for_status()
             data = resp.json()
-            return data["choices"][0]["message"]["content"]
+            msg = data["choices"][0]["message"]
+            return msg.get("content") or msg.get("reasoning") or ""
 
     async def extract_geometry_primitives(
         self,

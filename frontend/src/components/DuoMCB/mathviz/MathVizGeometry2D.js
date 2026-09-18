@@ -1553,7 +1553,7 @@ export default function MathVizGeometry2D({ data }) {
                           fill={layer.fill || 'rgba(59, 130, 246, 0.06)'}
                           stroke={layer.color || '#3b82f6'}
                           strokeWidth={layer.strokeWidth || 2}
-                          strokeDasharray={layer.style === 'dashed' ? '5 4' : undefined}
+                          strokeDasharray={layer.style === 'dashed' ? '5 4' : layer.style === 'dotted' ? '2 3' : undefined}
                         />
                         {layer.label && (
                           <g>
@@ -1651,7 +1651,7 @@ export default function MathVizGeometry2D({ data }) {
                           y2={y2}
                           stroke={strokeColor}
                           strokeWidth={layer.strokeWidth || 1.8}
-                          strokeDasharray={layer.style === 'dashed' ? '4 3' : undefined}
+                          strokeDasharray={layer.style === 'dashed' ? '4 3' : layer.style === 'dotted' ? '2 3' : undefined}
                         />
                         {layer.label && (
                           <g>
@@ -1806,7 +1806,7 @@ export default function MathVizGeometry2D({ data }) {
                     y2={y2}
                     stroke={isSelected ? '#00E5FF' : ul.color || '#38bdf8'}
                     strokeWidth={isSelected ? 3.2 : 2.4}
-                    strokeDasharray={ul.style === 'dashed' ? '5 4' : undefined}
+                    strokeDasharray={ul.style === 'dashed' ? '5 4' : ul.style === 'dotted' ? '2 3' : undefined}
                   />
                   <circle cx={(x1 + x2) / 2} cy={(y1 + y2) / 2} r="3.5" fill={isSelected ? '#00E5FF' : '#38bdf8'} />
                   {ul.label && (

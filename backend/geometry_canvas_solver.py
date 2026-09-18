@@ -87,9 +87,16 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     C = declared_points["C"]
 
     title = (data.get("title") or "").upper()
-    has_olympiad_points = any(k in declared_points for k in ("H", "D", "E", "F", "P", "I", "O", "G", "L", "M", "Q", "K", "J", "N"))
-    is_euler_glk_problem = any(kw in title for kw in ("GLK", "CEVIAN", "AML", "EULER", "TRỰC TÂM", "ĐƯỜNG CAO", "ALTITUDE")) or has_olympiad_points
-    if not is_euler_glk_problem:
+    
+    # 1. Exact title keywords matching the Euler/GLK/Cevian Olympiad problem
+    is_exact_euler_title = any(kw in title for kw in ("GLK", "CEVIAN", "AML", "EULER", "9 ĐIỂM"))
+    
+    # 2. Or cluster of points specifically belonging to this Olympiad configuration:
+    # Requires the full altitude/orthocenter cluster (H, D, E, F)
+    has_euler_altitudes = all(k in declared_points for k in ("H", "D", "E", "F"))
+    has_full_euler_cluster = has_euler_altitudes
+
+    if not (is_exact_euler_title or has_full_euler_cluster):
         return data
 
     # Standardize to natural skew acute triangle matching Olympiad problem configuration
@@ -107,7 +114,8 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     r_AEF = round(dist(I, A), 3)
 
     # P: On line AB extended past B (A, F, B, P collinear)
-    P = (round(B[0] + 0.25 * (B[0] - A[0]), 3), round(B[1] + 0.25 * (B[1] - A[1]), 3))
+    k_P = 0.14
+    P = (round(B[0] + k_P * (B[0] - A[0]), 3), round(B[1] + k_P * (B[1] - A[1]), 3))
 
     # Q: Intersection of horizontal line through F with AC (line FQ parallel to BC)
     Q = line_intersection(F, (F[0] + 1.0, F[1]), A, C) or (1.85, F[1])
@@ -115,22 +123,35 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     # K: Point on BC between D and C
     K = (0.60, B[1])
 
-    # G: Point on circle (AEF) in upper right
-    y_G = 2.90
-    x_G_offset = math.sqrt(max(0.0, r_AEF**2 - (y_G - I[1])**2))
-    G = (round(I[0] + x_G_offset, 3), y_G)
+    # G: Point on circle (AEF) in upper right (aligned with K to form vertical line GLK)
+    x_G = 0.60
+    y_G_offset = math.sqrt(max(0.0, r_AEF**2 - (x_G - I[0])**2))
+    G = (x_G, round(I[1] + y_G_offset, 3))
 
-    # L: Intersection of line GK with horizontal line FQ
-    L = line_intersection(G, K, F, Q) or (0.62, F[1])
+    # L: Intersection of vertical line GK with horizontal line FQ
+    L = line_intersection(G, K, F, Q) or (0.60, F[1])
 
-    # M: Intersection of line AL with segment FE
-    M = line_intersection(A, L, F, E) or (0.33, 0.55)
+    # M: Intersection of Cevian AK with segment FE
+    M = line_intersection(A, K, F, E) or (0.008, 0.443)
 
     # J: Intersection of altitude AD with FE
-    J = line_intersection(A, D, F, E) or (-0.80, 0.19)
+    J = line_intersection(A, D, F, E) or (-0.80, 0.182)
 
-    # N: Point on AC between Q and C
-    N = (round(Q[0] + 0.45 * (C[0] - Q[0]), 3), round(Q[1] + 0.45 * (C[1] - Q[1]), 3))
+    # N: Intersection of line PD with line AC (ensuring P, D, N are strictly collinear)
+    N = line_intersection(P, D, A, C) or (round(Q[0] + 0.45 * (C[0] - Q[0]), 3), round(Q[1] + 0.45 * (C[1] - Q[1]), 3))
+
+    # T: Optional intersection of tangents (kept for backwards compatibility)
+    a1, b1 = (A[0] - I[0]), (A[1] - I[1])
+    c1 = a1 * A[0] + b1 * A[1]
+    a2, b2 = (M[0] - I[0]), (M[1] - I[1])
+    c2 = a2 * M[0] + b2 * M[1]
+    det = a1 * b2 - a2 * b1
+    if abs(det) > 1e-6:
+        x_T = (c1 * b2 - c2 * b1) / det
+        y_T = (a1 * c2 - a2 * c1) / det
+        T = (round(x_T, 3), round(y_T, 3))
+    else:
+        T = (-0.3, 4.4)
 
     # Euler 9-point circle (center midpoint of OH, radius R/2)
     Euler_center = (round((O[0] + H[0]) / 2.0, 3), round((O[1] + H[1]) / 2.0, 3))
@@ -139,7 +160,7 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     aligned_points: Dict[str, Point2D] = {
         "A": A, "B": B, "C": C, "D": D, "E": E, "F": F,
         "H": H, "I": I, "O": O, "P": P, "G": G, "Q": Q,
-        "K": K, "L": L, "M": M, "J": J, "N": N
+        "K": K, "L": L, "M": M, "J": J, "N": N, "T": T
     }
 
     # 4. Synchronize all layers with the exact coordinates
@@ -148,19 +169,23 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
         if lay.get("kind") == "circle":
             lbl = (lay.get("label") or "").upper()
             if "AEF" in lbl or "(I)" in lbl or "AH" in lbl or "I" == lbl:
-                lay["center"] = {"x": I[0], "y": I[1]}
+                lay["center"] = {"id": "I", "x": I[0], "y": I[1]}
                 lay["r"] = r_AEF
                 lay["color"] = lay.get("color") or "#ec4899"
                 lay["style"] = "solid"
+                lay["through_3pts"] = ["A", "E", "F"]
             elif "EULER" in lbl or "9 ĐIỂM" in lbl or "NINE" in lbl:
-                lay["center"] = {"x": Euler_center[0], "y": Euler_center[1]}
+                lay["center"] = {"id": "Euler", "x": Euler_center[0], "y": Euler_center[1]}
                 lay["r"] = r_Euler
                 lay["color"] = lay.get("color") or "#10b981"
                 lay["style"] = "dashed"
+                lay["through_3pts"] = ["D", "E", "F"]
             elif "(O)" in lbl or lbl == "O" or "NGOẠI TIẾP" in lbl or "CIRCUMCIRCLE" in lbl:
-                lay["center"] = {"x": O[0], "y": O[1]}
+                lay["center"] = {"id": "O", "x": O[0], "y": O[1]}
                 lay["r"] = R_circum
-                lay["color"] = lay.get("color") or "#3b82f6"
+                lay["color"] = lay.get("color") or "#38bdf8"
+                lay["style"] = "dotted"
+                lay["through_3pts"] = ["A", "B", "C"]
 
         # Polygons
         elif lay.get("kind") in ("polygon", "triangle") and "points" in lay:
@@ -183,7 +208,7 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
             for pid, (px, py) in aligned_points.items():
                 if pid not in present_ids:
                     color = "#f0f6fc"
-                    if pid in ("D", "E", "F", "K", "G"): color = "#FFD400"
+                    if pid in ("D", "E", "F", "K", "G", "T"): color = "#FFD400"
                     elif pid in ("H",): color = "#f43f5e"
                     elif pid in ("I",): color = "#ec4899"
                     elif pid in ("O",): color = "#3b82f6"
@@ -243,12 +268,13 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
         ("A", "D", "#f43f5e", "Đường cao AD", "solid"),
         ("B", "E", "#f43f5e", "Đường cao BE", "solid"),
         ("C", "F", "#f43f5e", "Đường cao CF", "solid"),
-        ("B", "P", "#ffffff", "Kéo dài cạnh AB (BP)", "solid"),
+        ("B", "P", "#94a3b8", "Kéo dài cạnh AB (BP)", "solid"),
         ("P", "D", "#a855f7", "Đoạn thẳng PD", "solid"),
+        ("P", "E", "#a855f7", "Đoạn thẳng PE", "solid"),
         ("F", "Q", "#00E5FF", "Đường thẳng qua F song song BC (FQ)", "solid"),
         ("F", "E", "#39FF14", "Đoạn FE", "solid"),
         ("G", "K", "#FFD400", "Đường thẳng GLK", "solid"),
-        ("A", "L", "#ec4899", "Cevian AML", "dashed"),
+        ("A", "K", "#ec4899", "Cevian AK", "solid"),
         ("D", "N", "#64748b", "Đoạn DN", "dashed"),
     ]
 
@@ -278,11 +304,12 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     if not has_euler:
         other_layers.insert(2, {
             "kind": "circle",
-            "center": {"x": Euler_center[0], "y": Euler_center[1]},
+            "center": {"id": "Euler", "x": Euler_center[0], "y": Euler_center[1]},
             "r": r_Euler,
             "color": "#10b981",
             "label": "Đường tròn Euler (9 điểm)",
-            "style": "dashed"
+            "style": "dashed",
+            "through_3pts": ["D", "E", "F"]
         })
 
     if points_layer:
@@ -290,4 +317,17 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         data["layers"] = other_layers
 
+    # Provide dynamic synthetic constructions so JSXGraph Adjusting Mode is fully reactive
+    data["constructions"] = [
+        {"point": "D", "type": "foot", "of": ["A", "B", "C"], "show_line": False, "color": "#FFD400"},
+        {"point": "E", "type": "foot", "of": ["B", "A", "C"], "show_line": False, "color": "#FFD400"},
+        {"point": "F", "type": "foot", "of": ["C", "A", "B"], "show_line": False, "color": "#FFD400"},
+        {"point": "H", "type": "orthocenter", "of": ["A", "B", "C"], "show_lines": False, "color": "#f43f5e"},
+        {"point": "O", "type": "circumcenter", "of": ["A", "B", "C"], "hide_circle": True, "color": "#3b82f6"},
+        {"point": "I", "type": "midpoint", "of": ["A", "H"], "color": "#ec4899"},
+        {"point": "P", "type": "ratio_point", "of": ["A", "B"], "ratio": round(1.0 + k_P, 3), "color": "#a855f7"},
+        {"point": "N", "type": "intersection", "of": ["P", "D", "A", "C"], "color": "#64748b"}
+    ]
+
+    data["_olympiad_aligned"] = True
     return data
