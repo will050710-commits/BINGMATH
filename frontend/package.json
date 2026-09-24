@@ -30,5 +30,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "tailwindcss": "^4"
+  },
+  "overrides": {
+    "closure-net": "0.0.1-security"
   }
 }

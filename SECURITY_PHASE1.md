@@ -27,6 +27,20 @@ POST /api/test-result  không token                        # 401
 npm run build                                             # PASS, 270 routes
 ```
 
+## 2b. Sửa luôn pipeline deploy frontend (phát hiện khi kiểm chứng)
+
+Vercel build thất bại từ commit `a171aec` (thêm `konva` vào `package.json`) vì frontend **không có `package-lock.json`**, nên mỗi lần đổi dependency npm phải resolve lại toàn bộ cây và crash ở dev-dependency dạng git của `@firebase/webchannel-wrapper`:
+
+```
+closure-net@git+https://github.com/google/closure-net.git#6f48f578...  -> npm error Cannot read properties of null
+```
+
+Đã sửa:
+- `"overrides": { "closure-net": "0.0.1-security" }` trong `frontend/package.json` (registry đã thay gói này bằng placeholder bảo mật).
+- Sinh và commit **`frontend/package-lock.json`** (804 gói khoá cứng) → install trên Vercel giờ deterministic.
+
+Bằng chứng: clean-room `npm ci` → `added 797 packages`, exit 0, lockfile không còn `closure-net`.
+
 ## 3. Chưa làm (chuyển Phase 2)
 
 - **Answer key vẫn nằm trong bundle client** (`frontend/src/utils/answerKey.js`) để có phản hồi tức thì — điểm *lưu trữ* đã do server quyết định, nhưng học sinh vẫn xem được đáp án. Muốn bịt hẳn: chuyển luồng nộp bài sang `/api/tests/grade` rồi mới hiện đáp án (bỏ `ANSWER_KEY` khỏi client).
