@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { creditHtml, sanitizeHtml } from "@/lib/sanitize";
 
 /* ─────────────────────────────────────────────────
    LessonVideoPlayer
@@ -25,6 +26,17 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
 
   // Sidebar state
   const [sidebar, setSidebar] = useState({ open: false, title: "", detail: "", vi: "" });
+
+  // Phase 1: lesson HTML is sanitised after mount — the sanitiser needs the DOM
+  // and doing it in an effect keeps the server-rendered markup hydration-safe.
+  const [safeDetail, setSafeDetail] = useState("");
+  const [safeCredit, setSafeCredit] = useState("");
+  useEffect(() => {
+    setSafeDetail(sanitizeHtml(sidebar.detail));
+  }, [sidebar.detail]);
+  useEffect(() => {
+    setSafeCredit(creditHtml(credit));
+  }, [credit]);
 
   // ── YouTube IFrame API ──────────────────────────────────────────────
   useEffect(() => {
@@ -267,10 +279,10 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
               <div style={{ fontSize: 18, fontWeight: 600, color: "#22d3ee" }}>{sidebar.vi}</div>
             </div>
           )}
-          {sidebar.detail && (
+          {safeDetail && (
             <div
               style={{ fontSize: 15, lineHeight: 1.85, color: "rgba(255, 255, 255, 0.9)", borderTop: sidebar.vi ? "1px solid #f0f0f0" : "none", paddingTop: sidebar.vi ? 16 : 0 }}
-              dangerouslySetInnerHTML={{ __html: sidebar.detail }}
+              dangerouslySetInnerHTML={{ __html: safeDetail }}
             />
           )}
         </div>
@@ -311,14 +323,7 @@ export default function LessonVideoPlayer({ videoId, subtitles = [], lang = "vi"
           <div style={S.creditBar}>
             <span style={S.creditLeft}>
               <span>🎬</span>
-              <span
-                dangerouslySetInnerHTML={{
-                  __html: credit.replace(
-                    /Khan Academy/g,
-                    `<a href="https://www.youtube.com/@khanacademy" target="_blank" rel="noopener noreferrer" style="color: #22d3ee; text-decoration: underline; font-weight: 600; transition: opacity 0.2s;" onMouseOver="this.style.opacity=0.8" onMouseOut="this.style.opacity=1">Khan Academy</a>`
-                  ),
-                }}
-              />
+              <span dangerouslySetInnerHTML={{ __html: safeCredit }} />
             </span>
             <a
               href={`https://www.youtube.com/watch?v=${videoId}`}

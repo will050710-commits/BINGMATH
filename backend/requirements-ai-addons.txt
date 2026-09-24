@@ -9,3 +9,9 @@ torchvision>=0.15.0
 realesrgan>=0.3.0
 basicsr>=1.4.2
 reportlab>=4.0.0
+
+# ── Phase 1 (optional): value-based answer grading ──────────────────────────
+# Used automatically by backend/grading.py when present; the restricted SymPy
+# parser covers the same ground when it is not installed.
+math-verify[antlr4_13_2]>=0.8
+

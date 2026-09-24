@@ -53,7 +53,9 @@ def evaluate_math_expression(expression: str) -> dict:
         clean_expr = clean_expr.replace("×", "*").replace("÷", "/")
         
         # Sympy parse
-        sym_obj = sympy.sympify(clean_expr, evaluate=True)
+        # Phase 1 security fix: parse with a restricted namespace instead of
+        # sympy.sympify (documented as unsafe for untrusted input).
+        sym_obj = safe_symbolic_parse(clean_expr)
         exact_str = str(sym_obj)
         
         try:
@@ -115,6 +117,20 @@ from security_limits import (  # Phase 0: rate limiting + payload caps
     ENHANCE_LIMIT, TYPESAFE_LIMIT, MAX_CHAT_MESSAGE_CHARS,
     MAX_IMAGE_B64_CHARS, MAX_DOCUMENT_B64_CHARS, MAX_INSTRUCTIONS,
 )
+from grading import (  # Phase 1: server-side grading (audit finding P1-8)
+    answer_key_stats, grade_section, known_test, safe_symbolic_parse,
+)
+from sql_guard import safe_column, safe_update_columns  # Phase 1: SQL allowlist
+
+# Columns a user may change on their own profile (Phase 1 allowlist).
+_PROFILE_FIELDS = {"username", "phone", "school", "grade", "avatar_url"}
+
+# Columns an organizer/admin may change on a tournament (Phase 1 allowlist).
+_TOURNAMENT_FIELDS = {
+    "title", "tag", "description", "rules", "status", "starts_at", "ends_at",
+    "play_mode", "min_clan_members", "max_participants", "is_featured",
+    "prize_json", "size", "xp_multiplier", "pending_approval",
+}
 
 
 # Phase 0 security fix: no hard-coded fallback secret. Production (Render)
@@ -2176,6 +2192,12 @@ def init_db():
             created_at  TEXT NOT NULL
         )""", None),
     ]
+    # ── Phase 1 columns ────────────────────────────────────────────────────
+    migrations.extend([
+        ("ALTER TABLE test_results ADD COLUMN verified INTEGER DEFAULT 0", None),
+        ("ALTER TABLE sessions ADD COLUMN user_id INTEGER", None),
+        ("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)", None),
+    ])
     for sql, _ in migrations:
         try:
             conn.execute(sql)
@@ -2217,6 +2239,7 @@ def user_dict(row):
     }
 
 def test_dict(row):
+    keys = row.keys() if hasattr(row, "keys") else []
     return {
         "id": row["id"], "test_key": row["test_key"],
         "section": row["section"], "score": row["score"],
@@ -2224,6 +2247,7 @@ def test_dict(row):
         "time_spent": row["time_spent"],
         "answers": json.loads(row["answers"] or "{}"),
         "taken_at": row["taken_at"],
+        "verified": row["verified"] if "verified" in keys else 0,
     }
 
 def game_dict(row):
@@ -2270,6 +2294,50 @@ def save_history(sid: str, history: list):
         db.commit()
     finally:
         db.close()
+
+
+# ── Phase 1: chat-session ownership ──────────────────────────────────────────
+def _session_owner(sid: str):
+    """Return the user_id bound to a session (None = still anonymous)."""
+    db = get_db()
+    try:
+        row = db.execute("SELECT user_id FROM sessions WHERE session_id=?", (sid,)).fetchone()
+        return row["user_id"] if row and "user_id" in row.keys() else None
+    finally:
+        db.close()
+
+
+def bind_session(sid: str, uid) -> None:
+    """First logged-in writer owns the session; later writes cannot steal it."""
+    if uid is None:
+        return
+    db = get_db()
+    try:
+        db.execute(
+            "UPDATE sessions SET user_id=? WHERE session_id=? AND (user_id IS NULL OR user_id=?)",
+            (uid, sid, uid),
+        )
+        db.commit()
+    finally:
+        db.close()
+
+
+async def assert_session_access(request: Request, sid: str):
+    """Return the caller's user id after enforcing session ownership.
+
+    - anonymous sessions (no owner yet): accessible with the unguessable uuid;
+    - owned sessions: only that account may read/reset them.
+    """
+    owner = _session_owner(sid)
+    uid = None
+    if request.headers.get("Authorization", "").startswith("Bearer "):
+        try:
+            uid = await resolve_user_id(request)
+        except HTTPException:
+            uid = None
+    if owner is not None and (uid is None or int(uid) != int(owner)):
+        raise HTTPException(403, "This chat session belongs to another account.")
+    return uid
 
 # ── Keep-alive background task ────────────────────────────────────────────────
 async def _keep_alive():
@@ -2484,13 +2552,14 @@ async def firebase_sync(request: Request):
             # Update profile fields if provided
             updates = []
             vals = []
-            if username: updates.append("username=?"); vals.append(username)
-            if phone:    updates.append("phone=?");    vals.append(phone)
-            if school:   updates.append("school=?");   vals.append(school)
-            if grade:    updates.append("grade=?");    vals.append(grade)
+            if username: updates.append("username"); vals.append(username)
+            if phone:    updates.append("phone");    vals.append(phone)
+            if school:   updates.append("school");   vals.append(school)
+            if grade:    updates.append("grade");    vals.append(grade)
             if updates:
                 vals.append(row["id"])
-                db.execute(f"UPDATE users SET {', '.join(updates)} WHERE id=?", vals)
+                # Phase 1: column names come from the allowlist, never the body.
+                db.execute(f"UPDATE users SET {safe_update_columns(updates, _PROFILE_FIELDS)} WHERE id=?", vals)
                 db.commit()
             row = db.execute("SELECT * FROM users WHERE id=?", (row["id"],)).fetchone()
             return JSONResponse({"synced": True, "user": user_dict(row)})
@@ -2557,7 +2626,7 @@ async def update_me(request: Request):
                 continue
         
         if val:  # Only add non-empty values
-            sets.append(f"{f}=?")
+            sets.append(f)          # Phase 1: allowlisted column names only
             vals.append(val)
 
     if errors:
@@ -2568,7 +2637,7 @@ async def update_me(request: Request):
     db = get_db()
     try:
         vals.append(uid)
-        db.execute(f"UPDATE users SET {', '.join(sets)} WHERE id=?", vals)
+        db.execute(f"UPDATE users SET {safe_update_columns(sets, _PROFILE_FIELDS)} WHERE id=?", vals)
         db.commit()
         row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
         return JSONResponse({"user": user_dict(row)})
@@ -2674,32 +2743,75 @@ async def competitive_stats(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.post("/api/test-result")
+@limiter.limit(GRADING_LIMIT)
 async def save_test(request: Request):
     uid = await resolve_user_id(request)
     d = await request.json()
-    test_key   = d.get("test_key", "")
-    section    = d.get("section", "")
-    score      = int(d.get("score", 0))
-    total      = int(d.get("total", 0))
-    accuracy   = round((score / total * 100) if total else 0, 1)
-    time_spent = int(d.get("time_spent", 0))
-    answers    = json.dumps(d.get("answers", {}))
+    test_key   = str(d.get("test_key", "") or "").strip()
+    section    = str(d.get("section", "") or "").strip()
+    time_spent = int(d.get("time_spent", 0) or 0)
+    answers    = d.get("answers", {}) or {}
 
     if not test_key or not section:
         raise HTTPException(400, "test_key and section are required.")
+
+    # Phase 1 security fix: the score is computed HERE from the server-side
+    # answer key. The client-supplied score/total are ignored — previously they
+    # were stored verbatim, so a hand-crafted request could post any result.
+    graded = grade_section(test_key, section, answers)
+    if graded is not None:
+        score, total, accuracy, verified = graded["score"], graded["total"], graded["accuracy"], 1
+    else:
+        score = int(d.get("score", 0) or 0)
+        total = int(d.get("total", 0) or 0)
+        accuracy = round((score / total * 100) if total else 0, 1)
+        verified = 0
 
     db = get_db()
     try:
         db.execute(
             "INSERT INTO test_results"
-            " (user_id, test_key, section, score, total, accuracy, time_spent, answers)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (uid, test_key, section, score, total, accuracy, time_spent, answers),
+            " (user_id, test_key, section, score, total, accuracy, time_spent, answers, verified)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (uid, test_key, section, score, total, accuracy, time_spent, json.dumps(answers), verified),
         )
         db.commit()
-        return JSONResponse({"saved": True, "accuracy": accuracy}, status_code=201)
+        return JSONResponse(
+            {"saved": True, "score": score, "total": total,
+             "accuracy": accuracy, "verified": bool(verified)},
+            status_code=201,
+        )
     finally:
         db.close()
+
+
+@app.post("/api/tests/grade")
+@limiter.limit(GRADING_LIMIT)
+async def grade_test_attempt(request: Request):
+    """Phase 1: stateless server-side grading.
+
+    Returns aggregates only — never the questions or the correct answers, so
+    this endpoint cannot be used as an answer-key oracle.
+    """
+    d = await request.json()
+    test_key = str(d.get("test_key", "") or "").strip()
+    section  = str(d.get("section", "") or "").strip()
+    answers  = d.get("answers", {}) or {}
+    if not test_key or not section:
+        raise HTTPException(400, "test_key and section are required.")
+    if len(json.dumps(answers)) > 200_000:
+        raise HTTPException(413, "answers payload too large.")
+    graded = grade_section(test_key, section, answers)
+    if graded is None:
+        raise HTTPException(404, "Unknown test_key/section.")
+    return JSONResponse({
+        "test_key": test_key,
+        "section": section,
+        "score": graded["score"],
+        "total": graded["total"],
+        "accuracy": graded["accuracy"],
+        "answered": graded["answered"],
+    })
 
 
 @app.get("/api/test-results")
@@ -2773,6 +2885,7 @@ async def new_session(request: Request):
 @app.post("/api/session/{session_id}/reset")
 @limiter.limit(SESSION_LIMIT)
 async def reset_session(session_id: str, request: Request):
+    await assert_session_access(request, session_id)  # Phase 1: owner check
     db = get_db()
     try:
         row = db.execute("SELECT session_id FROM sessions WHERE session_id=?", (session_id,)).fetchone()
@@ -2788,6 +2901,7 @@ async def reset_session(session_id: str, request: Request):
 @app.get("/api/session/{session_id}/history")
 @limiter.limit(SESSION_LIMIT)
 async def get_history(session_id: str, request: Request):
+    await assert_session_access(request, session_id)  # Phase 1: owner check
     db = get_db()
     try:
         row = db.execute("SELECT history FROM sessions WHERE session_id=?", (session_id,)).fetchone()
@@ -2824,6 +2938,13 @@ async def chat(request: Request):
         raise HTTPException(400, "message is required.")
     if not user_message:
         user_message = "Hãy giải bài toán trong ảnh này cho em."  # fallback khi chỉ có ảnh
+
+    # Phase 1 security fix: bind the session to the logged-in account and refuse
+    # access to a session owned by somebody else (previously any holder of the
+    # session uuid could read or wipe the conversation).
+    _session_uid = await assert_session_access(request, session_id)
+    if _session_uid is not None:
+        bind_session(session_id, _session_uid)
 
     history = ensure_session(session_id)
     is_viz_request = "visualizer" in user_message or "viz" in user_message or "instructions" in user_message
@@ -5134,8 +5255,9 @@ async def update_daily_progress(request: Request):
         # Check and reset first
         _check_and_reset_daily_progress(db, uid)
         
-        # Update
-        column = f"{action_type}_count"
+        # Update — Phase 1: action_type was validated above and the column name
+        # is re-checked against the allowlist before it reaches the SQL string.
+        column = safe_column(f"{action_type}_count", {"practice_count", "mastery_count", "socratic_count"})
         db.execute(
             f"UPDATE daily_progress SET {column} = {column} + ? WHERE user_id=?",
             (increment, uid)
@@ -7623,27 +7745,32 @@ async def update_tournament(tid: str, request: Request):
         db.close(); raise HTTPException(403, "Not authorized to edit this tournament")
 
     body = await request.json()
-    fields, vals = [], []
+    # Phase 1: collect column NAMES in a dict (also dedupes "status") and
+    # validate them against the allowlist right before the SQL is built.
+    updates = {}
     for key in ["title", "tag", "description", "rules", "status", "starts_at", "ends_at",
                 "play_mode", "min_clan_members", "max_participants", "is_featured"]:
         if key in body:
-            fields.append(f"{key}=?"); vals.append(body[key])
+            updates[key] = body[key]
     if "prize_json" in body:
-        fields.append("prize_json=?"); vals.append(json.dumps(body["prize_json"]))
+        updates["prize_json"] = json.dumps(body["prize_json"])
 
     # Large tournament approval: if non-admin tries to set size=large, flag pending
     if "size" in body:
         new_size = body["size"]
-        fields.append("size=?"); vals.append(new_size)
-        mult = 1.5 if new_size == "large" else 1.2
-        fields.append("xp_multiplier=?"); vals.append(mult)
+        updates["size"] = new_size
+        updates["xp_multiplier"] = 1.5 if new_size == "large" else 1.2
         if not is_admin and new_size == "large":
-            fields.append("pending_approval=?"); vals.append(1)
-            fields.append("status=?"); vals.append("pending_approval")
+            updates["pending_approval"] = 1
+            updates["status"] = "pending_approval"
 
-    if fields:
+    if updates:
+        vals = list(updates.values())
         vals.append(tid)
-        db.execute(f"UPDATE tournaments SET {', '.join(fields)} WHERE id=?", vals)
+        db.execute(
+            f"UPDATE tournaments SET {safe_update_columns(list(updates.keys()), _TOURNAMENT_FIELDS)} WHERE id=?",
+            vals,
+        )
         db.commit()
     db.close()
     return {"ok": True}
