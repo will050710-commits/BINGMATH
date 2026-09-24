@@ -6,6 +6,7 @@ import { useAuth } from "@/context/authContext";
 import { resetTimer, getTimeSpent, formatTime } from "../../utils/testTimer";
 import { clearAllAnswers } from "../../utils/answerStorage";
 import { SKILL_DEFS } from "../../utils/questionSkills";
+import { SUBMISSION_KEY, gradeSubmissionViaApi } from "@/utils/grader";
 import GamificationHUD from "@/components/GamificationHUD";
 import { useGamification } from "@/hooks/useGamification";
 
@@ -41,16 +42,49 @@ export default function PageKetQua() {
 
   // ================= LOAD RESULT =================
   useEffect(() => {
-    const data = localStorage.getItem("readingTest_result");
-    if (data) {
-      const parsed = JSON.parse(data);
+    let cancelled = false;
+
+    const applyResult = (parsed) => {
       setResult(parsed);
       const exam = parsed.testId || localStorage.getItem("currentTest") || "reading-test-1";
       setExamId(exam);
       const savedTime = parsed.timeSpent ?? (Number(localStorage.getItem("timeSpent")) || getTimeSpent(exam));
       if (!Number.isNaN(Number(savedTime))) setTimeSpent(formatTime(Number(savedTime)));
       resetTimer(exam);
-    }
+    };
+
+    const load = async () => {
+      const cached = localStorage.getItem("readingTest_result");
+      if (cached) {
+        try {
+          applyResult(JSON.parse(cached));
+          return;
+        } catch {
+          /* fall through to the server path */
+        }
+      }
+
+      // Phase 2: gradeTest() only parked the answers; the answer key lives on
+      // the backend, so the result is fetched from POST /api/tests/grade.
+      const submissionRaw = localStorage.getItem(SUBMISSION_KEY);
+      if (!submissionRaw) return;
+      let submission;
+      try {
+        submission = JSON.parse(submissionRaw);
+      } catch {
+        return;
+      }
+
+      const graded = await gradeSubmissionViaApi(submission);
+      if (!graded || cancelled) return;
+      localStorage.setItem("readingTest_result", JSON.stringify(graded));
+      applyResult(graded);
+    };
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // ================= SAVE TO BACKEND =================

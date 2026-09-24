@@ -2355,6 +2355,13 @@ async def _keep_alive():
 @asynccontextmanager
 async def lifespan(application):
     init_db()
+    # Phase 2 retention: bounded storage for anonymous chat sessions/materials.
+    try:
+        purged = purge_stale_data()
+        if purged.get("sessions_deleted") or purged.get("materials_deleted"):
+            logger.info("[retention] %s", purged)
+    except Exception as e:
+        logger.warning("[retention] purge skipped: %s", e)
     task = asyncio.create_task(_keep_alive())
     yield
     task.cancel()
@@ -2788,15 +2795,18 @@ async def save_test(request: Request):
 @app.post("/api/tests/grade")
 @limiter.limit(GRADING_LIMIT)
 async def grade_test_attempt(request: Request):
-    """Phase 1: stateless server-side grading.
+    """Phase 2: server-side grading; the answer key never leaves the backend.
 
-    Returns aggregates only — never the questions or the correct answers, so
-    this endpoint cannot be used as an answer-key oracle.
+    Aggregates are returned to everyone. Per-question flags (correct/incorrect)
+    are only added for signed-in students — never the correct answers themselves
+    — because a public "which guess was right" feed could be farmed into an
+    answer oracle.
     """
     d = await request.json()
     test_key = str(d.get("test_key", "") or "").strip()
     section  = str(d.get("section", "") or "").strip()
     answers  = d.get("answers", {}) or {}
+    include_questions = bool(d.get("include_questions"))
     if not test_key or not section:
         raise HTTPException(400, "test_key and section are required.")
     if len(json.dumps(answers)) > 200_000:
@@ -2804,14 +2814,32 @@ async def grade_test_attempt(request: Request):
     graded = grade_section(test_key, section, answers)
     if graded is None:
         raise HTTPException(404, "Unknown test_key/section.")
-    return JSONResponse({
+
+    payload = {
         "test_key": test_key,
         "section": section,
         "score": graded["score"],
         "total": graded["total"],
         "accuracy": graded["accuracy"],
         "answered": graded["answered"],
-    })
+    }
+
+    if include_questions:
+        try:
+            await resolve_user_id(request)
+            payload["questions"] = [
+                {
+                    "key": q["key"],
+                    "userAnswer": q["userAnswer"],
+                    "isCorrect": q["isCorrect"],
+                    "isSkipped": not (q["userAnswer"] or "").strip(),
+                }
+                for q in graded["questions"]
+            ]
+        except HTTPException:
+            payload["questions_requires_login"] = True
+
+    return JSONResponse(payload)
 
 
 @app.get("/api/test-results")
@@ -2910,6 +2938,149 @@ async def get_history(session_id: str, request: Request):
         raise HTTPException(404, "Session not found.")
     finally:
         db.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  PHASE 2: DATA PROTECTION  (export / erasure / retention)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Every table that holds rows belonging to one learner (hard-coded, never built
+# from request data).
+_USER_OWNED_TABLES = (
+    "test_results", "minigame_results", "user_gamification", "daily_progress",
+    "user_badges", "comment_upvotes", "comment_reports",
+)
+
+DATA_RETENTION_DAYS = max(1, int(os.environ.get("DATA_RETENTION_DAYS", "30") or 30))
+
+
+@app.get("/api/me/export")
+@limiter.limit(SESSION_LIMIT)
+async def export_my_data(request: Request):
+    """Right of access (Nghị định 13/2023/NĐ-CP): return everything we store."""
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        user_row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        if not user_row:
+            raise HTTPException(404, "User not found.")
+
+        payload = {
+            "exported_at": datetime.now(timezone.utc).isoformat(),
+            "retention_days": DATA_RETENTION_DAYS,
+            "user": user_dict(user_row),
+            "test_results": [
+                test_dict(r)
+                for r in db.execute(
+                    "SELECT * FROM test_results WHERE user_id=? ORDER BY taken_at", (uid,)
+                ).fetchall()
+            ],
+            "game_results": [
+                game_dict(r)
+                for r in db.execute(
+                    "SELECT * FROM minigame_results WHERE user_id=? ORDER BY played_at", (uid,)
+                ).fetchall()
+            ],
+            "chat_sessions": [],
+            "gamification": {},
+        }
+
+        try:
+            g_row = db.execute("SELECT * FROM user_gamification WHERE user_id=?", (uid,)).fetchone()
+            if g_row:
+                payload["gamification"] = {k: g_row[k] for k in g_row.keys()}
+        except Exception:
+            pass
+
+        for row in db.execute(
+            "SELECT session_id, history, created_at FROM sessions WHERE user_id=? ORDER BY created_at",
+            (uid,),
+        ).fetchall():
+            try:
+                history = json.loads(row["history"] or "[]")
+            except Exception:
+                history = []
+            payload["chat_sessions"].append({
+                "session_id": row["session_id"],
+                "created_at": row["created_at"],
+                "messages": history,
+            })
+
+        return JSONResponse(payload)
+    finally:
+        db.close()
+
+
+@app.delete("/api/me")
+@limiter.limit(SESSION_LIMIT)
+async def delete_my_data(request: Request):
+    """Right to erasure: drop the account and every row that belongs to it."""
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        deleted = {}
+        for table in _USER_OWNED_TABLES:
+            try:
+                cur = db.execute(f"DELETE FROM {table} WHERE user_id=?", (uid,))
+                deleted[table] = cur.rowcount
+            except Exception:
+                # Table missing on older databases — nothing to erase there.
+                continue
+
+        session_ids = [
+            r["session_id"]
+            for r in db.execute("SELECT session_id FROM sessions WHERE user_id=?", (uid,)).fetchall()
+        ]
+        materials = 0
+        for sid in session_ids:
+            materials += db.execute("DELETE FROM ai_materials WHERE session_id=?", (sid,)).rowcount
+        deleted["ai_materials"] = materials
+        deleted["sessions"] = db.execute("DELETE FROM sessions WHERE user_id=?", (uid,)).rowcount
+        db.execute("DELETE FROM users WHERE id=?", (uid,))
+        db.commit()
+        logger.info("[privacy] erased account %s (%s)", uid, deleted)
+        return JSONResponse({"deleted": True, "rows": deleted})
+    finally:
+        db.close()
+
+
+def purge_stale_data() -> dict:
+    """Retention job: drop anonymous chat sessions and AI materials past their TTL.
+
+    Called on startup and from POST /api/admin/retention/run. Account-owned data
+    is intentionally NOT touched here — that is erased only at the user's
+    request (DELETE /api/me).
+    """
+    db = get_db()
+    try:
+        cutoff = f"-{DATA_RETENTION_DAYS} days"
+        sessions_deleted = db.execute(
+            "DELETE FROM sessions WHERE user_id IS NULL AND created_at < datetime('now', ?)",
+            (cutoff,),
+        ).rowcount
+        materials_deleted = db.execute(
+            "DELETE FROM ai_materials WHERE created_at < datetime('now', ?)",
+            (cutoff,),
+        ).rowcount
+        db.commit()
+        return {
+            "sessions_deleted": sessions_deleted,
+            "materials_deleted": materials_deleted,
+            "retention_days": DATA_RETENTION_DAYS,
+        }
+    finally:
+        db.close()
+
+
+@app.post("/api/admin/retention/run")
+@limiter.limit(TYPESAFE_LIMIT)
+async def run_retention(request: Request):
+    """Admin trigger for the retention job (also runs automatically at boot)."""
+    await verify_admin(request)
+    try:
+        return JSONResponse(purge_stale_data())
+    except Exception as e:
+        raise HTTPException(500, f"Retention run failed: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

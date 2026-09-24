@@ -2,6 +2,8 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
+import { authFetch } from "@/lib/authFetch";
+import { auth } from "@/lib/firebase";
 
 // ── Default keybinds ──────────────────────────────────────────────────────────
 const DEFAULT_KEYBINDS = {
@@ -72,6 +74,59 @@ export default function MRMSettings() {
   const [listening, setListening] = useState(null); // which keybind is being recorded
   const [flash, setFlash] = useState(null);         // id that just changed
   const [saved, setSaved] = useState(false);
+  // Phase 2: data & privacy (NĐ 13/2023 — right of access & right to erasure)
+  const [dataBusy, setDataBusy] = useState(false);
+  const [dataMsg, setDataMsg] = useState("");
+
+  const exportData = useCallback(async () => {
+    setDataBusy(true);
+    setDataMsg("");
+    try {
+      const res = await authFetch("/api/me/export");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `duomath-data-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setDataMsg("Đã tải xong bản sao dữ liệu của bạn.");
+    } catch (err) {
+      setDataMsg(`Không tải được dữ liệu: ${err?.message || err}`);
+    } finally {
+      setDataBusy(false);
+    }
+  }, []);
+
+  const deleteAccount = useCallback(async () => {
+    const ok = window.confirm(
+      "Xoá vĩnh viễn tài khoản và toàn bộ dữ liệu học tập (hồ sơ, kết quả, hội thoại)? Hành động này không thể hoàn tác."
+    );
+    if (!ok) return;
+    setDataBusy(true);
+    setDataMsg("");
+    try {
+      const res = await authFetch("/api/me", { method: "DELETE" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setDataMsg("Tài khoản đã được xoá. Đang đăng xuất…");
+      try {
+        await auth.signOut();
+      } catch {
+        /* the account is already gone; failing to sign out is not fatal */
+      }
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1200);
+    } catch (err) {
+      setDataMsg(`Không xoá được tài khoản: ${err?.message || err}`);
+    } finally {
+      setDataBusy(false);
+    }
+  }, []);
 
   // Detect conflicts
   const conflicts = {};
@@ -358,6 +413,51 @@ export default function MRMSettings() {
             <li>Keybind được lưu riêng trên trình duyệt này</li>
           </ul>
         </div>
+        {/* Phase 2: data & privacy (right of access / right to erasure) */}
+        <div style={{
+          marginTop: 24,
+          padding: "18px 22px",
+          background: "rgba(34,211,238,0.05)",
+          border: "1px solid rgba(34,211,238,0.18)",
+          borderRadius: 12,
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: "#22d3ee", marginBottom: 10, letterSpacing: 0.5 }}>
+            🔐 Dữ liệu & quyền riêng tư
+          </div>
+          <p style={{ margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.9 }}>
+            Bạn có thể tải về toàn bộ dữ liệu học tập của mình (hồ sơ, kết quả bài test, lịch sử trò chơi,
+            hội thoại với DuoMCB) và xoá vĩnh viễn tài khoản bất cứ lúc nào. Hội thoại ẩn danh và tài liệu
+            tải lên được hệ thống tự động dọn sau 30 ngày.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <button
+              onClick={exportData}
+              disabled={dataBusy}
+              style={{
+                padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: "rgba(34,211,238,0.12)", border: "1px solid rgba(34,211,238,0.35)",
+                color: "#67e8f9", cursor: dataBusy ? "wait" : "pointer",
+              }}
+            >
+              ⬇️ Tải dữ liệu của tôi (.json)
+            </button>
+            <button
+              onClick={deleteAccount}
+              disabled={dataBusy}
+              style={{
+                padding: "10px 18px", borderRadius: 10, fontSize: 13, fontWeight: 700,
+                background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.35)",
+                color: "#fca5a5", cursor: dataBusy ? "wait" : "pointer",
+              }}
+            >
+              🗑️ Xoá tài khoản vĩnh viễn
+            </button>
+          </div>
+          {dataMsg && (
+            <div style={{ marginTop: 12, fontSize: 12, color: "#7dd3fc" }}>{dataMsg}</div>
+          )}
+        </div>
+
       </div>
     </div>
   );

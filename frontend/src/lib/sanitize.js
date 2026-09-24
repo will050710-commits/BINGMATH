@@ -2,13 +2,11 @@
 //
 // Phase 1 security hardening (audit finding P2-14).
 //
-// The lesson sidebar used to drop author-provided HTML straight into the page
-// with dangerouslySetInnerHTML. DOMPurify is the usual answer, but this project
-// cannot currently install it (npm fails resolving the tree's git dependency
-// closure-net), so this helper sanitises with the browser's own HTML parser and
-// a strict allowlist instead: scripts, iframes, event handlers (on*) and
-// javascript:/data: URLs are removed. Swap the implementation for DOMPurify
-// once the dependency can be added — the API stays the same.
+// Phase 2: DOMPurify now performs the sanitising (it could not be installed
+// before the lockfile fix). The parser-based allowlist further down is kept as
+// a fallback so callers never render raw HTML.
+import DOMPurify from "dompurify";
+
 const ALLOWED_TAGS = new Set([
   "A", "B", "BLOCKQUOTE", "BR", "CODE", "DIV", "EM", "H1", "H2", "H3", "H4",
   "H5", "H6", "HR", "I", "IMG", "LI", "OL", "P", "PRE", "SMALL", "SPAN",
@@ -27,6 +25,23 @@ const SAFE_URL = /^(https?:|mailto:|#|\/)/i;
 export function sanitizeHtml(html) {
   if (!html) return "";
   if (typeof window === "undefined" || typeof document === "undefined") return "";
+
+  // Phase 2: DOMPurify first …
+  try {
+    if (DOMPurify && typeof DOMPurify.sanitize === "function") {
+      return DOMPurify.sanitize(String(html), {
+        ALLOWED_TAGS: [...ALLOWED_TAGS],
+        ALLOWED_ATTR: ["href", "title", "alt", "src", "target", "rel", "style", "class"],
+        ALLOW_DATA_ATTR: false,
+        FORBID_TAGS: ["style", "form", "input", "button", "iframe", "object", "embed", "link", "meta"],
+        ADD_ATTR: ["target"],
+      });
+    }
+  } catch (err) {
+    console.warn("[sanitize] DOMPurify failed, using the parser fallback:", err?.message || err);
+  }
+
+  // … and the parser allowlist below as the safety net.
 
   const template = document.createElement("template");
   template.innerHTML = String(html);

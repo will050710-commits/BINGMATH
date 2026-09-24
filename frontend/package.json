@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@heroui/react": "^2.8.10",
+    "dompurify": "^3.4.16",
     "firebase": "^12.14.0",
     "framer-motion": "^12.35.1",
     "jsxgraph": "^1.13.3",
