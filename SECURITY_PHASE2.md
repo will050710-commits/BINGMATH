@@ -29,6 +29,18 @@ log khởi động                             -> [retention] {'sessions_deleted
 Bộ test hiện có: `test_phase0_security` · `test_phase1_grading` · `test_geometry_canvas_solver_regression` ·
 `test_geometry_snapping` · `test_duomath_space_agent` → **tất cả PASS**; `next build` (270 route) PASS.
 
+## 2b. Kiểm chứng PRODUCTION (sau deploy)
+
+| Kiểm tra | Kết quả |
+|---|---|
+| Render deploy | `live` @ `c267e83` |
+| `POST /api/tests/grade` ẩn danh + `include_questions:true` | `200 {"score":1,"total":10,...,"questions_requires_login":true}` — **không** trả chi tiết câu |
+| `GET /api/me/export` ẩn danh | `401` |
+| `POST /api/admin/retention/run` ẩn danh | `401` |
+| Vercel headers | `Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; form-action …` (**enforced**, không còn `-Report-Only`) |
+| Bundle đang phục vụ (27 chunk) | có `readingTest_submission` + chuỗi UI “Dữ liệu & quyền riêng tư” ⇒ code Phase 2 đã lên |
+| Đáp án trong bundle | `answerKey` = 0 chunk · `[-5/3,1]` = 0 · `5x+12y+35=0` = 0 · `x^2/181 + y^2/81 = 1` = 0 ⇒ **answer key đã biến mất khỏi client** |
+
 ## 3. Lưu ý vận hành
 
 - **Khách ẩn danh** chỉ thấy điểm tổng ở trang kết quả (không có phần xem lại từng câu) — đây là đánh đổi có chủ đích để không biến API thành “máy dò đáp án”. Học sinh đã đăng nhập giữ nguyên trải nghiệm cũ.
