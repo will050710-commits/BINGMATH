@@ -1,11 +1,13 @@
 // duoServer.js — DuoMCB API client
 // Place this file next to DuoMCBPage.js
 
+import { authFetch } from "@/lib/authFetch";
+
 const API = process.env.NEXT_PUBLIC_API_URL || "https://duomath.onrender.com";
 
 export async function createSession() {
   try {
-    const res = await fetch(`${API}/api/session/new`, { method: "POST" });
+    const res = await authFetch("/api/session/new", { base: API, method: "POST" });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.session_id || null;
@@ -25,7 +27,8 @@ export async function chat(sessionId, message, options = {}) {
     ...(image ? { image } : {}),
   };
   try {
-    const res = await fetch(`${API}/api/chat`, {
+    const res = await authFetch("/api/chat", {
+      base:    API,
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(body),
@@ -44,7 +47,7 @@ export async function chat(sessionId, message, options = {}) {
 
 export async function resetSession(sessionId) {
   try {
-    await fetch(`${API}/api/session/${sessionId}/reset`, { method: "POST" });
+    await authFetch(`/api/session/${sessionId}/reset`, { base: API, method: "POST" });
   } catch (err) {
     console.error("[duoServer] resetSession failed:", err);
   }
@@ -52,7 +55,8 @@ export async function resetSession(sessionId) {
 
 export async function translate(text) {
   try {
-    const res = await fetch(`${API}/api/translate`, {
+    const res = await authFetch("/api/translate", {
+      base:    API,
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ text }),
@@ -69,7 +73,8 @@ export const translateText = translate;
 
 export async function generateVideo(instructions) {
   try {
-    const res = await fetch(`${API}/api/video/generate`, {
+    const res = await authFetch("/api/video/generate", {
+      base:    API,
       method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ instructions }),
@@ -88,7 +93,7 @@ export async function generateVideo(instructions) {
 
 export async function getTypeSafeStatus() {
   try {
-    const res = await fetch(`${API}/api/typesafe/status`);
+    const res = await authFetch("/api/typesafe/status", { base: API });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -99,7 +104,8 @@ export async function getTypeSafeStatus() {
 
 export async function rotateTypeSafeKey(reason = "User requested rotation") {
   try {
-    const res = await fetch(`${API}/api/typesafe/rotate`, {
+    const res = await authFetch("/api/typesafe/rotate", {
+      base: API,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason }),

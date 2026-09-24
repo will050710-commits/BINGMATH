@@ -12,6 +12,43 @@ import imageio_ffmpeg
 # Configure Matplotlib to use imageio-ffmpeg executable directly
 plt.rcParams['animation.ffmpeg_path'] = imageio_ffmpeg.get_ffmpeg_exe()
 
+# ── Phase 0 security hardening ────────────────────────────────────────────────
+# The render instructions originate from an LLM prompt. They used to be passed
+# to `eval()`, which made /api/video/generate an arbitrary-code-execution
+# endpoint. Expressions are now compiled through an AST allowlist and the
+# overall render cost is bounded.
+from safe_expr import UnsafeExpression, compile_expr
+
+MAX_INSTRUCTIONS = 200
+MAX_RANGE_ABS = 1e4
+MAX_DURATION_SECONDS = 30.0
+MAX_FPS = 30
+
+
+def _sanitize_instructions(instructions):
+    """Accept only a bounded list of dict instructions with a string cmd."""
+    if not isinstance(instructions, list):
+        raise ValueError("instructions must be a list")
+    if len(instructions) > MAX_INSTRUCTIONS:
+        raise ValueError(f"too many instructions (max {MAX_INSTRUCTIONS})")
+    return [inst for inst in instructions if isinstance(inst, dict) and isinstance(inst.get("cmd"), str)]
+
+
+def _clamp_range(value, default):
+    """Clamp an axis range to a sane, finite window."""
+    try:
+        lo, hi = float(value[0]), float(value[1])
+    except Exception:
+        return list(default)
+    if lo != lo or hi != hi:  # NaN guard
+        return list(default)
+    lo = max(-MAX_RANGE_ABS, min(MAX_RANGE_ABS, lo))
+    hi = max(-MAX_RANGE_ABS, min(MAX_RANGE_ABS, hi))
+    if hi <= lo:
+        return list(default)
+    return [lo, hi]
+
+
 def safe_draw_text(ax, x, y, text, **kwargs):
     if not text:
         return ax.text(x, y, "")
@@ -44,6 +81,18 @@ def safe_draw_text(ax, x, y, text, **kwargs):
             return ax.text(x, y, "")
 
 def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
+    instructions = _sanitize_instructions(instructions)
+
+    # Phase 0: bound the render cost (duration/fps reach us from the caller).
+    try:
+        duration = max(0.5, min(float(duration), MAX_DURATION_SECONDS))
+    except Exception:
+        duration = 5.0
+    try:
+        fps = max(5, min(int(fps), MAX_FPS))
+    except Exception:
+        fps = 15
+
     # Determine bounds
     x_range = [-5, 5]
     y_range = [-5, 5]
@@ -52,8 +101,8 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
     for inst in instructions:
         cmd = inst.get("cmd")
         if cmd == "setup":
-            x_range = inst.get("xRange", [-5, 5])
-            y_range = inst.get("yRange", [-5, 5])
+            x_range = _clamp_range(inst.get("xRange", [-5, 5]), [-5, 5])
+            y_range = _clamp_range(inst.get("yRange", [-5, 5]), [-5, 5])
         elif cmd == "grid":
             has_grid = True
             
@@ -116,11 +165,15 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
             expr = inst.get("expr", "")
             if not expr:
                 continue
-            py_expr = expr.replace("Math.", "np.")
-            py_expr = re.sub(r'\bt\b', 'x', py_expr)
-            py_expr = py_expr.replace("^", "**")
-            
-            domain = inst.get("domain", [x_range[0], x_range[1]])
+            # Phase 0 security fix: compile through the AST allowlist instead of
+            # eval()-ing the raw expression (was arbitrary code execution).
+            try:
+                fn = compile_expr(expr)
+            except UnsafeExpression as exc:
+                print(f"[canvas] skipping unsafe expression ({exc})")
+                continue
+
+            domain = _clamp_range(inst.get("domain", [x_range[0], x_range[1]]), [x_range[0], x_range[1]])
             label_text = inst.get("label", "")
             glow = inst.get("glow", True)
             
@@ -141,12 +194,12 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
             if label_text:
                 x_val = domain[1]
                 try:
-                    y_val = eval(py_expr, {"x": x_val, "np": np, "Math": np})
+                    y_val = float(fn(x_val))
                     lbl = safe_draw_text(ax, x_val, y_val, "  " + label_text, color=color, fontsize=9, va='center', ha='left', alpha=0)
                 except:
                     pass
             
-            def make_update_fn(line_objs, label_obj, sf, ef, dom, expr_str):
+            def make_update_fn(line_objs, label_obj, sf, ef, dom, fn_obj):
                 def update_fn(frame):
                     if frame >= sf:
                         progress = min(1.0, (frame - sf) / (ef - sf))
@@ -155,7 +208,7 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
                         x_end = dom[0] + (dom[1] - dom[0]) * progress
                         x_draw = np.linspace(dom[0], x_end, max(2, int(100 * progress)))
                         try:
-                            y_draw = eval(expr_str, {"x": x_draw, "np": np, "Math": np})
+                            y_draw = fn_obj(x_draw)
                             for idx, l in enumerate(line_objs):
                                 l.set_data(x_draw, y_draw)
                                 if len(line_objs) > 1:
@@ -171,7 +224,7 @@ def render_canvas_instructions(instructions, output_path, duration=5.0, fps=15):
                             label_obj.set_alpha(1.0)
                 return update_fn
                 
-            frame_updates.append(make_update_fn(lines, lbl, start_frame, end_frame, domain, py_expr))
+            frame_updates.append(make_update_fn(lines, lbl, start_frame, end_frame, domain, fn))
             
         elif cmd == "point":
             x = inst.get("x", 0)
@@ -388,11 +441,17 @@ if __name__ == "__main__":
         print("Usage: python canvas_to_video.py <json_instructions_string> <output_mp4_path>")
         sys.exit(1)
         
-    json_str = sys.argv[1]
+    json_arg = sys.argv[1]
     out_path = sys.argv[2]
-    
+
+    # Phase 0: the API passes a temp-file path (keeps instructions out of the
+    # process list); inline JSON is still accepted for local debugging.
     try:
-        instrs = json.loads(json_str)
+        if os.path.exists(json_arg):
+            with open(json_arg, "r", encoding="utf-8") as fh:
+                instrs = json.load(fh)
+        else:
+            instrs = json.loads(json_arg)
         render_canvas_instructions(instrs, out_path)
         print("Success")
     except Exception as e:

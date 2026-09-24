@@ -4,6 +4,11 @@ import dynamic from "next/dynamic";
 import styles from "./DuoMCBPage.module.css";
 import Image from "next/image";
 import { createSession, chat, generateVideo } from "./duoServer";
+import { makeSafeEvaluator } from "@/utils/safeMathEval";
+
+// Phase 0 security hardening: shared, memoised mathjs evaluator that replaced
+// the bypassable `new Function()` sanitizer in the canvas renderer.
+const safeModuleEvaluator = makeSafeEvaluator(300);
 import Link from "next/link";
 import katex from "katex";
 import "katex/dist/katex.min.css";
@@ -1121,27 +1126,10 @@ function drawVisualizationPanel(ctx, data, panelW, panelH, t, lang = "vi") {
     return pad.top + plotH - ((y_rel - yRange[0]) / (yRange[1] - yRange[0])) * plotH;
   };
 
-  // Safe evaluate helper
-  const safeEvaluate = (expr, xVal) => {
-    const sanitized = expr
-      .replace(/Math\./g, "")
-      .replace(/sin/g, "Math.sin")
-      .replace(/cos/g, "Math.cos")
-      .replace(/tan/g, "Math.tan")
-      .replace(/exp/g, "Math.exp")
-      .replace(/log/g, "Math.log")
-      .replace(/pow/g, "Math.pow")
-      .replace(/sqrt/g, "Math.sqrt")
-      .replace(/pi/g, "Math.PI")
-      .replace(/PI/g, "Math.PI")
-      .replace(/e/g, "Math.E");
-    try {
-      const fn = new Function("x", `return ${sanitized};`);
-      return fn(xVal);
-    } catch {
-      return 0;
-    }
-  };
+  // Phase 0 security fix: mathjs AST compilation replaced new Function().
+  // The old string-replace "sanitizer" was bypassable, so a prompt-injected
+  // canvas instruction could execute arbitrary JS in the learner's browser.
+  const safeEvaluate = safeModuleEvaluator;
 
   // Run each instruction
   instructions.forEach(inst => {

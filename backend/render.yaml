@@ -9,7 +9,10 @@ services:
     name: duomath-api
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
+    # Phase 0 security fix: single worker + proxy headers. The rate limiter and
+    # the in-memory MRM multiplayer state are per-process, so two workers both
+    # halved the effective limits and split realtime game state.
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips="*"
     envVars:
       - key: PYTHON_VERSION
         value: "3.12"
@@ -42,3 +45,12 @@ services:
         value: "qwen/qwen2.5-vl-32b-instruct:free,google/gemma-3-27b-it:free"
       - key: VISION_AGENT_ENABLED
         value: "true"
+      # ── Phase 0 security hardening (synced from the Render dashboard) ──
+      # Explicit CORS allowlist — replaces the old `*.vercel.app|render.com|
+      # netlify.app` regex that let attacker-controlled subdomains call the API.
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Comma-separated emails promoted to admin on boot. Only *pre-existing*
+      # accounts are ever promoted (the hard-coded email bypass was removed).
+      - key: ADMIN_EMAILS
+        sync: false

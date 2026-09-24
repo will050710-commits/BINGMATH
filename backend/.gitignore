@@ -18,3 +18,7 @@ vision_cache.db-shm
 archive/
 output.txt
 output_all.txt
+
+# Phase 0: never track the runtime database or logs again
+*.db
+*.log

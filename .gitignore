@@ -26,3 +26,9 @@ node_modules/
 out/
 build/
 dist/
+
+# Phase 0 security fix: runtime DB + local artifacts
+backend/*.db
+*.db
+backend/*.log
+duosteam.worktrees/

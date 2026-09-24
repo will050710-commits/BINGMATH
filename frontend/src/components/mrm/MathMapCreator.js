@@ -6,6 +6,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useMathMapStore } from "@/context/MathMapStore";
 import { useAuth } from "@/context/authContext";
+import { authFetch } from "@/lib/authFetch";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const GRADES = ["Lớp 10", "Lớp 11", "Lớp 12"];
@@ -621,7 +622,9 @@ export default function MathMapCreator() {
       const textContent = event.target.result;
       try {
         const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://duomath.onrender.com";
-        const res = await fetch(`${API_BASE}/api/mathmap/parse-file`, {
+        // Phase 0: endpoint now requires a logged-in user (burns Groq quota).
+        const res = await authFetch("/api/mathmap/parse-file", {
+          base: API_BASE,
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text: textContent }),

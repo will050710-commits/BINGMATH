@@ -4,7 +4,7 @@
 # Run with:  uvicorn main:app --host 0.0.0.0 --port $PORT
 # ─────────────────────────────────────────────────────────────────────────────
 
-import os, sys, sqlite3, json, uuid, time, asyncio, base64, io, logging
+import os, sys, sqlite3, json, uuid, time, asyncio, base64, io, logging, tempfile
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
@@ -105,34 +105,69 @@ GEMINI_TOOLS = [
 # ── JWT (lightweight PyJWT) ───────────────────────────────────────────────────
 import jwt as pyjwt # pyright: ignore[reportMissingImports]
 
-JWT_SECRET    = os.environ.get("JWT_SECRET", "duomath-dev-secret-CHANGE-IN-PROD")
+from config_guard import env_list, require_secret  # Phase 0: fail-closed config guards
+import config_guard  # noqa: E402  (production/environment detection)
+from slowapi import _rate_limit_exceeded_handler  # pyright: ignore[reportMissingImports]
+from slowapi.errors import RateLimitExceeded  # pyright: ignore[reportMissingImports]
+from security_limits import (  # Phase 0: rate limiting + payload caps
+    limiter, CHAT_LIMIT, SESSION_LIMIT, TRANSLATE_LIMIT, ANALYZE_LIMIT,
+    GRADING_LIMIT, GEOMETRY_LIMIT, PARSE_FILE_LIMIT, VIDEO_LIMIT,
+    ENHANCE_LIMIT, TYPESAFE_LIMIT, MAX_CHAT_MESSAGE_CHARS,
+    MAX_IMAGE_B64_CHARS, MAX_DOCUMENT_B64_CHARS, MAX_INSTRUCTIONS,
+)
+
+
+# Phase 0 security fix: no hard-coded fallback secret. Production (Render)
+# aborts the boot when JWT_SECRET is missing/weak; local dev gets an
+# ephemeral random secret instead (see config_guard.require_secret).
+JWT_SECRET, _JWT_SECRET_WARNING = require_secret("JWT_SECRET")
+if _JWT_SECRET_WARNING:
+    logger.warning("[Security] %s", _JWT_SECRET_WARNING)
 JWT_ALGORITHM = "HS256"
 ACCESS_EXP    = timedelta(hours=12)
 REFRESH_EXP   = timedelta(days=30)
 
-def _create_token(identity: str, expires: timedelta) -> str:
+def _create_token(identity: str, expires: timedelta, token_type: str = "access") -> str:
     payload = {
         "sub": identity,
+        "typ": token_type,
         "exp": datetime.now(timezone.utc) + expires,
         "iat": datetime.now(timezone.utc),
     }
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 def create_access_token(identity: str) -> str:
-    return _create_token(identity, ACCESS_EXP)
+    return _create_token(identity, ACCESS_EXP, "access")
 
 def create_refresh_token(identity: str) -> str:
-    return _create_token(identity, REFRESH_EXP)
+    return _create_token(identity, REFRESH_EXP, "refresh")
 
-def decode_token(token: str) -> str:
-    """Return the 'sub' (user id string) or raise HTTPException 401."""
+def _decode_token_payload(token: str) -> dict:
     try:
-        payload = pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
-        return payload["sub"]
+        return pyjwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
     except pyjwt.ExpiredSignatureError:
         raise HTTPException(401, "Token expired")
     except pyjwt.InvalidTokenError:
         raise HTTPException(401, "Invalid token")
+
+def decode_token(token: str) -> str:
+    """Return the 'sub' (user id string) or raise HTTPException 401.
+
+    Phase 0 security fix: only *access* tokens are accepted here. Legacy
+    tokens minted before the 'typ' claim existed default to 'access' so
+    existing sessions keep working.
+    """
+    payload = _decode_token_payload(token)
+    if payload.get("typ", "access") != "access":
+        raise HTTPException(401, "Invalid token type")
+    return payload["sub"]
+
+def decode_refresh_token(token: str) -> str:
+    """Return the 'sub' of a refresh token, or raise HTTPException 401."""
+    payload = _decode_token_payload(token)
+    if payload.get("typ") != "refresh":
+        raise HTTPException(401, "Invalid token type")
+    return payload["sub"]
 
 async def verify_firebase_token(id_token: str) -> dict:
     """Verify a Firebase ID token using Google's public keys via HTTP."""
@@ -282,12 +317,19 @@ async def resolve_user_id(request: Request) -> int:
         db.close()
 
 
+# Phase 0 security fix: the hard-coded admin-email bypass was removed.
+# Admin rights come from users.is_admin; the ADMIN_EMAILS env allowlist only
+# ever *promotes pre-existing* accounts (see init_db migrations), so an
+# attacker can no longer register a matching email to escalate.
+_ADMIN_EMAILS = {e.lower() for e in env_list("ADMIN_EMAILS")}
+
+
 async def verify_admin(request: Request) -> int:
     uid = await resolve_user_id(request)
     db = get_db()
     try:
         row = db.execute("SELECT is_admin, email FROM users WHERE id=?", (uid,)).fetchone()
-        if not row or (row["is_admin"] != 1 and row["email"].lower() != "will050710@gmail.com"):
+        if not row or row["is_admin"] != 1:
             raise HTTPException(403, "Forbidden: Admin access required.")
         return uid
     finally:
@@ -1088,10 +1130,13 @@ Ví dụ: {"type":"mathviz.v1","widget":"unit_circle_wave","title":"$y=2\\\\sin(
  "layers":[
    {"kind":"circle","center":{"x":0,"y":0},"r":3.5,"label":"(O)","color":"#3b82f6"},
    {"kind":"polygon","points":[{"id":"A","x":0,"y":3.5},{"id":"B","x":-3.03,"y":-1.75},{"id":"C","x":3.03,"y":-1.75}],"color":"#39FF14"},
-   {"kind":"line","from":{"x":0,"y":3.5},"to":{"x":0,"y":-1.75},"label":"AH","style":"dashed","color":"#f43f5e"},
-   {"kind":"line","from":{"x":-4.5,"y":-4},"to":{"x":3.03,"y":-1.75},"label":"BC","color":"#94a3b8"},
-   {"kind":"points","data":[{"id":"H","x":0,"y":-1.75},{"id":"O","x":0,"y":0},{"id":"E","x":1.5,"y":0.8},{"id":"T","x":0,"y":-4.5}]}
+   {"kind":"line","from":{"x":0,"y":3.5},"to":{"x":0,"y":-1.75},"label":"","style":"dashed","color":"#f43f5e"},
+   {"kind":"line","from":{"x":-4.5,"y":-4},"to":{"x":3.03,"y":-1.75},"label":"","color":"#94a3b8"},
+   {"kind":"points","data":[{"id":"H","x":0,"y":-1.75},{"id":"O","x":0,"y":0},{"id":"E","x":1.5,"y":0.8}]}
  ]}
+QUY TẮC BẮT BUỘC ĐỂ HÌNH VẼ SẠCH VÀ CHUẨN XÁC 100%:
+- ĐƯỜNG TRÒN: Khi vẽ đường tròn ngoại tiếp hoặc qua 3 điểm (vd qua A, E, F hoặc D, E, F), BẮT BUỘC thêm "through_3pts": ["A", "E", "F"]. Hệ thống sẽ tự tính tâm và bán kính chính xác 100%, không bị lệch!
+- ĐƯỜNG THẲNG / ĐOẠN THẲNG: TUYỆT ĐỐI KHÔNG ghi nhãn văn bản dài (như "Đường cao AD", "Đoạn thẳng PE", "Kéo dài...") vào thuộc tính "label" của line/segment. Để label: "" để hình vẽ thoáng sạch, không bị chữ đè lên các điểm.
 
 2. Cấu hình đơn hình (Tam giác, tứ giác, elip, đa giác đều):
 {"type":"mathviz.v1","widget":"geometry_2d","title":"$...$",
@@ -2138,8 +2183,18 @@ def init_db():
         except Exception:
             pass  # Column/index already exists — safe to ignore
 
-    # Automatically set will050710@gmail.com as admin
-    conn.execute("UPDATE users SET is_admin=1 WHERE email='will050710@gmail.com'")
+    # Phase 0 security fix: admin rights are granted through the ADMIN_EMAILS
+    # environment allowlist and only ever *promote pre-existing* accounts. The
+    # previous hard-coded `UPDATE ... WHERE email='will050710@gmail.com'` ran on
+    # every boot and made that address a permanently-registerable admin.
+    for _admin_email in sorted(_ADMIN_EMAILS):
+        try:
+            conn.execute(
+                "UPDATE users SET is_admin=1 WHERE lower(email)=? AND COALESCE(is_admin,0)=0",
+                (_admin_email,),
+            )
+        except Exception:
+            pass  # column added by the migrations above on older databases
     conn.commit()
     conn.close()
 
@@ -2236,20 +2291,29 @@ async def lifespan(application):
     yield
     task.cancel()
 
-app = FastAPI(title="DuoMath API v4", lifespan=lifespan)
+# Phase 0 security fix: CORS is now an explicit allowlist (env-driven) instead
+# of the previous `https://*.vercel.app|render.com|netlify.app` wildcard regex,
+# which let ANY attacker-controlled subdomain call the API with credentials.
+# API docs are also disabled in production (endpoint-surface disclosure).
+_DEFAULT_ORIGINS = "http://localhost:3000,http://localhost:3001,https://duomath.vercel.app"
+ALLOWED_ORIGINS = env_list("ALLOWED_ORIGINS", _DEFAULT_ORIGINS)
+
+app = FastAPI(
+    title="DuoMath API v4",
+    lifespan=lifespan,
+    docs_url=None if config_guard.is_production() else "/docs",
+    redoc_url=None,
+    openapi_url=None if config_guard.is_production() else "/openapi.json",
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001",
-        "https://duomath.onrender.com",
-        "https://duosteam.onrender.com",
-    ],
-    allow_origin_regex=r"https://.*\.(vercel\.app|render\.com|netlify\.app)",
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+    allow_credentials=False,  # auth uses Bearer tokens, not cookies
     max_age=3600,
 )
 
@@ -2339,8 +2403,14 @@ async def login(request: Request):
 
 
 @app.post("/api/refresh")
+@limiter.limit(SESSION_LIMIT)
 async def refresh_token(request: Request):
-    identity = get_identity(request)
+    """Phase 0 security fix: requires a *refresh* token (previously any access
+    token could mint more access tokens indefinitely)."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Missing refresh token")
+    identity = decode_refresh_token(auth_header[7:])
     return JSONResponse({"access_token": create_access_token(identity)})
 
 
@@ -2688,7 +2758,8 @@ async def get_games(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.post("/api/session/new")
-async def new_session():
+@limiter.limit(SESSION_LIMIT)
+async def new_session(request: Request):
     sid = str(uuid.uuid4())
     db = get_db()
     try:
@@ -2700,7 +2771,8 @@ async def new_session():
 
 
 @app.post("/api/session/{session_id}/reset")
-async def reset_session(session_id: str):
+@limiter.limit(SESSION_LIMIT)
+async def reset_session(session_id: str, request: Request):
     db = get_db()
     try:
         row = db.execute("SELECT session_id FROM sessions WHERE session_id=?", (session_id,)).fetchone()
@@ -2714,7 +2786,8 @@ async def reset_session(session_id: str):
 
 
 @app.get("/api/session/{session_id}/history")
-async def get_history(session_id: str):
+@limiter.limit(SESSION_LIMIT)
+async def get_history(session_id: str, request: Request):
     db = get_db()
     try:
         row = db.execute("SELECT history FROM sessions WHERE session_id=?", (session_id,)).fetchone()
@@ -2730,6 +2803,7 @@ async def get_history(session_id: str):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.post("/api/chat")
+@limiter.limit(CHAT_LIMIT)
 async def chat(request: Request):
     d = await request.json()
     session_id   = d.get("session_id") or str(uuid.uuid4())
@@ -2738,6 +2812,13 @@ async def chat(request: Request):
     use_stream   = d.get("stream", False)
     # MathGPT mode: "hint" (Socratic default) | "solution" (full answer + bài phái sinh)
     chat_mode    = d.get("mode", "hint")
+
+    # Phase 0: payload caps. /api/chat intentionally stays usable anonymously,
+    # so bound how much work (and paid AI quota) one request can trigger.
+    if len(user_message) > MAX_CHAT_MESSAGE_CHARS:
+        raise HTTPException(413, f"Message too long (max {MAX_CHAT_MESSAGE_CHARS} characters).")
+    if isinstance(image_data, str) and len(image_data) > MAX_IMAGE_B64_CHARS:
+        raise HTTPException(413, "Image too large (max ~5 MB).")
 
     if not user_message and not image_data:
         raise HTTPException(400, "message is required.")
@@ -2898,13 +2979,17 @@ async def chat(request: Request):
             # Stage 2 Handoff: Provide structured geometric primitives to Gemini for precision canvas generation
             enhanced_user_message = (
                 f"{user_message}\n\n"
-                f"## CẤU TRÚC HÌNH HỌC TỪ HÌNH ẢNH (Bóc tách chi tiết bởi Vision AI DuoMath Qwen2.5-VL Fine-Tuned):\n"
+                f"## CẤU TRÚC HÌNH HỌC TỪ HÌNH ẢNH (Bóc tách chi tiết bởi Vision AI Qwen3-VL-30B):\n"
                 f"{vision_description}\n"
                 f"{cv_hint_text}\n\n"
                 f"YÊU CẦU QUAN TRỌNG CHO CANVAS VÀ GIẢI TOÁN:\n"
-                f"1. Dựa trên các điểm (points), đường tròn (circles), đoạn thẳng (lines) và quan hệ không gian ở trên, hãy đưa ra phân tích và gợi ý định hướng giải chuẩn xác.\n"
-                f"2. BẮT BUỘC dựng khối ```mathviz ... ``` với widget \"geometry_2d\" (cấu trúc \"layers\" đa tầng) thể hiện đầy đủ, chính xác tất cả các điểm, đường tròn, tiếp tuyến, đoạn thẳng tương ứng.\n"
-                f"3. TUYỆT ĐỐI KHÔNG tự đoán mò tọa độ cho các điểm dựng hình (trực tâm, giao điểm, tiếp điểm, chân đường vuông góc). Hãy dùng mảng \"constructions\" để hệ thống giải tích tự động tính toán tọa độ chuẩn xác!"
+                f"1. Dựa trên TẤT CẢ các điểm, đường tròn, đoạn thẳng và quan hệ không gian ở trên, hãy đưa ra phân tích và gợi ý định hướng giải chuẩn xác.\n"
+                f"2. BẮT BUỘC dựng khối ```mathviz ... ``` với widget \"geometry_2d\" thể hiện ĐẦY ĐỦ TẤT CẢ các điểm được liệt kê, "
+                f"tất cả đường tròn, tiếp tuyến, đoạn thẳng tương ứng — KHÔNG được bỏ qua hay đơn giản hóa bất kỳ điểm nào!\n"
+                f"3. TUYỆT ĐỐI KHÔNG tự đoán mò tọa độ cho các điểm dựng hình (trực tâm, giao điểm, tiếp điểm, chân đường vuông góc). Hãy dùng mảng \"constructions\" để hệ thống giải tích tự động tính toán tọa độ chuẩn xác!\n"
+                f"4. Nếu Vision AI phát hiện H là trực tâm, D/E/F là chân đường cao → BẮT BUỘC dùng constructions: orthocenter + altitude_foot. "
+                f"Nếu có đường tròn ngoại tiếp → BẮT BUỘC dùng constructions: circumcenter + circle(through_3pts). "
+                f"Nếu có đường tròn Euler → BẮT BUỘC dùng constructions: nine_point_center + circle(through_3pts=[D,E,F])."
             )
             gemini_contents.append({
                 "role": "user",
@@ -3026,7 +3111,118 @@ async def chat(request: Request):
                     "Access-Control-Allow-Origin": "*",
                 },
             )
+        # ── Tier 0.5 Streaming: Groq / Qwen3-27B (Text-Only & Vision-Extracted) ──
+        # Khi không có ảnh HOẶC ảnh đã được Vision Agent trích xuất thành text -> stream Groq Qwen3 trước.
+        # NGOẠI TRỪ: geometry_2d + vision → Gemini tốt hơn nhiều cho complex layers JSON.
+        _skip_groq_for_geometry_s = (vision_description and _widget == "geometry_2d")
+        if GROQ_KEY and (not image_data or vision_description) and not _skip_groq_for_geometry_s:
+            # Pool: qwen3 trước, fallback gpt-oss-20b nếu 429
+            _groq05_pool_s = ["qwen/qwen3.8-27b", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]
+            _groq05_s_model = _groq05_pool_s[0]  # default, generator tự rotate khi cần
+            print(f"[Chat] Tier 0.5 Stream: Groq ({_groq05_s_model}) cho math canvas (text/vision)...")
+            _groq05_s_payload = {
+                "model": _groq05_s_model,
+                "messages": openai_messages,
+                "temperature": 0.3,
+                "max_tokens": max_tokens,
+                "stream": True,
+            }
+
+            async def generate_groq_stream():
+                full_reply = []
+                failed = False
+                for _gs_model in _groq05_pool_s:
+                    _gs_payload = {**_groq05_s_payload, "model": _gs_model}
+                    try:
+                        async with client.stream(
+                            "POST", f"{GROQ_BASE}/chat/completions",
+                            headers=groq_headers(),
+                            json=_gs_payload,
+                            timeout=30
+                        ) as resp:
+                            if resp.status_code == 429:
+                                print(f"[WARN] Groq stream ({_gs_model}) 429 — thu model tiep theo trong pool")
+                                continue  # thu model tiep
+                            if resp.status_code != 200:
+                                print(f"[WARN] Groq stream ({_gs_model}) returned {resp.status_code} — fallback Gemini")
+                                failed = True
+                                break
+                            async for raw_line in resp.aiter_lines():
+                                if not raw_line:
+                                    continue
+                                line = raw_line.strip()
+                                if line.startswith("data: "):
+                                    data_str = line[6:]
+                                    if data_str.strip() == "[DONE]":
+                                        break
+                                    try:
+                                        chunk = json.loads(data_str)
+                                        choices = chunk.get("choices", [])
+                                        if choices:
+                                            delta = choices[0].get("delta", {})
+                                            token = delta.get("content", "")
+                                            if token:
+                                                full_reply.append(token)
+                                                yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
+                                    except Exception:
+                                        continue
+                            if full_reply:
+                                break  # da co token, dung lai
+                    except Exception as _ex_g05s:
+                        print(f"[WARN] Groq stream ({_gs_model}) loi: {_ex_g05s} — thu model tiep")
+                        continue
+                else:
+                    # Toan bo pool deu fail
+                    failed = True
+
+                if not failed and full_reply:
+                    history.append({"role": "assistant", "content": "".join(full_reply)})
+                    save_history(session_id, history)
+                    yield f"data: {orjson.dumps({'done': True, 'session_id': session_id}).decode()}\n\n"
+                    return
+
+                # Fallback: Gemini stream neu Groq fail hoac tra rong
+                print("[Chat] Fallback: Gemini stream sau Groq Tier 0.5 fail...")
+                _gem_url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:streamGenerateContent?key={gemini_api_key}&alt=sse"
+                _gem_pl = {
+                    "contents": gemini_contents,
+                    "systemInstruction": {"parts": [{"text": full_system_prompt}]},
+                    "generationConfig": {"temperature": 0.3, "maxOutputTokens": max_tokens},
+                }
+                fallback_reply = []
+                try:
+                    async with client.stream("POST", _gem_url, json=_gem_pl, timeout=90) as resp2:
+                        resp2.raise_for_status()
+                        async for raw_line2 in resp2.aiter_lines():
+                            if not raw_line2:
+                                continue
+                            if raw_line2.startswith("data: "):
+                                try:
+                                    chunk2 = json.loads(raw_line2[6:])
+                                    token2 = chunk2["candidates"][0]["content"]["parts"][0].get("text", "")
+                                    if token2:
+                                        fallback_reply.append(token2)
+                                        yield f"data: {orjson.dumps({'token': token2, 'session_id': session_id}).decode()}\n\n"
+                                except Exception:
+                                    continue
+                except Exception as _ex_gem:
+                    yield f"data: {orjson.dumps({'error': str(_ex_gem)}).decode()}\n\n"
+                    return
+                history.append({"role": "assistant", "content": "".join(fallback_reply)})
+                save_history(session_id, history)
+                yield f"data: {orjson.dumps({'done': True, 'session_id': session_id}).decode()}\n\n"
+
+            return StreamingResponse(
+                generate_groq_stream(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "X-Accel-Buffering": "no",
+                    "Access-Control-Allow-Origin": "*",
+                },
+            )
         else:
+
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{gemini_model}:streamGenerateContent?key={gemini_api_key}&alt=sse"
             payload = {
                 "contents": gemini_contents,
@@ -3093,15 +3289,54 @@ async def chat(request: Request):
 
         fallback_models = [
             gemini_model,
-            "gemini-3.5-flash",
+            "gemini-flash-latest",
             "gemini-3.6-flash",
+            "gemini-3.1-flash-lite",
             "gemini-3-flash-preview",
-            "gemini-2.0-flash",
         ]
         seen_models = set()
         fallback_models = [m for m in fallback_models if m and not (m in seen_models or seen_models.add(m))]
 
         reply = None
+
+        # ── Tier 0.5: Groq / Qwen3-27B (Math & Vision-Extracted Geometry Priority) ──
+        # Kích hoạt khi: không có ảnh HOẶC ảnh đã được Vision AI trích xuất thành text (vision_description).
+        # NGOẠI TRỪ: geometry_2d + vision_description → bỏ qua Groq vì Groq/Qwen output sai schema (dùng "mode":"triangle" thay vì "layers" phức tạp).
+        _skip_groq_for_geometry = (vision_description and _widget == "geometry_2d")
+        if GROQ_KEY and (not image_data or vision_description) and not is_custom_provider and not _skip_groq_for_geometry:
+            # Model pool: nếu qwen3.8-27b bị 429 (rate limit) thì thử model tiếp theo
+            _groq05_pool = ["qwen/qwen3.8-27b", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]
+            for _groq_priority_model in _groq05_pool:
+                try:
+                    print(f"[Chat] Tier 0.5: Groq ({_groq_priority_model}) cho math canvas (text/vision-extracted)...")
+                    _groq05_payload = {
+                        "model": _groq_priority_model,
+                        "messages": openai_messages,
+                        "temperature": 0.3,
+                        "max_tokens": max_tokens,
+                        "stream": False,
+                    }
+                    _groq05_resp = await client.post(
+                        f"{GROQ_BASE}/chat/completions",
+                        headers=groq_headers(),
+                        json=_groq05_payload,
+                        timeout=30,
+                    )
+                    if _groq05_resp.status_code == 200:
+                        reply = _groq05_resp.json()["choices"][0]["message"]["content"]
+                        if reply and reply.strip():
+                            print(f"[Chat] Groq ({_groq_priority_model}) thanh cong — Tier 0.5!")
+                            break   # thanh cong, thoat khoi vong pool
+                        else:
+                            print(f"[WARN] Groq Tier 0.5 ({_groq_priority_model}) tra ve rong — thu model tiep theo")
+                            reply = None
+                    elif _groq05_resp.status_code == 429:
+                        print(f"[WARN] Groq ({_groq_priority_model}) rate-limited 429 — thu model tiep theo trong pool")
+                    else:
+                        print(f"[WARN] Groq Tier 0.5 ({_groq_priority_model}) returned {_groq05_resp.status_code} — fallback Gemini")
+                        break  # loi khac 429, khong thu tiep, de Gemini xu ly
+                except Exception as _ex_g05:
+                    print(f"[WARN] Groq Tier 0.5 ({_groq_priority_model}) loi: {_ex_g05} — thu model tiep")
 
         if is_custom_provider:
             try:
@@ -3126,28 +3361,20 @@ async def chat(request: Request):
             if reply:
                 break
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent?key={gemini_api_key}"
-            for attempt in range(3):
+            for attempt in range(1):
                 try:
                     curr_payload = json.loads(json.dumps(payload))
                     should_break_model = False
                     should_continue_attempt = False
                     # Tool calling multi-turn execution loop (up to 4 iterations)
                     for tool_step in range(4):
-                        resp = await client.post(url, json=curr_payload, timeout=60)
+                        resp = await client.post(url, json=curr_payload, timeout=15)
                         if resp.status_code == 400 and "tools" in curr_payload:
                             print(f"[WARN] {current_model} returned 400 during tool call — retrying without tools")
                             curr_payload.pop("tools", None)
-                            resp = await client.post(url, json=curr_payload, timeout=60)
-                        if resp.status_code in (401, 403, 429, 503):
-                            print(f"[WARN] {current_model} returned {resp.status_code} (attempt {attempt+1}/3)")
-                            if resp.status_code in (401, 403):
-                                # Bad key or forbidden, abort this model immediately
-                                should_break_model = True
-                                break
-                            if attempt < 2:
-                                await asyncio.sleep(1.5 * (attempt + 1))
-                                should_continue_attempt = True
-                                break
+                            resp = await client.post(url, json=curr_payload, timeout=15)
+                        if resp.status_code in (401, 403, 404, 429, 503):
+                            print(f"[WARN] {current_model} returned {resp.status_code} — switching model")
                             should_break_model = True
                             break
                         resp.raise_for_status()
@@ -3201,7 +3428,7 @@ async def chat(request: Request):
                     try:
                         no_tools_payload = json.loads(json.dumps(payload))
                         no_tools_payload.pop("tools", None)
-                        resp = await client.post(url, json=no_tools_payload, timeout=60)
+                        resp = await client.post(url, json=no_tools_payload, timeout=15)
                         if resp.status_code == 200:
                             res_data = resp.json()
                             candidate_parts = res_data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
@@ -3459,8 +3686,10 @@ async def chat(request: Request):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @app.get("/api/typesafe/status")
-async def get_typesafe_status():
+@limiter.limit(TYPESAFE_LIMIT)
+async def get_typesafe_status(request: Request):
     """Returns TypeSafe AI status, active key, and rotation pool statistics."""
+    await verify_admin(request)  # Phase 0: key-pool state is admin-only
     try:
         from typesafe_guard import key_manager, typesafe_guard
         status = key_manager.get_status()
@@ -3471,8 +3700,10 @@ async def get_typesafe_status():
 
 
 @app.post("/api/typesafe/rotate")
+@limiter.limit(TYPESAFE_LIMIT)
 async def rotate_typesafe_key(request: Request):
     """Manually triggers rotation of TypeSafe AI API key to the secondary key."""
+    await verify_admin(request)  # Phase 0: was anonymous (let anyone burn the key pool)
     try:
         from typesafe_guard import key_manager
         body = {}
@@ -3493,8 +3724,10 @@ async def rotate_typesafe_key(request: Request):
 
 
 @app.post("/api/typesafe/validate")
+@limiter.limit(TYPESAFE_LIMIT)
 async def validate_typesafe_text(request: Request):
     """Validates arbitrary text or math solution with JevStyle contracts & reflexes."""
+    await resolve_user_id(request)  # Phase 0: burns paid TypeSafe quota
     try:
         d = await request.json()
         text = d.get("text", "")
@@ -3629,13 +3862,25 @@ def get_mock_translation(text: str) -> dict:
                 {"word": text, "type": "term", "pronunciation": "/.../", "vietnamese": "Dịch nghĩa tương ứng", "example": "Example usage context."}
             ]
         }
+# Phase 0: serialise heavy render jobs (this used to be an unauthenticated,
+# unbounded CPU/DoS surface) and create the lock lazily at import time.
+_VIDEO_JOB_LOCK = asyncio.Lock()
+
+
 @app.post("/api/video/generate")
+@limiter.limit(VIDEO_LIMIT)
 async def generate_video(request: Request):
+    # Phase 0 security fix: this endpoint was fully anonymous and piped
+    # AI-supplied instructions into a Python subprocess with `eval()`. It now
+    # requires a login, bounds the payload, serialises jobs and times them out.
+    await resolve_user_id(request)
     try:
         data = await request.json()
         instructions = data.get("instructions") or []
-        if not instructions:
+        if not isinstance(instructions, list) or not instructions:
             raise HTTPException(status_code=400, detail="Missing instructions")
+        if len(instructions) > MAX_INSTRUCTIONS:
+            raise HTTPException(status_code=413, detail=f"Too many instructions (max {MAX_INSTRUCTIONS}).")
             
         video_id = str(uuid.uuid4())
         
@@ -3643,44 +3888,72 @@ async def generate_video(request: Request):
         backend_dir = os.path.dirname(os.path.abspath(__file__))
         frontend_public = os.path.abspath(os.path.join(backend_dir, "..", "frontend", "public"))
         videos_dir = os.path.join(frontend_public, "videos")
-        os.makedirs(videos_dir, exist_ok=True)
+        try:
+            os.makedirs(videos_dir, exist_ok=True)
+        except OSError:
+            # Render's filesystem can be read-only — fall back to a temp dir.
+            videos_dir = os.path.join(tempfile.gettempdir(), "duomath_videos")
+            os.makedirs(videos_dir, exist_ok=True)
         
         output_file = os.path.join(videos_dir, f"{video_id}.mp4")
         
         # Run python compilation in D:\duosteam_venv
         compiler_script = os.path.join(backend_dir, "canvas_to_video.py")
-        json_str = json.dumps(instructions)
+        payload_path = os.path.join(tempfile.gettempdir(), f"duomath_canvas_{video_id}.json")
+        with open(payload_path, "w", encoding="utf-8") as fh:
+            json.dump(instructions, fh)
         
-        # Subprocess call using the venv python interpreter on D: drive
-        python_exe = r"D:\duosteam_venv\Scripts\python.exe"
-        if not os.path.exists(python_exe):
-            # Fallback to local venv python if D drive venv is not ready
-            python_exe = os.path.abspath(os.path.join(backend_dir, "..", ".venv", "Scripts", "python.exe"))
+        # Phase 0: pass instructions through a temp file (not argv), run the
+        # renderer with the *current* interpreter (works on Render/Linux too)
+        # and strip the child environment so API keys cannot be exfiltrated.
+        python_exe = sys.executable
+        if not python_exe or not os.path.exists(python_exe):
+            python_exe = "python"
             
-        cmd = [python_exe, compiler_script, json_str, output_file]
+        cmd = [python_exe, compiler_script, payload_path, output_file]
+        child_env = {
+            "PATH": os.environ.get("PATH", ""),
+            "PYTHONIOENCODING": "utf-8",
+            "PYTHONHASHSEED": "0",
+            "MPLBACKEND": "Agg",
+            "MPLCONFIGDIR": tempfile.gettempdir(),
+        }
+        for _passthrough in ("SYSTEMROOT", "TEMP", "TMP", "HOME"):
+            if os.environ.get(_passthrough):
+                child_env[_passthrough] = os.environ[_passthrough]
         
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        
-        stdout, stderr = await process.communicate()
-        
+        async with _VIDEO_JOB_LOCK:
+            process = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                env=child_env,
+            )
+            try:
+                stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=180)
+            except asyncio.TimeoutError:
+                process.kill()
+                await process.wait()
+                raise HTTPException(status_code=504, detail="Video rendering timed out.")
+        try:
+            os.remove(payload_path)
+        except OSError:
+            pass
+
         if process.returncode != 0:
-            err_msg = stderr.decode()
-            print("[ERROR] Video generation failed:", err_msg)
-            raise HTTPException(status_code=500, detail=f"Video rendering failed: {err_msg}")
+            logger.error("[video] render failed: %s", stderr.decode(errors="replace")[:2000])
+            raise HTTPException(status_code=500, detail="Video rendering failed.")
             
         return {"url": f"/videos/{video_id}.mp4"}
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Video generation failed.")
 
 @app.post("/api/translate")
+@limiter.limit(TRANSLATE_LIMIT)
 async def translate(request: Request):
     d = await request.json()
     text = (d.get("text") or "").strip()[:500]
@@ -3878,7 +4151,9 @@ def parse_math_questions_local(text: str) -> dict:
     }
 
 @app.post("/api/mathmap/parse-file")
+@limiter.limit(PARSE_FILE_LIMIT)
 async def mathmap_parse_file(request: Request):
+    await resolve_user_id(request)  # Phase 0: was anonymous (burns Groq quota)
     d = await request.json()
     text = (d.get("text") or "").strip()
     if not text:
@@ -6458,10 +6733,16 @@ def _serve_q(attempt_id: str, q: dict, q_idx: int) -> dict:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.post("/api/ai-test/analyze")
+@limiter.limit(ANALYZE_LIMIT)
 async def ai_test_analyze(request: Request):
+    await resolve_user_id(request)  # Phase 0: was anonymous (Gemini + storage cost)
     d = await request.json()
     text    = (d.get("text_content") or "").strip()
     b64     = d.get("data_base64", "")
+    if isinstance(b64, str) and len(b64) > MAX_DOCUMENT_B64_CHARS:
+        raise HTTPException(413, "Document too large (max ~8 MB).")
+    if len(text) > 20000:
+        text = text[:20000]
     mime    = d.get("mime_type", "text/plain")
     fname   = d.get("filename", "document")
     session = d.get("session_id", str(uuid.uuid4()))
@@ -6497,7 +6778,9 @@ async def ai_test_analyze(request: Request):
 
 
 @app.post("/api/ai-test/generate")
+@limiter.limit(GRADING_LIMIT)
 async def ai_test_generate(request: Request):
+    await resolve_user_id(request)  # Phase 0: was anonymous
     d = await request.json()
     mat_id = d.get("material_id", "")
     count  = max(1, min(int(d.get("question_count", 5)), 15))
@@ -6547,7 +6830,9 @@ async def ai_test_generate(request: Request):
 
 
 @app.post("/api/ai-test/{test_id}/start")
-async def ai_test_start(test_id: str):
+@limiter.limit(GRADING_LIMIT)
+async def ai_test_start(test_id: str, request: Request):
+    await resolve_user_id(request)  # Phase 0: was anonymous
     db = get_db()
     test = db.execute("SELECT * FROM ai_tests WHERE id=?", (test_id,)).fetchone()
     if not test:
@@ -6579,7 +6864,9 @@ async def ai_test_start(test_id: str):
 
 
 @app.post("/api/ai-test/attempt/{attempt_id}/submit")
+@limiter.limit(GRADING_LIMIT)
 async def ai_test_submit(attempt_id: str, request: Request):
+    await resolve_user_id(request)  # Phase 0: was anonymous
     d = await request.json()
     ans_type  = d.get("answer_type", "typed")
     ans_text  = (d.get("answer_text") or "").strip()
@@ -6678,7 +6965,9 @@ async def ai_test_submit(attempt_id: str, request: Request):
 
 
 @app.get("/api/ai-test/attempt/{attempt_id}/review")
-async def ai_test_review(attempt_id: str):
+@limiter.limit(GRADING_LIMIT)
+async def ai_test_review(attempt_id: str, request: Request):
+    await resolve_user_id(request)  # Phase 0: was anonymous
     db = get_db()
     attempt = db.execute("SELECT * FROM ai_attempts WHERE id=?", (attempt_id,)).fetchone()
     if not attempt:
@@ -7733,11 +8022,15 @@ async def get_changelog():
 
 # ── AI Addons: Geometry Engine & Video Enhancer ───────────────────────────────
 @app.post("/api/geometry/preprocess")
-async def api_geometry_preprocess(req: Request):
+@limiter.limit(GEOMETRY_LIMIT)
+async def api_geometry_preprocess(request: Request):
     """Bóc tách sơ đồ hình học (GeoSolver + Qwen2.5-VL) và sinh mã AlphaGeometry DSL."""
+    await resolve_user_id(request)  # Phase 0: was anonymous (paid Vision API)
     try:
-        data = await req.json()
+        data = await request.json()
         img = data.get("image")
+        if isinstance(img, str) and len(img) > MAX_IMAGE_B64_CHARS:
+            raise HTTPException(413, "Image too large (max ~5 MB).")
         text = data.get("text", "")
         vision_text = ""
         if img and _vision_agent.is_configured():
@@ -7751,10 +8044,12 @@ async def api_geometry_preprocess(req: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/geometry/alphageometry/translate")
-async def api_alphageometry_translate(req: Request):
+@limiter.limit(GEOMETRY_LIMIT)
+async def api_alphageometry_translate(request: Request):
     """Chuyển đổi bài toán hình học sang ngôn ngữ hình thức AlphaGeometry DSL."""
+    await resolve_user_id(request)  # Phase 0: was anonymous
     try:
-        data = await req.json()
+        data = await request.json()
         text = data.get("text", "")
         from geometry_engine import AlphaGeometryTranslator, SymbolicGeometryEngine
         formal_info = AlphaGeometryTranslator.to_formal_dsl(text)
@@ -7764,10 +8059,12 @@ async def api_alphageometry_translate(req: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.post("/api/video/enhance")
-async def api_video_enhance(req: Request):
+@limiter.limit(ENHANCE_LIMIT)
+async def api_video_enhance(request: Request):
     """Khởi động pipeline phục hồi & nâng cấp video AI (CodeFormer + Real-ESRGAN + RIFE)."""
+    await verify_admin(request)  # Phase 0: was anonymous and accepted arbitrary server-side paths
     try:
-        data = await req.json()
+        data = await request.json()
         video_path = data.get("video_path") or data.get("url")
         options = data.get("options", {})
         from video_enhancer import enhance_user_video_async
@@ -7777,8 +8074,10 @@ async def api_video_enhance(req: Request):
         return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/api/video/enhance/status/{task_id}")
-async def api_video_enhance_status(task_id: str):
+@limiter.limit(ENHANCE_LIMIT)
+async def api_video_enhance_status(task_id: str, request: Request):
     """Kiểm tra tiến trình % và trạng thái xử lý video."""
+    await verify_admin(request)  # Phase 0: task state is admin-only
     try:
         from video_enhancer import get_video_task_status
         st = get_video_task_status(task_id)

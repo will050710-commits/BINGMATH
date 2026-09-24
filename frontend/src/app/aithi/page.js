@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { authFetch } from "@/lib/authFetch";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const API =
@@ -102,7 +103,10 @@ const GLOBAL_CSS = `
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 async function apiFetch(method, path, body) {
-  const res = await fetch(`${API}${path}`, {
+  // Phase 0: AI Test Studio endpoints now require a logged-in user, so the
+  // Firebase ID token must ride along with every call.
+  const res = await authFetch(path, {
+    base: API,
     method,
     headers: body ? { "Content-Type": "application/json" } : undefined,
     body: body ? JSON.stringify(body) : undefined,
