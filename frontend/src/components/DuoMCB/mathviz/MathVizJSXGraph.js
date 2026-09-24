@@ -5,7 +5,7 @@ import '@/styles/jsxgraph.css';
 import { ZoomIn, ZoomOut, RotateCcw, CheckCircle2, AlertTriangle, Compass } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
 
-export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
+export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }) {
   const containerRef = useRef(null);
   const boardRef = useRef(null);
   const rawId = useId();
@@ -638,24 +638,44 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
           fallback="Hình học phẳng 2D (Adjusting Mode)"
         />
 
-        {onSwitchToSvg && (
-          <button
-            onClick={onSwitchToSvg}
-            style={{
-              background: 'rgba(255, 255, 255, 0.08)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              color: '#94a3b8',
-              borderRadius: 6,
-              padding: '4px 8px',
-              fontSize: 11,
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-            }}
-            title="Switch to simple static display mode"
-          >
-            Simple Display
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 6 }}>
+          {onSwitchToKonva && (
+            <button
+              onClick={onSwitchToKonva}
+              style={{
+                background: 'rgba(167, 139, 250, 0.15)',
+                border: '1px solid rgba(167, 139, 250, 0.4)',
+                color: '#a78bfa',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: 11,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              title="Switch to the Konva canvas engine"
+            >
+              Konva Mode
+            </button>
+          )}
+          {onSwitchToSvg && (
+            <button
+              onClick={onSwitchToSvg}
+              style={{
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.15)',
+                color: '#94a3b8',
+                borderRadius: 6,
+                padding: '4px 8px',
+                fontSize: 11,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+              }}
+              title="Switch to simple static display mode"
+            >
+              Simple Display
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Verification status badge */}

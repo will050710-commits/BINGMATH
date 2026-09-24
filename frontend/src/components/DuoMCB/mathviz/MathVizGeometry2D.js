@@ -3,6 +3,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { RotateCcw, Plus, Trash2, Compass, Sparkles, ZoomIn, ZoomOut, Maximize2, Minimize2, Move, Palette, X } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
 import MathVizJSXGraph from './MathVizJSXGraph';
+import MathVizKonvaGeometry2D from './MathVizKonvaGeometry2D';
 
 const CANVAS_SIZE = 520;
 const fmt = (n, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : '—');
@@ -1105,15 +1106,48 @@ export default function MathVizGeometry2D({ data }) {
   const labelStyle = { fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em' };
   const valueStyle = { fontSize: 13, fontFamily: 'monospace', color: '#e2e8f0', marginTop: 4 };
 
+  // Konva engine (restored WIP): canvas-rendered view, cheaper than JSXGraph
+  // for large composite payloads and a fallback when SVG labels overlap.
+  if (engine === 'konva') {
+    return <MathVizKonvaGeometry2D data={data} onSwitchEngine={() => setEngine('jsxgraph')} />;
+  }
+
   // JSXGraph engine — placed after ALL hooks to satisfy Rules of Hooks
   if (engine === 'jsxgraph') {
-    return <MathVizJSXGraph data={data} onSwitchToSvg={() => setEngine('svg')} />;
+    return (
+      <MathVizJSXGraph
+        data={data}
+        onSwitchToSvg={() => setEngine('svg')}
+        onSwitchToKonva={() => setEngine('konva')}
+      />
+    );
   }
 
   return (
     <div style={container}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <MathVizTitle icon="📐" title={data?.title} fallback="Hình học phẳng 2D (Simple Display)" />
+        <div style={{ display: 'flex', gap: 6 }}>
+        <button
+          onClick={() => setEngine('konva')}
+          style={{
+            background: 'rgba(167, 139, 250, 0.15)',
+            border: '1px solid rgba(167, 139, 250, 0.4)',
+            color: '#a78bfa',
+            borderRadius: 6,
+            padding: '4px 10px',
+            fontSize: 11,
+            cursor: 'pointer',
+            fontWeight: 600,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+          title="Chuyển sang engine Konva (canvas)"
+        >
+          <Sparkles size={13} />
+          <span>Konva Mode</span>
+        </button>
         <button
           onClick={() => setEngine('jsxgraph')}
           style={{
@@ -1134,6 +1168,7 @@ export default function MathVizGeometry2D({ data }) {
           <Compass size={13} />
           <span>Adjusting Mode</span>
         </button>
+        </div>
       </div>
 
       {/* Mode Selector and Tools Bar */}

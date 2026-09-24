@@ -87,16 +87,19 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     C = declared_points["C"]
 
     title = (data.get("title") or "").upper()
-    
-    # 1. Exact title keywords matching the Euler/GLK/Cevian Olympiad problem
-    is_exact_euler_title = any(kw in title for kw in ("GLK", "CEVIAN", "AML", "EULER", "9 ĐIỂM"))
-    
-    # 2. Or cluster of points specifically belonging to this Olympiad configuration:
-    # Requires the full altitude/orthocenter cluster (H, D, E, F)
-    has_euler_altitudes = all(k in declared_points for k in ("H", "D", "E", "F"))
-    has_full_euler_cluster = has_euler_altitudes
 
-    if not (is_exact_euler_title or has_full_euler_cluster):
+    # Restored WIP fix (locked down by test_geometry_canvas_solver_regression.py):
+    # only an explicit *problem-name* keyword may select this memorized Olympiad
+    # template. Two triggers had to be removed because they fired on ordinary
+    # figures and silently replaced every coordinate with the template:
+    #   1. the bare H/D/E/F altitude cluster — a three-altitude-foot triangle is
+    #      a standard problem, not this one;
+    #   2. the generic syllabus words "EULER" / "9 ĐIỂM" (nine-point circle is
+    #      grade-10 material taught in every class).
+    TITLE_KEYWORDS = ("GLK", "CEVIAN", "AML")
+    is_exact_euler_title = any(kw in title for kw in TITLE_KEYWORDS)
+
+    if not is_exact_euler_title:
         return data
 
     # Standardize to natural skew acute triangle matching Olympiad problem configuration
