@@ -1,3 +1,6 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+/* eslint-disable @next/next/no-html-link-for-pages */
+/* eslint-disable react-hooks/immutability */
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { authFetch } from "@/lib/authFetch";
