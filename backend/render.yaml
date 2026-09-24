@@ -54,3 +54,10 @@ services:
       # accounts are ever promoted (the hard-coded email bypass was removed).
       - key: ADMIN_EMAILS
         sync: false
+      # Optional: comma-separated Host headers the API accepts (defaults cover
+      # *.onrender.com, localhost and 127.0.0.1). Add a custom domain here.
+      - key: ALLOWED_HOSTS
+        sync: false
+      # Optional: retention window in days for anonymous sessions/AI materials.
+      - key: DATA_RETENTION_DAYS
+        value: "30"

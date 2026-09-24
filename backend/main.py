@@ -38,6 +38,7 @@ from fastapi import FastAPI, Request, HTTPException, Depends # pyright: ignore[r
 from fastapi.responses import JSONResponse, StreamingResponse # pyright: ignore[reportMissingImports]
 from fastapi.middleware.cors import CORSMiddleware # pyright: ignore[reportMissingImports]
 from fastapi.middleware.gzip import GZipMiddleware # pyright: ignore[reportMissingImports]
+from fastapi.middleware.trustedhost import TrustedHostMiddleware # pyright: ignore[reportMissingImports]
 
 from werkzeug.security import generate_password_hash, check_password_hash # pyright: ignore[reportMissingImports]
 
@@ -350,6 +351,23 @@ async def verify_admin(request: Request) -> int:
         return uid
     finally:
         db.close()
+
+
+def audit_admin(admin_id: int, action: str, target: str = "", detail: str = "") -> None:
+    """Phase 3: append a row to the admin trail. Never raises — an audit failure
+    must not take down the privileged action it is recording (it is logged)."""
+    try:
+        db = get_db()
+        try:
+            db.execute(
+                "INSERT INTO admin_audit_log (admin_id, action, target, detail) VALUES (?,?,?,?)",
+                (admin_id, str(action)[:80], str(target)[:120], str(detail)[:500]),
+            )
+            db.commit()
+        finally:
+            db.close()
+    except Exception as exc:
+        logger.warning("[audit] could not record %s: %s", action, exc)
 
 
 def get_identity(request: Request) -> str:
@@ -2197,6 +2215,16 @@ def init_db():
         ("ALTER TABLE test_results ADD COLUMN verified INTEGER DEFAULT 0", None),
         ("ALTER TABLE sessions ADD COLUMN user_id INTEGER", None),
         ("CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id)", None),
+        # ── Phase 3: append-only trail of privileged actions ───────────────
+        ("""CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id   INTEGER NOT NULL,
+            action     TEXT NOT NULL,
+            target     TEXT DEFAULT '',
+            detail     TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now'))
+        )""", None),
+        ("CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_log(created_at)", None),
     ])
     for sql, _ in migrations:
         try:
@@ -2383,6 +2411,18 @@ app = FastAPI(
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(GZipMiddleware, minimum_size=500)
+
+# Phase 3: reject requests whose Host header we do not serve (Host-header
+# injection / cache-poisoning). Add extra domains through ALLOWED_HOSTS.
+_ALLOWED_HOSTS = env_list("ALLOWED_HOSTS") or [
+    "duomath.onrender.com",
+    "duosteam.onrender.com",
+    "localhost",
+    "127.0.0.1",
+    "testserver",
+    "*.onrender.com",
+]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=_ALLOWED_HOSTS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -3076,9 +3116,11 @@ def purge_stale_data() -> dict:
 @limiter.limit(TYPESAFE_LIMIT)
 async def run_retention(request: Request):
     """Admin trigger for the retention job (also runs automatically at boot)."""
-    await verify_admin(request)
+    admin_id = await verify_admin(request)
     try:
-        return JSONResponse(purge_stale_data())
+        result = purge_stale_data()
+        audit_admin(admin_id, "retention.run", "", json.dumps(result))
+        return JSONResponse(result)
     except Exception as e:
         raise HTTPException(500, f"Retention run failed: {e}")
 
@@ -4602,7 +4644,7 @@ async def admin_get_users(request: Request):
 
 @app.patch("/api/admin/users/{user_id}/role")
 async def admin_change_role(user_id: int, request: Request):
-    await verify_admin(request)
+    admin_id = await verify_admin(request)
     d = await request.json()
     is_admin = int(d.get("is_admin", 0))
     db = get_db()
@@ -4614,14 +4656,16 @@ async def admin_change_role(user_id: int, request: Request):
         
         db.execute("UPDATE users SET is_admin=? WHERE id=?", (is_admin, user_id))
         db.commit()
-        return JSONResponse({"ok": True})
     finally:
         db.close()
+    # Phase 3: privileged actions are recorded for the audit trail.
+    audit_admin(admin_id, "user.role", str(user_id), f"is_admin={is_admin}")
+    return JSONResponse({"ok": True})
 
 
 @app.patch("/api/admin/users/{user_id}/ban")
 async def admin_ban_user(user_id: int, request: Request):
-    await verify_admin(request)
+    admin_id = await verify_admin(request)
     d = await request.json()
     banned = int(d.get("banned", 1))
     reason = d.get("reason", "").strip()
@@ -4634,9 +4678,10 @@ async def admin_ban_user(user_id: int, request: Request):
             
         db.execute("UPDATE users SET banned=?, ban_reason=? WHERE id=?", (banned, reason, user_id))
         db.commit()
-        return JSONResponse({"ok": True})
     finally:
         db.close()
+    audit_admin(admin_id, "user.ban", str(user_id), f"banned={banned} reason={reason}")
+    return JSONResponse({"ok": True})
 
 
 @app.post("/api/reports")
@@ -4707,14 +4752,36 @@ async def admin_get_reports(request: Request):
 
 @app.post("/api/admin/reports/{report_id}/resolve")
 async def admin_resolve_report(report_id: int, request: Request):
-    await verify_admin(request)
+    admin_id = await verify_admin(request)
     d = await request.json()
     status = d.get("status", "resolved")
     db = get_db()
     try:
         db.execute("UPDATE reports SET status=? WHERE id=?", (status, report_id))
         db.commit()
-        return JSONResponse({"ok": True})
+    finally:
+        db.close()
+    audit_admin(admin_id, "report.resolve", str(report_id), f"status={status}")
+    return JSONResponse({"ok": True})
+
+
+@app.get("/api/admin/audit-log")
+@limiter.limit(TYPESAFE_LIMIT)
+async def admin_get_audit_log(request: Request):
+    """Phase 3: read the privileged-action trail (newest first)."""
+    await verify_admin(request)
+    try:
+        limit = min(max(int(request.query_params.get("limit", 100) or 100), 1), 500)
+    except (TypeError, ValueError):
+        limit = 100
+    db = get_db()
+    try:
+        rows = db.execute(
+            "SELECT id, admin_id, action, target, detail, created_at"
+            " FROM admin_audit_log ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return JSONResponse({"entries": [{k: r[k] for k in r.keys()} for r in rows]})
     finally:
         db.close()
 

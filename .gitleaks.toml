@@ -28,3 +28,9 @@ paths = [
   '''dist/''',
   '''build/''',
 ]
+commits = [
+  # Historical hard-coded GEMINI_API_KEY fallback inside backend/main.py. The
+  # value is gone from the tree; it is on the owner's rotation list, so the
+  # commit is allowlisted to keep CI loud only for *new* leaks.
+  "c278e2c912264be69c96d80eee942aacd69cfb24",
+]

@@ -427,7 +427,10 @@ export default function MRMSettings() {
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.9 }}>
             Bạn có thể tải về toàn bộ dữ liệu học tập của mình (hồ sơ, kết quả bài test, lịch sử trò chơi,
             hội thoại với DuoMCB) và xoá vĩnh viễn tài khoản bất cứ lúc nào. Hội thoại ẩn danh và tài liệu
-            tải lên được hệ thống tự động dọn sau 30 ngày.
+            tải lên được hệ thống tự động dọn sau 30 ngày. Chi tiết xem{" "}
+            <Link href="/privacy" style={{ color: "#22d3ee", textDecoration: "underline" }}>
+              Chính sách quyền riêng tư
+            </Link>.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button
