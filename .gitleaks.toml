@@ -1,0 +1,30 @@
+# gitleaks configuration — Phase 3 (CI secret scanning)
+#
+# Default rules stay enabled (`useDefault = true`); the allowlist below only
+# covers values that are *designed to be public* so the scan stays meaningful.
+#
+# Why these are safe to publish:
+#   * Firebase Web API keys and google-services.json keys are identifiers, not
+#     credentials: they must be restricted in the Google Cloud / Firebase
+#     console (HTTP referrer + Android app restrictions, App Check) instead.
+#   * SECURITY_PHASE*.md documents the incident response and quotes file names,
+#     not secret values.
+title = "DuoMath gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Values that are public by design, documents that only quote file names, and build output that is never published"
+paths = [
+  '''frontend/src/lib/firebase\.js$''',
+  '''mobile/android/app/google-services\.json$''',
+  '''backend/\.env\.example$''',
+  '''SECURITY_PHASE[0-9]\.md$''',
+  '''DUOMATH_.*\.md$''',
+  # Build output that a fresh clone never needs to scan (also gitignored):
+  '''\.next/''',
+  '''node_modules/''',
+  '''dist/''',
+  '''build/''',
+]

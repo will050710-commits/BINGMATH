@@ -510,9 +510,9 @@ Thể tích khối chóp: $$V = \\frac{1}{3} S_{\\text{đáy}} \\cdot h = \\frac
 # Kích hoạt bộ định tuyến Provider Đa Năng cho mô hình mới
 LLM_PROVIDER=openai_compatible
 HF_MODEL_NAME=WilliamShakespear/duomath-r1-mathviz-7b
-HF_API_KEY=***REMOVED-HF-TOKEN***
+HF_API_KEY=&lt;đặt trong backend/.env — không commit&gt;
 OPENAI_COMPATIBLE_BASE_URL=https://router.huggingface.co/hf-inference/v1
-OPENAI_COMPATIBLE_API_KEY=***REMOVED-HF-TOKEN***
+OPENAI_COMPATIBLE_API_KEY=&lt;đặt trong backend/.env — không commit&gt;
 
 # Cơ chế Dự phòng Tự động (Failover): Tự động đảo sang Gemini 3.6 Flash nếu mạng gián đoạn
 GEMINI_MODEL=gemini-3.6-flash</div>

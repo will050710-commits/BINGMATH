@@ -17,7 +17,11 @@ from PIL import Image, ImageDraw, ImageFont
 from gradio_client import Client, handle_file
 
 HF_SPACE_ID = "WilliamShakespear/duomath-qwen-vl-demo"
-HF_TOKEN = "***REMOVED-HF-TOKEN***"
+# Phase 3: never hard-code a token — export HF_TOKEN (or HF_API_KEY) in the
+# environment before running this suite.
+HF_TOKEN = os.environ.get("HF_TOKEN", "") or os.environ.get("HF_API_KEY", "")
+if not HF_TOKEN:
+    print("[warn] HF_TOKEN is not set; the Space calls will run unauthenticated.")
 
 TEST_DIR = Path("duosteam/backend/training/hard_geometry_tests")
 TEST_DIR.mkdir(parents=True, exist_ok=True)
