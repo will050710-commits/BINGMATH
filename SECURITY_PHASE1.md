@@ -29,6 +29,25 @@ npm run build                                             # PASS, 270 routes
 
 ## 2b. Sửa luôn pipeline deploy frontend (phát hiện khi kiểm chứng)
 
+**Triệu chứng:** từ commit `a171aec` (thêm `konva`) Vercel không deploy được nữa; log build:
+
+```
+Detected `pnpm-lock.yaml` 9 ... Using pnpm@10.x
+ERR_PNPM_OUTDATED_LOCKFILE  Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to date with package.json
+* 1 dependencies were added: konva@^10.0.12
+```
+
+**Nguyên nhân:** frontend dùng **pnpm** (`node_modules` chuẩn pnpm, Vercel ưu tiên `pnpm-lock.yaml`), nhưng lockfile không được cập nhật khi `konva` được thêm vào `package.json` → `pnpm install --frozen-lockfile` từ chối cài. (Trên máy dev, việc này còn kéo theo lỗi npm khi resolve dev-dependency dạng git của `@firebase/webchannel-wrapper` — `closure-net@git+github.com/google/closure-net` — nên mọi lệnh `npm install` mới đều crash.)
+
+**Đã sửa:**
+- Cập nhật **`frontend/pnpm-lock.yaml`** (`pnpm install --lockfile-only`) → có `konva`, không còn `closure-net` (pnpm vốn bỏ qua devDependencies của dependency).
+- Giữ `"overrides": { "closure-net": "0.0.1-security" }` trong `package.json` làm lưới an toàn cho ai dùng npm (npm cần override này, pnpm thì không).
+- Bỏ `frontend/package-lock.json` (tôi tạo tạm khi thử npm) để dự án chỉ còn **một** nguồn khoá phiên bản là pnpm.
+
+**Bằng chứng:** clean-room `pnpm install --frozen-lockfile` → `Done in 1m 16.6s`, exit 0, `node_modules/konva` tồn tại.
+
+## 3. Chưa làm (chuyển Phase 2)
+
 Vercel build thất bại từ commit `a171aec` (thêm `konva` vào `package.json`) vì frontend **không có `package-lock.json`**, nên mỗi lần đổi dependency npm phải resolve lại toàn bộ cây và crash ở dev-dependency dạng git của `@firebase/webchannel-wrapper`:
 
 ```
