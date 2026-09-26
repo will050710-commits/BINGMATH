@@ -39,6 +39,7 @@ export default function PageKetQua() {
   const [feedback, setFeedback] = useState("");
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [feedbackError, setFeedbackError] = useState("");
+  const [feedbackDegraded, setFeedbackDegraded] = useState(false);
   const { showHUD, triggerGamification, closeHUD } = useGamification();
 
   // ================= LOAD RESULT =================
@@ -182,6 +183,7 @@ export default function PageKetQua() {
       try {
         setIsLoadingFeedback(true);
         setFeedbackError("");
+        setFeedbackDegraded(false);
         const res = await fetch("/api/learning-feedback", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -190,6 +192,7 @@ export default function PageKetQua() {
         if (!res.ok) { setFeedbackError("Không thể tạo gợi ý ôn tập tự động."); return; }
         const data = await res.json();
         setFeedback(data.feedback || "");
+        setFeedbackDegraded(Boolean(data.degraded));
       } catch (err) {
         setFeedbackError("Đã xảy ra lỗi khi gọi AI feedback.");
       } finally {
@@ -399,6 +402,11 @@ export default function PageKetQua() {
           <p style={{ fontWeight: "bold", color: "#7dd3fc", fontSize: 17, marginBottom: 16 }}>
             🤖 Gợi ý học tập từ AI
           </p>
+          {feedbackDegraded && (
+            <p style={{ color: "#fbbf24", fontSize: 12.5, marginBottom: 10 }}>
+              ⚠ Chế độ đơn giản: AI tạo nhận xét chưa phản hồi, nhận xét dưới đây do hệ thống tự tổng hợp.
+            </p>
+          )}
           {isLoadingFeedback && (
             <p style={{ color: "#93c5fd", fontStyle: "italic" }}>Đang tạo nhận xét...</p>
           )}

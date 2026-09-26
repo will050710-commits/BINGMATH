@@ -79,12 +79,35 @@
 2. **Cờ `_fallback`**: `mock_no_key` (thiếu khoá) hoặc `mock_error` (cả 2 nhà cung cấp lỗi) → client biết ngay là đang ở chế độ demo thay vì tưởng là AI thật.
 3. **Frontend**: `DuoTranslate` hiện cảnh báo `⚠ chế độ demo (AI dịch chưa phản hồi)` khi thấy `_fallback`.
 4. **Che khoá trong log** (`_scrub_secrets`): httpx đưa nguyên URL vào thông báo lỗi nên `?key=<GEMINI_KEY>` từng lọt vào log Render; nay các mẫu `key=***`, `Bearer ***`, `AIza***`, `gsk_***`, `hf_***`, `sk-or-v1-***` đều được thay bằng `***`.
+5. **Route Vercel `/api/learning-feedback`** cũng dùng khoá Groq: trước đây khoá hỏng ⇒ trả **502** và trang kết quả báo lỗi. Nay tách hàm `buildRuleBasedFeedback()` và **thoái hoá êm**: trả 200 kèm `degraded: true` + nhận xét tổng hợp theo luật; `pageketqua.js` hiện dòng nhắc `⚠ Chế độ đơn giản…` khi thấy cờ này.
 
 ### Bằng chứng chạy thử cục bộ (chuỗi nhà cung cấp)
 
 - `"quadratic equation"` → Groq 401 → **Gemini OK**: `_provider: gemini`, `translation_en: "quadratic equation"`, `words[0].english: "quadratic equation"`, `words[0].vietnamese: "phương trình bậc hai"`.
 - `"phương trình bậc hai"` (lúc Gemini trả 503 cả 2 lần thử) → `_fallback: mock_error` + log `[translate] Gemini fallback failed (... key=***)` → xác nhận vừa thoái hoá an toàn vừa không lộ khoá.
 
-### Việc cần chủ dự án làm
+### Chẩn đoán cuối cùng từ log Render (deploy `1a5fbf1`)
 
-- Tạo **khoá Groq mới** và cập nhật `GROQ_API_KEY` ở cả 3 nơi: Render (backend), Vercel (route `/api/learning-feedback`), và `backend/.env` khi chạy local. Trước khi có khoá mới, bản dịch vẫn chạy qua Gemini (chất lượng tốt, thỉnh thoảng gặp 503 → hiện cảnh báo demo).
+Đọc log Render (`GET /v1/logs`) cho thấy **cả hai** nhà cung cấp AI trên production đều lỗi xác thực:
+
+```
+[translate] Groq call failed (HTTPStatusError: Client error '401 Unauthorized' ...)
+[translate] Gemini fallback failed (HTTPStatusError: Client error '401 Unauthorized'
+            for url '.../models/gemini-3.6-flash:generateContent?key=***')
+```
+
+- `key=***` ⇒ `_scrub_secrets()` đang hoạt động, log Render không còn lộ khoá.
+- Kiểm tra trực tiếp bằng khoá trong `backend/.env` (**chỉ in trạng thái, không in khoá**):
+  `groq: 401` (đã chết) · `gemini: 200` (**còn sống**) · `openrouter: 200` (**còn sống**).
+- `GET /v1/services/{id}/env-vars` trên Render liệt kê: `ADMIN_EMAILS, ALLOWED_ORIGINS, GEMINI_API_KEY, GROQ_API_KEY, JWT_SECRET, NEXT_PUBLIC_BACKEND_URL, SELF_URL` ⇒ **`GEMINI_API_KEY` trên Render là khoá khác (đã bị thu hồi), và production không có `OPENROUTER_API_KEY`**.
+
+⇒ Việc cần làm để AI chạy thật trên production (chỉ chủ dự án làm được):
+
+1. Render → service `duomath` → **Environment** → sửa `GEMINI_API_KEY` = giá trị `GEMINI_API_KEY` đang dùng tốt trong `backend/.env` (khoá local đã kiểm tra 200). Chỉ cần đổi 1 biến này là `/api/translate`, OCR `/api/mathmap/parse-file`… chạy thật trở lại.
+2. (Khuyến nghị) Thêm `OPENROUTER_API_KEY` vào Render để có tầng dự phòng thứ ba.
+3. Tạo khoá **Groq mới** (khoá cũ đã bị thu hồi) và cập nhật ở Render + Vercel + `backend/.env`.
+
+### Kiểm chứng bằng chứng production (sau khi có khoá đúng)
+
+- `/api/translate` phải trả `_provider: "gemini"` (hoặc `groq` khi khoá Groq mới hoạt động) và **không** có `_fallback`.
+- Nếu vẫn thấy `_fallback: mock_error` ⇒ kiểm tra lại 2 biến môi trường ở trên; UI đã hiện cảnh báo demo nên không còn “âm thầm sai”.

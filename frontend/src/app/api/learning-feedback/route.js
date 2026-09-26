@@ -5,6 +5,55 @@ const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 // POST /api/learning-feedback
 // Body shape: { result: { correct, total, accuracy, skills, weakSkills, questions, ... } }
+
+// Rule-based summary — used when no Groq key is configured AND when the Groq
+// call fails (the key can be revoked/rate-limited; a 502 is worse than a
+// slightly simpler summary).
+function buildRuleBasedFeedback({ skills = [], weakSkills = [] }) {
+  const strongSkills = skills.filter((s) => s.level === "strong");
+  const mediumSkills = skills.filter((s) => s.level === "medium");
+
+  const lines = [];
+  lines.push("**Ưu điểm (Pros)**");
+  if (strongSkills.length === 0) {
+    lines.push("- Bạn đã hoàn thành bài test, đây là bước khởi đầu rất tốt.");
+  } else {
+    strongSkills.slice(0, 3).forEach((s) => {
+      lines.push(`- Kỹ năng **${s.name}** khá tốt (${s.accuracy}%).`);
+    });
+  }
+
+  lines.push("\n**Hạn chế (Cons)**");
+  if (weakSkills.length === 0) {
+    lines.push("- Không có kỹ năng nào bị đánh giá là yếu rõ rệt.");
+  } else {
+    weakSkills.slice(0, 3).forEach((s) => {
+      lines.push(`- Cần cải thiện kỹ năng **${s.name}** (đúng ${s.correct}/${s.total}).`);
+    });
+  }
+
+  lines.push("\n**Gợi ý ôn tập (Relearn recommendations)**");
+  if (weakSkills.length === 0 && mediumSkills.length === 0) {
+    lines.push("- Tiếp tục luyện thêm các dạng bài tương tự để duy trì phong độ.");
+  } else {
+    [...weakSkills.slice(0, 2), ...mediumSkills.slice(0, 2)].forEach((s) => {
+      lines.push(
+        `- Luyện thêm bài đọc về **${s.topic || "reading"}**, tập trung vào kỹ năng **${s.name}**.`
+      );
+    });
+  }
+
+  return lines.join("\n");
+}
+
+// Strip anything key-shaped out of upstream error text before logging it.
+function scrubSecrets(message) {
+  return String(message)
+    .replace(/(key=)[A-Za-z0-9_\-.]{8,}/g, "$1***")
+    .replace(/(Bearer\s+)[A-Za-z0-9_\-.]{8,}/g, "$1***")
+    .replace(/(AIza|gsk_|hf_|sk-or-v1-)[A-Za-z0-9_\-]{8,}/g, "$1***");
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -23,40 +72,7 @@ export async function POST(request) {
     // summary instead of calling the external LLM.
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      const strongSkills = skills.filter((s) => s.level === "strong");
-      const mediumSkills = skills.filter((s) => s.level === "medium");
-
-      const lines = [];
-      lines.push("**Ưu điểm (Pros)**");
-      if (strongSkills.length === 0) {
-        lines.push("- Bạn đã hoàn thành bài test, đây là bước khởi đầu rất tốt.");
-      } else {
-        strongSkills.slice(0, 3).forEach((s) => {
-          lines.push(`- Kỹ năng **${s.name}** khá tốt (${s.accuracy}%).`);
-        });
-      }
-
-      lines.push("\n**Hạn chế (Cons)**");
-      if (weakSkills.length === 0) {
-        lines.push("- Không có kỹ năng nào bị đánh giá là yếu rõ rệt.");
-      } else {
-        weakSkills.slice(0, 3).forEach((s) => {
-          lines.push(`- Cần cải thiện kỹ năng **${s.name}** (đúng ${s.correct}/${s.total}).`);
-        });
-      }
-
-      lines.push("\n**Gợi ý ôn tập (Relearn recommendations)**");
-      if (weakSkills.length === 0 && mediumSkills.length === 0) {
-        lines.push("- Tiếp tục luyện thêm các dạng bài tương tự để duy trì phong độ.");
-      } else {
-        [...weakSkills.slice(0, 2), ...mediumSkills.slice(0, 2)].forEach((s) => {
-          lines.push(
-            `- Luyện thêm bài đọc về **${s.topic || "reading"}**, tập trung vào kỹ năng **${s.name}**.`
-          );
-        });
-      }
-
-      return NextResponse.json({ feedback: lines.join("\n") });
+      return NextResponse.json({ feedback: buildRuleBasedFeedback({ skills, weakSkills }) });
     }
 
     const systemPrompt =
@@ -102,11 +118,18 @@ export async function POST(request) {
 
     if (!completionRes.ok) {
       const text = await completionRes.text();
-      console.error("OpenAI API error:", text);
-      return NextResponse.json(
-        { error: "Failed to generate feedback" },
-        { status: 502 }
+      console.error(
+        "Groq API error:",
+        completionRes.status,
+        scrubSecrets(text).slice(0, 300)
       );
+      // Degrade gracefully instead of returning 502: the rule-based summary is
+      // still useful, and the client can show a "simplified" hint.
+      return NextResponse.json({
+        feedback: buildRuleBasedFeedback({ skills, weakSkills }),
+        degraded: true,
+        reason: `groq_${completionRes.status}`,
+      });
     }
 
     const completionJson = await completionRes.json();
