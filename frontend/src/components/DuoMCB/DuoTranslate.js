@@ -209,6 +209,11 @@ export default function DuoTranslate({ children }) {
             <div>
               <div className={styles.headerTitle}>DuoTranslate</div>
               <div className={styles.headerSub}>{isEnToVi ? "🇬🇧 EN ➔ 🇻🇳 VI" : "🇻🇳 VI ➔ 🇬🇧 EN"} · song ngữ</div>
+              {results?._fallback && (
+                <div style={{ fontSize: 10.5, color: "#fbbf24", marginTop: 2 }}>
+                  ⚠ chế độ demo (AI dịch chưa phản hồi)
+                </div>
+              )}
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

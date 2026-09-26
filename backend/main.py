@@ -18,6 +18,21 @@ if not logger.handlers:
 logger.setLevel(logging.INFO)
 
 
+def _scrub_secrets(message: str) -> str:
+    """Che API key trước khi ghi log.
+
+    httpx đưa cả URL vào thông báo lỗi, nên `?key=<GEMINI_KEY>` và
+    `Bearer <GROQ_KEY>` từng lọt vào log của Render. Hàm này thay phần key
+    bằng `***` để log không còn lộ khoá.
+    """
+    import re as _re
+
+    scrubbed = _re.sub(r"(key=)[A-Za-z0-9_\-\.]{8,}", r"\1***", str(message))
+    scrubbed = _re.sub(r"(Bearer\s+)[A-Za-z0-9_\-\.]{8,}", r"\1***", scrubbed)
+    scrubbed = _re.sub(r"(AIza|gsk_|hf_|sk-or-v1-)[A-Za-z0-9_\-]{8,}", r"\1***", scrubbed)
+    return scrubbed
+
+
 # Manual .env loader (0-dependency)
 _env_path = os.path.join(os.path.dirname(__file__), ".env")
 if os.path.exists(_env_path):
@@ -4342,6 +4357,61 @@ def _bilingual_payload(payload: dict, source_text: str, source_lang: str | None 
     return payload
 
 
+# JSON schema used when Gemini performs the translation (tier 2 for Groq).
+_TRANSLATE_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "translation": {"type": "STRING"},
+        "translation_vi": {"type": "STRING"},
+        "translation_en": {"type": "STRING"},
+        "summary": {"type": "STRING"},
+        "summary_vi": {"type": "STRING"},
+        "summary_en": {"type": "STRING"},
+        "source_lang": {"type": "STRING", "enum": ["en", "vi"]},
+        "diagram_type": {"type": "STRING", "enum": [
+            "venn", "inequality", "parabola", "vectors", "ellipse", "trig", "default"]},
+        "theory": {"type": "OBJECT", "properties": {"vi": {"type": "STRING"}, "en": {"type": "STRING"}}},
+        "words": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+            "word": {"type": "STRING"},
+            "english": {"type": "STRING"},
+            "type": {"type": "STRING"},
+            "pronunciation": {"type": "STRING"},
+            "vietnamese": {"type": "STRING"},
+            "example": {"type": "STRING"},
+        }}},
+    },
+}
+
+
+async def _translate_with_gemini(prompt: str, text: str):
+    """Phase 4 — tier 2 for /api/translate.
+
+    The Groq key can be rotated/revoked (ours currently returns 401), and the
+    old behaviour silently served canned mock text. Gemini is already configured
+    for the chat pipeline, so reuse it before degrading to the mock.
+    """
+    if not os.environ.get("GEMINI_API_KEY", ""):
+        return None
+
+    last_error = ""
+    for attempt in range(2):                      # 503s from Gemini are transient
+        try:
+            data = await _gemini_json(prompt, _TRANSLATE_SCHEMA, temperature=0.2)
+        except Exception as exc:
+            last_error = f"{type(exc).__name__}: {str(exc)[:160]}"
+            if attempt == 0:
+                await asyncio.sleep(1.5)
+            continue
+        if isinstance(data, dict) and (data.get("translation") or data.get("translation_vi") or data.get("translation_en")):
+            payload = _bilingual_payload(data, text)
+            payload["_provider"] = "gemini"
+            return payload
+        last_error = "empty payload"
+
+    logger.warning("[translate] Gemini fallback failed (%s)", _scrub_secrets(last_error))
+    return None
+
+
 @app.post("/api/translate")
 @limiter.limit(TRANSLATE_LIMIT)
 async def translate(request: Request):
@@ -4372,7 +4442,10 @@ async def translate(request: Request):
 
     # FALLBACK if Groq Key is missing
     if not GROQ_KEY:
-        return JSONResponse(_bilingual_payload(get_mock_translation(text), text))
+        logger.warning("[translate] GROQ_API_KEY is not configured — serving the local mock")
+        payload = _bilingual_payload(get_mock_translation(text), text)
+        payload["_fallback"] = "mock_no_key"
+        return JSONResponse(payload)
 
     prompt = (
         "You are a translation API. Analyze the input text. "
@@ -4463,8 +4536,16 @@ async def translate(request: Request):
         # Last resort: return error with the raw text
         return JSONResponse({"error": True, "raw": raw})
     except Exception as e:
-        # Fallback to local mock if Groq fails or returns 502/401/rate limits
-        return JSONResponse(_bilingual_payload(get_mock_translation(text), text))
+        # Tier 2: Gemini (keeps the AI translation alive if Groq fails/expires),
+        # then the local mock as a last resort.
+        logger.warning("[translate] Groq call failed (%s) — trying Gemini",
+                       _scrub_secrets(f"{type(e).__name__}: {str(e)[:200]}"))
+        gemini_payload = await _translate_with_gemini(prompt, text)
+        if gemini_payload is not None:
+            return JSONResponse(gemini_payload)
+        payload = _bilingual_payload(get_mock_translation(text), text)
+        payload["_fallback"] = "mock_error"
+        return JSONResponse(payload)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
