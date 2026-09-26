@@ -394,8 +394,15 @@ def quality_log(surface: str, model: str = "", tier: str = "", provider: str = "
 
 
 def quality_summary(days: int = 7) -> dict:
-    """Aggregate the last `days` of AI outcomes per surface + model."""
+    """Aggregate the last `days` of AI outcomes per surface + model.
+
+    Defensive about a missing table: telemetry is created by the startup
+    migrations, and a read-only call before they ran must not turn an admin
+    request into a 500.
+    """
     window = f"-{max(1, int(days))} days"
+    empty = {"days": int(days), "total": 0, "verified_total": 0, "per_model": [], "recent": [],
+             "note": "telemetry table is not initialised yet"}
     db = get_db()
     try:
         rows = db.execute(
@@ -431,6 +438,9 @@ def quality_summary(days: int = 7) -> dict:
             "per_model": per_model,
             "recent": recent,
         }
+    except Exception as e:  # noqa: BLE001 — telemetry must never 500 an admin call
+        logger.debug("[quality] summary unavailable: %s", e)
+        return empty
     finally:
         db.close()
 
