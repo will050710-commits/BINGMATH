@@ -54,6 +54,95 @@ function scrubSecrets(message) {
     .replace(/(AIza|gsk_|hf_|sk-or-v1-)[A-Za-z0-9_\-]{8,}/g, "$1***");
 }
 
+// ── OpenRouter free-tier fallback (Phase 4, Đợt 3) ───────────────────────────
+// Ranked by the Artificial Analysis indices OpenRouter publishes per model
+// (verified live 2026-09-26): Qwen3.8 27B = Intelligence 33.7 / Coding 68.1 /
+// Agentic 45.8; Nemotron 3 Ultra 550B = 22.9 / 49.3 / 20.1 (1M ctx);
+// `openrouter/free` is the router of last resort. One request with the whole
+// `models` array lets OpenRouter fail over server-side (free tiers rate-limit
+// constantly), and the response tells us which model actually answered.
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_DEFAULT_MODELS = (
+  process.env.OPENROUTER_FEEDBACK_MODELS ||
+  "qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free"
+)
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
+
+// Strip anything key-shaped out of upstream error text before logging it.
+function scrubSecrets(message) {
+  return String(message)
+    .replace(/(key=)[A-Za-z0-9_\-.]+/g, "$1***")
+    .replace(/(Bearer\s+)[A-Za-z0-9_\-.]+/g, "$1***")
+    .replace(/(AIza|gsk_|hf_|sk-or-v1-)[A-Za-z0-9_\-]+/g, "$1***");
+}
+
+async function generateWithOpenRouter(systemPrompt, userContent, signal) {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  if (!apiKey) return { ok: false, reason: "openrouter_no_key" };
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  try {
+    const res = await fetch(OPENROUTER_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.SELF_URL || "https://duomath.vercel.app",
+        "X-Title": "DuoMath AI",
+      },
+      body: JSON.stringify({
+        models: OPENROUTER_DEFAULT_MODELS,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+        temperature: 0.4,
+      }),
+      signal: controller.signal,
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("OpenRouter API error:", res.status, scrubSecrets(text).slice(0, 300));
+      return { ok: false, reason: `openrouter_${res.status}` };
+    }
+
+    const json = await res.json();
+    const message = json.choices?.[0]?.message?.content;
+    if (!message || !String(message).trim()) {
+      return { ok: false, reason: "openrouter_empty" };
+    }
+    return { ok: true, feedback: message, model: json.model, provider: "openrouter" };
+  } catch (err) {
+    console.error("OpenRouter call failed:", scrubSecrets(err?.message || err));
+    return { ok: false, reason: "openrouter_error" };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Groq is revoked/out of quota? Try the free OpenRouter ladder before falling
+// back to the local rule-based summary — and report which provider answered so
+// /ketqua can drop its "simplified mode" banner.
+async function fallbackAfterProviderFailure(systemPrompt, userContent, skills, weakSkills, groqReason) {
+  const viaOpenRouter = await generateWithOpenRouter(systemPrompt, userContent);
+  if (viaOpenRouter.ok) {
+    return NextResponse.json({
+      feedback: viaOpenRouter.feedback,
+      provider: viaOpenRouter.provider,
+      model: viaOpenRouter.model,
+    });
+  }
+  return NextResponse.json({
+    feedback: buildRuleBasedFeedback({ skills, weakSkills }),
+    degraded: true,
+    reason: `${groqReason}|${viaOpenRouter.reason}`,
+  });
+}
+
 export async function POST(request) {
   try {
     const body = await request.json();
@@ -67,13 +156,6 @@ export async function POST(request) {
     }
 
     const { correct, total, accuracy, skills = [], weakSkills = [] } = result;
-
-    // If no Groq API key is configured, fall back to a simple, rule-based
-    // summary instead of calling the external LLM.
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ feedback: buildRuleBasedFeedback({ skills, weakSkills }) });
-    }
 
     const systemPrompt =
       "You are an expert bilingual (Vietnamese-English) tutor for high-school students. " +
@@ -90,6 +172,12 @@ export async function POST(request) {
       null,
       2
     );
+
+    // No Groq key configured? The free OpenRouter ladder does the same job at $0.
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      return await fallbackAfterProviderFailure(systemPrompt, userContent, skills, weakSkills, "groq_no_key");
+    }
 
     const completionRes = await fetch(GROQ_API_URL, {
       method: "POST",
@@ -123,13 +211,16 @@ export async function POST(request) {
         completionRes.status,
         scrubSecrets(text).slice(0, 300)
       );
-      // Degrade gracefully instead of returning 502: the rule-based summary is
-      // still useful, and the client can show a "simplified" hint.
-      return NextResponse.json({
-        feedback: buildRuleBasedFeedback({ skills, weakSkills }),
-        degraded: true,
-        reason: `groq_${completionRes.status}`,
-      });
+      // Degrade in two steps instead of returning 502: first the free OpenRouter
+      // ladder, then the rule-based summary (the client shows a "simplified" hint
+      // only in the last case).
+      return await fallbackAfterProviderFailure(
+        systemPrompt,
+        userContent,
+        skills,
+        weakSkills,
+        `groq_${completionRes.status}`
+      );
     }
 
     const completionJson = await completionRes.json();
@@ -137,7 +228,7 @@ export async function POST(request) {
       completionJson.choices?.[0]?.message?.content ??
       "Không tạo được phản hồi từ mô hình.";
 
-    return NextResponse.json({ feedback: message });
+    return NextResponse.json({ feedback: message, provider: "groq" });
   } catch (err) {
     console.error("Error in /api/learning-feedback:", err);
     return NextResponse.json(

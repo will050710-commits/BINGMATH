@@ -27,6 +27,7 @@ const SECTIONS = [
     title: "3. Chia sẻ với bên thứ ba",
     items: [
       "Nhà cung cấp AI (Google Gemini, OpenRouter, Groq, Hugging Face): nhận nội dung câu hỏi/ảnh bạn gửi để sinh lời giải — chỉ trong phạm vi cần thiết để trả lời.",
+      "Lưu ý riêng cho model MIỄN PHÍ trên OpenRouter (NVIDIA, Poolside, Cohere, Google AI Studio…): nhà cung cấp có thể ghi log phiên và/hoặc dùng dữ liệu đầu vào để cải thiện model của họ. Vì vậy đừng đưa dữ liệu cá nhân (số điện thoại, địa chỉ, ảnh chụp có mặt người) vào câu hỏi/ảnh — hệ thống chỉ cần đúng đề bài.",
       "Firebase (Google): xác thực tài khoản.",
       "Render và Vercel: hạ tầng máy chủ và lưu trữ cho website.",
       "Cơ quan có thẩm quyền: chỉ khi có yêu cầu hợp pháp bằng văn bản.",
@@ -75,7 +76,7 @@ export default function PrivacyPage() {
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: "8px 0 6px" }}>Chính sách quyền riêng tư</h1>
           <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, margin: 0 }}>
-            Áp dụng cho website và ứng dụng DuoMath. Cập nhật: 25/09/2026.
+            Áp dụng cho website và ứng dụng DuoMath. Cập nhật: 26/09/2026.
           </p>
 
           {SECTIONS.map((section) => (

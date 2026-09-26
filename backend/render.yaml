@@ -39,10 +39,40 @@ services:
         value: "gemini-3.6-flash"
       - key: OPENROUTER_API_KEY
         sync: false
+      # ── Free-tier model ladders (Phase 4, Đợt 3 — verified live 2026-09-26) ──
+      # Ranked by the Artificial Analysis indices OpenRouter publishes per model.
+      # The previous values were DEAD slugs (no :free variant exists any more),
+      # so every vision/repair call failed before reaching a provider.
       - key: OPENROUTER_VISION_MODEL
-        value: "qwen/qwen2.5-vl-72b-instruct:free"
+        value: "qwen/qwen3.8-27b:free"
       - key: OPENROUTER_VISION_FALLBACK_MODELS
-        value: "qwen/qwen2.5-vl-32b-instruct:free,google/gemma-3-27b-it:free"
+        value: "google/gemma-4-31b-it:free,dots-studio/dots-3-note-preview:free,thinkingmachines/inkling:free,openrouter/free"
+      - key: OPENROUTER_CHAT_MODELS
+        value: "qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,poolside/laguna-s-2.1:free,nvidia/nemotron-3-super-120b-a12b:free,openrouter/free"
+      - key: OPENROUTER_TRANSLATE_MODELS
+        value: "qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,poolside/laguna-s-2.1:free,openrouter/free"
+      # Text-only JSON repair tier (MathViz). Its old default
+      # (minimax/minimax-m3:free) no longer exists on the free tier.
+      - key: OPENROUTER_REPAIR_MODEL
+        value: "qwen/qwen3.8-27b:free"
+      # Which provider answers a /api/translate request first. Default keeps the
+      # strongest free OpenRouter model in front; Gemini and Groq are fallbacks.
+      - key: TRANSLATE_TIER_ORDER
+        value: "openrouter,gemini,groq"
+      # Guard for the shared free quota (50 req/day without credits, 1000/day
+      # after $10 of credits). 0 disables the guard.
+      - key: OPENROUTER_DAILY_BUDGET
+        value: "800"
+      # ── Đợt 4A — Verified MathReader (perception cross-check) ──────────────
+      # Two readers from DIFFERENT model families; the second is only used when
+      # the first is unsure (AI_DUAL_READ=auto), always (always), or never
+      # (never = exactly the pre-4A single-read behaviour, useful as a rollback).
+      - key: MATH_READER_MODELS
+        value: "qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free"
+      - key: MATH_READER_TIEBREAK_MODEL
+        value: "dots-studio/dots-3-note-preview:free"
+      - key: AI_DUAL_READ
+        value: "auto"
       - key: VISION_AGENT_ENABLED
         value: "true"
       # ── Phase 0 security hardening (synced from the Render dashboard) ──

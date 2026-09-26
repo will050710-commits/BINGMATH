@@ -410,6 +410,26 @@ SELF_URL  = os.environ.get("SELF_URL", "")
 # ── Vision Agent for Olympiad Geometry (Qwen2.5-VL-72B via OpenRouter) ───────
 from vision_agent import GeometryVisionAgent
 _vision_agent = GeometryVisionAgent()
+# Đợt 4A — "Verified MathReader": reads an image with 1-2 different-family
+# vision models, cross-checks the transcriptions, SymPy-gates every formula and
+# asks the student to confirm when the readers genuinely disagree.
+import math_reader
+from math_reader import dual_read_mode as _mr_dual_read_mode  # noqa: E402
+
+
+def _mr_summary(perception) -> dict:
+    """Compact perception record for chat responses and logs."""
+    p = perception or {}
+    return {
+        "consensus": p.get("consensus"),
+        "confidence": p.get("confidence"),
+        "kind": p.get("kind"),
+        "reread": p.get("reread"),
+        "parse_failures": len(p.get("parse_failures") or []),
+        "cache": p.get("cache"),
+        "readers": [r.get("model") for r in (p.get("readers") or [])],
+        "ms": p.get("ms"),
+    }
 from image_preprocessing import preprocess_image_b64  # Risk 3: aspect-preserving resize + pad
 
 
@@ -1698,7 +1718,10 @@ async def _repair_mathviz_with_free_openrouter(widget: str, broken_json: str, er
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
     if not openrouter_key:
         return None
-    repair_model = os.environ.get("OPENROUTER_VISION_MODEL", "minimax/minimax-m3:free")
+    # Phase 4 / Đợt 3: minimax/minimax-m3:free no longer exists on the free tier
+    # (verified live 2026-09-26); the repair prompt is a text-only JSON task, so
+    # the strongest free model is the right default here.
+    repair_model = os.environ.get("OPENROUTER_REPAIR_MODEL", "qwen/qwen3.8-27b:free")
     prompt = (
         f"Sua loi JSON sau cho khoi mathviz widget '{widget}'. "
         f"Loi: {'; '.join(errors)}. "
@@ -3185,10 +3208,13 @@ async def chat(request: Request):
     _matched_node_ids = extract_graph_entities(user_message)
     _widget = detect_widget(user_message, _matched_node_ids)
 
-    # Image pre-processing & Stage 1 Vision Agent (Qwen2.5-VL-72B via OpenRouter)
+    # Image pre-processing & Stage 1 Vision Agent (free OpenRouter vision ladder —
+    # see vision_agent.DEFAULT_MODEL / OPENROUTER_VISION_MODEL)
     raw_b64 = ""
     media_type = "image/jpeg"
     vision_description = None
+    perception = None        # Đợt 4A — Verified MathReader result (math_reader.py)
+    _img_meta = {}           # sha256 of the standardized image (cache key)
 
     if image_data:
         if "," in image_data:
@@ -3223,10 +3249,66 @@ async def chat(request: Request):
         except Exception as e_cv:
             logger.debug(f"OpenCV structural preprocessing skipped: {e_cv}")
 
+        # ── Stage 1a (Đợt 4A): Verified MathReader ────────────────────────────
+        # Read once, cross-check with a second model from another family when
+        # the first is unsure, re-read the cropped region when a formula fails
+        # the SymPy gate, and hand the solver a *typed transcription* instead of
+        # raw pixels. The legacy geometry agent below remains the fallback path.
+        if image_data and _mr_dual_read_mode() != "never":
+            try:
+                _mr_phash = None
+                try:
+                    import vision_cache as _vision_cache
+                    _mr_phash = _vision_cache.compute_phash(raw_b64)
+                except Exception:
+                    _mr_phash = None
+                perception = await math_reader.read_consensus(
+                    raw_b64, media_type=media_type, user_hint=user_message,
+                    chat_fn=_openrouter_chat,
+                    sha256=_img_meta.get("sha256", ""),
+                    phash=_mr_phash,
+                )
+                if perception.get("needs_confirm"):
+                    _cands = perception.get("candidates") or []
+                    _lines = ["Mình đọc được đề theo hai cách khác nhau, em xác nhận giúp cách nào đúng nhé:"]
+                    for _idx, _cand in enumerate(_cands, 1):
+                        _formulas = " ; ".join((_cand.get("latex") or [])[:4]) or "(không thấy công thức)"
+                        _who = (_cand.get("model") or "?").split("/")[-1]
+                        _lines.append(f"{_idx}. {_formulas}   — đọc bởi {_who}")
+                    _lines.append("Em nhắn lại đúng đề (hoặc chọn 1 / 2) để mình giải chính xác nhé.")
+                    _clarify = "\n".join(_lines)
+                    history.append({"role": "assistant", "content": _clarify})
+                    save_history(session_id, history)
+                    logger.info("[Chat] MathReader asked the student to confirm a reading (conf=%.2f)",
+                                perception.get("confidence", 0))
+                    return JSONResponse({
+                        "reply": _clarify,
+                        "session_id": session_id,
+                        "history_length": len(history),
+                        "ocr_confirm": {
+                            "question": "Em xác nhận đề đúng theo cách đọc nào?",
+                            "candidates": _cands,
+                            "confidence": perception.get("confidence"),
+                        },
+                        "perception": _mr_summary(perception),
+                    })
+                if perception.get("ok") and perception.get("contract"):
+                    vision_description = perception["contract"]
+                    if perception.get("diagram") and _widget is None:
+                        _widget = "geometry_2d"
+                    logger.info("[Chat] MathReader accepted: consensus=%s conf=%.2f readers=%s",
+                                perception["consensus"], perception["confidence"],
+                                [r.get("model") for r in perception.get("readers", [])])
+                else:
+                    logger.info("[Chat] MathReader produced nothing usable (%s) — legacy vision path next.",
+                                perception.get("error"))
+            except Exception as ex_reader:
+                logger.warning("[Chat] MathReader error: %s — legacy vision path next.", ex_reader)
+
         # Stage 1: Attempt specialized Olympiad geometry diagram extraction via OpenRouter
         if _vision_agent.is_configured():
             try:
-                print("[Chat] Invoking Stage 1 Vision Agent (Qwen2.5-VL-72B via OpenRouter)...")
+                print(f"[Chat] Invoking Stage 1 Vision Agent ({_vision_agent.model} via OpenRouter)...")
                 vision_description, success = await _vision_agent.extract_with_fallback(
                     raw_b64, media_type=media_type, user_hint=user_message
                 )
@@ -3826,43 +3908,22 @@ async def chat(request: Request):
         if not reply:
             openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
             if openrouter_key:
-                or_candidates = [
-                    m.strip()
-                    for m in os.environ.get(
-                        "OPENROUTER_CHAT_MODELS",
-                        "qwen/qwen3.8-27b:free,deepseek/deepseek-v4-flash-0731:free,nvidia/nemotron-3.5-lightning:free"
-                    ).split(",")
-                    if m.strip()
-                ]
-                or_headers = {
-                    "Authorization": f"Bearer {openrouter_key}",
-                    "HTTP-Referer": "https://duomath.local",
-                    "X-Title": "DuoMath AI",
-                    "Content-Type": "application/json"
-                }
-                for or_m in or_candidates:
-                    try:
-                        print(f"[Chat] Attempting Tier 3 Fallback: OpenRouter ({or_m})...")
-                        or_payload = {
-                            "model": or_m,
-                            "messages": openai_messages,
-                            "temperature": 0.2,
-                            "max_tokens": max_tokens
-                        }
-                        or_resp = await client.post(
-                            "https://openrouter.ai/api/v1/chat/completions",
-                            headers=or_headers,
-                            json=or_payload,
-                            timeout=45
-                        )
-                        if or_resp.status_code == 200:
-                            reply = or_resp.json()["choices"][0]["message"]["content"]
-                            print(f"[Chat] Successfully generated reply via OpenRouter fallback ({or_m})!")
-                            break
-                        else:
-                            print(f"[WARN] OpenRouter {or_m} returned {or_resp.status_code}: {or_resp.text[:100]}")
-                    except Exception as ex_or:
-                        print(f"[WARN] OpenRouter fallback failed with {or_m}: {ex_or}")
+                # Ranked free ladder + server-side failover: one request to
+                # OpenRouter with the whole `models` array instead of one HTTP
+                # round-trip per candidate.
+                or_candidates = _openrouter_models("OPENROUTER_CHAT_MODELS", OPENROUTER_CHAT_MODELS_DEFAULT)
+                try:
+                    print(f"[Chat] Attempting Tier 3 Fallback: OpenRouter {or_candidates}...")
+                    _or_reply, _or_model = await _openrouter_chat(
+                        models=or_candidates,
+                        messages=openai_messages,
+                        temperature=0.2,
+                        max_tokens=max_tokens,
+                    )
+                    reply = _or_reply
+                    print(f"[Chat] Successfully generated reply via OpenRouter fallback ({_or_model})!")
+                except Exception as ex_or:
+                    print(f"[WARN] OpenRouter fallback failed: {_scrub_secrets(str(ex_or)[:200])}")
 
         # ── Tier 4 Fallback: Local MathGPT Deterministic Engine ────────────────
         if not reply:
@@ -4026,7 +4087,8 @@ async def chat(request: Request):
             "reply": reply,
             "session_id": session_id,
             "history_length": len(history),
-            "typesafe": typesafe_info
+            "typesafe": typesafe_info,
+            **({"perception": _mr_summary(perception)} if perception else {}),
         })
 
 
@@ -4383,6 +4445,311 @@ _TRANSLATE_SCHEMA = {
 }
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#  TRANSLATION / CHAT — OpenRouter free-tier ladder (Phase 4, Đợt 3)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Ranked by the Artificial Analysis indices OpenRouter publishes on each model
+# page (verified live on 2026-09-26):
+#   qwen/qwen3.8-27b:free               Intelligence 33.7 | Coding 68.1 | Agentic 45.8
+#                                       (also vision-capable, 262K ctx, 235K max out)
+#   nvidia/nemotron-3-ultra-550b-a55b   Intelligence 22.9 | Coding 49.3 | Agentic 20.1 (1M ctx)
+#   poolside/laguna-s-2.1:free          Terminal-Bench 2.1 70.2% (agentic coding)
+#   nvidia/nemotron-3-super-120b-a12b   Intelligence 12.8 | Coding 37.7
+#   openrouter/free                     router of last resort: a random free model
+#                                       that supports the request's required features
+# Override per feature with OPENROUTER_TRANSLATE_MODELS / OPENROUTER_CHAT_MODELS.
+OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
+# NOTE (live-verified 2026-09-26): OpenRouter rejects a `models` array with more
+# than THREE entries ("'models' array must have 3 items or fewer", HTTP 400), so
+# each ladder below is exactly 3 deep and `_openrouter_chat` trims defensively.
+# Alternates worth swapping in via env: poolside/laguna-s-2.1:free (agentic
+# coding, Terminal-Bench 2.1 70.2%) and nvidia/nemotron-3-super-120b-a12b:free.
+OPENROUTER_CHAT_MODELS_DEFAULT = (
+    "qwen/qwen3.8-27b:free,"
+    "nvidia/nemotron-3-ultra-550b-a55b:free,"
+    "openrouter/free"
+)
+OPENROUTER_TRANSLATE_MODELS_DEFAULT = (
+    "qwen/qwen3.8-27b:free,"
+    "nvidia/nemotron-3-ultra-550b-a55b:free,"
+    "openrouter/free"
+)
+
+# The JSON contract is shared by every translation provider; kept in one place
+# so the Groq, Gemini and OpenRouter tiers cannot drift apart.
+_TRANSLATE_SYSTEM = (
+    "You are a JSON-only translation API. Output only the JSON object. "
+    "CRITICAL: For all Vietnamese fields (like 'translation', 'summary', 'vietnamese', and 'theory.vi'), "
+    "you MUST use only standard Latin-based Vietnamese characters (Chữ Quốc Ngữ). "
+    "Do NOT use any Chinese characters (Hanzi/Kanji like '等式', '不等式', etc.) under any circumstances. "
+    "Always write terms like 'inequality' as 'bất đẳng thức', NOT 'bất等式'."
+)
+
+# Free tiers are small (50 req/day without credits, 1000 req/day after $10 of
+# credits — shared account-wide), so identical text is served from memory and a
+# daily budget keeps one busy day from starving every other feature.
+_TRANSLATE_CACHE: dict = {}
+_TRANSLATE_CACHE_MAX = 256
+_TRANSLATE_CACHE_TTL = 60 * 60 * 24
+_OPENROUTER_QUOTA = {"day": "", "count": 0}
+
+
+def _translate_tier_order() -> list:
+    """TRANSLATE_TIER_ORDER, default `openrouter,gemini,groq`.
+
+    Chosen deliberately: the strongest free OpenRouter model (Qwen3.8 27B) has
+    the best Vietnamese of the three, so it answers first and the others act as
+    fallbacks. Flip the order via env — no redeploy of code needed.
+    """
+    raw = os.environ.get("TRANSLATE_TIER_ORDER", "openrouter,gemini,groq")
+    return [t.strip().lower() for t in raw.split(",") if t.strip()]
+
+
+def _openrouter_models(env_key: str, default: str) -> list:
+    return [m.strip() for m in os.environ.get(env_key, default).split(",") if m.strip()]
+
+
+def _parse_json_lenient(raw: str):
+    """Every free model has a different idea of "JSON only": strip fences, then
+    fall back to json_repair (already imported at module level) before giving up."""
+    import re as _re
+
+    clean = (raw or "").strip()
+    clean = _re.sub(r"^```(?:json)?\s*", "", clean)
+    clean = _re.sub(r"\s*```$", "", clean).strip()
+    m = _re.search(r"(\{[\s\S]*\})", clean)
+    candidates = [c for c in (clean, m.group(1) if m else "") if c]
+    # Free models love trailing commas and stray markdown. json_repair is the
+    # heavy lifter, but this regex pass keeps the tier alive when it is not
+    # installed (the local venv does not always have it).
+    candidates += [_re.sub(r",\s*([}\]])", r"\1", c) for c in list(candidates)]
+    for candidate in candidates:
+        try:
+            obj = json.loads(candidate)
+            if isinstance(obj, dict) and obj:
+                return obj
+        except Exception:
+            pass
+        if _JSON_REPAIR_AVAILABLE:
+            try:
+                obj = _repair_json(candidate, return_objects=True)
+                if isinstance(obj, dict) and obj:
+                    return obj
+            except Exception:
+                pass
+    return None
+
+
+def _translate_cache_get(text: str):
+    if not _TRANSLATE_CACHE:
+        return None
+    import hashlib
+
+    entry = _TRANSLATE_CACHE.get(hashlib.sha256(text.encode("utf-8")).hexdigest())
+    if not entry:
+        return None
+    ts, payload = entry
+    if time.time() - ts > _TRANSLATE_CACHE_TTL:
+        return None
+    return dict(payload)
+
+
+def _translate_cache_put(text: str, payload: dict) -> None:
+    """Only successful AI payloads are cached — never the mock, or the "demo
+    mode" badge would outlive the outage that caused it."""
+    if payload.get("_fallback"):
+        return
+    import hashlib
+
+    if len(_TRANSLATE_CACHE) >= _TRANSLATE_CACHE_MAX:
+        oldest = min(_TRANSLATE_CACHE.items(), key=lambda kv: kv[1][0])[0]
+        _TRANSLATE_CACHE.pop(oldest, None)
+    _TRANSLATE_CACHE[hashlib.sha256(text.encode("utf-8")).hexdigest()] = (time.time(), dict(payload))
+
+
+def _openrouter_budget_ok() -> bool:
+    """OPENROUTER_DAILY_BUDGET (default 800) guards the shared free-tier quota."""
+    try:
+        budget = int(os.environ.get("OPENROUTER_DAILY_BUDGET", "800"))
+    except ValueError:
+        budget = 800
+    if budget <= 0:
+        return True
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    if _OPENROUTER_QUOTA["day"] != today:
+        _OPENROUTER_QUOTA["day"] = today
+        _OPENROUTER_QUOTA["count"] = 0
+    return _OPENROUTER_QUOTA["count"] < budget
+
+
+async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 900,
+                           temperature: float = 0.2, system: str | None = None,
+                           messages: list | None = None):
+    """One OpenRouter call that lets OpenRouter itself fail over through the
+    `models` array (it retries on rate-limit / downtime / moderation, and the
+    response tells us which model actually answered).
+
+    Returns (content, model_used). Raises when nothing usable came back so the
+    caller can move on to the next provider tier.
+    """
+    api_key = os.environ.get("OPENROUTER_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("OPENROUTER_API_KEY is not configured")
+    if not _openrouter_budget_ok():
+        raise RuntimeError("daily OpenRouter budget exhausted (OPENROUTER_DAILY_BUDGET)")
+
+    # Live-verified OpenRouter limit: the `models` fallback array accepts at most
+    # three entries ("'models' array must have 3 items or fewer", HTTP 400).
+    # Trim instead of failing, so a longer env override degrades gracefully.
+    if len(models) > 3:
+        logger.warning("[openrouter] %d models configured — the API allows 3; using %s",
+                       len(models), models[:3])
+        models = models[:3]
+
+    if messages is None:
+        messages = ([{"role": "system", "content": system}] if system else [])
+        messages.append({"role": "user", "content": prompt})
+
+    payload = {
+        "models": models,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+    }
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "HTTP-Referer": os.environ.get("SELF_URL", "https://duomath.local"),
+        "X-Title": "DuoMath AI",
+        "Content-Type": "application/json",
+    }
+    client = await get_http_client()
+    import re as _re
+
+    # A stale slug is a CLIENT error to OpenRouter: it does not fall over to the
+    # next model, it rejects the whole request with HTTP 400 ("<id> is not a
+    # valid model ID"). Free-tier slugs disappear without notice (exactly how the
+    # previous vision chain died), so drop the offender and retry the survivors.
+    attempts = 0
+    dropped: list = []
+    resp = None
+    while attempts < 3:
+        attempts += 1
+        resp = await client.post(OPENROUTER_CHAT_URL, headers=headers, json=payload, timeout=90)
+        if resp.status_code == 200:
+            break
+        body = resp.text[:300]
+        # The offender is reported verbatim, e.g.
+        # `khong/ton-tai-xyz:free is not a valid model ID`. The id CONTAINS a
+        # colon, so it must be inside the character class — otherwise only the
+        # tail ("free") is captured and the retry makes no progress.
+        _invalid = _re.search(r"([A-Za-z0-9_\-./:]+) is not a valid model ID", body)
+        # Free models ALSO get rate-limited upstream (HTTP 429) without
+        # OpenRouter failing over inside the array, and a rate-limited model is
+        # just as useless as a dead one. Same treatment: drop it, retry the rest.
+        _ratelimited = _re.search(r"([A-Za-z0-9_\-]+/[A-Za-z0-9_\-.:]+)", body)
+        if resp.status_code in (400, 404, 429, 503) and (_invalid or _ratelimited or payload["models"]):
+            bad = (_invalid or _ratelimited).group(1) if (_invalid or _ratelimited) else payload["models"][0]
+            dropped.append(bad)
+            survivors = [x for x in payload["models"] if x != bad]
+            if len(survivors) == len(payload["models"]):
+                # Not matched verbatim: drop the head so the request still makes
+                # progress instead of resending the identical payload.
+                survivors = payload["models"][1:]
+            if not survivors:
+                raise RuntimeError(f"every configured OpenRouter model id failed ({resp.status_code}): " + ", ".join(dropped))
+            payload["models"] = survivors
+            logger.warning("[openrouter] HTTP %s — dropping %r, retrying with %s",
+                           resp.status_code, bad, payload["models"])
+            continue
+        raise RuntimeError(f"OpenRouter HTTP {resp.status_code}: {_scrub_secrets(body)}")
+    else:
+        raise RuntimeError("OpenRouter request exhausted its retries")
+
+    if dropped:
+        logger.warning("[openrouter] model ids rejected this call (%s) — update the env ladder",
+                       ", ".join(dropped))
+    data = resp.json()
+    choices = data.get("choices") or []
+    content = (choices[0].get("message", {}).get("content") if choices else "") or ""
+    if not content.strip():
+        raise RuntimeError("OpenRouter returned an empty completion")
+    _OPENROUTER_QUOTA["count"] += 1
+    return content, (data.get("model") or models[0])
+
+
+async def _translate_with_groq(prompt: str, text: str):
+    """Groq tier — fastest of the three, kept as its own function so the order
+    lives in TRANSLATE_TIER_ORDER instead of being hard-coded."""
+    if not GROQ_KEY:
+        return None
+    client = await get_http_client()
+    resp = await client.post(
+        f"{GROQ_BASE}/chat/completions",
+        headers=groq_headers(),
+        json={
+            "model": "llama-3.1-8b-instant",
+            "messages": [
+                {"role": "system", "content": _TRANSLATE_SYSTEM},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": 1200 if len(text) > 300 else 500,
+            "temperature": 0.2,
+        },
+    )
+    resp.raise_for_status()
+    data = _parse_json_lenient(resp.json()["choices"][0]["message"]["content"])
+    if not isinstance(data, dict) or not (
+        data.get("translation") or data.get("translation_vi") or data.get("translation_en")
+    ):
+        raise ValueError("Groq reply was not a usable translation payload")
+    out = _bilingual_payload(data, text)
+    out["_provider"] = "groq"
+    return out
+
+
+async def _translate_with_openrouter(prompt: str, text: str):
+    """OpenRouter free-tier tier for /api/translate.
+
+    Uses the `models` array so OpenRouter fails over server-side inside a single
+    request — rate limits on free tiers are the norm, not the exception.
+    """
+    if not os.environ.get("OPENROUTER_API_KEY", ""):
+        return None
+    try:
+        content, used = await _openrouter_chat(
+            prompt,
+            models=_openrouter_models("OPENROUTER_TRANSLATE_MODELS", OPENROUTER_TRANSLATE_MODELS_DEFAULT),
+            system=_TRANSLATE_SYSTEM,
+            max_tokens=1200 if len(text) > 300 else 500,
+        )
+    except Exception as exc:
+        logger.warning("[translate] OpenRouter tier failed (%s)",
+                       _scrub_secrets(f"{type(exc).__name__}: {str(exc)[:200]}"))
+        return None
+
+    data = _parse_json_lenient(content)
+    if not isinstance(data, dict) or not (
+        data.get("translation") or data.get("translation_vi") or data.get("translation_en")
+    ):
+        # The `openrouter/free` router can pick a model that ignores the JSON
+        # contract and answers in prose. A real translation in the wrong shape
+        # is still far better than the canned mock, so keep it and say so.
+        prose = (content or "").strip()
+        if len(prose) >= 2 and not prose.startswith("{"):
+            payload = _bilingual_payload({"translation": prose[:2000]}, text)
+            payload["_provider"] = "openrouter"
+            payload["_model"] = used
+            payload["_degraded_format"] = True
+            logger.info("[translate] OpenRouter answered in prose (model=%s) — kept as a degraded payload", used)
+            return payload
+        logger.warning("[translate] OpenRouter payload unusable (model=%s)", used)
+        return None
+    payload = _bilingual_payload(data, text)
+    payload["_provider"] = "openrouter"
+    payload["_model"] = used
+    return payload
+
+
 async def _translate_with_gemini(prompt: str, text: str):
     """Phase 4 — tier 2 for /api/translate.
 
@@ -4440,12 +4807,20 @@ async def translate(request: Request):
         finally:
             db.close()
 
-    # FALLBACK if Groq Key is missing
-    if not GROQ_KEY:
-        logger.warning("[translate] GROQ_API_KEY is not configured — serving the local mock")
+    # Phase 4 / Đợt 3: the mock is served only when NO provider is configured at
+    # all — otherwise the ordered tiers at the end of this handler take over.
+    if not GROQ_KEY and not os.environ.get("GEMINI_API_KEY", "") and not os.environ.get("OPENROUTER_API_KEY", ""):
+        logger.warning("[translate] no translation provider is configured — serving the local mock")
         payload = _bilingual_payload(get_mock_translation(text), text)
         payload["_fallback"] = "mock_no_key"
         return JSONResponse(payload)
+
+    # Memory cache first: free tiers are quota-bound (50–1000 req/day) and the
+    # "translate this page" button re-sends the same sections over and over.
+    _cached = _translate_cache_get(text)
+    if _cached is not None:
+        _cached["_cache"] = "hit"
+        return JSONResponse(_cached)
 
     prompt = (
         "You are a translation API. Analyze the input text. "
@@ -4486,66 +4861,39 @@ async def translate(request: Request):
         "}\n\n"
         f"Input text:\n{text}"
     )
-    payload = {
-        "model": "llama-3.1-8b-instant",
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "You are a JSON-only translation API. Output only the JSON object. "
-                    "CRITICAL: For all Vietnamese fields (like 'translation', 'summary', 'vietnamese', and 'theory.vi'), "
-                    "you MUST use only standard Latin-based Vietnamese characters (Chữ Quốc Ngữ). "
-                    "Do NOT use any Chinese characters (Hanzi/Kanji like '等式', '不等式', etc.) under any circumstances. "
-                    "Always write terms like 'inequality' as 'bất đẳng thức', NOT 'bất等式'."
-                )
-            },
-            {"role": "user",   "content": prompt},
-        ],
-        "max_tokens": 1200 if len(text) > 300 else 500, "temperature": 0.2,
-    }
-
-    import re as _re
-    client = await get_http_client()
-    try:
-        resp = await client.post(
-            f"{GROQ_BASE}/chat/completions",
-            headers=groq_headers(), json=payload,
-        )
-        resp.raise_for_status()
-        raw = resp.json()["choices"][0]["message"]["content"]
-
-        # Strip markdown fences first
-        clean = raw.strip()
-        clean = _re.sub(r'^```(?:json)?\s*', '', clean)
-        clean = _re.sub(r'\s*```$', '', clean).strip()
-
-        # Try direct parse
+    # ── Provider ladder (Phase 4 / Đợt 3) ─────────────────────────────────────
+    # Data-driven order (TRANSLATE_TIER_ORDER, default openrouter,gemini,groq):
+    # the strongest free OpenRouter model answers first, the other providers act
+    # as fallbacks, and the local mock is the floor. A tier that raises or
+    # returns None is skipped; a tier that answers tags its own `_provider`.
+    last_tier_error = ""
+    for _tier in _translate_tier_order():
         try:
-            return JSONResponse(_bilingual_payload(json.loads(clean), text))
-        except json.JSONDecodeError:
-            pass
+            if _tier == "openrouter":
+                _out = await _translate_with_openrouter(prompt, text)
+            elif _tier == "gemini":
+                _out = await _translate_with_gemini(prompt, text)
+            elif _tier == "groq":
+                _out = await _translate_with_groq(prompt, text)
+            else:
+                logger.warning("[translate] unknown tier %r — skipped (valid: openrouter, gemini, groq)", _tier)
+                continue
+        except Exception as e_tier:
+            last_tier_error = f"{type(e_tier).__name__}: {str(e_tier)[:200]}"
+            logger.warning("[translate] tier %s failed (%s)", _tier, _scrub_secrets(last_tier_error))
+            continue
+        if _out:
+            _out["_provider"] = _tier
+            _out["_tier"] = _tier
+            _translate_cache_put(text, _out)
+            return JSONResponse(_out)
+        last_tier_error = f"{_tier}: no payload"
 
-        # Fallback: extract first {...} block from the raw response
-        m = _re.search(r'(\{[\s\S]*\})', clean)
-        if m:
-            try:
-                return JSONResponse(_bilingual_payload(json.loads(m.group(1)), text))
-            except json.JSONDecodeError:
-                pass
-
-        # Last resort: return error with the raw text
-        return JSONResponse({"error": True, "raw": raw})
-    except Exception as e:
-        # Tier 2: Gemini (keeps the AI translation alive if Groq fails/expires),
-        # then the local mock as a last resort.
-        logger.warning("[translate] Groq call failed (%s) — trying Gemini",
-                       _scrub_secrets(f"{type(e).__name__}: {str(e)[:200]}"))
-        gemini_payload = await _translate_with_gemini(prompt, text)
-        if gemini_payload is not None:
-            return JSONResponse(gemini_payload)
-        payload = _bilingual_payload(get_mock_translation(text), text)
-        payload["_fallback"] = "mock_error"
-        return JSONResponse(payload)
+    logger.warning("[translate] every tier failed (%s) — serving the local mock",
+                   _scrub_secrets(last_tier_error))
+    payload = _bilingual_payload(get_mock_translation(text), text)
+    payload["_fallback"] = "mock_error"
+    return JSONResponse(payload)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

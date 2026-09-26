@@ -53,7 +53,82 @@
 ### Trang `/ketqua`
 - Khối “🤖 Gợi ý học tập từ AI” giờ render bằng Streamdown (bullet + LaTeX) thay vì `white-space: pre-wrap`.
 
-## Lưu ý phụ thuộc
+## Đợt 3 — OpenRouter free-tier: thang model mạnh nhất miễn phí (chat · dịch · thị giác)
+
+### Vì sao: 5 slug đã chết + khoá Groq bị thu hồi
+Kiểm tra catalog **sống** của OpenRouter ngày 26/09/2026 cho thấy các slug mà hệ thống đang dùng **không còn tồn tại ở free tier**, nên mọi lời gọi đều lỗi *trước khi tới được provider*:
+
+| Vị trí | Slug cũ | Tình trạng live |
+|---|---|---|
+| `vision_agent.py` `DEFAULT_MODEL` | `inclusionai/ling-3.0-flash-vl:free` | chỉ còn bản **không** `:free` = trả phí |
+| `vision_agent.py` fallback | `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free` | còn, nhưng uptime 1 ngày **80.9%** |
+| `render.yaml` (env **override** code) | `qwen/qwen2.5-vl-72b-instruct:free`, `qwen2.5-vl-32b-instruct:free`, `google/gemma-3-27b-it:free` | cả 3 **mất** |
+| `main.py` sửa MathViz | `minimax/minimax-m3:free` | **mất** |
+| `main.py` chat tier 3 | `deepseek/deepseek-v4-flash-0731:free` | **mất** (+ `nemotron-3.5-lightning` chỉ 87% uptime) |
+
+### Thang model mới (xếp theo chỉ số Artificial Analysis in trên trang từng model)
+| Model (miễn phí) | AA Intelligence | AA Coding | AA Agentic | GPQA-D | Uptime 1d | Ctx | Max out | Thị giác | JSON mode |
+|---|---|---|---|---|---|---|---|---|---|
+| **`qwen/qwen3.8-27b:free`** (chính) | **33.7** | **68.1** | **45.8** | 90.5% | 97.7% | 262K | 235.9K | ✓ | `structured_outputs` |
+| `nvidia/nemotron-3-ultra-550b-a55b:free` (dự phòng 1) | 22.9 | 49.3 | 20.1 | 86.7% | 98.4% | **1M** | 65.5K | ✗ | ✗ |
+| `openrouter/free` (chốt cuối) | router chọn ngẫu nhiên 1 model free **đủ tính năng request cần** | | | | | 200K | | ✓ | – |
+| Dự phòng đổi bằng env: `poolside/laguna-s-2.1:free` (Terminal-Bench 2.1 **70.2%**), `nvidia/nemotron-3-super-120b-a12b:free`, `google/gemma-4-31b-it:free` (99.6%, 140+ ngôn ngữ), `dots-studio/dots-3-note-preview:free` (512K ctx), `thinkingmachines/inkling:free` (1M ctx) | | | | | | | | | |
+
+Hạn mức free (FAQ chính thức): **50 request/ngày** nếu chưa nạp credit, **1000/ngày** sau khi nạp ≥ **$10** — dùng chung toàn tài khoản, nên đã thêm cache + ngân sách ngày.
+
+### Đã thay đổi trong code
+1. **`main.py` — thang tier cấu hình được**: `_openrouter_chat()` (một request với mảng `models` để OpenRouter **tự failover phía server**), `_translate_with_openrouter()`, `_translate_with_groq()` (tách khỏi endpoint), `_parse_json_lenient()` (bỏ markdown fence + dọn dấu phẩy thừa + `json_repair`), cache dịch `sha256 → payload` (LRU 256, TTL 24h, **không** cache bản mock), ngân sách `OPENROUTER_DAILY_BUDGET`.
+   - Thứ tự nhà cung cấp: `TRANSLATE_TIER_ORDER` mặc định **`openrouter,gemini,groq`** (Qwen3.8 27B dịch VI tốt nhất trong 3 nhà cung cấp) → mock chỉ khi cả ba hỏng, kèm cờ `_fallback`.
+   - Chat tier 3 dùng lại `_openrouter_chat` với mảng `models` (bỏ vòng lặp 1 HTTP/model).
+   - Sửa slug chết ở tầng sửa MathViz → `OPENROUTER_REPAIR_MODEL=qwen/qwen3.8-27b:free`.
+2. **`vision_agent.py`**: `DEFAULT_MODEL=qwen/qwen3.8-27b:free`; fallback `Gemma 4 31B → Dots 3 Note → Inkling → openrouter/free`; khối comment kiểm toán ghi rõ **không còn `*-vl:free` chuyên dụng** + cảnh báo chống tái diễn lỗi "model nano/omni làm mặc định OCR".
+3. **`render.yaml` + `DEPLOYMENT_AND_TESTING_GUIDE.md` + `ARCHITECTURE_AND_INFRASTRUCTURE.md`**: thay giá trị slug đã chết, thêm `OPENROUTER_CHAT_MODELS`, `OPENROUTER_TRANSLATE_MODELS`, `OPENROUTER_REPAIR_MODEL`, `TRANSLATE_TIER_ORDER`, `OPENROUTER_DAILY_BUDGET`.
+4. **`frontend/src/app/api/learning-feedback/route.js`**: Groq hỏng/thiếu → **thử OpenRouter free** trước, chỉ khi cả hai hỏng mới trả bản rule-based (`degraded: true`, `reason: "groq_…|openrouter_…"`); phản hồi thành công kèm `provider`/`model` để `/ketqua` không hiện nhầm nhãn "chế độ đơn giản".
+5. **`frontend/src/app/privacy/page.js`**: công bố rõ model **miễn phí** có thể ghi log/dùng dữ liệu để cải thiện model (NVIDIA/Poolside/Cohere/Google AI Studio) + khuyến nghị không đưa dữ liệu cá nhân vào ảnh/câu hỏi.
+
+### ⚠️ Hai giới hạn của OpenRouter phát hiện bằng test sống (ghi lại để không tái phạm)
+1. **Mảng `models` tối đa 3 phần tử** — gửi 4-5 model trả `HTTP 400: 'models' array must have 3 items or fewer`. Code nay **tự cắt còn 3** và ghi cảnh báo.
+2. **Slug chết KHÔNG được tự động failover** — OpenRouter trả `400 "<id> is not a valid model ID"` cho *cả* request (đây chính là cơ chế đã giết chuỗi vision trước đây). Code nay **tự phát hiện, loại slug chết và thử lại** với các model còn lại (tối đa 3 lần) + log cảnh báo để cập nhật env.
+
+### Cấu hình cần có trên Render/Vercel
+`OPENROUTER_API_KEY` (**hiện đang THIẾU trên dịch vụ Render live** — nếu không thêm, cả 3 tầng OpenRouter bị vô hiệu và hệ thống quay lại mock), `GEMINI_API_KEY` (khoá trên Render đang 401), `GROQ_API_KEY` (khoá cũ đã bị thu hồi). Nạp ≥ $10 credit để nâng hạn mức free 50 → 1000 request/ngày.
+
+## Đợt 4A — MathReader có kiểm chứng (nhận diện ảnh trước khi giải)
+
+### Lỗ hổng được vá
+Trước đợt này, ảnh chỉ được đọc **một lần bằng một model** rồi đưa thẳng vào bộ giải. Một ký hiệu đọc sai (ví dụ `x^5` thành `x^3`) tạo ra lời giải *tự nhất quán nhưng sai* mà không lớp nào phát hiện: toán thì được kiểm, **việc đọc thì không**.
+
+### Kiến trúc mới
+```
+ảnh → preprocess (resize đồng dạng + letterbox + sha256/phash cache)
+     → MathReader: đọc bằng model họ A  →  nếu mơ hồ/không chắc (confidence < 0.75)
+                                        →  đọc thêm model họ B (khác họ)
+     → so khớp LaTeX sau chuẩn hoá: agree / merge / conflict
+          · conflict → trọng tài (dots-3) → nếu vẫn bất đồng ⇒ HỎI LẠI HỌC SINH
+     → cổng SymPy: công thức không parse được ⇒ crop + zoom đúng vùng đó, đọc lại 1 lần
+     → Problem IR + contract văn bản → bộ giải (model văn bản KHÔNG nhận ảnh thô nữa)
+```
+Module mới `backend/math_reader.py`:
+- `_normalize_latex()` — chuẩn hoá `x^{2}`/`x^2`, `\left(...\right)`, `\times`/`\cdot`, Unicode `≤ − → π √`… để so khớp không bị nhiễu bởi định dạng.
+- `_formula_match()` — ghép 1-1 theo vị trí rồi theo độ tương đồng (model đổi thứ tự dòng không bị coi là bất đồng).
+- `sympy_gate()` — tái dùng parser hạn chế của Phase 1 (`grading.safe_symbolic_parse`); tách `=`/`<`/`>` thành từng biểu thức nên **phương trình và bất phương trình không bị báo lỗi oan**.
+- `_crop_b64()` + `_reread_failed()` — crop theo `bbox` (0..1) + phóng 2-3× rồi đọc lại đúng vùng đáng ngờ.
+- `to_solver_contract()` — hình học giữ nguyên định dạng cũ (`LABELED POINTS / PRIMITIVES / RELATIONS`) nên pipeline MathViz không phải sửa gì.
+- Cache: kết quả lưu qua `vision_cache` với tiền tố `MR1:` (không xung đột với text thô của vision agent cũ).
+
+### Nối vào `/api/chat`
+- Chạy **trước** vision agent cũ (giữ làm đường lui): `image_data` + `AI_DUAL_READ != never`.
+- Khi bất đồng thật: chat trả lời bằng câu hỏi xác nhận kèm 2 cách đọc + `ocr_confirm` trong JSON (chưa cần UI mới vẫn dùng được), **không giải** trên đề chưa chắc.
+- Phản hồi thành công có thêm `perception: {consensus, confidence, kind, reread, parse_failures, cache, readers, ms}`.
+
+### Kiểm chứng
+- `python backend/test_math_reader.py` → **36/36 checks pass** (bao gồm: đồng thuận, trọng tài phân xử, bất đồng không phân xử được ⇒ `needs_confirm`, chế độ `never` chỉ gọi 1 reader, mọi reader lỗi ⇒ trả lỗi gọn, và nhánh crop + đọc lại sửa được công thức hỏng). Test **không cần mạng/khóa** nhờ `chat_fn` được tiêm vào.
+- Ba lỗi thật bắt được ngay trong lúc viết test: (1) `.strip("()")` phá ngoặc của `\frac{x^2-1}{x+1}` ⇒ dương tính giả; (2) thiếu `import io` khiến crop lỗi bị `except` nuốt mất ⇒ nhánh đọc-lại im lặng không chạy; (3) phương trình `x^2-5x+6=0` và nhân ngầm `5x` bị coi là "đọc sai" trước khi tách theo dấu quan hệ.
+
+### Việc còn lại của đợt 4A
+- Thẻ UI “xác nhận đề” trong `DuoMCBPage.js` (hiện đã có câu hỏi xác nhận dạng văn bản; UI nút bấm là cải tiến kế tiếp).
+- Chạy live với ảnh đề thật sau khi quota/khoá được khôi phục (OpenRouter free đang chập chờn `429` trong lúc kiểm chứng, xem mục Đợt 3).
+
 
 - `@streamdown/math@1.0.2` phụ thuộc `katex ^0.16.27` trong khi app dùng `katex ^0.17.0` ⇒ pnpm cài 2 bản KaTeX (CSS trùng lặp nhẹ, không ảnh hưởng chức năng). Khi Streamdown nâng lên KaTeX 0.17 có thể bỏ import CSS trùng.
 - Trước khi thêm Penrose: chạy `npm run dev` và `next build` ngay sau khi cài, vì `@penrose/core` có WASM và Turbopack từng lỗi với loader `.wasm` (guide §1.3). Luôn `dynamic(..., { ssr: false })`.

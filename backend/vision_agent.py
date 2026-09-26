@@ -51,26 +51,29 @@ Output your findings using the following schema:
    - Perpendicular / Parallel indicators (e.g., "Segment AD ⊥ BC at D").
 """
 
-# Confirmed-$0 OpenRouter models as of the free-tier audit behind this change.
+# Confirmed-$0 OpenRouter models as of the free-tier audit on 2026-09-26.
 # Keep this list ordered best-quality-first for THIS specific task (dense
-# OCR + spatial reasoning over Olympiad diagrams with 10+ labeled points):
-# large, DEDICATED vision-language models first, general-purpose multimodal
-# models last as a floor rather than a default. This was regressed once
-# already — a previous edit set DEFAULT_MODEL to minimax/minimax-m3:free
-# (a general agentic/coding model) with nvidia/nemotron-3-nano-omni-30b-a3b
-# (an explicitly small "nano", 3B-active-parameter model marketed as a
-# *perception sub-agent* for handing off to a bigger reasoning model, not a
-# standalone diagram parser) as the only fallback. Both technically accept
-# image input, so this wasn't a hard crash — but neither is built for dense
-# single-shot geometric OCR, which plausibly explains a real quality drop
-# in recognition even though nothing was throwing errors. qwen2.5-vl-72b
-# was NOT pulled from OpenRouter's free tier (re-verified live) — there
-# was no forcing reason to have moved off it.
-DEFAULT_MODEL = "inclusionai/ling-3.0-flash-vl:free"
+# OCR + spatial reasoning over Olympiad diagrams with 10+ labeled points).
+#
+# What the audit found: there is NO dedicated `*-vl:free` vision-language model
+# left on OpenRouter's free tier — `inclusionai/ling-3.0-flash-vl:free` (our
+# previous default) and `qwen/qwen2.5-vl-72b-instruct:free` no longer have a
+# :free variant, so the whole previous chain was dead and every call raised
+# before it could even reach a provider. The strongest remaining free model
+# that accepts images is `qwen/qwen3.8-27b:free`: a dense 27B vision-language
+# model with Artificial Analysis Intelligence 33.7 / Coding 68.1 / Agentic 45.8
+# (the highest of any free model), 262K context and up to 235K output tokens.
+#
+# Regression warning (kept from the previous audit): do NOT put a small
+# "nano"/"omni perception sub-agent" model first — a minimax-m3:free default
+# once measurably degraded recognition without throwing any error. General
+# multimodal models stay AFTER the dedicated VL models, as a floor.
+DEFAULT_MODEL = "qwen/qwen3.8-27b:free"
 DEFAULT_FALLBACK_MODELS = [
-    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
     "google/gemma-4-31b-it:free",
-    "google/gemma-4-26b-a4b-it:free",
+    "dots-studio/dots-3-note-preview:free",
+    "thinkingmachines/inkling:free",
+    "openrouter/free",
 ]
 
 

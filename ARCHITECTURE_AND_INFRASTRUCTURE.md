@@ -163,9 +163,16 @@ Hệ thống MathViz là bộ công cụ tương tác trực quan 2D/3D đồng 
 - **Cấu hình biến môi trường an toàn (Environment Variables)**:
   - `GEMINI_API_KEY`: `sync: false` (chỉ cấu hình trực tiếp trên Render Dashboard, loại bỏ hoàn toàn fallback key trong mã nguồn).
   - `GEMINI_MODEL`: `"gemini-3.6-flash"` (mô hình toán học và thị giác trung tâm).
-  - `OPENROUTER_API_KEY`: `sync: false` (quản trị an toàn trên dashboard).
-  - `OPENROUTER_VISION_MODEL`: `"qwen/qwen2.5-vl-72b-instruct:free"` (đảm bảo 100% định tuyến miễn phí).
-  - `OPENROUTER_VISION_FALLBACK_MODELS`: `"qwen/qwen2.5-vl-32b-instruct:free,google/gemma-3-27b-it:free"` (dự phòng đa tầng khi chạm rate-limit).
+  - `OPENROUTER_API_KEY`: `sync: false` (quản trị an toàn trên dashboard — dịch vụ live PHẢI có biến này, nếu thiếu thì cả 3 tầng OpenRouter bị vô hiệu).
+  - `OPENROUTER_VISION_MODEL`: `"qwen/qwen3.8-27b:free"` (Phase 4/Đợt 3 — model free mạnh nhất có thị giác: AA Intelligence 33.7 / Coding 68.1 / Agentic 45.8).
+  - `OPENROUTER_VISION_FALLBACK_MODELS`: `"google/gemma-4-31b-it:free,dots-studio/dots-3-note-preview:free,thinkingmachines/inkling:free,openrouter/free"` (dự phòng đa tầng khi chạm rate-limit).
+  - `OPENROUTER_CHAT_MODELS` / `OPENROUTER_TRANSLATE_MODELS`: thang 3 model (giới hạn cứng của OpenRouter) — mặc định `qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free`.
+  - `OPENROUTER_REPAIR_MODEL`: `"qwen/qwen3.8-27b:free"` (sửa JSON MathViz; thay `minimax/minimax-m3:free` đã chết).
+  - `TRANSLATE_TIER_ORDER`: `"openrouter,gemini,groq"` (thứ tự nhà cung cấp cho `/api/translate`).
+  - `OPENROUTER_DAILY_BUDGET`: `"800"` (hạn mức free dùng chung: 50 req/ngày khi chưa nạp credit, 1000 req/ngày sau khi nạp ≥ $10).
+  - `MATH_READER_MODELS`: `"qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free"` (2 reader **khác họ model** cho MathReader — lỗi hệ thống của model này thường không trùng với model kia).
+  - `MATH_READER_TIEBREAK_MODEL`: `"dots-studio/dots-3-note-preview:free"` (trọng tài khi 2 reader bất đồng).
+  - `AI_DUAL_READ`: `"auto"` (auto = chỉ đọc lần 2 khi reader đầu mơ hồ; `always` = luôn đọc đôi; `never` = tắt, quay về hành vi 1-lần-đọc cũ — dùng làm công tắc rollback).
   - `VISION_AGENT_ENABLED`: `"true"` (kích hoạt hệ thống tác tử thị giác).
   - `GROQ_API_KEY`: `sync: false` (gợi ý Socratic nhanh).
   - `JWT_SECRET`: `sync: false` (ký và xác thực token).

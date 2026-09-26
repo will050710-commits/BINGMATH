@@ -8,7 +8,7 @@ Tài liệu này cung cấp hướng dẫn đầy đủ, chi tiết từng bư�
 
 DuoMCB được thiết kế theo tiêu chí **100% tự vận hành (self-operating), chi phí $0 (Free-tier API & local algorithms)**:
 1. **Lõi suy luận (Core Brain):** Google Gemini (mặc định `gemini-3.6-flash`) kết hợp Groq Socratic API.
-2. **Thị giác hình học (Vision Agent):** Qwen2.5-VL-72B Instruct Free qua OpenRouter với chuỗi fallback tự động (32B $\to$ Gemma 3 $\to$ MiniMax-M3).
+2. **Thị giác hình học (Vision Agent):** thang model MIỄN PHÍ mạnh nhất trên OpenRouter — mặc định `qwen/qwen3.8-27b:free` (AA Intelligence 33.7 / Coding 68.1 / Agentic 45.8, có thị giác) với chuỗi dự phòng `Gemma 4 31B → Dots 3 Note → Inkling → openrouter/free`. Ghi chú kiểm toán 26/09/2026: **không còn model `*-vl:free` chuyên dụng** (các slug cũ `ling-3.0-flash-vl:free`, `qwen2.5-vl-72b-instruct:free`, `gemma-3-27b-it:free` đã biến mất khỏi free tier).
 3. **Tiền xử lý ảnh (Image Preprocessing):** Aspect-preserving uniform resize + letterbox padding 1024x1024 (chống méo hình học, méo góc, biến tròn thành elip) kèm tùy chọn lưới tọa độ pixel (`VISION_GRID_OVERLAY`).
 4. **Bộ giải hình học giải tích (Analytic Construction Solver):** `geometry_construction_solver.py` tính tọa độ giải tích chính xác tuyệt đối cho 9 dạng dựng hình chuẩn (trực tâm, tâm ngoại tiếp, nội tiếp, trọng tâm, chân đường cao, trung điểm, giao điểm, đối xứng, điểm chia tỉ lệ), hỗ trợ giải chuỗi phụ thuộc (dependency chaining).
 5. **Bộ Snapping & Kiểm định hình học:** `geometry_snapping.py` (làm tròn góc vuông 90°, thẳng hàng, tiếp tuyến) và `geometry_verification.py` (kiểm tra quan hệ hình học tránh ảo giác).
@@ -72,8 +72,20 @@ GROQ_API_KEY=gsk_...your_groq_key...
 
 # 3. OpenRouter Free-Tier Vision Agent (Nhận diện hình học Olympiad)
 OPENROUTER_API_KEY=sk-or-v1-...your_openrouter_key...
-OPENROUTER_VISION_MODEL=qwen/qwen2.5-vl-72b-instruct:free
-OPENROUTER_VISION_FALLBACK_MODELS=qwen/qwen2.5-vl-32b-instruct:free,google/gemma-3-27b-it:free
+# Phase 4/Đợt 3 — thang model free mạnh nhất (kiểm chứng live 26/09/2026).
+# OpenRouter chỉ nhận tối đa 3 model trong mảng `models`; slug chết làm cả
+# request trả 400 (code tự loại slug chết rồi thử lại).
+OPENROUTER_VISION_MODEL=qwen/qwen3.8-27b:free
+OPENROUTER_VISION_FALLBACK_MODELS=google/gemma-4-31b-it:free,dots-studio/dots-3-note-preview:free,thinkingmachines/inkling:free,openrouter/free
+OPENROUTER_CHAT_MODELS=qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free
+OPENROUTER_TRANSLATE_MODELS=qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free
+OPENROUTER_REPAIR_MODEL=qwen/qwen3.8-27b:free
+TRANSLATE_TIER_ORDER=openrouter,gemini,groq
+OPENROUTER_DAILY_BUDGET=800
+# Đợt 4A — Verified MathReader (đọc đối chứng + cổng SymPy + đọc lại vùng zoom)
+MATH_READER_MODELS=qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free
+MATH_READER_TIEBREAK_MODEL=dots-studio/dots-3-note-preview:free
+AI_DUAL_READ=auto
 VISION_AGENT_ENABLED=true
 
 # 4. Cấu hình Worked-Example RAG (Track A)
