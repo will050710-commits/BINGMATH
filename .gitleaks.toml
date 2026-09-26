@@ -34,3 +34,14 @@ commits = [
   # commit is allowlisted to keep CI loud only for *new* leaks.
   "c278e2c912264be69c96d80eee942aacd69cfb24",
 ]
+
+# ── Custom rules ─────────────────────────────────────────────────────────────
+# Đợt 4D: the two TypeSafe keys were hard-coded as fallback defaults in
+# backend/typesafe_guard.py and had been pasted into a chat (leaked). The
+# default ruleset does not know TypeSafe's `apikey_<hex>_<hex>` shape, so the
+# pattern is added here to keep it (and anything similar) out of the tree.
+[[rules]]
+id = "typesafe-apikey"
+description = "TypeSafe / Jev-style API key (apikey_<hex>_<hex>)"
+regex = '''apikey_[0-9a-fA-F]{16,}_[0-9a-fA-F]{16,}'''
+tags = ["key", "typesafe"]

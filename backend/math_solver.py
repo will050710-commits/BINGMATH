@@ -649,6 +649,52 @@ def check_sanity(ir: Dict[str, Any], reply: str) -> Dict[str, Any]:
     return {"name": "sanity", "status": "passed"}
 
 
+def check_geometry(reply: str) -> Dict[str, Any]:
+    """Verify the rendered geometry block inside the answer, when there is one.
+
+    Reuses the Phase-3 pre-render gate `geometry_verification.verify_geometry_mathviz`:
+    the diagram a student is about to see must satisfy its own stated
+    constructions and relations. Skipped when the answer carries no viz block —
+    the critic check still covers geometry word problems.
+    """
+    text = str(reply or "")
+    candidates: List[str] = re.findall(r"```(?:json)?\s*(\{[\s\S]{20,6000}?\})\s*```", text)
+    inline = re.search(r'(\{"layers"[\s\S]{20,6000}\})', text)
+    if inline:
+        candidates.append(inline.group(1))
+    candidates.append(text)
+
+    block: Optional[Dict[str, Any]] = None
+    for candidate in candidates:
+        try:
+            obj = json.loads(candidate)
+        except Exception:
+            continue
+        if isinstance(obj, dict) and isinstance(obj.get("layers"), list):
+            block = obj
+            break
+    if not block:
+        return {"name": "geometry", "status": "skipped", "reason": "no viz block in the answer"}
+
+    try:
+        import geometry_verification
+        verdict = geometry_verification.verify_geometry_mathviz(block)
+    except Exception as exc:  # noqa: BLE001
+        return {"name": "geometry", "status": "skipped",
+                "reason": f"verifier unavailable ({type(exc).__name__})"}
+    if not isinstance(verdict, dict):
+        return {"name": "geometry", "status": "skipped", "reason": "unrecognised verdict shape"}
+
+    explicit = [verdict.get(k) for k in ("ok", "valid", "passed") if k in verdict]
+    if True in [bool(v) for v in explicit]:
+        return {"name": "geometry", "status": "passed"}
+    if explicit and not any(bool(v) for v in explicit):
+        issues = verdict.get("issues") or verdict.get("errors") or verdict.get("problems") or []
+        return {"name": "geometry", "status": "failed",
+                "detail": {"issues": [str(i)[:160] for i in list(issues)[:4]]}}
+    return {"name": "geometry", "status": "skipped", "reason": "verdict did not state pass/fail"}
+
+
 def deterministic_checks(ir: Dict[str, Any], reply: str) -> List[Dict[str, Any]]:
     """All checks that never trust a model. Ordered cheapest-first."""
     return [
@@ -656,6 +702,7 @@ def deterministic_checks(ir: Dict[str, Any], reply: str) -> List[Dict[str, Any]]
         check_against_presolve(ir, reply),
         check_substitution(ir, reply),
         check_identities(reply),
+        check_geometry(reply),
     ]
 
 

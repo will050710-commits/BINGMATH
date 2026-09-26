@@ -165,6 +165,50 @@ Problem IR (latex + diagram + lời học sinh)   ← không bao giờ là ảnh
 - Geo chuyên sâu: dùng `geometry_verification.verify_geometry_mathviz` cho tầng kiểm chứng hình học (hiện hình học dựa vào critic + quan hệ trong IR).
 - Ghi telemetry `ai_quality_log` để đo tỉ lệ `verified` theo từng model (thuộc Đợt 4C).
 
+## Đợt 4C — Đo lường chất lượng + cổng CI (xếp hạng model bằng dữ liệu thật)
+
+### Telemetry: bảng `ai_quality_log`
+| Thành phần | Nội dung |
+|---|---|
+| Bảng | `ai_quality_log {surface, model, tier, provider, latency_ms, verified, consensus, confidence, fallback, notes, created_at}` + 2 index (`created_at`, `surface+model`) — tạo trong danh sách migration của `main.py` như `admin_audit_log` |
+| `quality_log(...)` | Ghi 1 dòng mỗi kết quả AI; **không bao giờ raise** (cùng hợp đồng với `audit_admin`) — telemetry không được làm hỏng request đang đo |
+| `quality_summary(days)` | Gom theo `surface + model`: số lượt, tỉ lệ `verified`, số lượt `unverified`, latency trung bình, số lần rơi vào đường demo (`fallback`) + 25 dòng gần nhất |
+| Endpoint | `GET /api/admin/ai-quality?days=7` (admin-only, `days` kẹp trong 1..90) |
+| Điểm gọi | dịch (`/api/translate`: model/tier/latency/fallback, kể cả nhánh mock) · chat (tier `verify_ok`/`verify_failed` + notes) · nhận diện (consensus, confidence, `needs_confirm`) |
+
+### Cổng CI: `.github/workflows/quality-gate.yml`
+- **Job `offline-suites`** (push/PR): 4 bộ test **không cần khoá, không cần mạng** — `test_math_reader.py`, `test_math_solver.py`, `test_typesafe_guard.py`, `tests/eval_math_regression.py`. Cài phụ thuộc gọn (sympy/numpy/Pillow/httpx/pydantic/json-repair/gradio_client) thay vì cả `requirements.txt` (tránh kéo torch/sentence-transformers cho CI).
+- **Job `free-catalog`** (chạy hằng ngày 04:23 UTC + khi push): `python backend/scripts/check_free_catalog.py` — quét slug `:variant` trong **code/config** (bỏ qua file `.md` và **bỏ phần comment**, vì comment cố ý ghi lại các slug đã chết) rồi đối chiếu catalog OpenRouter; **exit 1** nếu có slug đã biến mất ⇒ biết trước khi người dùng gặp lỗi 400.
+
+### Bằng chứng
+```
+test_math_reader.py      exit 0    test_math_solver.py     exit 0
+test_typesafe_guard.py   exit 0    tests/eval_math_regression.py  exit 0
+check_free_catalog.py    exit 0    tracked slugs: 8 — all tracked free slugs still exist
+import main → 106 route (thêm /api/admin/ai-quality)
+```
+
+### Hạn chế đã biết
+Telemetry nằm trong SQLite của backend (phù hợp free tier 1 worker); chưa có dashboard UI (dùng API admin). Khi cần phân tích sâu hơn, đẩy bảng này lên dịch vụ log tập trung.
+
+## Đợt 4D — Củng cố bảo mật + kiểm chứng hình học + dọn nợ kỹ thuật
+
+### 1. Gỡ 2 khoá TypeSafe hard-code (bảo mật)
+`backend/typesafe_guard.py` từng chứa 2 khoá thật làm giá trị mặc định (`apikey_2426f1b9…`, `apikey_24266479…`) — trái với kết luận “đã triệt tiêu hard-code key” của Phase 0 và bộ luật gitleaks mặc định không nhận dạng dạng `apikey_<hex>_<hex>`.
+- Đã đổi sang **chỉ đọc từ env** (`TYPESAFE_API_KEY_PRIMARY`/`_SECONDARY`); pool rỗng là trạng thái **hợp lệ** và guard tự lùi về đường rule-based.
+- Thêm luật gitleaks tuỳ biến `typesafe-apikey` (`.gitleaks.toml`) để dạng này không quay lại.
+- `test_typesafe_guard.py` cập nhật theo hợp đồng mới: pool phải **phản ánh env**, nhánh kiểm thử xoay khoá chỉ chạy khi có ≥2 khoá (trước đây assert cứng `== 2` nên khoá hard-code là điều kiện để test xanh — đúng thứ cần loại bỏ).
+
+### 2. Kiểm chứng hình học trong tầng hậu kiểm
+`math_solver.check_geometry()` trích khối viz (`layers`) trong câu trả lời và gọi lại **cổng kiểm định trước khi render** của Phase 3 (`geometry_verification.verify_geometry_mathviz`): sơ đồ học sinh sắp thấy phải thoả chính các dựng hình/quan hệ mà nó khai báo. Không có viz block ⇒ `skipped` (critic vẫn phủ bài toán hình học chữ).
+
+### 3. Xác nhận hạng mục đã có sẵn (không cần làm)
+Tool-calling cho **Gemini**: `main.py:3735` đã gắn `GEMINI_TOOLS` cho nhánh chat văn bản và `main.py:3839-3858` đã xử lý `functionCall` → chạy `evaluate_math_expression` → trả `functionResponse`. Không còn việc tồn ở mục này.
+
+### 4. Việc còn lại của 4D (chưa làm, có lý do)
+- **Thẻ UI “xác nhận đề” + hiển thị nhãn `verification`** trong `DuoMCBPage.js`: hiện luồng xác nhận đã chạy ở dạng **văn bản** (bot hỏi lại 2 cách đọc) và nhãn “⚠️ Chưa kiểm chứng…” đã được chèn vào câu trả lời, nên tính năng dùng được ngay cả khi chưa có UI nút bấm. Việc sửa JSX cần một lần `next build` xác nhận — máy hiện tại đã **OOM Turbopack** hai lần (build 15/16) nên chưa thực hiện để tránh đẩy mã frontend chưa được kiểm chứng.
+- Đẩy `ai_quality_log` lên dịch vụ log tập trung khi có nhu cầu phân tích dài hạn.
+
 
 - `@streamdown/math@1.0.2` phụ thuộc `katex ^0.16.27` trong khi app dùng `katex ^0.17.0` ⇒ pnpm cài 2 bản KaTeX (CSS trùng lặp nhẹ, không ảnh hưởng chức năng). Khi Streamdown nâng lên KaTeX 0.17 có thể bỏ import CSS trùng.
 - Trước khi thêm Penrose: chạy `npm run dev` và `next build` ngay sau khi cài, vì `@penrose/core` có WASM và Turbopack từng lỗi với loader `.wasm` (guide §1.3). Luôn `dynamic(..., { ssr: false })`.

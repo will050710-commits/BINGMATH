@@ -35,14 +35,15 @@ class TypeSafeKeyManager:
     """
 
     def __init__(self):
-        self.primary_key = os.environ.get(
-            "TYPESAFE_API_KEY_PRIMARY",
-            "apikey_2426f1b95e3b263453e9959758168c7c6a6_f4795f5562ab567819ce47fccb4172cf90dfd4059123f0748247072a203b25a3",
-        ).strip()
-        self.secondary_key = os.environ.get(
-            "TYPESAFE_API_KEY_SECONDARY",
-            "apikey_242664795a072674630aaa40b879573dfc1_487a1632509672e8bcfff03fff700c7ae55decad9c5da4618198c1b23ffa4c33",
-        ).strip()
+        # Phase 4 / Đợt 4D security fix: the two TypeSafe keys used to be
+        # hard-coded here as fallback defaults. They were pasted into a chat in
+        # Phase 0 (so they must be treated as leaked) and a real `apikey_…`
+        # value inside the source tree is exactly what the tree-wide secret
+        # sweep exists to prevent. Read them from the environment only.
+        # An empty pool is safe: the manager simply reports no active key and
+        # the guard falls back to its rule-based path.
+        self.primary_key = os.environ.get("TYPESAFE_API_KEY_PRIMARY", "").strip()
+        self.secondary_key = os.environ.get("TYPESAFE_API_KEY_SECONDARY", "").strip()
         
         self.keys = [k for k in [self.primary_key, self.secondary_key] if k]
         self.active_index = 0

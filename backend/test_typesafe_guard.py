@@ -3,6 +3,7 @@ import sys
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 import asyncio
+import os
 from typesafe_guard import key_manager, typesafe_guard, MathDomain
 
 async def run_tests():
@@ -13,19 +14,28 @@ async def run_tests():
     # 1. Test Key Rotation Pool
     print("\n[TEST 1] Key Rotation Pool:")
     status = key_manager.get_status()
-    assert status["total_keys"] == 2, "Expected 2 keys in pool"
-    print(f"  ✓ Initial keys in pool: {status['total_keys']}")
-    print(f"  ✓ Active Key #1: {status['active_key_masked']}")
+    # Đợt 4D: the key pool is ENV-ONLY now — the two hard-coded fallback keys
+    # were removed because they had been pasted into a chat (leaked) and a real
+    # `apikey_…` value in the source tree is exactly what secret scanning
+    # exists to prevent. An empty pool is therefore a VALID state: the guard
+    # simply falls back to its rule-based path. The pool must mirror the env.
+    expected_keys = (int(bool(os.environ.get("TYPESAFE_API_KEY_PRIMARY", "").strip()))
+                     + int(bool(os.environ.get("TYPESAFE_API_KEY_SECONDARY", "").strip())))
+    assert status["total_keys"] == expected_keys, (
+        f"pool must mirror the environment (expected {expected_keys}, got {status['total_keys']})")
+    print(f"  ✓ Keys in pool (from env): {status['total_keys']}")
+    print(f"  ✓ Active key: {status['active_key_masked']}")
 
-    # Rotate
-    new_key = await key_manager.rotate_key("Testing failover")
-    print(f"  ✓ Rotated to Key #2: {key_manager.get_masked_key(new_key)}")
-    assert key_manager.active_index == 1, "Expected active index to be 1"
+    if status["total_keys"] >= 2:
+        new_key = await key_manager.rotate_key("Testing failover")
+        print(f"  ✓ Rotated to Key #2: {key_manager.get_masked_key(new_key)}")
+        assert key_manager.active_index == 1, "Expected active index to be 1"
 
-    # Rotate back
-    new_key_again = await key_manager.rotate_key("Rotating back")
-    print(f"  ✓ Rotated back to Key #1: {key_manager.get_masked_key(new_key_again)}")
-    assert key_manager.active_index == 0, "Expected active index to be 0"
+        new_key_again = await key_manager.rotate_key("Rotating back")
+        print(f"  ✓ Rotated back to Key #1: {key_manager.get_masked_key(new_key_again)}")
+        assert key_manager.active_index == 0, "Expected active index to be 0"
+    else:
+        print("  - rotation test skipped: needs TYPESAFE_API_KEY_PRIMARY and _SECONDARY in the env")
 
     # 2. Test Decomposed Intent Classification
     print("\n[TEST 2] Decomposed Intent Classification:")

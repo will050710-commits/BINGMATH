@@ -368,6 +368,73 @@ async def verify_admin(request: Request) -> int:
         db.close()
 
 
+def quality_log(surface: str, model: str = "", tier: str = "", provider: str = "",
+                latency_ms: int = 0, verified=None, consensus: str = "",
+                confidence=None, fallback: str = "", notes: str = "") -> None:
+    """Phase 4 / Đợt 4C — record one AI outcome.
+
+    Never raises: telemetry must never break the request it is measuring (same
+    contract as audit_admin)."""
+    try:
+        db = get_db()
+        try:
+            db.execute(
+                "INSERT INTO ai_quality_log (surface, model, tier, provider, latency_ms,"
+                " verified, consensus, confidence, fallback, notes) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (str(surface)[:24], str(model or "")[:80], str(tier or "")[:24], str(provider or "")[:24],
+                 int(latency_ms or 0), None if verified is None else int(bool(verified)),
+                 str(consensus or "")[:24], None if confidence is None else float(confidence),
+                 str(fallback or "")[:24], str(notes or "")[:300]),
+            )
+            db.commit()
+        finally:
+            db.close()
+    except Exception as e:  # noqa: BLE001
+        logger.debug("[quality] log skipped: %s", e)
+
+
+def quality_summary(days: int = 7) -> dict:
+    """Aggregate the last `days` of AI outcomes per surface + model."""
+    window = f"-{max(1, int(days))} days"
+    db = get_db()
+    try:
+        rows = db.execute(
+            "SELECT surface, model, COUNT(*) AS n,"
+            " SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) AS verified_n,"
+            " SUM(CASE WHEN verified = 0 THEN 1 ELSE 0 END) AS unverified_n,"
+            " AVG(CASE WHEN latency_ms > 0 THEN latency_ms END) AS avg_ms,"
+            " SUM(CASE WHEN COALESCE(fallback,'') <> '' THEN 1 ELSE 0 END) AS fallback_n"
+            " FROM ai_quality_log WHERE created_at >= datetime('now', ?)"
+            " GROUP BY surface, model ORDER BY n DESC LIMIT 60",
+            (window,),
+        ).fetchall()
+        per_model = [{
+            "surface": r["surface"], "model": r["model"], "count": r["n"],
+            "verified": r["verified_n"] or 0, "unverified": r["unverified_n"] or 0,
+            "verified_rate": round((r["verified_n"] or 0) / r["n"], 3) if r["n"] else None,
+            "avg_latency_ms": round(r["avg_ms"]) if r["avg_ms"] else None,
+            "fallbacks": r["fallback_n"] or 0,
+        } for r in rows]
+        totals = db.execute(
+            "SELECT COUNT(*) AS n, SUM(CASE WHEN verified = 1 THEN 1 ELSE 0 END) AS v"
+            " FROM ai_quality_log WHERE created_at >= datetime('now', ?)",
+            (window,),
+        ).fetchone()
+        recent = [dict(r) for r in db.execute(
+            "SELECT surface, model, tier, latency_ms, verified, consensus, confidence,"
+            " fallback, notes, created_at FROM ai_quality_log ORDER BY id DESC LIMIT 25"
+        ).fetchall()]
+        return {
+            "days": int(days),
+            "total": (totals["n"] or 0) if totals else 0,
+            "verified_total": (totals["v"] or 0) if totals else 0,
+            "per_model": per_model,
+            "recent": recent,
+        }
+    finally:
+        db.close()
+
+
 def audit_admin(admin_id: int, action: str, target: str = "", detail: str = "") -> None:
     """Phase 3: append a row to the admin trail. Never raises — an audit failure
     must not take down the privileged action it is recording (it is logged)."""
@@ -2280,6 +2347,27 @@ def init_db():
             created_at TEXT DEFAULT (datetime('now'))
         )""", None),
         ("CREATE INDEX IF NOT EXISTS idx_audit_created ON admin_audit_log(created_at)", None),
+        # ── Phase 4 / Đợt 4C: AI quality telemetry ─────────────────────────
+        # One row per AI outcome (chat answer, translation, perception) so the
+        # model ladder can be re-ordered from REAL data — which model actually
+        # answers, how often verification passed, how slow it was — instead of
+        # guessing. `fallback` marks the demo/degraded paths.
+        ("""CREATE TABLE IF NOT EXISTS ai_quality_log (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            surface    TEXT NOT NULL,
+            model      TEXT DEFAULT '',
+            tier       TEXT DEFAULT '',
+            provider   TEXT DEFAULT '',
+            latency_ms INTEGER DEFAULT 0,
+            verified   INTEGER,
+            consensus  TEXT DEFAULT '',
+            confidence REAL,
+            fallback   TEXT DEFAULT '',
+            notes      TEXT DEFAULT '',
+            created_at TEXT DEFAULT (datetime('now'))
+        )""", None),
+        ("CREATE INDEX IF NOT EXISTS idx_quality_created ON ai_quality_log(created_at)", None),
+        ("CREATE INDEX IF NOT EXISTS idx_quality_surface ON ai_quality_log(surface, model)", None),
     ])
     for sql, _ in migrations:
         try:
@@ -3188,6 +3276,7 @@ async def run_retention(request: Request):
 @limiter.limit(CHAT_LIMIT)
 async def chat(request: Request):
     d = await request.json()
+    _t0 = time.time()   # Đợt 4C: latency for ai_quality_log
     session_id   = d.get("session_id") or str(uuid.uuid4())
     user_message = (d.get("message") or "").strip()
     image_data   = d.get("image")
@@ -4121,6 +4210,26 @@ async def chat(request: Request):
         except Exception as _e_verify:
             logger.warning("[Chat] Math verification skipped (%s)", _e_verify)
 
+        # Đợt 4C: one telemetry row per AI answer (and a lighter one when we only
+        # have perception), so the ladder can be re-ordered from real outcomes.
+        try:
+            if math_verification:
+                quality_log(surface="chat",
+                            model=str(((math_verification.get("critic") or {}).get("model")) or "")[:80],
+                            tier="verify_ok" if math_verification.get("verified") else "verify_failed",
+                            latency_ms=int((time.time() - _t0) * 1000),
+                            verified=math_verification.get("verified"),
+                            notes=str(math_verification.get("notes") or "")[:200])
+            elif perception:
+                quality_log(surface="perception",
+                            model=",".join(perception.get("readers") or [])[:80],
+                            consensus=str(perception.get("consensus") or ""),
+                            confidence=perception.get("confidence"),
+                            latency_ms=int(perception.get("ms") or 0),
+                            fallback="needs_confirm" if perception.get("needs_confirm") else "")
+        except Exception as _e_qlog:
+            logger.debug("[Chat] quality log skipped (%s)", _e_qlog)
+
         history.append({"role": "assistant", "content": reply})
         save_history(session_id, history)
         return JSONResponse({
@@ -4840,6 +4949,7 @@ async def translate(request: Request):
     text = (d.get("text") or "").strip()[:1500]
     if not text:
         raise HTTPException(400, "text is required.")
+    _t0 = time.time()   # Đợt 4C: latency goes into ai_quality_log
 
     # Try resolving user id for daily progress tracking (optional)
     uid = None
@@ -4938,6 +5048,11 @@ async def translate(request: Request):
             _out["_provider"] = _tier
             _out["_tier"] = _tier
             _translate_cache_put(text, _out)
+            quality_log(surface="translate", model=str(_out.get("_model") or _tier)[:80],
+                        provider=str(_out.get("_provider") or ""), tier=_tier,
+                        latency_ms=int((time.time() - _t0) * 1000),
+                        fallback=str(_out.get("_fallback") or ""),
+                        notes=str(_out.get("_degraded_format") and "degraded_format" or "")[:80])
             return JSONResponse(_out)
         last_tier_error = f"{_tier}: no payload"
 
@@ -4945,6 +5060,9 @@ async def translate(request: Request):
                    _scrub_secrets(last_tier_error))
     payload = _bilingual_payload(get_mock_translation(text), text)
     payload["_fallback"] = "mock_error"
+    quality_log(surface="translate", tier="mock", fallback="mock_error",
+                latency_ms=int((time.time() - _t0) * 1000),
+                notes=_scrub_secrets(last_tier_error)[:200])
     return JSONResponse(payload)
 
 
@@ -5258,6 +5376,19 @@ async def create_report(request: Request):
         return JSONResponse({"ok": True}, status_code=201)
     finally:
         db.close()
+
+
+@app.get("/api/admin/ai-quality")
+@limiter.limit(TYPESAFE_LIMIT)
+async def admin_ai_quality(request: Request, days: int = 7):
+    """Phase 4 / Đợt 4C — read the AI quality telemetry.
+
+    Answers the question the model ladder needs: which provider/model actually
+    answers, how often the verification passed, how slow it is, and how often a
+    degraded (mock/demo) path was served. Admin-only, like the audit trail.
+    """
+    await verify_admin(request)
+    return JSONResponse(quality_summary(days=max(1, min(int(days), 90))))
 
 
 @app.get("/api/admin/reports")
