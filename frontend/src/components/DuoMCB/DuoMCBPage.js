@@ -2331,7 +2331,7 @@ export default function DuoMCBPage() {
         mode: actualMode,
       });
       if (data.error) throw new Error();
-      setMessages(prev => [...prev, { role: "assistant", content: data.reply || "", id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: data.reply || "", id: Date.now() + 1, ocr_confirm: data.ocr_confirm, verification: data.verification, perception: data.perception }]);
     } catch {
       setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Không thể kết nối hoặc xử lý ảnh. Vui lòng thử lại.", id: Date.now() + 1 }]);
     } finally {
@@ -2516,7 +2516,52 @@ export default function DuoMCBPage() {
                           } catch { return <code key={idx}>{token.content}</code>; }
                         })}
                       </div>
-                      {vizData && m.role === "assistant" && (
+                      {/* Đợt 4D — thẻ "xác nhận đề": MathReader trả về 2 cách đọc
+                          khác nhau thì học sinh chọn ngay tại đây; bấm vào một cách
+                          đọc sẽ gửi lại ĐÚNG LaTeX đó (không cần gửi lại ảnh). */}
+                      {m.role === "assistant" && m.ocr_confirm?.candidates?.length > 0 && (
+                        <div style={{
+                          marginTop: 8, padding: "10px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6,
+                          background: "rgba(250,204,21,0.10)", border: "1px solid rgba(250,204,21,0.35)",
+                        }}>
+                          <div style={{ fontWeight: 700, marginBottom: 6 }}>
+                            🔎 {m.ocr_confirm.question || "Em xác nhận đề đúng theo cách đọc nào?"}
+                          </div>
+                          {m.ocr_confirm.candidates.map((cand, ci) => (
+                            <button
+                              key={ci}
+                              type="button"
+                              disabled={loading}
+                              onClick={() => sendMessage((cand.latex || []).join(" ; ") || m.content, "hint")}
+                              style={{
+                                display: "block", width: "100%", textAlign: "left", marginTop: 6,
+                                padding: "8px 10px", borderRadius: 10, cursor: "pointer",
+                                background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.18)",
+                                color: "inherit", fontFamily: "inherit",
+                              }}
+                            >
+                              <b>{ci + 1}.</b> {(cand.latex || []).join("  ·  ") || "(không thấy công thức)"}
+                              <span style={{ opacity: 0.6 }}> — đọc bởi {(cand.model || "?").split("/").pop()}</span>
+                            </button>
+                          ))}
+                          {typeof m.ocr_confirm.confidence === "number" && (
+                            <div style={{ marginTop: 6, opacity: 0.65, fontSize: 12 }}>
+                              độ tin cậy {Math.round(m.ocr_confirm.confidence * 100)}%
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* Đợt 4B/4C — trạng thái kiểm chứng của câu trả lời */}
+                      {m.role === "assistant" && m.verification && (
+                        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                          {m.verification.verified
+                            ? `✅ đã kiểm chứng${m.verification.repaired ? " (có sửa lại)" : ""}`
+                            : "⚠️ chưa kiểm chứng được đáp án"}
+                          {m.perception?.confidence != null
+                            ? ` · đọc tin cậy ${Math.round(m.perception.confidence * 100)}%`
+                            : ""}
+                        </div>
+                      )}
                         <div style={{ marginTop: 8, width: "100%" }}>
                           <MathVizRenderer data={vizData} />
                         </div>

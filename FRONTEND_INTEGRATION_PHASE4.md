@@ -205,9 +205,34 @@ Telemetry nằm trong SQLite của backend (phù hợp free tier 1 worker); chư
 ### 3. Xác nhận hạng mục đã có sẵn (không cần làm)
 Tool-calling cho **Gemini**: `main.py:3735` đã gắn `GEMINI_TOOLS` cho nhánh chat văn bản và `main.py:3839-3858` đã xử lý `functionCall` → chạy `evaluate_math_expression` → trả `functionResponse`. Không còn việc tồn ở mục này.
 
-### 4. Việc còn lại của 4D (chưa làm, có lý do)
-- **Thẻ UI “xác nhận đề” + hiển thị nhãn `verification`** trong `DuoMCBPage.js`: hiện luồng xác nhận đã chạy ở dạng **văn bản** (bot hỏi lại 2 cách đọc) và nhãn “⚠️ Chưa kiểm chứng…” đã được chèn vào câu trả lời, nên tính năng dùng được ngay cả khi chưa có UI nút bấm. Việc sửa JSX cần một lần `next build` xác nhận — máy hiện tại đã **OOM Turbopack** hai lần (build 15/16) nên chưa thực hiện để tránh đẩy mã frontend chưa được kiểm chứng.
+### 4. Việc còn lại của 4D (đã cập nhật)
+- ✅ **Thẻ UI “xác nhận đề” + nhãn kiểm chứng đã hoàn tất** (`DuoMCBPage.js`): khi `ocr_confirm` xuất hiện, học sinh bấm chọn một trong hai cách đọc và tin nhắn gửi lại **đúng LaTeX** đó (không cần gửi lại ảnh); kèm dòng trạng thái `✅ đã kiểm chứng` / `⚠️ chưa kiểm chứng được đáp án` và độ tin cậy của bước đọc.
+- Cách kiểm chứng JSX trên máy này: `@babel/parser` có sẵn trong `node_modules` (script `jsxcheck.cjs`) — `JSX_PARSE_OK` cho `DuoMCBPage.js` và `pageketqua.js`; `route.js` qua `node --check`. **`next build` đầy đủ vẫn nên chạy** ở máy còn RAM (2 lần trước đã OOM Turbopack), Vercel sẽ build lại khi deploy.
 - Đẩy `ai_quality_log` lên dịch vụ log tập trung khi có nhu cầu phân tích dài hạn.
+
+## Đợt 4E — Ôn tập giãn cách bằng FSRS (integration-guide mục 2.4)
+
+### Vì sao
+Ứng dụng đã biết học sinh **yếu kỹ năng nào** (`/ketqua`, `test_results`, `utils/mastery.js`) nhưng chưa biết **nên ôn lại khi nào**. FSRS (Free Spaced Repetition Scheduler) biến mỗi kỹ năng yếu thành một thẻ có ngày đến hạn thích ứng theo trí nhớ thực tế — nửa còn thiếu của lộ trình học.
+
+### Thành phần
+- **`backend/fsrs_scheduler.py`** — thuần (không DB/HTTP, không import `main`) nên test offline được: `new_card`, `review`, `is_due`, `rating_from_accuracy` (92%→easy, 70%→good, 50%→hard, <40%→again), `entries_to_cards` (dựng thẻ từ `weakSkills` mà `/ketqua` vốn đã gửi), `summarise`, `card_to_storage`/`card_from_storage` (JSON⇄Card), `desired_retention` (`FSRS_DESIRED_RETENTION`, mặc định 0.9, kẹp 0.70–0.97).
+- Ghi chú API: **`fsrs` 6.x giữ `reps`/`lapses` trong ReviewLog, không trong Card** (khoá Card: `card_id, difficulty, due, last_review, stability, state, step`) ⇒ bộ đếm do bảng của ta quản lý, `summarise()` hợp nhất lại để API không lộ chi tiết này.
+- **Bảng `relearn_cards`** (migration trong `main.py`): `UNIQUE(user_id, card_key)`, `card_json` (trạng thái FSRS), `due_at` tách riêng + index ⇒ "hôm nay ôn gì" là truy vấn có index, không quét JSON.
+- **Endpoint** (đều yêu cầu đăng nhập): `POST /api/relearn/seed` · `GET /api/relearn/due?limit=` · `POST /api/relearn/review` (nhận `again|hard|good|easy`).
+- **Tự động hoá**: route Vercel `/api/learning-feedback` gọi `seedRelearnCards(weakSkills, request)` — fire-and-forget, chuyển tiếp `Authorization`, chạy ở **cả** nhánh AI lẫn nhánh dự phòng rule-based (kỹ năng yếu vẫn đáng ôn dù AI hỏng).
+
+### Kiểm chứng
+```
+python backend/test_fsrs_scheduler.py  → 30/30 checks (offline, mốc thời gian cố định)
+import main → 109 route (thêm 3 endpoint relearn)
+runtime: upsert {created: 2} → due 2/2 → review 'good' → next_due +4h, reps 1 → còn 1 thẻ đến hạn
+route.js: node --check OK · DuoMCBPage.js / pageketqua.js: JSX_PARSE_OK (@babel/parser)
+fsrs>=6.0.0 đã thêm vào requirements.txt và bước cài của CI (test_fsrs_scheduler.py)
+```
+
+### Hạn chế đã biết
+Thẻ mới rơi vào bước "learning" trong ngày nên `interval_days` ban đầu bằng 0 (đúng chuẩn FSRS). Chưa có màn hình danh sách ôn tập — hiện dùng API `GET /api/relearn/due`; đề xuất gắn vào `/mrm/settings` hoặc thêm mục “🔁 Ôn tập hôm nay”.
 
 
 - `@streamdown/math@1.0.2` phụ thuộc `katex ^0.16.27` trong khi app dùng `katex ^0.17.0` ⇒ pnpm cài 2 bản KaTeX (CSS trùng lặp nhẹ, không ảnh hưởng chức năng). Khi Streamdown nâng lên KaTeX 0.17 có thể bỏ import CSS trùng.

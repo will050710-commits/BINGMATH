@@ -445,6 +445,94 @@ def quality_summary(days: int = 7) -> dict:
         db.close()
 
 
+# ── Phase 4 / Đợt 4E: spaced-repetition store (FSRS) ─────────────────────────
+
+def relearn_upsert(user_id: int, seeds: list) -> dict:
+    """Create or refresh one card per weak skill. Idempotent by (user, card_key)."""
+    created = refreshed = 0
+    db = get_db()
+    try:
+        for seed in seeds or []:
+            row = db.execute("SELECT id FROM relearn_cards WHERE user_id=? AND card_key=?",
+                             (user_id, seed["card_key"])).fetchone()
+            if row:
+                db.execute("UPDATE relearn_cards SET topic=?, skill=?, reason=?,"
+                           " updated_at=datetime('now') WHERE id=?",
+                           (seed.get("topic", ""), seed.get("skill", ""),
+                            seed.get("reason", ""), row["id"]))
+                refreshed += 1
+                continue
+            card = fsrs_scheduler.new_card()
+            db.execute(
+                "INSERT INTO relearn_cards (user_id, card_key, topic, skill, reason, card_json, due_at)"
+                " VALUES (?,?,?,?,?,?,?)",
+                (user_id, seed["card_key"], seed.get("topic", ""), seed.get("skill", ""),
+                 seed.get("reason", ""), fsrs_scheduler.card_to_storage(card),
+                 fsrs_scheduler.summarise(card)["due_at"]))
+            created += 1
+        db.commit()
+    finally:
+        db.close()
+    return {"created": created, "refreshed": refreshed}
+
+
+def relearn_items(user_id: int) -> list:
+    """Every stored card for this user, with the FSRS state merged into the row."""
+    db = get_db()
+    try:
+        rows = db.execute(
+            "SELECT id, card_key, topic, skill, reason, card_json, due_at, reps, lapses"
+            " FROM relearn_cards WHERE user_id=? ORDER BY due_at IS NULL, due_at",
+            (user_id,)).fetchall()
+    finally:
+        db.close()
+    items = []
+    for row in rows:
+        card = fsrs_scheduler.card_from_storage(row["card_json"])
+        info = fsrs_scheduler.summarise({**(card.to_dict() if card is not None else {}),
+                                         "reps": row["reps"], "lapses": row["lapses"]})
+        items.append({"id": row["id"], "card_key": row["card_key"], "topic": row["topic"],
+                      "skill": row["skill"], "reason": row["reason"], **info})
+    return items
+
+
+def relearn_apply_review(user_id: int, card_id: int, rating: str):
+    """Schedule the next review of one card. None when the card is not this user's."""
+    db = get_db()
+    try:
+        row = db.execute("SELECT id, card_json, reps, lapses FROM relearn_cards"
+                         " WHERE id=? AND user_id=?", (card_id, user_id)).fetchone()
+        if row is None:
+            return None
+        out = fsrs_scheduler.review(row["card_json"], rating)
+        info = fsrs_scheduler.summarise(out["card"])
+        reps = (row["reps"] or 0) + 1
+        lapses = (row["lapses"] or 0) + (1 if out["rating_used"] == "again" else 0)
+        db.execute("UPDATE relearn_cards SET card_json=?, due_at=?, reps=?, lapses=?,"
+                   " updated_at=datetime('now') WHERE id=?",
+                   (fsrs_scheduler.card_to_storage(out["card"]), info["due_at"],
+                    reps, lapses, row["id"]))
+        db.commit()
+    finally:
+        db.close()
+    return {"id": row["id"], "rating": out["rating_used"], "next_due": info["due_at"],
+            "interval_days": out["interval_days"], "reps": reps, "lapses": lapses}
+
+
+def relearn_payload(user_id: int, limit: int = 10) -> dict:
+    """What the student should review now, plus what is coming up."""
+    items = relearn_items(user_id)
+    due = [c for c in items if c.get("is_due")]
+    upcoming = [c for c in items if not c.get("is_due")]
+    return {
+        "user_cards": len(items),
+        "due_count": len(due),
+        "due": due[:max(1, limit)],
+        "upcoming": upcoming[:max(1, limit)],
+        "retention_target": fsrs_scheduler.desired_retention(),
+    }
+
+
 def audit_admin(admin_id: int, action: str, target: str = "", detail: str = "") -> None:
     """Phase 3: append a row to the admin trail. Never raises — an audit failure
     must not take down the privileged action it is recording (it is logged)."""
@@ -495,6 +583,10 @@ from math_reader import dual_read_mode as _mr_dual_read_mode  # noqa: E402
 # Đợt 4B — the solving half: exact SymPy tools for the model + deterministic
 # checks and a cross-family critic before an answer is shown to a student.
 import math_solver
+# Đợt 4E — spaced repetition (integration-guide item 2.4): FSRS scheduling for
+# the relearn list. Pure maths lives in fsrs_scheduler.py; the table and the
+# endpoints live here, next to the other per-user storage.
+import fsrs_scheduler
 
 
 def _mr_summary(perception) -> dict:
@@ -2378,6 +2470,27 @@ def init_db():
         )""", None),
         ("CREATE INDEX IF NOT EXISTS idx_quality_created ON ai_quality_log(created_at)", None),
         ("CREATE INDEX IF NOT EXISTS idx_quality_surface ON ai_quality_log(surface, model)", None),
+        # ── Phase 4 / Đợt 4E: spaced repetition for weak skills ────────────
+        # One row per (user, weak skill). `card_json` is the fsrs Card state;
+        # `reps`/`lapses` are OUR counters because fsrs 6 keeps them in its
+        # ReviewLog, not in the Card. due_at is duplicated out of the JSON so
+        # "what is due today" is an indexed query instead of a JSON scan.
+        ("""CREATE TABLE IF NOT EXISTS relearn_cards (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id    INTEGER NOT NULL,
+            card_key   TEXT NOT NULL,
+            topic      TEXT DEFAULT '',
+            skill      TEXT DEFAULT '',
+            reason     TEXT DEFAULT '',
+            card_json  TEXT NOT NULL,
+            due_at     TEXT,
+            reps       INTEGER NOT NULL DEFAULT 0,
+            lapses     INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(user_id, card_key)
+        )""", None),
+        ("CREATE INDEX IF NOT EXISTS idx_relearn_due ON relearn_cards(user_id, due_at)", None),
     ])
     for sql, _ in migrations:
         try:
@@ -5399,6 +5512,53 @@ async def admin_ai_quality(request: Request, days: int = 7):
     """
     await verify_admin(request)
     return JSONResponse(quality_summary(days=max(1, min(int(days), 90))))
+
+
+@app.post("/api/relearn/seed")
+@limiter.limit(SESSION_LIMIT)
+async def relearn_seed(request: Request):
+    """Phase 4 / Đợt 4E — build the spaced-repetition list from a test's weak skills.
+
+    The student just finished a test and the result already lists which skills
+    were weak; this turns each one into an FSRS card so the app can say WHEN to
+    review it (the missing half of the existing mastery tracking).
+    """
+    uid = await resolve_user_id(request)
+    if uid is None:
+        raise HTTPException(401, "Đăng nhập để lưu lộ trình ôn tập.")
+    d = await request.json()
+    entries = d.get("weakSkills") or d.get("weak_skills") or []
+    seeds = fsrs_scheduler.entries_to_cards(entries)
+    counters = relearn_upsert(uid, seeds)
+    return JSONResponse({**counters, "total_seeds": len(seeds)})
+
+
+@app.get("/api/relearn/due")
+@limiter.limit(SESSION_LIMIT)
+async def relearn_due(request: Request, limit: int = 10):
+    """Cards that are due now (most overdue first) + what is coming up."""
+    uid = await resolve_user_id(request)
+    if uid is None:
+        raise HTTPException(401, "Đăng nhập để xem lộ trình ôn tập.")
+    return JSONResponse(relearn_payload(uid, limit=max(1, min(int(limit), 50))))
+
+
+@app.post("/api/relearn/review")
+@limiter.limit(SESSION_LIMIT)
+async def relearn_review(request: Request):
+    """Record one review (`again|hard|good|easy`) and return the next due date."""
+    uid = await resolve_user_id(request)
+    if uid is None:
+        raise HTTPException(401, "Đăng nhập để cập nhật lịch ôn.")
+    d = await request.json()
+    try:
+        card_id = int(d.get("card_id"))
+    except (TypeError, ValueError):
+        raise HTTPException(400, "card_id là bắt buộc.")
+    out = relearn_apply_review(uid, card_id, str(d.get("rating") or "good"))
+    if out is None:
+        raise HTTPException(404, "Không tìm thấy thẻ ôn tập.")
+    return JSONResponse(out)
 
 
 @app.get("/api/admin/reports")

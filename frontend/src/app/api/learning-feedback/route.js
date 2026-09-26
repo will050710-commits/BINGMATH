@@ -140,7 +140,42 @@ async function fallbackAfterProviderFailure(systemPrompt, userContent, skills, w
     feedback: buildRuleBasedFeedback({ skills, weakSkills }),
     degraded: true,
     reason: `${groqReason}|${viaOpenRouter.reason}`,
+    // Kể cả khi AI hỏng, danh sách kỹ năng yếu vẫn có ích: vẫn gieo thẻ ôn tập.
+    relearn: await seedRelearnCards(weakSkills, request),
   });
+}
+
+// Đợt 4E — gieo thẻ ôn tập (FSRS) sang backend sau khi có nhận xét.
+// Chạy ở server route nên không vướng CORS; chuyển tiếp Authorization của
+// người dùng để backend biết thẻ thuộc về ai. Cố ý "fire-and-forget": lỗi ở
+// bước này không được làm hỏng phản hồi nhận xét mà học sinh đang chờ.
+async function seedRelearnCards(weakSkills, request) {
+  if (!Array.isArray(weakSkills) || weakSkills.length === 0) return { seeded: false, reason: "no_weak_skills" };
+  const backend = (
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://duomath.onrender.com"
+  ).replace(/\/$/, "");
+  const auth = request?.headers?.get?.("authorization");
+  try {
+    const res = await fetch(`${backend}/api/relearn/seed`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(auth ? { Authorization: auth } : {}),
+      },
+      body: JSON.stringify({ weakSkills }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      console.warn("relearn seed skipped:", res.status);
+      return { seeded: false, reason: `http_${res.status}` };
+    }
+    return { seeded: true, ...(await res.json()) };
+  } catch (err) {
+    console.warn("relearn seed failed:", scrubSecrets(err?.message || err));
+    return { seeded: false, reason: "network" };
+  }
 }
 
 export async function POST(request) {
@@ -228,7 +263,7 @@ export async function POST(request) {
       completionJson.choices?.[0]?.message?.content ??
       "Không tạo được phản hồi từ mô hình.";
 
-    return NextResponse.json({ feedback: message, provider: "groq" });
+    return NextResponse.json({ feedback: message, provider: "groq", relearn: await seedRelearnCards(weakSkills, request) });
   } catch (err) {
     console.error("Error in /api/learning-feedback:", err);
     return NextResponse.json(

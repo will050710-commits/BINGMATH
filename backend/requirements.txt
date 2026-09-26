@@ -22,6 +22,9 @@ sympy>=1.12
 numpy>=1.26
 Pillow>=10.0.0
 json-repair>=0.30.0
+# Phase 4 / Đợt 4E — FSRS (Free Spaced Repetition Scheduler) for the relearn
+# list. Package name is `fsrs` (the guide calls it py-fsrs); 6.x is pure Python.
+fsrs>=6.0.0
 sentence-transformers>=3.0.0
 
 # ── Unlimited-OCR Spaces API & Multi-page PDF (lightweight client) ──
