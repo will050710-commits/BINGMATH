@@ -86,6 +86,10 @@ OPENROUTER_DAILY_BUDGET=800
 MATH_READER_MODELS=qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free
 MATH_READER_TIEBREAK_MODEL=dots-studio/dots-3-note-preview:free
 AI_DUAL_READ=auto
+# Đợt 4B — bộ giải có tool SymPy + hậu kiểm trước khi hiển thị đáp án
+MATH_TOOLS_MODEL=qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free
+MATH_CRITIC_MODEL=google/gemma-4-31b-it:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free
+MATH_VERIFY_MODE=auto
 VISION_AGENT_ENABLED=true
 
 # 4. Cấu hình Worked-Example RAG (Track A)

@@ -73,6 +73,17 @@ services:
         value: "dots-studio/dots-3-note-preview:free"
       - key: AI_DUAL_READ
         value: "auto"
+      # ── Đợt 4B — tool-calling solver + verification before the answer ──────
+      # The solver may call exact SymPy tools; a critic from ANOTHER family
+      # judges the finished answer, and one repair round runs when a check
+      # fails. MATH_VERIFY_MODE=auto verifies only when there is something
+      # concrete to check (image perception or an extractable answer).
+      - key: MATH_TOOLS_MODEL
+        value: "qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free"
+      - key: MATH_CRITIC_MODEL
+        value: "google/gemma-4-31b-it:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free"
+      - key: MATH_VERIFY_MODE
+        value: "auto"
       - key: VISION_AGENT_ENABLED
         value: "true"
       # ── Phase 0 security hardening (synced from the Render dashboard) ──

@@ -173,6 +173,9 @@ Hệ thống MathViz là bộ công cụ tương tác trực quan 2D/3D đồng 
   - `MATH_READER_MODELS`: `"qwen/qwen3.8-27b:free,google/gemma-4-31b-it:free"` (2 reader **khác họ model** cho MathReader — lỗi hệ thống của model này thường không trùng với model kia).
   - `MATH_READER_TIEBREAK_MODEL`: `"dots-studio/dots-3-note-preview:free"` (trọng tài khi 2 reader bất đồng).
   - `AI_DUAL_READ`: `"auto"` (auto = chỉ đọc lần 2 khi reader đầu mơ hồ; `always` = luôn đọc đôi; `never` = tắt, quay về hành vi 1-lần-đọc cũ — dùng làm công tắc rollback).
+  - `MATH_TOOLS_MODEL`: `"qwen/qwen3.8-27b:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free"` — model được cấp **tool SymPy** (`sympy_eval/solve/verify/simplify`) để không tính nhẩm.
+  - `MATH_CRITIC_MODEL`: `"google/gemma-4-31b-it:free,nvidia/nemotron-3-ultra-550b-a55b:free,openrouter/free"` — bộ phản biện **khác họ model** với bộ giải.
+  - `MATH_VERIFY_MODE`: `"auto"` (auto = chỉ kiểm khi có căn cứ: có kết quả nhận diện ảnh hoặc câu trả lời có đáp án trích được; `always` = luôn kiểm; `off` = tắt hoàn toàn).
   - `VISION_AGENT_ENABLED`: `"true"` (kích hoạt hệ thống tác tử thị giác).
   - `GROQ_API_KEY`: `sync: false` (gợi ý Socratic nhanh).
   - `JWT_SECRET`: `sync: false` (ký và xác thực token).

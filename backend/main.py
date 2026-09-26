@@ -415,6 +415,9 @@ _vision_agent = GeometryVisionAgent()
 # asks the student to confirm when the readers genuinely disagree.
 import math_reader
 from math_reader import dual_read_mode as _mr_dual_read_mode  # noqa: E402
+# Đợt 4B — the solving half: exact SymPy tools for the model + deterministic
+# checks and a cross-family critic before an answer is shown to a student.
+import math_solver
 
 
 def _mr_summary(perception) -> dict:
@@ -429,6 +432,20 @@ def _mr_summary(perception) -> dict:
         "cache": p.get("cache"),
         "readers": [r.get("model") for r in (p.get("readers") or [])],
         "ms": p.get("ms"),
+    }
+
+
+def _solver_summary(verification) -> dict:
+    """Compact verification record for chat responses and logs."""
+    v = verification or {}
+    return {
+        "verified": v.get("verified"),
+        "repaired": v.get("repaired"),
+        "mode": v.get("mode"),
+        "notes": v.get("notes"),
+        "checks": [{"name": c.get("name"), "status": c.get("status")} for c in (v.get("checks") or [])],
+        "critic": (v.get("critic") or {}).get("verdict"),
+        "tool_calls": v.get("tool_calls"),
     }
 from image_preprocessing import preprocess_image_b64  # Risk 3: aspect-preserving resize + pad
 
@@ -4081,6 +4098,29 @@ async def chat(request: Request):
         except Exception as _e_guard:
             logger.warning(f"[TypeSafeGuard] Post-guard error: {_e_guard}")
 
+        # ── Đợt 4B: verify the finished answer BEFORE it reaches the student ──
+        # Deterministic checks run first (substitute the answer back, compare
+        # with a SymPy pre-solve, check printed identities, sanity rules); a
+        # critic model from another family gives the second opinion. A failing
+        # answer gets exactly ONE repair round; if it still fails, the reply is
+        # labelled instead of being presented as certain.
+        math_verification = None
+        try:
+            if math_solver.should_verify(user_message, reply, perception):
+                _ir = math_solver.build_problem_ir(perception, user_message)
+                if not _ir.get("transcription") and not _ir.get("latex"):
+                    _ir["transcription"] = user_message[:1200]
+                math_verification = await math_solver.verify_and_repair(_ir, reply, chat_fn=_openrouter_chat)
+                reply = math_verification.get("reply") or reply
+                _badge = math_solver.unverified_note(math_verification)
+                if _badge:
+                    reply = reply + _badge
+                logger.info("[Chat] Math verification: verified=%s repaired=%s notes=%s",
+                            math_verification.get("verified"), math_verification.get("repaired"),
+                            math_verification.get("notes"))
+        except Exception as _e_verify:
+            logger.warning("[Chat] Math verification skipped (%s)", _e_verify)
+
         history.append({"role": "assistant", "content": reply})
         save_history(session_id, history)
         return JSONResponse({
@@ -4089,6 +4129,7 @@ async def chat(request: Request):
             "history_length": len(history),
             "typesafe": typesafe_info,
             **({"perception": _mr_summary(perception)} if perception else {}),
+            **({"verification": _solver_summary(math_verification)} if math_verification else {}),
         })
 
 
@@ -4584,7 +4625,8 @@ def _openrouter_budget_ok() -> bool:
 
 async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 900,
                            temperature: float = 0.2, system: str | None = None,
-                           messages: list | None = None):
+                           messages: list | None = None, tools: list | None = None,
+                           tool_choice: str | None = None, raw_message: bool = False):
     """One OpenRouter call that lets OpenRouter itself fail over through the
     `models` array (it retries on rate-limit / downtime / moderation, and the
     response tells us which model actually answered).
@@ -4616,6 +4658,11 @@ async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 
         "temperature": temperature,
         "max_tokens": max_tokens,
     }
+    # Đợt 4B: function calling. OpenRouter's free models all advertise `tools`
+    # (verified live), so the solver can call SymPy instead of doing mental math.
+    if tools:
+        payload["tools"] = tools
+        payload["tool_choice"] = tool_choice or "auto"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": os.environ.get("SELF_URL", "https://duomath.local"),
@@ -4671,10 +4718,15 @@ async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 
     data = resp.json()
     choices = data.get("choices") or []
     content = (choices[0].get("message", {}).get("content") if choices else "") or ""
-    if not content.strip():
+    if not content.strip() and not (choices and (choices[0].get("message") or {}).get("tool_calls")):
         raise RuntimeError("OpenRouter returned an empty completion")
     _OPENROUTER_QUOTA["count"] += 1
-    return content, (data.get("model") or models[0])
+    used_model = data.get("model") or models[0]
+    if raw_message:
+        # Đợt 4B: the tool-calling loop needs the whole assistant message
+        # (content + tool_calls), not just the text.
+        return (choices[0].get("message") or {"role": "assistant", "content": content}), used_model
+    return content, used_model
 
 
 async def _translate_with_groq(prompt: str, text: str):

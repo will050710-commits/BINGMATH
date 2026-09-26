@@ -129,6 +129,42 @@ Module mới `backend/math_reader.py`:
 - Thẻ UI “xác nhận đề” trong `DuoMCBPage.js` (hiện đã có câu hỏi xác nhận dạng văn bản; UI nút bấm là cải tiến kế tiếp).
 - Chạy live với ảnh đề thật sau khi quota/khoá được khôi phục (OpenRouter free đang chập chờn `429` trong lúc kiểm chứng, xem mục Đợt 3).
 
+## Đợt 4B — Bộ giải có công cụ + hậu kiểm (không còn "đáp án nói là tin")
+
+### Lỗ hổng được vá
+Đợt 4A bảo đảm **đọc đúng đề**. Nhưng lời giải vẫn có thể sai ở phần **tính toán**: model tự nhẩm, hoặc dùng đúng con số nhưng sai biểu thức — và trước đợt này **không có gì kiểm tra đáp án cuối** (SymPy chỉ kiểm mấy bước số học trong văn xuôi).
+
+### Kiến trúc mới — module `backend/math_solver.py`
+```
+Problem IR (latex + diagram + lời học sinh)   ← không bao giờ là ảnh thô
+   → SOLVER SYSTEM + 4 tool SymPy (model tự gọi, tính chính xác tuyệt đối)
+        sympy_eval · sympy_solve · sympy_verify · sympy_simplify
+   → vòng gọi tool (tối đa 3 lượt) → lời giải + dòng cuối `Đáp án: …`
+   → KIỂM TRA TẤT ĐỊNH (không tin model nào):
+        1. sanity        — bán kính/độ dài/diện tích không âm, xác suất ≤ 1
+        2. presolve      — đáp án có nằm trong tập nghiệm SymPy của chính đề không
+        3. substitution  — thay đáp án ngược vào phương trình gốc
+        4. identities    — mọi đẳng thức in ra trong bài làm phải đúng (bỏ từ đệm tiếng Việt)
+   → CRITIC khác họ model: {"verdict": correct|wrong|unclear, failed_steps[], corrected_final}
+   → nếu có lỗi: ĐÚNG 1 lượt sửa kèm bằng chứng lỗi → kiểm lại
+   → vẫn không đạt ⇒ thêm nhãn "⚠️ Chưa kiểm chứng được đáp án này (…)" vào cuối câu trả lời
+```
+
+### Nối vào `/api/chat`
+- Chạy **sau** `typesafe_guard` và trước khi lưu lịch sử; `MATH_VERIFY_MODE=auto` chỉ kiểm khi có căn cứ (có `perception` từ ảnh, hoặc câu trả lời có đáp án trích được cạnh toán tử).
+- Phản hồi có thêm `verification: {verified, repaired, mode, notes, checks[], critic, tool_calls}`.
+- `_openrouter_chat()` được mở rộng: tham số `tools`, `tool_choice`, `raw_message` (trả nguyên message để vòng tool-calling đọc được `tool_calls`).
+
+### Kiểm chứng
+- `python backend/test_math_solver.py` → **25/25 checks pass** (không cần mạng/khoá): tool chạy đúng, guard chặn `__import__`/input dài, vòng tool-calling 2 lượt, đáp án sai bị bắt **tất định**, nhánh sửa-1-lần thành công, nhánh không sửa được ⇒ cờ `verified: false` + nhãn cảnh báo, chế độ `off` không gọi gì.
+- `python backend/test_math_reader.py` → vẫn **36/36** (không hồi quy).
+- Hai lỗi thật bắt được khi viết test: (1) `check_identities` coi `x = 3` (đáp án) là "hằng đẳng thức" ⇒ báo sai hàng loạt và kích hoạt sửa vô ích; (2) bộ kiểm đẳng thức chỉ nhìn vào dòng đáp án, **không** kiểm các bước trong bài làm ⇒ thêm `extract_equalities()` + `_verify_identity()` (bỏ tối đa 4 từ đệm tiếng Việt trước khi parse).
+
+### Việc còn lại của đợt 4B
+- Bật tool-calling cho **Gemini** ở tầng chính của chat (đã có `GEMINI_TOOLS`/`evaluate_math_expression` sẵn nhưng Gemini chưa được gọi kèm tool trong luồng chat).
+- Geo chuyên sâu: dùng `geometry_verification.verify_geometry_mathviz` cho tầng kiểm chứng hình học (hiện hình học dựa vào critic + quan hệ trong IR).
+- Ghi telemetry `ai_quality_log` để đo tỉ lệ `verified` theo từng model (thuộc Đợt 4C).
+
 
 - `@streamdown/math@1.0.2` phụ thuộc `katex ^0.16.27` trong khi app dùng `katex ^0.17.0` ⇒ pnpm cài 2 bản KaTeX (CSS trùng lặp nhẹ, không ảnh hưởng chức năng). Khi Streamdown nâng lên KaTeX 0.17 có thể bỏ import CSS trùng.
 - Trước khi thêm Penrose: chạy `npm run dev` và `next build` ngay sau khi cài, vì `@penrose/core` có WASM và Turbopack từng lỗi với loader `.wasm` (guide §1.3). Luôn `dynamic(..., { ssr: false })`.
