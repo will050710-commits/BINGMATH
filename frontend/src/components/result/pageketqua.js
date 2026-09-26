@@ -7,6 +7,7 @@ import { resetTimer, getTimeSpent, formatTime } from "../../utils/testTimer";
 import { clearAllAnswers } from "../../utils/answerStorage";
 import { SKILL_DEFS } from "../../utils/questionSkills";
 import { SUBMISSION_KEY, gradeSubmissionViaApi } from "@/utils/grader";
+import StreamdownMessage from "@/components/chat/StreamdownMessage";
 import GamificationHUD from "@/components/GamificationHUD";
 import { useGamification } from "@/hooks/useGamification";
 
@@ -405,8 +406,8 @@ export default function PageKetQua() {
             <p style={{ color: "#f87171" }}>{feedbackError}</p>
           )}
           {!isLoadingFeedback && !feedbackError && (
-            <div style={{ whiteSpace: "pre-wrap", fontSize: 15, color: "#bae6fd", lineHeight: 1.8 }}>
-              {feedback || "Chưa có phản hồi."}
+            <div style={{ fontSize: 15, color: "#bae6fd", lineHeight: 1.8 }}>
+              {feedback ? <StreamdownMessage content={feedback} /> : "Chưa có phản hồi."}
             </div>
           )}
         </div>

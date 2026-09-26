@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import styles from "./DuoTranslate.module.css";
 import { createSession, translateText } from "./duoServer";
+import StreamdownMessage from "@/components/chat/StreamdownMessage";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import MathGraphSVG from "@/components/thpt/Cacbaitoan10/MathGraphSVG";
@@ -69,7 +70,8 @@ export default function DuoTranslate({ children }) {
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [showTheory, setShowTheory] = useState(false);
-  const [theoryLang, setTheoryLang] = useState("vi");
+  // Phase 4: the wrapper node is read by the "translate this page" button.
+  const contentRef = useRef(null);
   const panelRef = useRef(null);
   const lastTranslatedRef = useRef("");
   const debounceRef = useRef(null);
@@ -147,10 +149,6 @@ export default function DuoTranslate({ children }) {
       }
 
       setResults(parsed);
-      // Auto-detect best theory lang
-      if (parsed && !parsed.error) {
-        setTheoryLang(parsed.source_lang === "vi" ? "en" : "vi");
-      }
     } catch (e) {
       setResults({ error: true, raw: `Unexpected error: ${e?.message || e}\n\nMake sure main.py is running.` });
     } finally {
@@ -173,36 +171,28 @@ export default function DuoTranslate({ children }) {
     lastTranslatedRef.current = ""; // allow re-translating same text after closing
   };
 
+  // Phase 4: "dịch trang" — take the wrapped page's visible text and translate it
+  // as one bilingual block (the backend accepts up to 1500 characters).
+  const handleTranslatePage = () => {
+    const node = contentRef.current;
+    if (!node) return;
+    const pageText = (node.innerText || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 1500);
+    if (pageText.length < 2) return;
+    lastTranslatedRef.current = pageText;
+    doTranslate(pageText);
+  };
+
   const typeColors = {
     noun: "#60a5fa", verb: "#34d399", adj: "#f472b6",
     adv: "#fbbf24", prep: "#a78bfa", conj: "#fb923c",
   };
   const typeColor = (t) => typeColors[t?.toLowerCase()] || "#9ca3af";
 
-  function renderMathText(text) {
-    if (!text) return null;
-    const tokens = parseMathAndText(text);
-    return tokens.map((token, idx) => {
-      if (token.type === "text") {
-        return <span key={idx}>{token.content}</span>;
-      }
-      try {
-        const html = katex.renderToString(token.content.trim(), {
-          displayMode: token.isBlock,
-          throwOnError: false,
-        });
-        return (
-          <span
-            key={idx}
-            dangerouslySetInnerHTML={{ __html: html }}
-            style={token.isBlock ? { display: "block", margin: "10px 0", textAlign: "center" } : {}}
-          />
-        );
-      } catch {
-        return <code key={idx}>{token.content}</code>;
-      }
-    });
-  }
+  // Phase 4: the previous KaTeX token renderer (renderMathText) was replaced by
+  // <StreamdownMessage>, which renders markdown + LaTeX and sanitises the output.
 
   const isEnToVi = results?.source_lang ? results.source_lang === "en" : true;
 
@@ -218,10 +208,30 @@ export default function DuoTranslate({ children }) {
             <span className={styles.headerIcon}>🔤</span>
             <div>
               <div className={styles.headerTitle}>DuoTranslate</div>
-              <div className={styles.headerSub}>{isEnToVi ? "EN ➔ VI" : "VI ➔ EN"}</div>
+              <div className={styles.headerSub}>{isEnToVi ? "🇬🇧 EN ➔ 🇻🇳 VI" : "🇻🇳 VI ➔ 🇬🇧 EN"} · song ngữ</div>
             </div>
           </div>
-          <button className={styles.closeBtn} onClick={handleClose}>✕</button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {children && (
+              <button
+                onClick={handleTranslatePage}
+                title="Dịch cả trang này (EN ⇄ VI)"
+                style={{
+                  border: "1px solid rgba(34,211,238,0.35)",
+                  background: "rgba(34,211,238,0.12)",
+                  color: "#67e8f9",
+                  borderRadius: 8,
+                  padding: "4px 10px",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                🌐 Dịch trang
+              </button>
+            )}
+            <button className={styles.closeBtn} onClick={handleClose}>✕</button>
+          </div>
         </div>
 
         {/* Selected text preview */}
@@ -255,15 +265,33 @@ export default function DuoTranslate({ children }) {
           {!loading && results && !results.error && (
             <div className={styles.results}>
 
-              <div className={styles.translationCard}>
-                <div className={styles.cardLabel}>{isEnToVi ? "🇻🇳 Bản dịch" : "🇬🇧 Translation"}</div>
-                <p className={styles.translationText}>{results.translation}</p>
+              {/* Phase 4: both languages side by side, in both directions */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                <div className={styles.translationCard}>
+                  <div className={styles.cardLabel}>🇬🇧 English</div>
+                  <StreamdownMessage className={styles.translationText} content={results.translation_en} />
+                </div>
+                <div className={styles.translationCard}>
+                  <div className={styles.cardLabel}>🇻🇳 Tiếng Việt</div>
+                  <StreamdownMessage className={styles.translationText} content={results.translation_vi} />
+                </div>
               </div>
 
-              {results.summary && (
+              {(results.summary_vi || results.summary_en || results.summary) && (
                 <div className={styles.summaryCard}>
-                  <div className={styles.cardLabel}>{isEnToVi ? "💡 Ghi chú" : "💡 Conceptual Note"}</div>
-                  <p className={styles.summaryText}>{results.summary}</p>
+                  <div className={styles.cardLabel}>💡 Ghi chú · Conceptual note</div>
+                  {(results.summary_vi || results.summary) && (
+                    <div style={{ marginBottom: 8 }}>
+                      <span style={{ marginRight: 6 }}>🇻🇳</span>
+                      <StreamdownMessage className={styles.summaryText} content={results.summary_vi || results.summary} />
+                    </div>
+                  )}
+                  {results.summary_en && (
+                    <div>
+                      <span style={{ marginRight: 6 }}>🇬🇧</span>
+                      <StreamdownMessage className={styles.summaryText} content={results.summary_en} />
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -274,37 +302,32 @@ export default function DuoTranslate({ children }) {
                     className={styles.moreBtn}
                     onClick={() => setShowTheory(p => !p)}
                   >
-                    {showTheory ? "▲ Thu gọn lý thuyết" : "👁️ Xem thêm lý thuyết & đồ thị"}
+                    {showTheory ? "▲ Thu gọn lý thuyết" : "👁️ Xem lý thuyết song ngữ & đồ thị"}
                   </button>
                 </div>
               )}
 
-              {/* Theory Panel */}
+              {/* Theory Panel — both languages stacked (Phase 4) */}
               {showTheory && results.theory && (
                 <div className={styles.theoryPanel}>
                   <div className={styles.theoryHeader}>
-                    <div className={styles.theoryTitle}>{theoryLang === "vi" ? "📘 Lý thuyết chi tiết" : "📘 Detailed Theory"}</div>
-                    <div className={styles.theoryLangSelector}>
-                      <button
-                        className={`${styles.langBtn} ${theoryLang === "vi" ? styles.langBtnActive : ""}`}
-                        onClick={() => setTheoryLang("vi")}
-                      >
-                        🇻🇳 VI
-                      </button>
-                      <button
-                        className={`${styles.langBtn} ${theoryLang === "en" ? styles.langBtnActive : ""}`}
-                        onClick={() => setTheoryLang("en")}
-                      >
-                        🇬🇧 EN
-                      </button>
+                    <div className={styles.theoryTitle}>📘 Lý thuyết chi tiết · Detailed theory</div>
+                  </div>
+                  {results.theory.vi && (
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#22d3ee", marginBottom: 6 }}>🇻🇳 Tiếng Việt</div>
+                      <StreamdownMessage className={styles.theoryBody} content={results.theory.vi} />
                     </div>
-                  </div>
-                  <div className={styles.theoryBody}>
-                    {renderMathText(results.theory[theoryLang] || results.theory.vi || "")}
-                  </div>
+                  )}
+                  {results.theory.en && (
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 800, color: "#a78bfa", marginBottom: 6 }}>🇬🇧 English</div>
+                      <StreamdownMessage className={styles.theoryBody} content={results.theory.en} />
+                    </div>
+                  )}
                   {results.diagram_type && results.diagram_type !== "default" && (
                     <div className={styles.diagramContainer}>
-                      <div className={styles.diagramLabel}>{theoryLang === "vi" ? "📈 Minh họa trực quan:" : "📈 Visual Illustration:"}</div>
+                      <div className={styles.diagramLabel}>📈 Minh họa trực quan · Visual illustration:</div>
                       <div className={styles.diagramBox}>
                         <MathGraphSVG type={results.diagram_type} />
                       </div>
@@ -315,7 +338,7 @@ export default function DuoTranslate({ children }) {
 
               {results.words?.length > 0 && (
                 <div className={styles.wordList}>
-                  <div className={styles.wordListLabel}>📖 Từ vựng</div>
+                  <div className={styles.wordListLabel}>📖 Từ vựng song ngữ · Vocabulary</div>
                   {results.words.map((w, i) => (
                     <div key={i} className={styles.wordCard} style={{ animationDelay: `${i * 0.06}s` }}>
                       <div className={styles.wordTop}>
@@ -325,7 +348,10 @@ export default function DuoTranslate({ children }) {
                         </span>
                       </div>
                       {w.pronunciation && <div className={styles.wordPronun}>{w.pronunciation}</div>}
-                      <div className={styles.wordVi}>{w.vietnamese}</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {w.english && <span className={styles.wordBiItem} style={{ fontSize: 13 }}>🇬🇧 {w.english}</span>}
+                        {w.vietnamese && <span className={styles.wordVi}>🇻🇳 {w.vietnamese}</span>}
+                      </div>
                       {w.example && <div className={styles.wordExample}>e.g. &quot;{w.example}&quot;</div>}
                     </div>
                   ))}
@@ -339,6 +365,15 @@ export default function DuoTranslate({ children }) {
             <div className={styles.hintState}>
               <span>🖱️</span>
               <p>Bôi đen bất kỳ đoạn văn nào để dịch song ngữ</p>
+              {children && (
+                <button
+                  className={styles.moreBtn}
+                  style={{ marginTop: 14 }}
+                  onClick={handleTranslatePage}
+                >
+                  🌐 Dịch cả trang này · Translate this page
+                </button>
+              )}
             </div>
           )}
 
@@ -353,7 +388,7 @@ export default function DuoTranslate({ children }) {
 
   return (
     <div className={styles.root}>
-      <div className={styles.content}>{children}</div>
+      <div className={styles.content} ref={contentRef}>{children}</div>
       {renderPanel()}
     </div>
   );

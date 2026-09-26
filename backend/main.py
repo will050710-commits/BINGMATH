@@ -4286,11 +4286,69 @@ async def generate_video(request: Request):
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Video generation failed.")
 
+def _detect_lang(text: str) -> str:
+    """Vietnamese vs English heuristic used when the model omits source_lang."""
+    lowered = str(text or "").lower()
+    return "vi" if any(ch in "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ" for ch in lowered) else "en"
+
+
+def _bilingual_payload(payload: dict, source_text: str, source_lang: str | None = None) -> dict:
+    """Phase 4: guarantee both language slots exist on a translate result.
+
+    The panel renders the snippet bilingually (VI card + EN card) in both
+    directions, so every payload must carry `translation_vi` / `translation_en`
+    (and the summary equivalents). When the model only returned one direction we
+    fill the missing slot with the *input* text — it is already the other
+    language by definition.
+    """
+    payload = payload if isinstance(payload, dict) else {}
+    lang = str(source_lang or payload.get("source_lang") or _detect_lang(source_text)).lower()
+    lang = "vi" if lang.startswith("vi") else "en"
+    payload["source_lang"] = lang
+
+    translation = str(payload.get("translation") or "").strip()
+    summary = str(payload.get("summary") or "").strip()
+    t_vi = str(payload.get("translation_vi") or "").strip()
+    t_en = str(payload.get("translation_en") or "").strip()
+    if lang == "vi":
+        t_vi = t_vi or str(source_text).strip()
+        t_en = t_en or translation
+    else:
+        t_en = t_en or str(source_text).strip()
+        t_vi = t_vi or translation
+    payload["translation_vi"], payload["translation_en"] = t_vi, t_en
+
+    s_vi = str(payload.get("summary_vi") or "").strip()
+    s_en = str(payload.get("summary_en") or "").strip()
+    if lang == "vi":
+        s_vi = s_vi or summary
+    else:
+        s_en = s_en or summary
+    payload["summary_vi"], payload["summary_en"] = s_vi, s_en
+
+    # Legacy keys keep working for any other consumer.
+    payload["translation"] = payload.get("translation") or (t_en if lang == "vi" else t_vi)
+    payload["summary"] = payload.get("summary") or (s_en if lang == "vi" else s_vi)
+
+    words = []
+    for word in payload.get("words") or []:
+        if not isinstance(word, dict):
+            continue
+        term = str(word.get("word") or "").strip()
+        word["english"] = str(word.get("english") or "").strip() or (term if lang == "en" else "")
+        word["vietnamese"] = str(word.get("vietnamese") or "").strip() or (term if lang == "vi" else "")
+        words.append(word)
+    payload["words"] = words
+    return payload
+
+
 @app.post("/api/translate")
 @limiter.limit(TRANSLATE_LIMIT)
 async def translate(request: Request):
     d = await request.json()
-    text = (d.get("text") or "").strip()[:500]
+    # Phase 4: the selection popup sends short snippets, but the
+    # "translate this page" button can send a whole section.
+    text = (d.get("text") or "").strip()[:1500]
     if not text:
         raise HTTPException(400, "text is required.")
 
@@ -4314,7 +4372,7 @@ async def translate(request: Request):
 
     # FALLBACK if Groq Key is missing
     if not GROQ_KEY:
-        return JSONResponse(get_mock_translation(text))
+        return JSONResponse(_bilingual_payload(get_mock_translation(text), text))
 
     prompt = (
         "You are a translation API. Analyze the input text. "
@@ -4331,7 +4389,11 @@ async def translate(request: Request):
         "Reply ONLY with a valid JSON object matching this exact schema (do not wrap in markdown, output only the raw JSON):\n"
         "{\n"
         '  "translation": "...", // The main translation (Vietnamese if input was English, English if input was Vietnamese)\n'
+        '  "translation_vi": "...", // ALWAYS the Vietnamese rendering. If the input is already Vietnamese, repeat the input verbatim.\n'
+        '  "translation_en": "...", // ALWAYS the English rendering. If the input is already English, repeat the input verbatim.\n'
         '  "summary": "...", // A short conceptual summary of the term or phrase\n'
+        '  "summary_vi": "...", // The summary in Vietnamese\n'
+        '  "summary_en": "...", // The summary in English\n'
         '  "source_lang": "en" | "vi",\n'
         '  "diagram_type": "venn" | "inequality" | "parabola" | "vectors" | "ellipse" | "trig" | "default",\n'
         '  "theory": {\n'
@@ -4341,6 +4403,7 @@ async def translate(request: Request):
         '  "words": [\n'
         "    {\n"
         '      "word": "...", // Key vocabulary word in the source language\n'
+        '      "english": "...", // The same term written in English\n'
         '      "type": "...", // noun, verb, adj, etc.\n'
         '      "pronunciation": "...",\n'
         '      "vietnamese": "...", // The translation in the target language (keep key as "vietnamese" for compatibility)\n'
@@ -4365,7 +4428,7 @@ async def translate(request: Request):
             },
             {"role": "user",   "content": prompt},
         ],
-        "max_tokens": 500, "temperature": 0.2,
+        "max_tokens": 1200 if len(text) > 300 else 500, "temperature": 0.2,
     }
 
     import re as _re
@@ -4385,7 +4448,7 @@ async def translate(request: Request):
 
         # Try direct parse
         try:
-            return JSONResponse(json.loads(clean))
+            return JSONResponse(_bilingual_payload(json.loads(clean), text))
         except json.JSONDecodeError:
             pass
 
@@ -4393,7 +4456,7 @@ async def translate(request: Request):
         m = _re.search(r'(\{[\s\S]*\})', clean)
         if m:
             try:
-                return JSONResponse(json.loads(m.group(1)))
+                return JSONResponse(_bilingual_payload(json.loads(m.group(1)), text))
             except json.JSONDecodeError:
                 pass
 
@@ -4401,7 +4464,7 @@ async def translate(request: Request):
         return JSONResponse({"error": True, "raw": raw})
     except Exception as e:
         # Fallback to local mock if Groq fails or returns 502/401/rate limits
-        return JSONResponse(get_mock_translation(text))
+        return JSONResponse(_bilingual_payload(get_mock_translation(text), text))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
