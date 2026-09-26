@@ -6,10 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "postinstall": "node scripts/copy-mathlive-assets.mjs"
   },
   "dependencies": {
     "@heroui/react": "^2.8.10",
+    "@streamdown/math": "^1.0.2",
     "dompurify": "^3.4.16",
     "firebase": "^12.14.0",
     "framer-motion": "^12.35.1",
@@ -18,10 +20,12 @@
     "konva": "^10.0.12",
     "lucide-react": "^1.34.0",
     "mathjs": "^15.2.0",
+    "mathlive": "^0.110.0",
     "next": "^16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "^3.10.1",
+    "streamdown": "^2.6.0",
     "three": "^0.185.1",
     "three-bvh-csg": "^0.0.18"
   },

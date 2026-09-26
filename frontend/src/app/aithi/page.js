@@ -4,6 +4,7 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { authFetch } from "@/lib/authFetch";
+import StreamdownMessage from "@/components/chat/StreamdownMessage";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const API =
@@ -625,9 +626,9 @@ function StepFeedback({ grading, timeExpired, completed, totalQ, qNum, onNext })
         </div>
 
         <div style={{ textAlign: "left" }}>
-          <div style={{ fontSize: 15.5, lineHeight: 1.6, marginBottom: 6 }}>{grading.feedback?.vi}</div>
+          <div style={{ fontSize: 15.5, lineHeight: 1.6, marginBottom: 6 }}><StreamdownMessage content={grading.feedback?.vi} /></div>
           {grading.feedback?.en && (
-            <div style={{ fontSize: 13.5, color: "#475569", fontStyle: "italic" }}>{grading.feedback.en}</div>
+            <div style={{ fontSize: 13.5, color: "#475569", fontStyle: "italic" }}><StreamdownMessage content={grading.feedback.en} /></div>
           )}
           {grading.student_answer_transcribed && grading.student_answer_transcribed !== grading.feedback?.vi && (
             <div style={{ marginTop: 14, padding: "10px 14px", borderRadius: 10, background: "rgba(255,255,255,0.04)", border: "1px dashed rgba(255,255,255,0.1)", fontSize: 13.5, color: "#64748b" }}>
@@ -664,9 +665,9 @@ function StepReview({ review, onRestart }) {
         <div style={{ color: "#475569", fontSize: 15, marginTop: 4 }}>/ {review.max_score} điểm ({pct}%)</div>
 
         <div style={{ marginTop: 16, padding: "14px 0 0", borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-          <div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 4 }}>{review.overall_feedback?.vi}</div>
+          <div style={{ fontSize: 15, lineHeight: 1.6, marginBottom: 4 }}><StreamdownMessage content={review.overall_feedback?.vi} /></div>
           {review.overall_feedback?.en && (
-            <div style={{ fontSize: 13, color: "#475569", fontStyle: "italic" }}>{review.overall_feedback.en}</div>
+            <div style={{ fontSize: 13, color: "#475569", fontStyle: "italic" }}><StreamdownMessage content={review.overall_feedback.en} /></div>
           )}
         </div>
       </div>

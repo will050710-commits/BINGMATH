@@ -32,3 +32,7 @@ backend/*.db
 *.db
 backend/*.log
 duosteam.worktrees/
+
+# Phase 4: MathLive assets are copied from node_modules by postinstall
+frontend/public/mathlive-fonts/
+frontend/public/mathlive-sounds/
