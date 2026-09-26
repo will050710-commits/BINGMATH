@@ -2562,6 +2562,7 @@ export default function DuoMCBPage() {
                             : ""}
                         </div>
                       )}
+                      {vizData && m.role === "assistant" && (
                         <div style={{ marginTop: 8, width: "100%" }}>
                           <MathVizRenderer data={vizData} />
                         </div>

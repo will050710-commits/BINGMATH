@@ -71,12 +71,10 @@ const OPENROUTER_DEFAULT_MODELS = (
   .filter(Boolean);
 
 // Strip anything key-shaped out of upstream error text before logging it.
-function scrubSecrets(message) {
-  return String(message)
-    .replace(/(key=)[A-Za-z0-9_\-.]+/g, "$1***")
-    .replace(/(Bearer\s+)[A-Za-z0-9_\-.]+/g, "$1***")
-    .replace(/(AIza|gsk_|hf_|sk-or-v1-)[A-Za-z0-9_\-]+/g, "$1***");
-}
+// (NOTE: this helper is defined ONCE, near the top of the file. An earlier
+// duplicate in this block made the Vercel build fail with
+// "the name `scrubSecrets` is defined multiple times" — `node --check` accepts
+// duplicate function declarations, so only a real bundler/type-check catches it.)
 
 async function generateWithOpenRouter(systemPrompt, userContent, signal) {
   const apiKey = process.env.OPENROUTER_API_KEY;

@@ -207,7 +207,18 @@ Tool-calling cho **Gemini**: `main.py:3735` đã gắn `GEMINI_TOOLS` cho nhánh
 
 ### 4. Việc còn lại của 4D (đã cập nhật)
 - ✅ **Thẻ UI “xác nhận đề” + nhãn kiểm chứng đã hoàn tất** (`DuoMCBPage.js`): khi `ocr_confirm` xuất hiện, học sinh bấm chọn một trong hai cách đọc và tin nhắn gửi lại **đúng LaTeX** đó (không cần gửi lại ảnh); kèm dòng trạng thái `✅ đã kiểm chứng` / `⚠️ chưa kiểm chứng được đáp án` và độ tin cậy của bước đọc.
-- Cách kiểm chứng JSX trên máy này: `@babel/parser` có sẵn trong `node_modules` (script `jsxcheck.cjs`) — `JSX_PARSE_OK` cho `DuoMCBPage.js` và `pageketqua.js`; `route.js` qua `node --check`. **`next build` đầy đủ vẫn nên chạy** ở máy còn RAM (2 lần trước đã OOM Turbopack), Vercel sẽ build lại khi deploy.
+- Cách kiểm chứng cú pháp frontend (đã thay công cụ sau sự cố build Vercel):
+  - ❌ **`@babel/parser` KHÔNG đủ**: nó chấp nhận cả `}` lạc trong JSX lẫn khai báo hàm **trùng tên** — đúng hai lỗi đã làm `pnpm build` trên Vercel thất bại ở commit `3bd29c4`.
+  - ✅ **Dùng `tsc --noEmit --allowJs --checkJs false --jsx preserve --target esnext --module esnext --moduleResolution bundler --skipLibCheck`** (TypeScript đã có trong `node_modules`, config tạm `tsconfig.syntax.json` trỏ vào `src/**/*.js|jsx`): bắt được khai báo trùng **và** JSX sai cấu trúc, chạy vài giây, không ngốn RAM như Turbopack.
+  - `node --check` chỉ dùng cho file `.js` thuần và cũng không phát hiện trùng tên hàm ⇒ không còn là cổng đủ tin cậy.
+  - `next build` đầy đủ vẫn là cổng cuối (máy này đã OOM Turbopack 2 lần) — Vercel chạy khi deploy.
+
+### Sự cố build Vercel ở commit `3bd29c4` (đã sửa)
+Log Vercel báo **2 lỗi, cùng do thao tác chèn code trong đợt này**:
+1. `route.js`: `the name 'scrubSecrets' is defined multiple times` — tôi chèn lại một helper **đã tồn tại** ở đầu file (hàm trùng tên vẫn là JS hợp lệ nên `node --check` cho qua, nhưng SWC/Turbopack coi là lỗi).
+2. `DuoMCBPage.js`: `Unexpected token` tại `)}` — khi chèn thẻ “xác nhận đề” tôi **đã xoá mất dòng mở block `{vizData && m.role === "assistant" && (`` của MathViz, để lại phần thân block mồ côi.
+
+Bản vá: xoá helper trùng (giữ bản gốc) + khôi phục dòng mở block MathViz; sau đó `tsc` trên cả `src/` trả **exit 0** trước khi push. Bài học được mã hoá vào quy trình ở mục “Cách kiểm chứng cú pháp frontend” phía trên.
 - Đẩy `ai_quality_log` lên dịch vụ log tập trung khi có nhu cầu phân tích dài hạn.
 
 ## Đợt 4E — Ôn tập giãn cách bằng FSRS (integration-guide mục 2.4)
