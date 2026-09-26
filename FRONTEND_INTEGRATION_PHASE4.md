@@ -111,3 +111,16 @@
 
 - `/api/translate` phải trả `_provider: "gemini"` (hoặc `groq` khi khoá Groq mới hoạt động) và **không** có `_fallback`.
 - Nếu vẫn thấy `_fallback: mock_error` ⇒ kiểm tra lại 2 biến môi trường ở trên; UI đã hiện cảnh báo demo nên không còn “âm thầm sai”.
+
+### Kết quả kiểm chứng bản sửa trên production (deploy `995f2e4`)
+
+```
+POST https://duomath.vercel.app/api/learning-feedback
+  trước:  502 {"error": "Failed to generate feedback"}
+  sau:    200 degraded=True reason=groq_401
+          "**Ưu điểm (Pros)** | - Kỹ năng **Algebra** khá tốt (90%). | **Hạn chế (Cons)** |
+           - Cần cải thiện kỹ năng **Geometry** (đúng 2/5). | **Gợi ý ôn tập …**"
+GET /ketqua -> 200 | GET /DuoMCB -> 200
+```
+
+- `reason=groq_401` xác nhận **khoá Groq trên Vercel cũng đã bị thu hồi** ⇒ vẫn cần tạo khoá Groq mới; nhưng người dùng giờ luôn nhận được nhận xét có ích + dòng nhắc “Chế độ đơn giản” thay vì lỗi.

@@ -29,6 +29,8 @@ Backend import:   105 route (thêm /api/admin/audit-log), ALLOWED_HOSTS đúng a
 
 1. **Rotate ngay 2 Hugging Face token vừa phát hiện** (`hf_qmotu…`, `hf_WISh…` — chúng từng công khai khi repo còn public; lịch sử đã sạch nhưng token vẫn còn hiệu lực nếu chưa đổi).
 2. Vẫn còn nhóm key từ Phase 0: **Groq, Gemini, OpenRouter, HF, TypeSafe** + **Render API key** đã dán vào chat.
+   - **Cập nhật — phát hiện khi kiểm chứng Phase 4:** khoá Groq **đã bị thu hồi thật** (`401 Invalid API Key` với mọi model, kiểm tra trực tiếp từ máy dev) và `GEMINI_API_KEY` **trên Render cũng đã chết** (log Render: `[translate] Gemini fallback failed (... 401 Unauthorized .../models/gemini-3.6-flash:generateContent?key=***)`). Nghĩa là mọi tính năng AI của production đang chạy bằng dữ liệu dự phòng. Cách khắc phục nhanh nhất: dán giá trị `GEMINI_API_KEY` đang sống trong `backend/.env` (đã kiểm tra `200`) vào **Render → Environment**; sau đó tạo khoá Groq mới. Chi tiết + bằng chứng nằm ở `FRONTEND_INTEGRATION_PHASE4.md` mục “Sự cố phát hiện khi kiểm chứng”.
+   - **Log không còn lộ khoá:** httpx in nguyên URL trong thông báo lỗi nên `?key=<GEMINI_KEY>` từng bị ghi vào log Render. Đã thêm `_scrub_secrets()` (backend `main.py`) và `scrubSecrets()` (`/api/learning-feedback` route) che `key=…`, `Bearer …`, `AIza…`, `gsk_…`, `hf_…`, `sk-or-v1-…` trước khi log.
 3. **Firebase (bấm trong console):**
    - Bật **App Check** cho Web (reCAPTCHA v3) và Android (Play Integrity) — sau khi bật, theo dõi vài ngày trước khi enforce.
    - Giới hạn API key: Google Cloud → Credentials → key của web (`AIzaSyBbLq9…`) → *Application restrictions*: HTTP referrers `duomath.vercel.app/*` + localhost; key Android trong `google-services.json` → giới hạn theo package name + SHA-1.
