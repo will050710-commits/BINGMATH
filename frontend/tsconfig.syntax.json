@@ -1,0 +1,15 @@
+{
+  "//": "Phase 4 — syntax-only gate for the frontend. Run from frontend/: tsconfig.syntax.json parses every src/**/*.js|jsx with the TypeScript parser (checkJs off, so only SYNTAX is enforced). It catches the two failure modes that broke the Vercel build at commit 3bd29c4: duplicate top-level declarations and malformed JSX — both of which @babel/parser and `node --check` accepted.",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "jsx": "preserve",
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "types": []
+  },
+  "include": ["src/**/*.js", "src/**/*.jsx"]
+}

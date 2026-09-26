@@ -71,3 +71,20 @@ jobs:
       - run: pip install "httpx>=0.27.0"
       - name: Every :free slug we call must exist on OpenRouter
         run: python backend/scripts/check_free_catalog.py
+
+  frontend-syntax:
+    name: Frontend syntax (tsc, no bundler)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # The TypeScript parser catches duplicate top-level declarations and
+      # malformed JSX — the two errors that broke a production Vercel build
+      # while `node --check` and a Babel parse both happily accepted the file.
+      # `checkJs` stays off, so this job enforces SYNTAX only and needs no deps.
+      - name: Parse every src/**/*.js|jsx
+        working-directory: frontend
+        run: npx -y -p typescript@5 tsc -p tsconfig.syntax.json
