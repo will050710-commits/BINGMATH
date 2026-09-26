@@ -1,0 +1,69 @@
+# .github/workflows/quality-gate.yml
+# Phase 4 / Đợt 4C — the quality gate.
+#
+# Two things must hold before a change reaches production:
+#   1. The offline math suites pass (perception consensus, solver verification,
+#      the TypeSafe guard, the math regression benchmark). They need no API key
+#      and no network, so they can gate every push.
+#   2. Every `:free` OpenRouter slug we actually call still exists. A dead slug
+#      does NOT fail over — OpenRouter rejects the whole request (HTTP 400) —
+#      which is exactly how the vision tier silently died before.
+name: Quality gate
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "backend/**"
+      - "frontend/src/app/api/**"
+      - ".github/workflows/quality-gate.yml"
+  pull_request:
+  schedule:
+    # Free-tier catalogs change without notice, so check daily even when the
+    # code is quiet.
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+
+jobs:
+  offline-suites:
+    name: Offline math + guard suites
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # Deliberately NOT the full requirements.txt: these suites never import
+      # main.py, so pulling sentence-transformers/torch would only burn CI
+      # minutes. Add packages here as new suites need them.
+      - name: Install test dependencies
+        run: pip install "sympy>=1.12" "numpy>=1.26" "Pillow>=10.0.0" "httpx>=0.27.0" "pydantic>=2" "json-repair>=0.30.0" "gradio_client>=2.0.0"
+
+      - name: Perception — MathReader (dual-read consensus + SymPy gate)
+        working-directory: backend
+        run: python test_math_reader.py
+
+      - name: Solving — MathSolver (tools + deterministic checks + repair)
+        working-directory: backend
+        run: python test_math_solver.py
+
+      - name: Anti-hallucination — TypeSafe guard
+        working-directory: backend
+        run: python test_typesafe_guard.py
+
+      - name: Math regression benchmark (ground truth vs answers)
+        working-directory: backend
+        run: python tests/eval_math_regression.py
+
+  free-catalog:
+    name: Free-tier slugs still valid
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "httpx>=0.27.0"
+      - name: Every :free slug we call must exist on OpenRouter
+        run: python backend/scripts/check_free_catalog.py
