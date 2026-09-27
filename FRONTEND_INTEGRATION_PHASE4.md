@@ -8,13 +8,17 @@
 |---|---|---|---|
 | 2.6 | **mathjs** — thay `new Function()` trong canvas DuoMCB | ✅ Xong ở Phase 0 | `frontend/src/utils/safeMathEval.js` |
 | 2.3 | **Math-Verify** — chấm theo giá trị toán học | ✅ Xong ở Phase 1 | `backend/grading.py` (math-verify khi có, SymPy hạn chế khi không) |
-| 2.2 | **Streamdown** — markdown + LaTeX khi streaming | ✅ Đã tích hợp (đợt 1) | `frontend/src/components/chat/StreamdownMessage.jsx`, dùng trong AI Test Studio (`/aithi`) |
-| 2.1 | **MathLive** — nhập công thức trực quan | ✅ Component + asset sẵn sàng | `frontend/src/components/shared/MathInput.jsx`, `scripts/copy-mathlive-assets.mjs` (+`postinstall`) |
-| 1 | **Penrose** — hình minh hoạ hình học | ⏳ Chưa | Cần `@penrose/core` + `@penrose/components`; xem rủi ro Turbopack bên dưới |
-| 2.4 | **py-fsrs** — ôn tập giãn cách | ⏳ Chưa | Cần bảng `concept_mastery(user_id, concept_id, fsrs_state, due_at)` |
-| 2.7 | **Serwist** — Offline Mode | ⏳ Chưa | Bắt buộc `NetworkOnly` cho `/api/*` (nếu không sẽ rò dữ liệu người dùng khác trên máy dùng chung) |
-| 2.8 | **VNHSGE** — ngân hàng đề THPT | ⏳ Chưa | Cần kiểm tra license/attribution trước khi nhập; nhập qua script kiểu `migrate_lessons.py`; **không** commit DB sinh ra |
-| 2.5 | **Mafs** — prototype widget | ⏳ Tuỳ chọn | Chỉ khi cần widget mới nhanh |
+| 2.2 | **Streamdown** — markdown + LaTeX khi streaming | ✅ Đợt 1 | `frontend/src/components/chat/StreamdownMessage.jsx` (dùng ở `/aithi`, `/ketqua`) |
+| 2.1 | **MathLive** — nhập công thức trực quan | ✅ Đợt 1 | `frontend/src/components/shared/MathInput.jsx` + `scripts/copy-mathlive-assets.mjs` |
+| 2.4 | **py-fsrs** — ôn tập giãn cách | ✅ **Đợt 4E + 4H** | `backend/fsrs_scheduler.py`, bảng `relearn_cards`, 3 endpoint `/api/relearn/*`, màn `/relearn`; `test_relearn_flow.py` chứng minh vòng seed→review→due **16/16** |
+| 2.7 | **Offline mode** | ✅ **Đợt 4G** (không dùng Serwist — xem lý do) | `frontend/public/sw.js` (SW tĩnh), `/api/*` **NETWORK-ONLY** (đã sửa lỗi cache rò dữ liệu người dùng), trang `/offline` |
+| 2.5 | **Mafs** — widget tương tác | ✅ **Đợt 4H** | `mafs@0.21`, `src/components/duomath/ParabolaExplorer.jsx`, trang `/khampha` |
+| 1 | **Penrose** — hình minh hoạ hình học | ⏳ Chưa | Cần `@penrose/core` (WASM) + một lần verify build/bundler trước khi thêm |
+| 2.8 | **VNHSGE** — ngân hàng đề THPT | ⏳ Chưa | Chờ chốt **nguồn dữ liệu + license/attribution**; nhập bằng script, **không** commit DB sinh ra |
+
+**Ngoài guide (các đợt 3 → 4H đã làm):** thang model free OpenRouter + tự loại slug chết/429 (đợt 3) · MathReader đọc đối chứng + cổng SymPy (4A) · bộ giải gọi tool SymPy + hậu kiểm & sửa 1 lần (4B) · telemetry `ai_quality_log` + endpoint admin + cổng CI (4C) · gỡ khoá TypeSafe hard-code + kiểm chứng hình học (4D) · gieo thẻ FSRS từ `/ketqua` + màn `/relearn` (4E) · cổng CI `checkJs` bắt lớp lỗi “biến chưa định nghĩa” (4G/CI) · sửa SW rò dữ liệu + `/offline` (4G) · vòng FSRS thật 16/16 + widget Mafs (4H).
+
+**Trạng thái kỹ thuật hiện tại:** backend 109 route · 5 bộ test Python + 2 cổng `tsc` (cú pháp `src/**`, `checkJs` cho `src/app/api/**`) + `test_relearn_flow.py` đều xanh · `pnpm --frozen-lockfile` khớp lockfile · **production đã kiểm chứng 6/6 ALL_OK** (dịch có failover, nhận xét qua OpenRouter, `/api/relearn/*` + `/api/admin/ai-quality` sống và có bảo vệ).
 
 ## Đợt 1 — Đã làm
 
