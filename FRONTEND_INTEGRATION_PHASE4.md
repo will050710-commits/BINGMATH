@@ -279,7 +279,30 @@ git -C "duosteam" push origin main
 2. **`keys=3` ở nhánh văn xuôi**: khi model trả prose, payload degraded chỉ có 3 khoá (`translation*`) mà thiếu `summary*` ⇒ bổ sung `summary` (cắt từ chính prose) để DuoTranslate luôn nhận đủ **6 khoá song ngữ**.
 3. (đề xuất) Màn **“🔁 Ôn tập hôm nay”** dùng `GET /api/relearn/due` + 4 nút `again/hard/good/easy` gọi `/api/relearn/review`; sau đó **Serwist** (PWA offline, nhớ `NetworkOnly` cho `/api/*`).
 
-## Đợt 4F — Khép kín vòng ôn tập + dọn nợ (sau kiểm chứng prod)
+## Đợt 4G — Sửa quyền riêng tư Service Worker + trang offline (guide mục 2.7)
+
+### Lỗi riêng tư phát hiện được (đang ảnh hưởng người dùng thật)
+`frontend/public/sw.js` (v1 — **đang được `usePWAInstall.js` đăng ký**) cache **mọi phản hồi `/api/*` thành công** rồi phát lại khi mất mạng:
+- Phản hồi API là **dữ liệu theo từng người** (bản dịch, nhận xét AI, lịch ôn FSRS) ⇒ trên máy dùng chung (lớp học, máy tính chung), học sinh này có thể được phục vụ dữ liệu của học sinh khác;
+- Bản phát lại trông y như phản hồi mới ⇒ sai lệch **âm thầm**.
+Guide đã dặn rõ `/api/*` phải `NetworkOnly` — đây đúng là trường hợp đó.
+
+### Đã sửa
+- `/api/*` cùng mọi host AI/Firebase/Google ⇒ **NETWORK-ONLY**: handler trả về **không gọi `respondWith`**, trình duyệt đi thẳng ra mạng và **không ghi cache**; lỗi mạng vẫn là lỗi thật (UI đã có sẵn trạng thái demo/lỗi).
+- `CACHE_NAME` bump `duomath-v1` → **`duomath-v2`** ⇒ mọi trình duyệt đã có cache v1 nhiễm dữ liệu sẽ **tự xoá ở `activate`** (nhánh dọn cache cũ đã có sẵn).
+- Thêm `/offline` vào precache và làm fallback cho điều hướng lỗi; trang mới `frontend/src/app/offline/page.js` (thuần tĩnh, có link về trang chủ và `/relearn`).
+- Giữ nguyên chiến lược cũ cho phần còn lại: cache-first cho tài sản tĩnh, network-first cho trang HTML.
+
+### Vì sao KHÔNG dùng `@serwist/next` (ghi lại để khỏi thắc mắc sau này)
+`next build` của dự án chạy **Turbopack** (log build: `▲ Next.js 16.1.6 (Turbopack)`), còn Serwist cắm **plugin webpack** ⇒ worker sinh ra sẽ **không bao giờ được phát hành** — một dạng “im lặng không làm gì” đúng như những lỗi đợt này đang loại bỏ. Vì vậy giữ **SW tĩnh trong `public/`**: không phụ thuộc bundler, `node --check` kiểm được, và chính sách cache viết tường minh. Nếu sau này cần precache theo route/manifest sinh tự động, có thể thêm Serwist trên nền `next build --webpack`.
+
+### Kiểm chứng đợt 4G
+```
+node --check frontend/public/sw.js        → OK (cú pháp service worker)
+frontend tsc cú pháp src/** (gồm /offline) → exit 0
+frontend tsc checkJs src/app/api/**        → exit 0
+```
+Hệ quả cần biết: người dùng đang mở app sẽ nhận SW v2 ở lần tải kế tiếp; lần đầu sau khi cập nhật, cache v1 bị xoá nên vài tài sản tĩnh sẽ được tải lại một lần (bình thường, không ảnh hưởng dữ liệu học tập).
 
 ### Kết quả kiểm chứng prod (lần 2, sau khi chủ dự án commit bản vá `5c2d646`)
 | # | Hạng mục | Kết quả |
