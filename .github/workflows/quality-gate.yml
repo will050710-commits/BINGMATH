@@ -88,3 +88,12 @@ jobs:
       - name: Parse every src/**/*.js|jsx
         working-directory: frontend
         run: npx -y -p typescript@5 tsc -p tsconfig.syntax.json
+
+      # Deeper gate, scoped to the SERVER API ROUTES: with checkJs ON the
+      # compiler reports undefined identifiers by name. Proven on the real bug:
+      # `Cannot find name 'request'` at the line that answered 500 in
+      # production (commit c4d5af3). src/lib is excluded on purpose — legacy
+      # stale JSDoc there would drown the signal in noise.
+      - name: Type-check the API routes (undefined names included)
+        working-directory: frontend
+        run: npx -y -p typescript@5 tsc -p tsconfig.checkjs.json

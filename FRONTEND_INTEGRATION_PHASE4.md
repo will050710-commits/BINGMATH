@@ -271,7 +271,8 @@ git -C "duosteam" push origin main
 ### Bài học về cổng kiểm tra (cập nhật lần 2)
 - `tsc` chỉ-cú-pháp (`frontend/tsconfig.syntax.json`) bắt được **JSX sai cấu trúc** và **khai báo trùng tên** (2 lỗi build Vercel ở `3bd29c4`) nhưng **không** bắt biến chưa định nghĩa trong thân hàm.
 - ESLint với config hiện tại của dự án **cũng không bắt** lớp lỗi này (đã thử trên chính file lỗi: 0 cảnh báo).
-- ⇒ Đề xuất cổng bổ sung cho **file API đã sửa**: `tsc --noEmit --allowJs --checkJs --jsx preserve --skipLibCheck <file>` (TypeScript báo `Cannot find name 'request'`) hoặc bật `no-undef` kèm globals phù hợp. Đây là việc còn lại của đợt này.
+- ✅ **Đã bổ sung cổng** (`frontend/tsconfig.checkjs.json`, chạy trong CI job `frontend-syntax`): `checkJs` **BẬT**, phạm vi **chỉ `src/app/api/**/*.js`** (để `src/lib` ra ngoài vì JSDoc cũ ở đó sẽ nhấn chìm tín hiệu), kèm `paths` `@/*` để import phân giải được. **Bằng chứng cổng bắt đúng lỗi thật:** dán lại nguyên bản `c4d5af3` vào `src/app/api/_probe_buggy.js` rồi chạy cổng ⇒
+  `src/app/api/_probe_buggy.js(142,49): error TS2552: Cannot find name 'request'. Did you mean 'Request'?` (exit 2) — chính dòng đã gây 500; xoá probe ⇒ exit 0. Từ nay lớp lỗi này bị chặn ở CI thay vì ở production.
 
 ### Việc còn lại sau kiểm chứng
 1. **Commit + push bản vá 500** (lệnh ở trên) rồi chạy lại kiểm chứng #5 — kỳ vọng: `provider` có giá trị, `relearn.seeded = true`, không còn `degraded` khi Vercel đã có `OPENROUTER_API_KEY`.

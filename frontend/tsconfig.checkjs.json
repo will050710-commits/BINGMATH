@@ -1,0 +1,21 @@
+{
+  "//": "Phase 4 — deeper gate for SERVER API ROUTES only. Syntax alone (tsconfig.syntax.json) missed the undefined `request` reference that answered 500 in production; with checkJs ON, TypeScript reports `Cannot find name 'request'` by name. Scoped to src/app/api on purpose: src/lib is legacy code full of stale JSDoc, where checkJs only produces noise. `paths` mirrors the Next alias so `@/lib/*` imports resolve.",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true,
+    "jsx": "preserve",
+    "target": "esnext",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "skipLibCheck": true,
+    "types": [],
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/*"] },
+    "strict": false,
+    "noImplicitAny": false
+  },
+  "include": ["src/app/api/**/*.js"]
+}
+
