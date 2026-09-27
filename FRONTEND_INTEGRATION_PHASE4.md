@@ -304,6 +304,40 @@ frontend tsc checkJs src/app/api/**        → exit 0
 ```
 Hệ quả cần biết: người dùng đang mở app sẽ nhận SW v2 ở lần tải kế tiếp; lần đầu sau khi cập nhật, cache v1 bị xoá nên vài tài sản tĩnh sẽ được tải lại một lần (bình thường, không ảnh hưởng dữ liệu học tập).
 
+## Đợt 4H — Kiểm chứng thật vòng FSRS + widget tương tác Mafs (guide 2.5)
+
+### 1. `test_relearn_flow.py` — vòng FSRS chạy thật qua HTTP có xác thực (16/16)
+`/api/relearn/*` cố tình trả 401 khi ẩn danh, nên chỉ **cuộc gọi có token** mới chứng minh được chuỗi. Test chạy **chính app FastAPI** trong tiến trình (ASGI transport), tự tạo tài khoản bằng `/api/signup` rồi `/api/login` (JWT nội bộ — không cần Firebase/Internet) và đi hết hành trình của học sinh:
+
+```
+signup → login (token) → ẩn danh bị 401
+   → seed 2 kỹ năng yếu            ⇒ created=2
+   → seed lại (idempotent)         ⇒ refreshed=1
+   → GET due                       ⇒ due_count=2, thẻ có days_until_due/interval_days
+   → review "good"                 ⇒ reps=1 + có next_due
+   → GET due lại                   ⇒ thẻ rời hàng đợi (due_count=1), nằm ở "upcoming"
+   → review "again"                ⇒ lapses=1, interval_days ≤ 1 (ôn lại sớm)
+   → thiếu card_id ⇒ 400 · card lạ ⇒ 404
+16/16 checks — ALL_RELEARN_FLOW_TESTS_PASSED
+```
+Mảnh cuối chứng minh tính năng khép kín: **seed → lịch FSRS → đánh giá → ngày ôn kế tiếp** qua đúng các endpoint đang chạy trên production. Vẫn nên làm một lần bằng trình duyệt với tài khoản thật (đăng nhập → làm bài → mở `/relearn`) để kiểm tra phần UI.
+
+### 2. Mafs — widget “📈 Khám phá đồ thị” (guide mục 2.5)
+- Cài `mafs@0.21.0` (React + SVG, **không WASM**) — chọn Mafs trước Penrose vì Penrose mang lõi WASM cần vòng xác minh bundler/asset riêng.
+- `frontend/src/components/duomath/ParabolaExplorer.jsx`: ba thanh trượt `a, b, c` → vẽ parabol (`Plot.OfX`), đánh dấu **đỉnh** (đỏ) và **nghiệm** (xanh), hiển thị **Δ = b²−4ac**, số nghiệm, trục đối xứng; có nhánh riêng cho `a = 0` (suy biến thành đường thẳng). Import `mafs/core.css` ngay trong component.
+- `frontend/src/app/khampha/page.js`: tải widget bằng `next/dynamic({ ssr: false })` (Mafs cần DOM) + 3 gợi ý học tập; có link chéo ⇄ `/relearn`.
+- Ý nghĩa sư phạm: đỉnh/Δ/nghiệm ở đây dùng **cùng công thức** mà bộ giải trên máy chủ kiểm chứng bằng SymPy ⇒ học sinh nhìn thấy đúng phép tính trợ lý đã thực hiện.
+
+### Cổng kiểm tra đợt 4H
+```
+frontend tsc cú pháp src/** (gồm .jsx mới) → exit 0
+frontend tsc checkJs src/app/api/**       → exit 0
+python backend/test_relearn_flow.py (venv) → 16/16 exit 0
+```
+Ghi chú: `test_relearn_flow.py` **chưa** đưa vào CI vì cần `import main` (fastapi/slowapi/PyJWT/werkzeug/orjson…); muốn gác ở CI thì phải cài thêm nhóm phụ thuộc đó cho job. Hiện chạy tay: `python backend/test_relearn_flow.py`.
+
+## Đợt 4F — Khép kín vòng ôn tập + dọn nợ (sau kiểm chứng prod)
+
 ### Kết quả kiểm chứng prod (lần 2, sau khi chủ dự án commit bản vá `5c2d646`)
 | # | Hạng mục | Kết quả |
 |---|---|---|
@@ -333,6 +367,8 @@ frontend tsc (cú pháp src/**)   exit 0
 ```
 Lưu ý vận hành (đã gặp trong phiên): PowerShell bị treo nhiều lần ⇒ tiến trình kiểm tra phải chạy **detached** (`Start-Process -WindowStyle Hidden`) và ghi kết quả ra file, vì mỗi lệnh mới sẽ đóng terminal và giết tiến trình đang chạy; tiến trình detached cần **đường dẫn tuyệt đối tới python của `.venv`** (không dùng `python` trần) và **không có `node` trong PATH** nên cổng `tsc` phải chạy ở shell tương tác.
 
+
+## Lưu ý phụ thuộc
 
 - `@streamdown/math@1.0.2` phụ thuộc `katex ^0.16.27` trong khi app dùng `katex ^0.17.0` ⇒ pnpm cài 2 bản KaTeX (CSS trùng lặp nhẹ, không ảnh hưởng chức năng). Khi Streamdown nâng lên KaTeX 0.17 có thể bỏ import CSS trùng.
 - Trước khi thêm Penrose: chạy `npm run dev` và `next build` ngay sau khi cài, vì `@penrose/core` có WASM và Turbopack từng lỗi với loader `.wasm` (guide §1.3). Luôn `dynamic(..., { ssr: false })`.

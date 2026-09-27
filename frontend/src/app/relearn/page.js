@@ -108,9 +108,10 @@ export default function RelearnPage() {
       <div style={{ maxWidth: 820, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>🔁 Ôn tập hôm nay</h1>
-          <Link href="/ketqua" style={{ color: "#67e8f9", fontSize: 13 }}>
-            ← Về trang kết quả
-          </Link>
+          <div style={{ display: "flex", gap: 14, fontSize: 13 }}>
+            <Link href="/khampha" style={{ color: "#67e8f9" }}>📈 Khám phá đồ thị</Link>
+            <Link href="/ketqua" style={{ color: "#67e8f9" }}>← Về trang kết quả</Link>
+          </div>
         </div>
         <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginTop: 6 }}>
           Mỗi kỹ năng yếu trong bài kiểm tra được biến thành một thẻ ôn tập. Em tự đánh giá mức độ nhớ —

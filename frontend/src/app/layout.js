@@ -1,5 +1,9 @@
 import { Be_Vietnam_Pro, Inter } from "next/font/google";
 import "./globals.css";
+// Phase 4 / Đợt 4H — Mafs ships a global stylesheet. The App Router only allows
+// global CSS imports in the root layout (a component-level import would fail the
+// build), so it is imported here and the widget stays a plain client component.
+import "mafs/core.css";
 import "@heroui/react";
 import HeroProvider from "../../HeroProvider";
 import { AuthProvider } from "@/context/authContext";
