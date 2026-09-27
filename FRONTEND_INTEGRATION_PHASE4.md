@@ -347,6 +347,7 @@ Ghi chú: `test_relearn_flow.py` **chưa** đưa vào CI vì cần `import main`
 |---|---|---|
 | 1 | `POST /api/translate` | ✅ 200 · `provider=gemini` · **đủ 6 khoá song ngữ** |
 | 2 | `POST /api/learning-feedback` | ✅ **200** (hết 500) · `reason=groq_404\|openrouter_no_key` · `relearn={"seeded": false, "reason": "http_401"}` (đúng: gọi không auth) |
+
 | 3 | `GET /api/relearn/due` | ✅ 401 |
 | 4 | `GET /api/admin/ai-quality` | ✅ 401 |
 | 5 | `/DuoMCB`, `/ketqua` | ✅ 200 |
@@ -443,3 +444,87 @@ GET /ketqua -> 200 | GET /DuoMCB -> 200
 ```
 
 - `reason=groq_401` xác nhận **khoá Groq trên Vercel cũng đã bị thu hồi** ⇒ vẫn cần tạo khoá Groq mới; nhưng người dùng giờ luôn nhận được nhận xét có ích + dòng nhắc “Chế độ đơn giản” thay vì lỗi.
+
+---
+
+## Đợt 4H — Sự cố CSP `http://localhost:8000` trên production (2026-09-27)
+
+### Triệu chứng (DevTools, bản deploy đang chạy)
+
+```
+Refused to connect to 'http://localhost:8000/api/leaderboard' because it violates the
+following Content Security Policy directive: "connect-src 'self' https://duomath.onrender.com …"
+```
+
+### Nguyên nhân gốc — đã xác minh trên production, không phỏng đoán
+
+| Kiểm tra | Kết quả |
+| --- | --- |
+| `curl -I https://duomath.vercel.app` | `200` + CSP đang **enforce** từ `next.config.mjs` |
+| chunk `8a41677b8863b953.js` do chính `duomath.vercel.app` phục vụ | **`localhost:8000` × 4**, `onrender.com` × 0 |
+| chunk `3ee0e65c0561b9fb.js` (trang `/stats`) | `localhost:8000` × 1 |
+| chunk `ee7337f5a2da1272.js` (cùng bản build) | `duomath.onrender.com` × 3 ⇒ bản deploy khớp `main` |
+| `frontend/.env.local` | có `NEXT_PUBLIC_API_URL=http://localhost:8000` nhưng **bị `.gitignore`** ⇒ không bao giờ tới Vercel |
+| `curl https://duomath.onrender.com/api/leaderboard` | `200 []` (backend sống) |
+| `curl https://duosteam-api.onrender.com/api/leaderboard` | **404** ⇒ host này đã chết với mọi route API |
+
+Chuỗi lỗi: bản build trên Vercel **thiếu `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_BACKEND_URL`** ⇒ 5 lời
+gọi trong 4 tệp rơi vào giá trị cứng `"http://localhost:8000"` (`TrangChuForm.js` ×2 — trong đó có
+`/api/leaderboard`, `StreakBar.js`, `MasteryRings.js`, `KnowledgeAlbum.js`) ⇒ **CSP của chính chúng ta
+(đúng) chặn** ⇒ giao diện báo "Failed to fetch leaderboard".
+
+Lỗi `manifest-src` trong cùng ảnh chụp **không phải lỗi ứng dụng**: tab đang mở một URL deployment đã
+bị xoá (`404 DEPLOYMENT_NOT_FOUND`), Vercel chuyển hướng `/manifest.json` sang `vercel.com/sso-api`
+và `manifest-src 'self'` chặn đúng. Chỉ cần mở `https://duomath.vercel.app` (không nới CSP).
+
+### Cách sửa đã áp dụng
+
+1. **`src/lib/apiBase.js` (mới)** — một nguồn duy nhất cho địa chỉ backend: env build-time →
+   hostname heuristic → `https://duomath.onrender.com`; chỉ `localhost` / `127.0.0.1` / `::1` mới
+   nhận `http://localhost:8000`, và phía server luôn là host production.
+2. **29 tệp** chuyển sang `resolveApiBase()`: `lib/api.js`, `lib/authFetch.js`, `context/authContext.js`,
+   `context/CoinStore.js`, 5 widget nói trên, 14 tệp có guard *ngược* (`hostname !== "127.0.0.1"` —
+   production đúng nhưng dev lại gọi API production), `DuoMCB/duoServer.js`, `mrm/MathMapCreator.js`.
+3. **5 widget đi qua `authFetch`** ⇒ token Firebase thật được gửi kèm; loại bỏ
+   `localStorage.getItem("token")` (đã chết từ khi chuyển sang Firebase) — sửa luôn lỗi 401 tiềm ẩn
+   của `/api/gacha/*` và `/api/gami/*`.
+4. **`/aithi`**: `duosteam-api.onrender.com` (404 mọi route) → `duomath.onrender.com`; xoá host chết
+   khỏi `connect-src`.
+5. **CSP**: `connect-src` chỉ thêm `http://localhost:8000` khi `NODE_ENV !== "production"`;
+   `/manifest.json` được trả `application/manifest+json`.
+6. **`public/sw.js` v3**: **không cache HTML/RSC** (đây là nguyên nhân kinh điển của
+   `PageNotFoundError` sau deploy — shell cũ trỏ tới `/_next/static/<hash>.js` đã biến mất),
+   `/api/*` vẫn **network-only** như bản vá quyền riêng tư; worker được đăng ký trong `LayoutClient`
+   (chỉ production).
+7. **Cổng CI mới** `frontend/scripts/check-api-base.mjs`: chặn mọi `http://localhost:8000` ngoài
+   `src/lib/apiBase.js`; đã nối vào `quality-gate.yml` và mở rộng `paths` sang `frontend/src/**`,
+   `frontend/scripts/**`, `frontend/next.config.mjs`.
+
+### Bằng chứng kiểm chứng cục bộ
+
+| Hạng mục | Lệnh | Kết quả |
+| --- | --- | --- |
+| Logic resolver | harness 8 ca (host deploy không env, localhost, 127.0.0.1, env thắng, `BACKEND_URL`, phía server) | **8/8 PASS** |
+| Cổng CI chống tái phát | chèn lại `… \|\| "http://localhost:8000"` vào `src/components/__gateprobe.js` | **exit 1** (chỉ đúng tệp:dòng) — xoá probe ⇒ **exit 0** |
+| Cổng CI hiện có | `npx tsc -p tsconfig.syntax.json` / `tsconfig.checkjs.json` | **0 / 0** |
+| Lint | `eslint` trên 24 tệp đã sửa | 36 vấn đề, **tất cả nằm ở dòng cũ** (đã đối chiếu từng dòng); `apiBase.js` và mọi vùng sửa sạch |
+| Toàn vẹn tệp | 30 tệp: encoding, marker, không còn fallback cứng | **30/30 OK** (2 BOM trong `mrm/CoinShop.js`, `mrm/JackpotBanner.js` đã có từ trước — đối chiếu blob `HEAD`) |
+| Build cục bộ | `next build` (Turbopack và `--webpack`) | **không chạy được trên máy này**: RAM trống 1.3 GB — Turbopack worker crash (`os error 10054`), webpack `JavaScript heap out of memory`. Build thật do CI/Vercel thực hiện. |
+
+### Việc chủ dự án cần làm (Vercel) — bước còn lại duy nhất
+
+1. Settings → Environment Variables → thêm cho **cả Production, Preview, Development**:
+   `NEXT_PUBLIC_API_URL=https://duomath.onrender.com` và
+   `NEXT_PUBLIC_BACKEND_URL=https://duomath.onrender.com` (nên thêm `SELF_URL=https://duomath.vercel.app`).
+2. Deployments → **Redeploy** — bắt buộc, vì `NEXT_PUBLIC_*` được nhúng vào bundle **lúc build**.
+3. Chỉ kiểm thử trên `https://duomath.vercel.app`; URL theo từng deployment là tạm thời.
+4. Nếu `PageNotFoundError (.next/server/app/page.js)` quay lại: redeploy và **bỏ chọn**
+   "Use existing build cache".
+
+### Kết quả mong đợi sau deploy
+
+- Console **không còn** `Refused to connect to 'http://localhost:8000/…'`; leaderboard + các widget
+  trả `200` từ `duomath.onrender.com` (kể cả khi biến môi trường chưa được đặt, nhờ hostname heuristic).
+- Trong bundle, `localhost:8000` chỉ còn đúng **1 chỗ** (hằng `DEV_API` của `apiBase.js`) và luôn nằm
+  sau kiểm tra hostname — mẫu inline cũ (`process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"`)
+  phải vắng mặt hoàn toàn.
