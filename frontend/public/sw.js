@@ -12,10 +12,12 @@
 //  the contaminated v1 cache drops it on activation.
 // ═══════════════════════════════════════════════════════════════
 
-const CACHE_NAME = 'duomath-v2';
+const CACHE_NAME = 'duomath-v3';
 const OFFLINE_URL = '/offline';
+// Only immutable, content-addressable-ish shell assets are pre-cached.
+// '/' was removed in v3: caching the document is what makes a deploy look
+// broken (stale HTML referencing /_next/static/<old-hash>.js → 404).
 const STATIC_ASSETS = [
-  '/',
   OFFLINE_URL,
   '/manifest.json',
   '/images/duosteamicon-removebg-preview.webp',
@@ -72,6 +74,10 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET and chrome-extension requests
   if (request.method !== 'GET' || url.protocol === 'chrome-extension:') return;
 
+  // React Server Component payloads (?_rsc=… / RSC header) are navigation
+  // data, not assets — let the browser fetch them normally.
+  if (url.searchParams.has('_rsc') || request.headers.get('RSC') === '1') return;
+
   // NETWORK-ONLY for the API and for third-party (AI, Firebase, Google) calls.
   // Returning WITHOUT respondWith() hands the request to the browser's default
   // network path: nothing is written to the cache, and a failure stays a real
@@ -99,19 +105,15 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Network-first for HTML pages (always fresh)
+  // Network-first for HTML pages — and NEVER cached (v3). A cached document
+  // outlives the deploy that produced it, and the new build ships new
+  // /_next/static/<hash>.js filenames, so the stale shell 404s on every
+  // navigation. Only the /offline page is served from the cache, and only when
+  // the network is truly unreachable.
   event.respondWith(
-    fetch(request)
-      .then((response) => {
-        if (response.ok) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
-        }
-        return response;
-      })
-      .catch(() =>
-        caches.match(request).then((cached) => cached || caches.match(OFFLINE_URL) || caches.match('/'))
-      )
+    fetch(request).catch(() =>
+      caches.match(OFFLINE_URL).then((cached) => cached || Response.error())
+    )
   );
 });
 

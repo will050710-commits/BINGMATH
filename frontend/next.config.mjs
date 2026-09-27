@@ -28,7 +28,27 @@ const nextConfig = {
   // GeoGebra/Desmos embeds, the Render API). If something is blocked in
   // production, revert the key to "Content-Security-Policy-Report-Only" while
   // the missing host is added — the rest of the hardening is unaffected.
+  //
+  // 2026-09-27: connect-src is now built below so that localhost:8000 is only
+  // allowed by `next dev`. A stale localhost fallback in the bundle made a
+  // blocked request look like a CSP bug in production — see src/lib/apiBase.js
+  // and scripts/check-api-base.mjs.
   async headers() {
+    // `next dev` talks to the FastAPI server on :8000; a deployed build never
+    // does (apiBase.js resolves the Render host from the hostname).
+    const isProd = process.env.NODE_ENV === "production";
+    const connectSrc = [
+      "'self'",
+      "https://duomath.onrender.com",
+      "https://*.googleapis.com",
+      "https://*.firebaseio.com",
+      "wss://*.firebaseio.com",
+      "https://*.cloudfunctions.net",
+      // Removed 2026-09-27: https://duosteam-api.onrender.com answers 404 for
+      // every /api route and no client calls it any more.
+      ...(isProd ? [] : ["http://localhost:8000", "http://127.0.0.1:8000"]),
+    ].join(" ");
+
     const csp = [
       "default-src 'self'",
       "base-uri 'self'",
@@ -42,7 +62,7 @@ const nextConfig = {
       "media-src 'self' blob: https:",
       "worker-src 'self' blob:",
       "manifest-src 'self'",
-      "connect-src 'self' https://duomath.onrender.com https://duosteam-api.onrender.com https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://*.cloudfunctions.net",
+      `connect-src ${connectSrc}`,
       "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://*.firebaseapp.com https://www.geogebra.org https://www.desmos.com",
     ].join("; ");
 
@@ -57,6 +77,12 @@ const nextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
         ],
+      },
+      {
+        // Serve the PWA manifest with its own MIME type (Chrome logs a manifest
+        // warning when it arrives as generic application/json).
+        source: "/manifest.json",
+        headers: [{ key: "Content-Type", value: "application/manifest+json" }],
       },
     ];
   },

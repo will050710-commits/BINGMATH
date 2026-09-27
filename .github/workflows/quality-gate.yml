@@ -14,7 +14,9 @@ on:
     branches: [ main ]
     paths:
       - "backend/**"
-      - "frontend/src/app/api/**"
+      - "frontend/src/**"
+      - "frontend/scripts/**"
+      - "frontend/next.config.mjs"
       - ".github/workflows/quality-gate.yml"
   pull_request:
   schedule:
@@ -97,3 +99,11 @@ jobs:
       - name: Type-check the API routes (undefined names included)
         working-directory: frontend
         run: npx -y -p typescript@5 tsc -p tsconfig.checkjs.json
+
+      # The gate for the fallback that broke the home page in production
+      # (2026-09-27): a bundle shipped with `NEXT_PUBLIC_API_URL ||
+      # "http://localhost:8000"` and the enforced CSP blocked every request.
+      # Every module must resolve the backend through src/lib/apiBase.js.
+      - name: No hard-coded localhost API base in src/
+        working-directory: frontend
+        run: node scripts/check-api-base.mjs

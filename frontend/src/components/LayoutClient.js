@@ -1,4 +1,5 @@
 "use client";
+import { useEffect } from "react";
 import GlobalSidebar from "@/components/GlobalSidebar";
 import PageTransition from "@/components/PageTransition/PageTransition";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
@@ -115,6 +116,32 @@ function LangToggleButton() {
   );
 }
 
+/**
+ * Registers the offline service worker (public/sw.js).
+ * Production only: a worker during `next dev` would cache a half-built app.
+ * The worker itself is network-first for documents and NETWORK-ONLY for /api/*,
+ * so it can never replay another user's data (see the header of sw.js).
+ */
+function useServiceWorker() {
+  useEffect(() => {
+    if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV !== "production") return;
+
+    const register = () => {
+      navigator.serviceWorker
+        .register("/sw.js", { updateViaCache: "none" })
+        .catch((err) => console.warn("[PWA] Service worker registration failed:", err?.message));
+    };
+
+    if (document.readyState === "complete") {
+      register();
+      return;
+    }
+    window.addEventListener("load", register);
+    return () => window.removeEventListener("load", register);
+  }, []);
+}
+
 function LayoutInner({ children }) {
   const pathname = usePathname();
   const showTranslate = isLessonPath(pathname);
@@ -130,6 +157,8 @@ function LayoutInner({ children }) {
 }
 
 export default function LayoutClient({ children }) {
+  useServiceWorker();
+
   return (
     <LanguageProvider>
       <LayoutInner>{children}</LayoutInner>
