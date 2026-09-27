@@ -245,6 +245,39 @@ fsrs>=6.0.0 đã thêm vào requirements.txt và bước cài của CI (test_fsr
 ### Hạn chế đã biết
 Thẻ mới rơi vào bước "learning" trong ngày nên `interval_days` ban đầu bằng 0 (đúng chuẩn FSRS). Chưa có màn hình danh sách ôn tập — hiện dùng API `GET /api/relearn/due`; đề xuất gắn vào `/mrm/settings` hoặc thêm mục “🔁 Ôn tập hôm nay”.
 
+## Kiểm chứng chuỗi Phase 4 trên production (sau khi chủ dự án cấu hình khoá)
+
+| # | Hạng mục | Kết quả |
+|---|---|---|
+| 1 | `POST /api/translate` | ✅ 200 · `provider=openrouter` · `model=nvidia/nemotron-3-ultra-550b-a55b:free` · `_fallback` rỗng · **đã tự failover** khi model đầu bị 429 ⇒ cơ chế tự-loại-slug/429 chạy thật trên prod |
+| 2 | `GET /api/relearn/due` (không auth) | ✅ **401** ⇒ endpoint FSRS đã deploy trên Render (trước đó là 404) |
+| 3 | `GET /api/admin/ai-quality` (không auth) | ✅ 401 ⇒ telemetry có bảo vệ |
+| 4 | `/DuoMCB`, `/ketqua` (Vercel) | ✅ 200 |
+| 5 | `POST /api/learning-feedback` (Vercel) | ❌ **500** → đã tìm ra nguyên nhân và vá (dưới đây) |
+
+### Sự cố 500 ở `/api/learning-feedback` (đã vá trong working tree)
+`fallbackAfterProviderFailure(...)` dùng biến `request` để chuyển tiếp `Authorization` khi gieo thẻ ôn tập, nhưng **`request` không phải tham số của hàm** ⇒ mỗi lần Groq lỗi (Groq đã bị thu hồi nên **luôn** lỗi) ném `ReferenceError: request is not defined` → route trả **500** (trước bản 4E route trả 200 degraded, nên đây là hồi quy do đợt này).
+**Bản vá:** thêm tham số `request` + truyền ở **cả hai** điểm gọi (nhánh thiếu khoá Groq và nhánh Groq lỗi); nhánh OpenRouter thành công cũng gieo thẻ ôn tập.
+
+### ⚠️ Trạng thái commit (quan trọng)
+Bản vá **đang nằm trong working tree, CHƯA commit/push** vì shell của phiên làm việc bị treo giữa chừng (PowerShell không chạy được lệnh nào nữa, kể cả `python -c`). Cần chạy:
+
+```powershell
+git -C "duosteam" add frontend/src/app/api/learning-feedback/route.js
+git -C "duosteam" commit -m "fix(feedback): pass request into the fallback helper (prod 500)" -m "fallbackAfterProviderFailure referenced request without having it as a parameter; every Groq failure (Groq is revoked) raised ReferenceError and the route answered 500. Both call sites pass request now, and the OpenRouter-success branch seeds relearn cards too."
+git -C "duosteam" push origin main
+```
+
+### Bài học về cổng kiểm tra (cập nhật lần 2)
+- `tsc` chỉ-cú-pháp (`frontend/tsconfig.syntax.json`) bắt được **JSX sai cấu trúc** và **khai báo trùng tên** (2 lỗi build Vercel ở `3bd29c4`) nhưng **không** bắt biến chưa định nghĩa trong thân hàm.
+- ESLint với config hiện tại của dự án **cũng không bắt** lớp lỗi này (đã thử trên chính file lỗi: 0 cảnh báo).
+- ⇒ Đề xuất cổng bổ sung cho **file API đã sửa**: `tsc --noEmit --allowJs --checkJs --jsx preserve --skipLibCheck <file>` (TypeScript báo `Cannot find name 'request'`) hoặc bật `no-undef` kèm globals phù hợp. Đây là việc còn lại của đợt này.
+
+### Việc còn lại sau kiểm chứng
+1. **Commit + push bản vá 500** (lệnh ở trên) rồi chạy lại kiểm chứng #5 — kỳ vọng: `provider` có giá trị, `relearn.seeded = true`, không còn `degraded` khi Vercel đã có `OPENROUTER_API_KEY`.
+2. **`keys=3` ở nhánh văn xuôi**: khi model trả prose, payload degraded chỉ có 3 khoá (`translation*`) mà thiếu `summary*` ⇒ bổ sung `summary` (cắt từ chính prose) để DuoTranslate luôn nhận đủ **6 khoá song ngữ**.
+3. (đề xuất) Màn **“🔁 Ôn tập hôm nay”** dùng `GET /api/relearn/due` + 4 nút `again/hard/good/easy` gọi `/api/relearn/review`; sau đó **Serwist** (PWA offline, nhớ `NetworkOnly` cho `/api/*`).
+
 
 - `@streamdown/math@1.0.2` phụ thuộc `katex ^0.16.27` trong khi app dùng `katex ^0.17.0` ⇒ pnpm cài 2 bản KaTeX (CSS trùng lặp nhẹ, không ảnh hưởng chức năng). Khi Streamdown nâng lên KaTeX 0.17 có thể bỏ import CSS trùng.
 - Trước khi thêm Penrose: chạy `npm run dev` và `next build` ngay sau khi cài, vì `@penrose/core` có WASM và Turbopack từng lỗi với loader `.wasm` (guide §1.3). Luôn `dynamic(..., { ssr: false })`.
