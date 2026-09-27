@@ -7,15 +7,11 @@
 "use client";
 
 import { auth } from "@/lib/firebase";
+import { resolveApiBase } from "@/lib/apiBase";
 
-export const DEFAULT_API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://duomath.onrender.com"
-    : "http://localhost:8000");
+// Kept as an exported constant for backwards compatibility. The actual
+// resolution lives in src/lib/apiBase.js (env → hostname → Render default).
+export const DEFAULT_API_BASE = resolveApiBase();
 
 /**
  * fetch() wrapper that injects `Authorization: Bearer <Firebase ID token>`.

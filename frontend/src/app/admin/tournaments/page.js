@@ -3,14 +3,10 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/authContext";
 import { useRouter } from "next/navigation";
+import { resolveApiBase } from "@/lib/apiBase";
 
-const BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://duomath.onrender.com"
-    : "http://localhost:8000");
+// Backend base URL — single source of truth: src/lib/apiBase.js
+const BASE = resolveApiBase();
 
 const PANEL_STYLE = {
   background: "linear-gradient(135deg, rgba(2,8,24,0.92) 0%, rgba(4,12,36,0.88) 100%)",

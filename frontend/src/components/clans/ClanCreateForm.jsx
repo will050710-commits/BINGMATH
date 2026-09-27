@@ -2,14 +2,10 @@
 import React, { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { auth } from "@/lib/firebase";
+import { resolveApiBase } from "@/lib/apiBase";
 
-const BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://duomath.onrender.com"
-    : "http://localhost:8000");
+// Backend base URL — single source of truth: src/lib/apiBase.js
+const BASE = resolveApiBase();
 
 const PRESET_CRESTS = [
   { id: "p1", gradient: "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)", label: "Neon" },

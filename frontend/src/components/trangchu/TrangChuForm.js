@@ -17,6 +17,8 @@ import AppDownloadSection from "./AppDownloadSection";
 import ScrollReveal from "../ScrollReveal";
 import TypewriterText from "../TypewriterText";
 import { useLanguage } from "@/context/LanguageContext";
+import { authFetch } from "@/lib/authFetch";
+import { resolveApiBase } from "@/lib/apiBase";
 
 
 // Dynamically import EditProfileModal to reduce initial JS bundle size
@@ -472,8 +474,7 @@ export default function TrangChuForm() {
   const fetchLeaderboard = useCallback(async () => {
     setLeaderboardLoading(true);
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      let url = `${API_BASE}/api/leaderboard`;
+      let url = `${resolveApiBase()}/api/leaderboard`;
       const queryParams = [];
       if (leaderboardFilter === "school" && user?.school) {
         queryParams.push(`school=${encodeURIComponent(user.school)}`);
@@ -483,7 +484,7 @@ export default function TrangChuForm() {
       if (queryParams.length > 0) {
         url += `?${queryParams.join("&")}`;
       }
-      const res = await fetch(url);
+      const res = await authFetch(url);
       if (res.ok) {
         const data = await res.json();
         setLeaderboardData(data);
@@ -515,15 +516,9 @@ export default function TrangChuForm() {
     setGachaRewardCard(null);
 
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${API_BASE}/api/gacha/open`, {
+      // authFetch attaches the Firebase ID token when the user is signed in.
+      const res = await authFetch("/api/gacha/open", {
         method: "POST",
-        headers,
         body: JSON.stringify({ cost: 50 })
       });
 

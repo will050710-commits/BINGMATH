@@ -8,14 +8,10 @@ import { auth } from "@/lib/firebase";
 import ReportUserModal from "@/components/ReportUserModal";
 import { getQuestionsForCard } from "@/data/multiplayerQuestions";
 import { MOCK_MATHMAPS } from "@/data/mockMathmaps";
+import { resolveApiBase } from "@/lib/apiBase";
 
-const BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://duomath.onrender.com"
-    : "http://localhost:8000");
+// Backend base URL — single source of truth: src/lib/apiBase.js
+const BASE = resolveApiBase();
 
 const renderAvatar = (avatar, username) => {
   if (!avatar) {

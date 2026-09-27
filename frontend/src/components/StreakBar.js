@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/authContext";
 import { getUserStats } from "@/lib/api";
 import Link from "next/link";
+import { authFetch } from "@/lib/authFetch";
 
 const CACHE_KEY = "dm_streak_bar";
 const CACHE_TTL = 5 * 60 * 1000; // 5 phút
@@ -59,15 +60,9 @@ export default function StreakBar() {
     if (!confirmBuy) return;
 
     try {
-      const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-      const headers = { "Content-Type": "application/json" };
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-      const res = await fetch(`${API_BASE}/api/gami/buy-freeze`, {
+      // authFetch attaches the Firebase ID token when the user is signed in.
+      const res = await authFetch("/api/gami/buy-freeze", {
         method: "POST",
-        headers,
         body: JSON.stringify({ cost: 100 })
       });
       if (res.ok) {

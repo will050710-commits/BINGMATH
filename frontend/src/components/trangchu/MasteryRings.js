@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/authContext";
+import { authFetch } from "@/lib/authFetch";
 
 export default function MasteryRings() {
   const { user } = useAuth();
@@ -17,13 +18,8 @@ export default function MasteryRings() {
     if (!user) return;
     async function fetchProgress() {
       try {
-        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-        const headers = { "Content-Type": "application/json" };
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const res = await fetch(`${API_BASE}/api/gami/daily-progress`, { headers });
+        // authFetch attaches the Firebase ID token when the user is signed in.
+        const res = await authFetch("/api/gami/daily-progress");
         if (res.ok) {
           const data = await res.json();
           setProg(data);

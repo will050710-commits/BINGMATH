@@ -1,13 +1,9 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { resolveApiBase } from "@/lib/apiBase";
 
-const BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://duomath.onrender.com"
-    : "http://localhost:8000");
+// Backend base URL — single source of truth: src/lib/apiBase.js
+const BASE = resolveApiBase();
 
 const MEDAL_BG = {
   1: "linear-gradient(135deg, #FFE58A, #F59E0B)",

@@ -2,8 +2,7 @@
 // Place this file next to DuoMCBPage.js
 
 import { authFetch } from "@/lib/authFetch";
-
-const API = process.env.NEXT_PUBLIC_API_URL || "https://duomath.onrender.com";
+import { API_BASE as API } from "@/lib/apiBase";
 
 export async function createSession() {
   try {

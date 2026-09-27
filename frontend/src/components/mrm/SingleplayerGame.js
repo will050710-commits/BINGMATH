@@ -11,14 +11,10 @@ import WagerModal from "@/components/mrm/WagerModal";
 import NearMissEffect from "@/components/mrm/NearMissEffect";
 import MysteryChestModal from "@/components/mrm/MysteryChestModal";
 import { auth } from "@/lib/firebase";
+import { resolveApiBase } from "@/lib/apiBase";
 
-const _BACKEND =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://duomath.onrender.com"
-    : "http://localhost:8000");
+// Backend base URL — single source of truth: src/lib/apiBase.js
+const _BACKEND = resolveApiBase();
 
 async function _apiPost(path, body) {
   const hdrs = { "Content-Type": "application/json" };

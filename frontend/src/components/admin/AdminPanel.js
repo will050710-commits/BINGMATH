@@ -5,15 +5,11 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useMathMapStore } from "@/context/MathMapStore";
 import { useAuth } from "@/context/authContext";
+import { resolveApiBase } from "@/lib/apiBase";
 
 // ── Backend API ─────────────────────────────────────────────────────────────
-const BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://duomath.onrender.com"
-    : "http://localhost:8000");
+// Backend base URL — single source of truth: src/lib/apiBase.js
+const BASE = resolveApiBase();
 
 async function adminFetch(path, opts = {}) {
   const { auth } = await import("@/lib/firebase");

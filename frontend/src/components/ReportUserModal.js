@@ -2,15 +2,11 @@
 "use client";
 import { useState } from "react";
 import { useAuth } from "@/context/authContext";
+import { resolveApiBase } from "@/lib/apiBase";
 
 // ── Shared API fetch helper (same pattern as authContext) ────────────────────
-const BASE =
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  window.location.hostname !== "localhost" &&
-  window.location.hostname !== "127.0.0.1"
-    ? "https://duomath.onrender.com"
-    : "http://localhost:8000");
+// Backend base URL — single source of truth: src/lib/apiBase.js
+const BASE = resolveApiBase();
 
 async function apiFetch(path, opts = {}, idToken = null) {
   const hdrs = { "Content-Type": "application/json", ...opts.headers };

@@ -5,16 +5,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { authFetch } from "@/lib/authFetch";
 import StreamdownMessage from "@/components/chat/StreamdownMessage";
+import { API_BASE as API } from "@/lib/apiBase";
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const API =
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.NEXT_PUBLIC_BACKEND_URL ||
-  (typeof window !== "undefined" &&
-  (window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1")
-    ? "http://localhost:8000"
-    : "https://duosteam-api.onrender.com");
+// Backend base URL — single source of truth: src/lib/apiBase.js
+// (was "https://duosteam-api.onrender.com", which returns 404 for every route)
 
 const DIFFICULTY_COLOR = { easy: "#22c55e", medium: "#f59e0b", hard: "#ef4444" };
 const DIFFICULTY_LABEL = { easy: "Dễ", medium: "Trung bình", hard: "Khó" };

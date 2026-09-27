@@ -5,6 +5,7 @@ import { useAuth } from "@/context/authContext";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 import TiltCard from "../TiltCard";
+import { authFetch } from "@/lib/authFetch";
 
 
 const RARITY_THEMES = {
@@ -38,13 +39,8 @@ export default function KnowledgeAlbum() {
     if (!user) return;
     async function loadCollection() {
       try {
-        const token = localStorage.getItem("token") || sessionStorage.getItem("token");
-        const headers = { "Content-Type": "application/json" };
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-        const res = await fetch(`${API_BASE}/api/gacha/collection`, { headers });
+        // authFetch attaches the Firebase ID token when the user is signed in.
+        const res = await authFetch("/api/gacha/collection");
         if (res.ok) {
           const data = await res.json();
           setCollection(data);
