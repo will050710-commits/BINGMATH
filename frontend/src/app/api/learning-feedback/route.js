@@ -125,13 +125,14 @@ async function generateWithOpenRouter(systemPrompt, userContent, signal) {
 // Groq is revoked/out of quota? Try the free OpenRouter ladder before falling
 // back to the local rule-based summary — and report which provider answered so
 // /ketqua can drop its "simplified mode" banner.
-async function fallbackAfterProviderFailure(systemPrompt, userContent, skills, weakSkills, groqReason) {
+async function fallbackAfterProviderFailure(systemPrompt, userContent, skills, weakSkills, groqReason, request) {
   const viaOpenRouter = await generateWithOpenRouter(systemPrompt, userContent);
   if (viaOpenRouter.ok) {
     return NextResponse.json({
       feedback: viaOpenRouter.feedback,
       provider: viaOpenRouter.provider,
       model: viaOpenRouter.model,
+      relearn: await seedRelearnCards(weakSkills, request),
     });
   }
   return NextResponse.json({
@@ -209,7 +210,7 @@ export async function POST(request) {
     // No Groq key configured? The free OpenRouter ladder does the same job at $0.
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      return await fallbackAfterProviderFailure(systemPrompt, userContent, skills, weakSkills, "groq_no_key");
+      return await fallbackAfterProviderFailure(systemPrompt, userContent, skills, weakSkills, "groq_no_key", request);
     }
 
     const completionRes = await fetch(GROQ_API_URL, {
@@ -252,7 +253,8 @@ export async function POST(request) {
         userContent,
         skills,
         weakSkills,
-        `groq_${completionRes.status}`
+        `groq_${completionRes.status}`,
+        request
       );
     }
 
