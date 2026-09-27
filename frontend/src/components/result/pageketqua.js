@@ -386,6 +386,16 @@ export default function PageKetQua() {
                 </div>
               ))}
             </div>
+            {/* Đợt 4E: the same weak skills were seeded as FSRS cards by
+                /api/learning-feedback, so send the student straight to the
+                schedule that says WHEN to review them. */}
+            <Link href="/relearn" style={{
+              display: "inline-block", marginTop: 14, padding: "9px 16px", borderRadius: 10,
+              background: "rgba(34,211,238,0.12)", border: "1px solid rgba(34,211,238,0.35)",
+              color: "#67e8f9", fontWeight: 700, fontSize: 13, textDecoration: "none",
+            }}>
+              🔁 Ôn tập hôm nay — xem lịch ôn cho các kỹ năng này
+            </Link>
           </div>
         )}
 

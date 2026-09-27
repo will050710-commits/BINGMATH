@@ -278,6 +278,37 @@ git -C "duosteam" push origin main
 2. **`keys=3` ở nhánh văn xuôi**: khi model trả prose, payload degraded chỉ có 3 khoá (`translation*`) mà thiếu `summary*` ⇒ bổ sung `summary` (cắt từ chính prose) để DuoTranslate luôn nhận đủ **6 khoá song ngữ**.
 3. (đề xuất) Màn **“🔁 Ôn tập hôm nay”** dùng `GET /api/relearn/due` + 4 nút `again/hard/good/easy` gọi `/api/relearn/review`; sau đó **Serwist** (PWA offline, nhớ `NetworkOnly` cho `/api/*`).
 
+## Đợt 4F — Khép kín vòng ôn tập + dọn nợ (sau kiểm chứng prod)
+
+### Kết quả kiểm chứng prod (lần 2, sau khi chủ dự án commit bản vá `5c2d646`)
+| # | Hạng mục | Kết quả |
+|---|---|---|
+| 1 | `POST /api/translate` | ✅ 200 · `provider=gemini` · **đủ 6 khoá song ngữ** |
+| 2 | `POST /api/learning-feedback` | ✅ **200** (hết 500) · `reason=groq_404\|openrouter_no_key` · `relearn={"seeded": false, "reason": "http_401"}` (đúng: gọi không auth) |
+| 3 | `GET /api/relearn/due` | ✅ 401 |
+| 4 | `GET /api/admin/ai-quality` | ✅ 401 |
+| 5 | `/DuoMCB`, `/ketqua` | ✅ 200 |
+
+⇒ Chuỗi AI + ôn tập đã chạy thật; **duy nhất Vercel còn thiếu `OPENROUTER_API_KEY`** (và khoá Groq trên Vercel trả `404`), nên nhận xét vẫn ở chế độ đơn giản. Thêm 2 biến + Redeploy là xong.
+
+### Đã làm trong đợt 4F
+1. **Màn “🔁 Ôn tập hôm nay”** — `frontend/src/app/relearn/page.js` (mới): gọi `GET /api/relearn/due` qua `authFetch` (kèm Firebase token), hiển thị **thẻ đến hạn** với 4 nút tự đánh giá (`Quên rồi / Khó / Được / Dễ`) gọi `POST /api/relearn/review`, kèm danh sách **Sắp tới**, mục tiêu ghi nhớ của FSRS, trạng thái 401 → mời đăng nhập. Link vào từ khối “🔴 Kỹ năng cần cải thiện” ở `/ketqua`.
+2. **Nhánh dịch văn xuôi giữ đủ 6 khoá**: payload degraded nay có `summary` + tự điền nốt slot `summary_vi`/`summary_en` còn thiếu (kèm cờ `_degraded_format` để caller biết chất lượng).
+3. **Retention cho telemetry**: `quality_log()` tự xoá dòng cũ hơn `AI_QUALITY_RETENTION_DAYS` (mặc định 90) — dùng `idx_quality_created` nên rẻ.
+4. **Docstring `typesafe_guard.py`** viết lại trung tính: nêu rõ thứ tự “SymPy tất định trước → middleware TypeSafe tuỳ chọn sau”, guard vẫn chạy với 0 khoá.
+
+### Kiểm chứng & commit đợt 4F
+```
+test_math_solver.py             exit 0   ALL_MATH_SOLVER_TESTS_PASSED
+test_math_reader.py             exit 0   ALL_MATH_READER_TESTS_PASSED
+test_fsrs_scheduler.py          exit 0   ALL_FSRS_TESTS_PASSED
+test_typesafe_guard.py          exit 0   ALL 5/5 TESTS PASSED
+tests/eval_math_regression.py   exit 0
+import main                     exit 0   ROUTES 109
+frontend tsc (cú pháp src/**)   exit 0
+```
+Lưu ý vận hành (đã gặp trong phiên): PowerShell bị treo nhiều lần ⇒ tiến trình kiểm tra phải chạy **detached** (`Start-Process -WindowStyle Hidden`) và ghi kết quả ra file, vì mỗi lệnh mới sẽ đóng terminal và giết tiến trình đang chạy; tiến trình detached cần **đường dẫn tuyệt đối tới python của `.venv`** (không dùng `python` trần) và **không có `node` trong PATH** nên cổng `tsc` phải chạy ở shell tương tác.
+
 
 - `@streamdown/math@1.0.2` phụ thuộc `katex ^0.16.27` trong khi app dùng `katex ^0.17.0` ⇒ pnpm cài 2 bản KaTeX (CSS trùng lặp nhẹ, không ảnh hưởng chức năng). Khi Streamdown nâng lên KaTeX 0.17 có thể bỏ import CSS trùng.
 - Trước khi thêm Penrose: chạy `npm run dev` và `next build` ngay sau khi cài, vì `@penrose/core` có WASM và Turbopack từng lỗi với loader `.wasm` (guide §1.3). Luôn `dynamic(..., { ssr: false })`.

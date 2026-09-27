@@ -1,8 +1,16 @@
 # duosteam/backend/typesafe_guard.py
 # ─────────────────────────────────────────────────────────────────────────────
-# TypeSafe AI / JevStyle Hallucination Reduction Guard & Key Rotation Engine
-# Designed for DuoMCB (DuoMath AI Assistant)
+# Deterministic math guard + optional TypeSafe/Jev-style middleware.
+#
+# Order of work inside guard_chat_response():
+#   1. deterministic SymPy verification of every arithmetic claim (no network),
+#      which is what actually reduces hallucinated calculations;
+#   2. an OPTIONAL call to the TypeSafe/SystemOne middleware when a key is
+#      configured in the environment (see TypeSafeKeyManager below).
+# The guard therefore keeps working with zero keys — it simply skips step 2.
 # ─────────────────────────────────────────────────────────────────────────────
+# Key rotation engine for the optional middleware (env-only: the two fallback
+# keys that used to live here were leaked and have been removed — Đợt 4D).
 
 import os
 import re

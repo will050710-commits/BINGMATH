@@ -387,6 +387,16 @@ def quality_log(surface: str, model: str = "", tier: str = "", provider: str = "
                  str(fallback or "")[:24], str(notes or "")[:300]),
             )
             db.commit()
+            # Đợt 4E cleanup: opportunistic retention so the telemetry table does
+            # not grow forever. Cheap: `idx_quality_created` covers the filter.
+            try:
+                days = int(os.environ.get("AI_QUALITY_RETENTION_DAYS", "90"))
+                if days > 0:
+                    db.execute("DELETE FROM ai_quality_log WHERE created_at < datetime('now', ?)",
+                               (f"-{days} days",))
+                    db.commit()
+            except Exception:
+                pass
         finally:
             db.close()
     except Exception as e:  # noqa: BLE001
@@ -5020,7 +5030,13 @@ async def _translate_with_openrouter(prompt: str, text: str):
         # is still far better than the canned mock, so keep it and say so.
         prose = (content or "").strip()
         if len(prose) >= 2 and not prose.startswith("{"):
-            payload = _bilingual_payload({"translation": prose[:2000]}, text)
+            payload = _bilingual_payload({"translation": prose[:2000], "summary": prose[:400]}, text)
+            # Keep the 6-key bilingual contract even in degraded mode: the
+            # summary slot for the other language gets the same prose (the UI
+            # renders it as-is and `_degraded_format` tells callers it is not a
+            # human-quality summary in that language).
+            for _key in ("summary_vi", "summary_en"):
+                payload[_key] = payload.get(_key) or payload.get("summary", "")
             payload["_provider"] = "openrouter"
             payload["_model"] = used
             payload["_degraded_format"] = True
