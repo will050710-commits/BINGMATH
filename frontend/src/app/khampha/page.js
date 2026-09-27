@@ -19,6 +19,17 @@ const ParabolaExplorer = dynamic(() => import("@/components/duomath/ParabolaExpl
   ),
 });
 
+// Phase 4 (integration-guide item 1) — Penrose figures. Same rule as Mafs:
+// Penrose needs the DOM, so it stays out of the server render.
+const PenroseFigure = dynamic(() => import("@/components/duomath/PenroseFigure"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ padding: 18, color: "rgba(255,255,255,0.6)", fontSize: 13 }}>
+      Đang tải phần hình học…
+    </div>
+  ),
+});
+
 export default function ExplorePage() {
   return (
     <div style={{ minHeight: "100vh", background: "#05070f", color: "#e2e8f0", padding: "40px 18px" }}>
@@ -38,6 +49,16 @@ export default function ExplorePage() {
 
         <div style={{ marginTop: 18 }}>
           <ParabolaExplorer />
+        </div>
+
+        <div style={{ marginTop: 26 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 6px" }}>🧭 Hình học minh hoạ (Penrose)</h2>
+          <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 13, marginTop: 0, lineHeight: 1.7 }}>
+            Hình dưới đây không phải ảnh vẽ sẵn: em mô tả quan hệ hình học, Penrose tự giải rồi dựng hình.
+            “Trọng tâm” là trung bình cộng ba đỉnh; “ngoại tiếp” là điểm cách đều ba đỉnh — đúng những phép
+            tính mà trợ lý dùng khi giải bài trên lớp.
+          </p>
+          <PenroseFigure />
         </div>
 
         <div style={{ marginTop: 18, fontSize: 13, color: "rgba(255,255,255,0.65)", lineHeight: 1.8 }}>

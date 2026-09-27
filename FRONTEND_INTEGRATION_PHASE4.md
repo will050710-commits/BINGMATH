@@ -13,7 +13,7 @@
 | 2.4 | **py-fsrs** — ôn tập giãn cách | ✅ **Đợt 4E + 4H** | `backend/fsrs_scheduler.py`, bảng `relearn_cards`, 3 endpoint `/api/relearn/*`, màn `/relearn`; `test_relearn_flow.py` chứng minh vòng seed→review→due **16/16** |
 | 2.7 | **Offline mode** | ✅ **Đợt 4G** (không dùng Serwist — xem lý do) | `frontend/public/sw.js` (SW tĩnh), `/api/*` **NETWORK-ONLY** (đã sửa lỗi cache rò dữ liệu người dùng), trang `/offline` |
 | 2.5 | **Mafs** — widget tương tác | ✅ **Đợt 4H** | `mafs@0.21`, `src/components/duomath/ParabolaExplorer.jsx`, trang `/khampha` |
-| 1 | **Penrose** — hình minh hoạ hình học | ⏳ Chưa | Cần `@penrose/core` (WASM) + một lần verify build/bundler trước khi thêm |
+| 1 | **Penrose** — hình minh hoạ hình học | ✅ **Đợt 5** | `@penrose/core@3.3.1` (MIT, **không có WASM**), `src/lib/penroseTrios.js` + `components/duomath/PenroseFigure.jsx` ở `/khampha`; 2 trio được máy kiểm chứng (`scripts/check-penrose-trios.mjs`, ràng buộc thoả tới 1e-12) |
 | 2.8 | **VNHSGE** — ngân hàng đề THPT | ⏳ Chưa | Chờ chốt **nguồn dữ liệu + license/attribution**; nhập bằng script, **không** commit DB sinh ra |
 
 **Ngoài guide (các đợt 3 → 4H đã làm):** thang model free OpenRouter + tự loại slug chết/429 (đợt 3) · MathReader đọc đối chứng + cổng SymPy (4A) · bộ giải gọi tool SymPy + hậu kiểm & sửa 1 lần (4B) · telemetry `ai_quality_log` + endpoint admin + cổng CI (4C) · gỡ khoá TypeSafe hard-code + kiểm chứng hình học (4D) · gieo thẻ FSRS từ `/ketqua` + màn `/relearn` (4E) · cổng CI `checkJs` bắt lớp lỗi “biến chưa định nghĩa” (4G/CI) · sửa SW rò dữ liệu + `/offline` (4G) · vòng FSRS thật 16/16 + widget Mafs (4H).
@@ -376,7 +376,7 @@ Lưu ý vận hành (đã gặp trong phiên): PowerShell bị treo nhiều lầ
 ## Lưu ý phụ thuộc
 
 - `@streamdown/math@1.0.2` phụ thuộc `katex ^0.16.27` trong khi app dùng `katex ^0.17.0` ⇒ pnpm cài 2 bản KaTeX (CSS trùng lặp nhẹ, không ảnh hưởng chức năng). Khi Streamdown nâng lên KaTeX 0.17 có thể bỏ import CSS trùng.
-- Trước khi thêm Penrose: chạy `npm run dev` và `next build` ngay sau khi cài, vì `@penrose/core` có WASM và Turbopack từng lỗi với loader `.wasm` (guide §1.3). Luôn `dynamic(..., { ssr: false })`.
+- ~~Trước khi thêm Penrose: `@penrose/core` có WASM và Turbopack từng lỗi với loader `.wasm`.~~ **Đã đo lại ở đợt 5** (xem mục Đợt 5): `@penrose/core@3.3.1` **không chứa tệp `.wasm` nào** và không dùng `eval`/`new Function` (kể cả `mathjax-full`) ⇒ CSP giữ nguyên, không cần `wasm-unsafe-eval`. Luật còn đúng: luôn `dynamic(..., { ssr: false })` vì Penrose cần DOM.
 
 ## Kiểm chứng đợt 1
 
@@ -415,6 +415,52 @@ Lưu ý vận hành (đã gặp trong phiên): PowerShell bị treo nhiều lầ
 [translate] Gemini fallback failed (HTTPStatusError: Client error '401 Unauthorized'
             for url '.../models/gemini-3.6-flash:generateContent?key=***')
 ```
+
+---
+
+## Đợt 5 — Penrose (guide mục 1): hình học minh hoạ tự dựng
+
+### Đo lại hai định kiến trước khi viết mã (đây chính là phần "verify" kế hoạch yêu cầu)
+
+| Điều kế hoạch lo | Số đo thực tế trên `@penrose/core@3.3.1` |
+| --- | --- |
+| "Penrose mang lõi WASM ⇒ rủi ro loader `.wasm` của Turbopack" | **Không có tệp `.wasm` nào** trong gói (3.9 MB, file lớn nhất `dist/bundle/index.js` 2.7 MB JS thuần) ⇒ không cần `wasm-unsafe-eval`, không cần vòng riêng cho asset |
+| "Có thể phải nới CSP để chạy WASM/`eval`" | `eval(`/`new Function`: **0** trong `@penrose/core` (`index.js`, `bundle/index.js`, `lib/Functions.js`, `utils/CollectLabels.js`) và **0** trong toàn bộ `mathjax-full` ⇒ **CSP giữ nguyên 100%** |
+| "Phải luôn `dynamic(..., { ssr: false })`" | Vẫn đúng: `diagram()` cần DOM thật |
+| Giấy phép | `license: MIT` ⇒ dùng được, không phải theo dõi bản quyền ảnh như hình stock |
+
+### Đã thêm
+
+- `frontend/src/lib/penroseTrios.js` — 2 **trio** tự viết (domain + style + substance): *trọng tâm & ba đường trung tuyến*, *đường tròn ngoại tiếp*. Bản Penrose đã cài **không kèm domain hình học nào**, nên mọi thứ dựng từ `Circle`/`Line`/`Polygon`/`Text` + số học vector, chỉ dùng đúng từ vựng mà gói thực có (`constrDict` 34 ràng buộc, `compDict` 228 hàm, `objDict` 24 mục tiêu).
+- `frontend/src/components/duomath/PenroseFigure.jsx` — nạp `@penrose/core` bằng `import()` động trong `useEffect`, gọi `diagram()` (Penrose **tự chèn DOM node**, không đi qua chuỗi HTML do mình ghép), kèm nút đổi hình/đổi trio, trạng thái đang dựng, hạn chờ `<svg>` 20 s và khối lỗi có thể thử lại.
+- `frontend/src/app/khampha/page.js` — mục "🧭 Hình học minh hoạ (Penrose)" (`dynamic`, `ssr: false`).
+- `frontend/scripts/check-penrose-trios.mjs` — cổng chạy **trong Node, không cần DOM**: compile + optimize từng trio rồi đọc `evalFns()` và **thất bại nếu còn ràng buộc chưa thoả**; thêm `--vocab` (in từ vựng Style) và `--diagnose` (in phân rã năng lượng).
+- `.github/workflows/quality-gate.yml` — job **`frontend-build`**: `pnpm install --frozen-lockfile` → cổng trio → `pnpm build` (Turbopack). Đây là "vòng build/bundler thật" mà kế hoạch yêu cầu; job không cần secret vì cấu hình Firebase công khai nằm sẵn trong `src/lib/firebase.js`.
+
+### Bằng chứng (chạy thật)
+
+```
+node scripts/check-penrose-trios.mjs
+ok  trung-tuyen — 15 shapes · canvas 440x340 · constraints 26 (worst 0.0e+0) · stages 1
+ok  ngoai-tiep  — 11 shapes · canvas 440x340 · constraints 22 (worst 1.6e-12) · stages 1
+ALL_PENROSE_TRIOS_OK
+```
+`worst 1.6e-12` = ba đẳng thức "cách đều ba đỉnh" được giải tới độ chính xác máy ⇒ **tâm ngoại tiếp là tâm thật**, không phải hình may rủi.
+
+### 6 lỗi thật đã bị cổng này bắt (đều sẽ nổ trước mặt học sinh)
+
+1. `forall Segment s, Point p, Point q` **không hợp lệ**: ngữ pháp Style v3 là `decl_patterns → decl_list (";" decl_list)*`, mỗi `decl_list` = **một type + danh sách biến** ⇒ phải là `forall Segment s; Point p, q`.
+2. `p.label = Text {...}` sinh **vòng lặp biến** (`p.label` là tên đối tượng có sẵn) ⇒ đổi thành `p.text`.
+3. `ensure p.label above p.icon` không phải cú pháp; dạng đúng là hàm: `above(top, bottom, offset)`, `centerLabelAbove(...)`.
+4. `onCanvas(shape)` thiếu tham số ⇒ `onCanvas(shape, canvas.width, canvas.height)`.
+5. **Bài học đắt nhất**: `ensure isConvex(points, closed)` là ràng buộc **chỉ thị** (năng lượng 0/1, **không có gradient**) nên optimizer **không bao giờ** sửa được — đo được residual đứng nguyên ở 1.0. Phép thử loại trừ từng ràng buộc chỉ ra nó; thay bằng mục tiêu trơn `encourage nonDegenerateAngle(...)` + `notTooClose(...)` là về `0.0e+0`.
+6. `where p != q` không được hỗ trợ ⇒ khác biệt hoá bằng predicate `Pair(Point p, Point q)` khai báo trong Substance.
+
+### Việc còn lại (không chặn)
+
+- `next build` cục bộ vẫn không chạy nổi trên máy này (RAM trống 1,3 GB); **job `frontend-build` mới là nơi xác nhận Turbopack đóng gói được `@penrose/core`** và nó chạy ngay ở lần push này.
+- Nên mở `/khampha` bằng trình duyệt một lần để nhìn bố cục/nhãn bằng mắt — phần toán đã được máy kiểm tới 1e-12.
+
 
 - `key=***` ⇒ `_scrub_secrets()` đang hoạt động, log Render không còn lộ khoá.
 - Kiểm tra trực tiếp bằng khoá trong `backend/.env` (**chỉ in trạng thái, không in khoá**):

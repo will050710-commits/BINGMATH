@@ -17,6 +17,8 @@ on:
       - "frontend/src/**"
       - "frontend/scripts/**"
       - "frontend/next.config.mjs"
+      - "frontend/package.json"
+      - "frontend/pnpm-lock.yaml"
       - ".github/workflows/quality-gate.yml"
   pull_request:
   schedule:
@@ -107,3 +109,40 @@ jobs:
       - name: No hard-coded localhost API base in src/
         working-directory: frontend
         run: node scripts/check-api-base.mjs
+
+  frontend-build:
+    name: Frontend build (real bundler + Penrose trios)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      # The integration plan requires one REAL bundler pass before Penrose
+      # ships (@penrose/core pulls ~2.7 MB of JS into a client chunk, and the
+      # local dev machine cannot complete a build). It is also the only gate
+      # that would have caught the duplicate-declaration bug that broke a
+      # Vercel build while every syntax checker stayed green.
+      # No secrets needed: the public config lives in src/lib/firebase.js.
+      - name: Install dependencies (frozen lockfile)
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+
+      # Fast and Penrose-specific, so it runs before the slow build: it
+      # compiles every trio and fails if the optimizer leaves a constraint
+      # unsatisfied (that is how the isConvex dead-end was found).
+      - name: Penrose trios (compile + optimizer residual)
+        working-directory: frontend
+        run: node scripts/check-penrose-trios.mjs
+
+      - name: next build (Turbopack)
+        working-directory: frontend
+        run: pnpm build
