@@ -592,8 +592,11 @@ trong DB. Endpoint
 `/api/exam/vnhsge/meta` đọc ngược lại để trang web in dòng ghi công. Hệ quả: không thể tồn tại một câu
 hỏi trong ngân hàng mà không biết nó đến từ đâu — đúng yêu cầu “license + attribution” trong guide.
 
-- Dữ liệu **mẫu** nằm trong repo: `backend/data/vnhsge_sample.jsonl`, do DuoMath **tự soạn**
-  (`license: CC0-1.0`, `self-authored`). Nó chỉ để chạy test, **không phải đề thi thật**.
+- Dữ liệu **mẫu** nằm trong repo: `backend/data/vnhsge_sample.jsonl`, do DuoMath **tự soạn** — chỉ để chạy
+  test, **không phải đề thi thật**. Tệp này **không chứa trường giấy phép**: giấy phép do người nhập khai
+  báo lúc chạy (lần nhập vào DB dev dùng `--source-name duomath-original-sample --license CC-BY-4.0`).
+  Nó cố ý viết **hai kiểu khoá khác nhau ngay trong cùng một tệp** (một dòng dùng `choices` + `answer`,
+  dòng khác dùng `options` là chuỗi JSON + `correct_answer`) — để chứng minh luật đọc chịu được dump lộn xộn.
 - Ba lựa chọn cho chủ dự án: (a) tự soạn/tự chịu trách nhiệm nội dung, (b) dùng VNHSGE khi được cấp
   quyền tải + ghi attribution, (c) một nguồn mở khác có giấy phép rõ ràng.
 - File `.db` sinh ra **không** được commit (đã có `*.db` trong `.gitignore`).
@@ -604,7 +607,7 @@ hỏi trong ngân hàng mà không biết nó đến từ đâu — đúng yêu 
 |---|---|
 | `backend/vnhsge_bank.py` | Luật đọc/chuẩn hoá một câu, hash định danh, DDL dùng chung, nhãn môn học |
 | `backend/scripts/import_vnhsge.py` | **Người ghi duy nhất**: cổng giấy phép, upsert idempotent, báo cáo câu bị bỏ |
-| `backend/data/vnhsge_sample.jsonl` | Dữ liệu **mẫu tự soạn** để chạy test (không phải đề thật) |
+| `backend/data/vnhsge_sample.jsonl` | Dữ liệu **mẫu tự soạn** (2 kiểu khoá khác nhau trong cùng tệp) để chạy test — không phải đề thật |
 | `backend/test_vnhsge_bank.py` | 36 kiểm tra, gồm **import hai lần vào DB tạm** để chứng minh idempotent |
 | `backend/main.py` | 3 endpoint `/api/exam/vnhsge/{meta,questions,random}` + DDL lúc khởi động |
 | `frontend/src/app/nganhangde/page.js` | Trang ngân hàng đề (duyệt + luyện tập) |
@@ -659,7 +662,12 @@ chính câu đó, để trang web in được nguồn ngay cạnh câu hỏi.
 - `tsc -p tsconfig.syntax.json` = 0 lỗi · `tsc -p tsconfig.checkjs.json` = 0 lỗi ·
   `eslint src/app/nganhangde/page.js` = 0 lỗi · `node scripts/check-api-base.mjs` = OK (trang mới dùng
   `apiBase`, không hard-code `localhost`) · `check-penrose-trios.mjs` vẫn `ALL_PENROSE_TRIOS_OK`.
-- 3 endpoint đã được gọi thật trên DB dev (bằng HTTP), không chỉ đọc mã.
+- **Bằng chứng HTTP thật** (uvicorn trên DB dev, `127.0.0.1:8011`): `meta` → `total=7`, 9 môn có slot /
+  6 môn có câu, kèm dòng ghi công `Nguồn: duomath-original-sample · Giấy phép: CC-BY-4.0 · …` ·
+  `questions?limit=2` → `total=7`, trả `answer_index` + `subject_label: Toán` ·
+  `questions?with_answers=false` → **không rò `answer_index`** (khoá riêng của học sinh không bị lộ nếu
+  sau này dùng để thi) · `random?count=3&with_answers=true` → đủ 3 câu có đáp án ·
+  môn không tồn tại → **HTTP 400** (không âm thầm trả hết mọi câu).
 
 ### Việc còn lại (cần chủ dự án quyết)
 
