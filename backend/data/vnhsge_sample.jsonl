@@ -1,0 +1,9 @@
+{"id":"dm-toan-01","subject":"Toán","question":"Cho hàm số y = x² − 4x + 3. Toạ độ đỉnh của parabol là","choices":["(2; −1)","(−2; −1)","(2; 1)","(1; 2)"],"answer":"A","explanation":"Hoành độ đỉnh x = −b/(2a) = 2; tung độ y = 2² − 4·2 + 3 = −1."}
+{"id":"dm-toan-02","subject":"toan","question":"Tập nghiệm của bất phương trình x − 3 > 0 là","options":"[\"x > 3\", \"x < 3\", \"x ≥ 3\", \"x ≤ 3\"]","correct_answer":"x > 3","explanation":"Cộng 3 vào hai vế: x > 3."}
+{"id":"dm-ly-01","subject":"Vật lí","question":"Một vật khối lượng 2 kg chịu tác dụng của hợp lực 6 N. Gia tốc của vật là","A":"1 m/s²","B":"2 m/s²","C":"3 m/s²","D":"6 m/s²","answer":3,"explanation":"Định luật II Newton: a = F/m = 6/2 = 3 m/s²."}
+{"id":"dm-hoa-01","subject":"hoa hoc","question":"Chất nào sau đây là thành phần chính của muối ăn?","choices":"NaCl | KCl | CaCO₃ | Na₂CO₃","answer":"NaCl","explanation":"Muối ăn là natri clorua, công thức NaCl."}
+{"id":"dm-anh-01","subject":"Tiếng Anh","question":"Choose the correct form: She ____ to school every day.","choices":["go","goes","going","gone"],"answer":"B","explanation":"Thì hiện tại đơn với chủ ngữ số ít: She goes."}
+{"id":"dm-su-01","subject":"Lịch sử","question":"Cách mạng tháng Tám ở Việt Nam diễn ra vào năm nào?","choices":["1930","1945","1954","1975"],"answer":"B","explanation":"Thắng lợi của Cách mạng tháng Tám là năm 1945."}
+{"id":"dm-sinh-01","subject":"Sinh học","question":"Bào quan nào được coi là “nhà máy năng lượng” của tế bào?","choices":["Ti thể","Lục lạp","Ribosome","Nhân tế bào"],"answer":"Ti thể","explanation":"Ti thể thực hiện hô hấp tế bào, tạo phần lớn ATP cho tế bào."}
+{"id":"dm-bad-01","subject":"toan","question":"Sai","choices":["1","2","3","4"],"answer":"A"}
+{"id":"dm-bad-02","subject":"toan","question":"Một câu hỏi đủ dài nhưng khoá đáp án không khớp với phương án nào cả.","choices":["1","2","3","4"],"answer":"Z"}

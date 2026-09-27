@@ -56,6 +56,14 @@ jobs:
         working-directory: backend
         run: python test_fsrs_scheduler.py
 
+      # Phase 4 / guide item 2.8 — the question bank: parsing rules for the
+      # shapes real dumps use, the identity rule that makes imports idempotent,
+      # the licence guard, and a full import twice into a TEMP database.
+      # Pure stdlib, so it adds no dependency to this job.
+      - name: Question bank — VNHSGE normalisation + import
+        working-directory: backend
+        run: python test_vnhsge_bank.py
+
       - name: Anti-hallucination — TypeSafe guard
         working-directory: backend
         run: python test_typesafe_guard.py

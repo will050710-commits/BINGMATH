@@ -37,6 +37,7 @@ export default function ExplorePage() {
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
           <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0 }}>📈 Khám phá đồ thị</h1>
           <div style={{ display: "flex", gap: 14, fontSize: 13 }}>
+            <Link href="/nganhangde" style={{ color: "#67e8f9" }}>📚 Ngân hàng đề</Link>
             <Link href="/relearn" style={{ color: "#67e8f9" }}>🔁 Ôn tập</Link>
             <Link href="/ketqua" style={{ color: "#67e8f9" }}>Kết quả</Link>
           </div>

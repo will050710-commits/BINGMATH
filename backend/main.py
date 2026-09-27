@@ -597,6 +597,10 @@ import math_solver
 # the relearn list. Pure maths lives in fsrs_scheduler.py; the table and the
 # endpoints live here, next to the other per-user storage.
 import fsrs_scheduler
+# Đợt 6 — VNHSGE question bank (integration-guide item 2.8): the parsing rules,
+# the identity hash and the DDL live in vnhsge_bank.py, shared with
+# scripts/import_vnhsge.py (the only writer — it enforces the licence decision).
+import vnhsge_bank
 
 
 def _mr_summary(perception) -> dict:
@@ -2501,6 +2505,12 @@ def init_db():
             UNIQUE(user_id, card_key)
         )""", None),
         ("CREATE INDEX IF NOT EXISTS idx_relearn_due ON relearn_cards(user_id, due_at)", None),
+        # ── Đợt 6: VNHSGE question bank (guide item 2.8) ────────────────────
+        # Content only. The DDL is shared with scripts/import_vnhsge.py so the
+        # importer can create the table standalone, and it is the ONLY writer:
+        # nothing lands here without an explicit licence acknowledgement.
+        (vnhsge_bank.TABLE_SQL, None),
+        (vnhsge_bank.INDEX_SQL, None),
     ])
     for sql, _ in migrations:
         try:
@@ -5575,6 +5585,125 @@ async def relearn_review(request: Request):
     if out is None:
         raise HTTPException(404, "Không tìm thấy thẻ ôn tập.")
     return JSONResponse(out)
+
+
+@app.get("/api/exam/vnhsge/meta")
+@limiter.limit(SESSION_LIMIT)
+async def vnhsge_meta(request: Request):
+    """What the bank holds + the attribution that must be shown with it.
+
+    Public on purpose: it is not per-user data, and the credit line has to be
+    visible even before a student signs in. An empty bank is not an error — it
+    reports total=0 plus the command that fills it.
+    """
+    db = get_db()
+    try:
+        subjects = [(row["subject"],) for row in db.execute("SELECT subject FROM vnhsge_questions").fetchall()]
+        credit = db.execute(
+            "SELECT source, license, attribution FROM vnhsge_questions "
+            "WHERE COALESCE(source, '') <> '' ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    finally:
+        db.close()
+
+    summary = vnhsge_bank.summarize(subjects)
+    note = ""
+    if credit is not None:
+        note = vnhsge_bank.license_note(credit["license"], credit["source"], credit["attribution"])
+    return JSONResponse(
+        {
+            **summary,
+            "license_note": note,
+            "import_hint": "python backend/scripts/import_vnhsge.py --help",
+        }
+    )
+
+
+def _vnhsge_subject_or_400(subject: str) -> str:
+    """Empty subject = no filter; an unknown one is a client error, not a
+    silent 'return everything'."""
+    if not subject:
+        return ""
+    slug = vnhsge_bank.detect_subject(subject)
+    if slug is None:
+        raise HTTPException(400, f"Môn không hợp lệ: {subject}")
+    return slug
+
+
+def _vnhsge_row(row) -> dict:
+    return {
+        "id": row["id"],
+        "subject": row["subject"],
+        "subject_label": vnhsge_bank.SUBJECTS.get(row["subject"], row["subject"]),
+        "grade": row["grade"],
+        "question": row["question"],
+        "choices": json.loads(row["choices_json"] or "[]"),
+        "answer_index": row["answer_index"],
+        "explanation": row["explanation"] or "",
+        "source": row["source"] or "",
+        "license": row["license"] or "",
+        "attribution": row["attribution"] or "",
+    }
+
+
+@app.get("/api/exam/vnhsge/questions")
+@limiter.limit(SESSION_LIMIT)
+async def vnhsge_questions(
+    request: Request,
+    subject: str = "",
+    limit: int = 20,
+    offset: int = 0,
+    with_answers: bool = True,
+):
+    """Browse the bank (oldest first, so a dump reads in its own order)."""
+    slug = _vnhsge_subject_or_400(subject)
+    limit = max(1, min(int(limit), 100))
+    offset = max(0, int(offset))
+
+    where, params = (" WHERE subject = ?", [slug]) if slug else ("", [])
+    db = get_db()
+    try:
+        total = db.execute(f"SELECT COUNT(*) FROM vnhsge_questions{where}", params).fetchone()[0]
+        rows = db.execute(
+            f"SELECT * FROM vnhsge_questions{where} ORDER BY id LIMIT ? OFFSET ?",
+            [*params, limit, offset],
+        ).fetchall()
+    finally:
+        db.close()
+
+    questions = [_vnhsge_row(row) for row in rows]
+    if not with_answers:
+        for item in questions:
+            item.pop("answer_index", None)
+            item.pop("explanation", None)
+    return JSONResponse(
+        {"total": total, "limit": limit, "offset": offset, "subject": slug, "questions": questions}
+    )
+
+
+@app.get("/api/exam/vnhsge/random")
+@limiter.limit(SESSION_LIMIT)
+async def vnhsge_random(request: Request, subject: str = "", count: int = 5, with_answers: bool = False):
+    """A random practice set. Starts with answers hidden — a quiz, not a list."""
+    slug = _vnhsge_subject_or_400(subject)
+    count = max(1, min(int(count), 40))
+
+    where, params = (" WHERE subject = ?", [slug]) if slug else ("", [])
+    db = get_db()
+    try:
+        rows = db.execute(
+            f"SELECT * FROM vnhsge_questions{where} ORDER BY RANDOM() LIMIT ?",
+            [*params, count],
+        ).fetchall()
+    finally:
+        db.close()
+
+    questions = [_vnhsge_row(row) for row in rows]
+    if not with_answers:
+        for item in questions:
+            item.pop("answer_index", None)
+            item.pop("explanation", None)
+    return JSONResponse({"subject": slug, "count": len(questions), "questions": questions})
 
 
 @app.get("/api/admin/reports")

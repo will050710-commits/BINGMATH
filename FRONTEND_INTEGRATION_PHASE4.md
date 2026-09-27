@@ -14,11 +14,11 @@
 | 2.7 | **Offline mode** | ✅ **Đợt 4G** (không dùng Serwist — xem lý do) | `frontend/public/sw.js` (SW tĩnh), `/api/*` **NETWORK-ONLY** (đã sửa lỗi cache rò dữ liệu người dùng), trang `/offline` |
 | 2.5 | **Mafs** — widget tương tác | ✅ **Đợt 4H** | `mafs@0.21`, `src/components/duomath/ParabolaExplorer.jsx`, trang `/khampha` |
 | 1 | **Penrose** — hình minh hoạ hình học | ✅ **Đợt 5** | `@penrose/core@3.3.1` (MIT, **không có WASM**), `src/lib/penroseTrios.js` + `components/duomath/PenroseFigure.jsx` ở `/khampha`; 2 trio được máy kiểm chứng (`scripts/check-penrose-trios.mjs`, ràng buộc thoả tới 1e-12) |
-| 2.8 | **VNHSGE** — ngân hàng đề THPT | ⏳ Chưa | Chờ chốt **nguồn dữ liệu + license/attribution**; nhập bằng script, **không** commit DB sinh ra |
+| 2.8 | **VNHSGE** — ngân hàng đề THPT | ✅ **Đợt 6** (chờ dữ liệu thật) | `backend/vnhsge_bank.py` (luật chuẩn hoá + hash định danh) · `backend/scripts/import_vnhsge.py` (cổng **license bắt buộc**) · 3 endpoint `/api/exam/vnhsge/*` · trang `/nganhangde`; `test_vnhsge_bank.py` **36/36**; nguồn dữ liệu thật vẫn chờ chủ dự án chốt |
 
 **Ngoài guide (các đợt 3 → 4H đã làm):** thang model free OpenRouter + tự loại slug chết/429 (đợt 3) · MathReader đọc đối chứng + cổng SymPy (4A) · bộ giải gọi tool SymPy + hậu kiểm & sửa 1 lần (4B) · telemetry `ai_quality_log` + endpoint admin + cổng CI (4C) · gỡ khoá TypeSafe hard-code + kiểm chứng hình học (4D) · gieo thẻ FSRS từ `/ketqua` + màn `/relearn` (4E) · cổng CI `checkJs` bắt lớp lỗi “biến chưa định nghĩa” (4G/CI) · sửa SW rò dữ liệu + `/offline` (4G) · vòng FSRS thật 16/16 + widget Mafs (4H).
 
-**Trạng thái kỹ thuật hiện tại:** backend 109 route · 5 bộ test Python + 2 cổng `tsc` (cú pháp `src/**`, `checkJs` cho `src/app/api/**`) + `test_relearn_flow.py` đều xanh · `pnpm --frozen-lockfile` khớp lockfile · **production đã kiểm chứng 6/6 ALL_OK** (dịch có failover, nhận xét qua OpenRouter, `/api/relearn/*` + `/api/admin/ai-quality` sống và có bảo vệ).
+**Trạng thái kỹ thuật hiện tại:** backend **111 route** (đếm trực tiếp từ bảng route của FastAPI) · **6 bộ test Python** trong CI (thêm `test_vnhsge_bank.py` — 36/36) + `tests/eval_math_regression.py` + 2 cổng `tsc` (cú pháp `src/**`, `checkJs` cho `src/app/api/**`) + `test_relearn_flow.py` đều xanh · `pnpm --frozen-lockfile` khớp lockfile · **production đã kiểm chứng 6/6 ALL_OK** (dịch có failover, nhận xét qua OpenRouter, `/api/relearn/*` + `/api/admin/ai-quality` sống và có bảo vệ).
 
 ## Đợt 1 — Đã làm
 
@@ -574,3 +574,104 @@ và `manifest-src 'self'` chặn đúng. Chỉ cần mở `https://duomath.verce
 - Trong bundle, `localhost:8000` chỉ còn đúng **1 chỗ** (hằng `DEV_API` của `apiBase.js`) và luôn nằm
   sau kiểm tra hostname — mẫu inline cũ (`process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"`)
   phải vắng mặt hoàn toàn.
+## Đợt 6 — VNHSGE: ngân hàng đề THPT (guide mục 2.8)
+
+### Vì sao làm “cỗ máy” trước khi có dữ liệu thật
+
+Dataset VNHSGE gốc (Hugging Face) là **repo gated**: phải có access token mới tải được, và hiện chưa
+được cấp. Thay vì ngồi chờ, đợt này hoàn thiện **toàn bộ đường ống**: luật đọc/chuẩn hoá đề, cổng giấy
+phép, tính idempotent, API và màn hình học sinh. Khi chủ dự án chốt nguồn dữ liệu, việc còn lại chỉ là
+chạy một dòng lệnh — không phải viết lại gì.
+
+### Cổng giấy phép (đây là quyết định kỹ thuật, không phải thủ tục giấy tờ)
+
+`scripts/import_vnhsge.py` **bắt buộc** khai báo nguồn gốc và giấy phép: `--source` (định dạng tệp:
+`jsonl`/`json`/`csv`/`hf`), `--license`, `--source-name`, tuỳ chọn `--attribution`, và phải xác nhận
+bằng `--acknowledge-license`. Script từ chối chạy nếu thiếu, và **ghi lại giấy phép vào từng câu**
+trong DB. Endpoint
+`/api/exam/vnhsge/meta` đọc ngược lại để trang web in dòng ghi công. Hệ quả: không thể tồn tại một câu
+hỏi trong ngân hàng mà không biết nó đến từ đâu — đúng yêu cầu “license + attribution” trong guide.
+
+- Dữ liệu **mẫu** nằm trong repo: `backend/data/vnhsge_sample.jsonl`, do DuoMath **tự soạn**
+  (`license: CC0-1.0`, `self-authored`). Nó chỉ để chạy test, **không phải đề thi thật**.
+- Ba lựa chọn cho chủ dự án: (a) tự soạn/tự chịu trách nhiệm nội dung, (b) dùng VNHSGE khi được cấp
+  quyền tải + ghi attribution, (c) một nguồn mở khác có giấy phép rõ ràng.
+- File `.db` sinh ra **không** được commit (đã có `*.db` trong `.gitignore`).
+
+### Thành phần
+
+| Tệp | Vai trò |
+|---|---|
+| `backend/vnhsge_bank.py` | Luật đọc/chuẩn hoá một câu, hash định danh, DDL dùng chung, nhãn môn học |
+| `backend/scripts/import_vnhsge.py` | **Người ghi duy nhất**: cổng giấy phép, upsert idempotent, báo cáo câu bị bỏ |
+| `backend/data/vnhsge_sample.jsonl` | Dữ liệu **mẫu tự soạn** để chạy test (không phải đề thật) |
+| `backend/test_vnhsge_bank.py` | 36 kiểm tra, gồm **import hai lần vào DB tạm** để chứng minh idempotent |
+| `backend/main.py` | 3 endpoint `/api/exam/vnhsge/{meta,questions,random}` + DDL lúc khởi động |
+| `frontend/src/app/nganhangde/page.js` | Trang ngân hàng đề (duyệt + luyện tập) |
+
+### Các dạng đề thật phải chịu được (phần dễ hỏng nhất)
+
+Dump thật không bao giờ đồng nhất một kiểu, nên luật đọc đã tính sẵn:
+
+- nhãn đáp án viết `A.`, `A)`, `a.`, `(A)`, có hoặc không có khoảng trắng sau dấu — thậm chí **lẫn nhiều
+  kiểu trong cùng một tệp**;
+- đáp án nằm ở cuối đề dưới dạng “Đáp án: B”, “Đáp án đúng là B”, “Chọn B” — tách khỏi phần lựa chọn;
+- lời giải nằm sau “Lời giải” / “Giải thích” / “Hướng dẫn giải” → cắt ra khỏi đề bài, không để lẫn vào
+  câu hỏi học sinh đọc;
+- câu có **hai đáp án** (`A, C`) → **loại bỏ**, không đoán (đề trắc nghiệm một đáp án mà có hai đáp án
+  đúng thì không thể chấm);
+- công thức LaTeX (`$...$`) **giữ nguyên**, không bị cắt theo dấu câu;
+- chuẩn hoá Unicode + khoảng trắng không ngắt (NBSP) + xuống dòng trước khi so sánh;
+- câu trùng nội dung (sau chuẩn hoá) chỉ vào ngân hàng **một lần**;
+- câu thiếu đề / thiếu lựa chọn / đáp án ngoài dải A–D → bỏ **và đếm**, in ra cuối báo cáo nhập — không
+  bao giờ bỏ im lặng.
+
+**Vì sao import chạy lại được (idempotent):** mỗi câu có một hash SHA-256 trên nội dung *đã chuẩn hoá*;
+script upsert theo hash, nên chạy lại cùng một tệp không nhân đôi câu. Test chứng minh bằng cách import
+hai lần vào DB tạm rồi so tổng số và số câu theo từng môn.
+
+### API (đã gọi thật trên DB dev)
+
+| Endpoint | Việc |
+|---|---|
+| `GET /api/exam/vnhsge/meta` | Tổng số câu, số câu theo môn, **dòng ghi công + ghi chú giấy phép**, và gợi ý lệnh nhập khi ngân hàng trống |
+| `GET /api/exam/vnhsge/questions?subject=&limit=&offset=` | Danh sách câu để duyệt (kèm đáp án + lời giải) |
+| `GET /api/exam/vnhsge/random?subject=&count=` | Đề ngẫu nhiên để luyện tập |
+
+Mỗi câu trả về kèm `subject_label` (nhãn tiếng Việt: Toán, Vật lí, Hoá học, …) và `source`/`license` của
+chính câu đó, để trang web in được nguồn ngay cạnh câu hỏi.
+
+### Trang `/nganhangde` (học sinh dùng)
+
+- **Chế độ duyệt:** đọc đề, tự nghĩ, rồi bấm “Hiện đáp án” — đáp án đúng tô xanh kèm lời giải.
+- **Chế độ luyện tập:** lấy N câu ngẫu nhiên (N = 5, lọc theo môn nếu đang chọn môn), học sinh chọn đáp
+  án → tô **xanh** đáp án đúng / **đỏ** lựa chọn sai, hiện lời giải, đếm điểm, cho “Làm đề khác”. Đã chọn
+  thì **không bấm lại để đổi** (nút bị khoá) — để điểm có nghĩa.
+- Lọc theo môn bằng chip có số câu, nút “Xem thêm” khi còn câu chưa tải.
+- **Khi ngân hàng trống, trang không im lặng:** in ra lệnh nhập dữ liệu và nói rõ nội dung *không tự sinh
+  ra* — để không ai tưởng hệ thống hỏng.
+- Có link “📚 Ngân hàng đề” từ trang `/khampha`.
+
+### Cổng kiểm tra của đợt này
+
+- `python backend/test_vnhsge_bank.py` → **36/36**, đã thêm vào job `offline-suites` của
+  `.github/workflows/quality-gate.yml` (thuần stdlib, không thêm phụ thuộc cho CI).
+- `tsc -p tsconfig.syntax.json` = 0 lỗi · `tsc -p tsconfig.checkjs.json` = 0 lỗi ·
+  `eslint src/app/nganhangde/page.js` = 0 lỗi · `node scripts/check-api-base.mjs` = OK (trang mới dùng
+  `apiBase`, không hard-code `localhost`) · `check-penrose-trios.mjs` vẫn `ALL_PENROSE_TRIOS_OK`.
+- 3 endpoint đã được gọi thật trên DB dev (bằng HTTP), không chỉ đọc mã.
+
+### Việc còn lại (cần chủ dự án quyết)
+
+1. **Chốt nguồn dữ liệu thật + giấy phép** — VNHSGE gated (cần access token) / tự soạn / nguồn mở khác.
+2. Nhập dữ liệu trên máy chủ có DB thật, xem trước bằng `--dry-run`:
+
+   ```bash
+   python backend/scripts/import_vnhsge.py --source jsonl --path <tệp>.jsonl \
+     --source-name "…" --license "…" --attribution "…" --acknowledge-license --dry-run
+   ```
+
+   Bỏ `--dry-run` để ghi thật; có thêm `--hf-repo`/`--hf-file` (tải thẳng từ Hugging Face), `--limit`,
+   `--db`, `--show-rejects`.
+3. `*.db` **không** được commit. Muốn dữ liệu đề sống sót qua các lần deploy thì cần đĩa/DB bền vững
+   trên Render (xem “Lưu ý phụ thuộc”).
