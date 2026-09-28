@@ -16,9 +16,9 @@
 | 1 | **Penrose** — hình minh hoạ hình học | ✅ **Đợt 5** | `@penrose/core@3.3.1` (MIT, **không có WASM**), `src/lib/penroseTrios.js` + `components/duomath/PenroseFigure.jsx` ở `/khampha`; 2 trio được máy kiểm chứng (`scripts/check-penrose-trios.mjs`, ràng buộc thoả tới 1e-12) |
 | 2.8 | **VNHSGE** — ngân hàng đề THPT | ✅ **Đợt 6** (chờ dữ liệu thật) | `backend/vnhsge_bank.py` (luật chuẩn hoá + hash định danh) · `backend/scripts/import_vnhsge.py` (cổng **license bắt buộc**) · 3 endpoint `/api/exam/vnhsge/*` · trang `/nganhangde`; `test_vnhsge_bank.py` **36/36**; nguồn dữ liệu thật vẫn chờ chủ dự án chốt |
 
-**Ngoài guide (các đợt 3 → 4H đã làm):** thang model free OpenRouter + tự loại slug chết/429 (đợt 3) · MathReader đọc đối chứng + cổng SymPy (4A) · bộ giải gọi tool SymPy + hậu kiểm & sửa 1 lần (4B) · telemetry `ai_quality_log` + endpoint admin + cổng CI (4C) · gỡ khoá TypeSafe hard-code + kiểm chứng hình học (4D) · gieo thẻ FSRS từ `/ketqua` + màn `/relearn` (4E) · cổng CI `checkJs` bắt lớp lỗi “biến chưa định nghĩa” (4G/CI) · sửa SW rò dữ liệu + `/offline` (4G) · vòng FSRS thật 16/16 + widget Mafs (4H).
+**Ngoài guide (các đợt 3 → 4H đã làm):** thang model free OpenRouter + tự loại slug chết/429 (đợt 3) · MathReader đọc đối chứng + cổng SymPy (4A) · bộ giải gọi tool SymPy + hậu kiểm & sửa 1 lần (4B) · telemetry `ai_quality_log` + endpoint admin + cổng CI (4C) · gỡ khoá TypeSafe hard-code + kiểm chứng hình học (4D) · gieo thẻ FSRS từ `/ketqua` + màn `/relearn` (4E) · cổng CI `checkJs` bắt lớp lỗi “biến chưa định nghĩa” (4G/CI) · sửa SW rò dữ liệu + `/offline` (4G) · vòng FSRS thật 16/16 + widget Mafs (4H) · **xuất hình MathViz ra tệp GeoGebra `.ggb` (đợt 7, roadmap Q4/2026 §4.2)**.
 
-**Trạng thái kỹ thuật hiện tại:** backend **111 route** (đếm trực tiếp từ bảng route của FastAPI) · **6 bộ test Python** trong CI (thêm `test_vnhsge_bank.py` — 36/36) + `tests/eval_math_regression.py` + 2 cổng `tsc` (cú pháp `src/**`, `checkJs` cho `src/app/api/**`) + `test_relearn_flow.py` đều xanh · `pnpm --frozen-lockfile` khớp lockfile · **production đã kiểm chứng 6/6 ALL_OK** (dịch có failover, nhận xét qua OpenRouter, `/api/relearn/*` + `/api/admin/ai-quality` sống và có bảo vệ).
+**Trạng thái kỹ thuật hiện tại:** backend **113 route** (đếm trực tiếp từ bảng route của FastAPI) · **7 bộ test Python** trong CI (thêm `test_vnhsge_bank.py` 36/36 và `test_geogebra_export.py` 91/91) + `tests/eval_math_regression.py` + 2 cổng `tsc` (cú pháp `src/**`, `checkJs` cho `src/app/api/**`) + `test_relearn_flow.py` đều xanh · `pnpm --frozen-lockfile` khớp lockfile · **production đã kiểm chứng 6/6 ALL_OK** (dịch có failover, nhận xét qua OpenRouter, `/api/relearn/*` + `/api/admin/ai-quality` sống và có bảo vệ).
 
 ## Đợt 1 — Đã làm
 
@@ -683,3 +683,131 @@ chính câu đó, để trang web in được nguồn ngay cạnh câu hỏi.
    `--db`, `--show-rejects`.
 3. `*.db` **không** được commit. Muốn dữ liệu đề sống sót qua các lần deploy thì cần đĩa/DB bền vững
    trên Render (xem “Lưu ý phụ thuộc”).
+
+---
+
+## Đợt 7 — Xuất GeoGebra `.ggb` từ hình MathViz (Roadmap Q4/2026 mục 2)
+
+`BAO_CAO_TIEN_DO_THANG_10_2026.md` §4 liệt kê 3 hạng mục roadmap; đây là mục **2** — “Xuất tệp
+GeoGebra tương thích (.ggb): cho phép học sinh tải cấu hình hình học đã nắn chỉnh về máy để mở trên
+GeoGebra”. Trước đợt này, hình học trong DuoMath chỉ *xem được* trong widget; muốn kéo-thả tiếp thì
+học sinh phải tự dựng lại từ đầu.
+
+### Vì sao phần lớn thời gian là “đọc đặc tả”, không phải viết mã
+
+`.ggb` chỉ là tệp ZIP chứa `geogebra.xml` (GeoGebra manual → Reference → *File Format*). Sai một
+định dạng là học sinh tải về một tệp **không mở được** — mà CI thì không có GeoGebra để thử. Nên
+cách tiếp cận là **bám vào đúng bộ tag mà tài liệu GeoGebra cho phép**, rồi tự kiểm bằng một “schema
+oracle” trong test:
+
+- `Common XML tags and types` cho danh sách con hợp lệ của `<element>` (`coords`, `matrix`,
+  `objColor`, `lineStyle`, `labelMode`, `caption`, `pointSize`, `show`…) và enum `elType`
+  (`point|segment|line|polygon|conic|…`).
+- `XML tags in geogebra.xml` cho khung tài liệu: `<geogebra><gui/><euclidianView/><kernel/>
+  <scripting/><construction/></geogebra>`, trong đó `coordSystem`, `evSettings`, `bgColor`,
+  `axesColor`, `gridColor`, `lineStyle` và **đúng 2** `<axis>` là bắt buộc.
+- File `.ggb` thật (repo chuyển đổi `jumpjack/geogebra-converter`) cho thấy `<point>` có
+  `<coords x y z="1">`, `<lineStyle>` **không** cần `opacity`, và `<command>` luôn đi kèm `<element>`.
+
+### Quyết định thiết kế (mỗi điều được test ràng buộc)
+
+1. **Một nguồn định nghĩa duy nhất: `<expression label="A" exp="(-0.8, 3.5)"/>`.** Đây chính là cú
+   pháp thanh nhập của GeoGebra, nên nó parse được *theo định nghĩa* — khác với việc tự viết bộ đệm
+   số (`<coords>` trên đoạn thẳng, `<matrix>` trên conic). Một bộ đệm lệch với định nghĩa là cách
+   exporter **âm thầm làm sai hình**, nên đối tượng phụ thuộc ở đây **không mang hình học** nào cả.
+2. **`<element>` chỉ mang style** (màu, nét, caption, cỡ điểm). Riêng điểm tự do có `<coords>` đúng
+   bằng toạ độ trong `exp`. Hệ quả: lỗi style cùng lắm làm mất nét đứt — không thể làm sai hình.
+3. **Tắt script trong tệp**: `<scripting blocked="true" disabled="true"/>` — tệp học sinh tải về
+   không thể chạy mã.
+4. **Không bỏ im lặng**: layer không hỗ trợ (`arc`, đường tròn `r = 0`, đoạn thiếu đầu…) được ghi
+   vào `skipped` kèm lý do và **chỉ số layer**, để UI nói được “N phần chưa hỗ trợ”.
+5. **Tất định**: mốc thời gian ZIP cố định + `id` = UUIDv5 của danh sách lệnh ⇒ cùng một hình cho ra
+   tệp **giống nhau từng byte** (test so byte) và có thể đối chiếu giữa các lần xuất.
+6. **Nhãn phải là định danh GeoGebra hợp lệ.** Nhãn trong IR là văn bản tự do (`M'`, `(O)`, cả một
+   cụm tiếng Việt), nên được chuẩn hoá về `[A-Za-z][A-Za-z0-9_]*`; khi phải đổi, **văn bản gốc được
+   giữ làm caption** (`labelMode="3"`) — học sinh vẫn đọc thấy đúng ký hiệu của thầy cô.
+
+### Thành phần
+
+| Tệp | Vai trò |
+|---|---|
+| `backend/geogebra_export.py` (mới) | `collect_objects()` (IR → đối tượng), `command_of()`, `build_commands()`, `build_xml()`, `build_ggb()`. Chỉ dùng thư viện chuẩn (`zipfile`, `xml.etree`, `uuid`) nên không tốn thêm phụ thuộc nào cho CI. |
+| `backend/test_geogebra_export.py` (mới) | 11 nhóm kiểm tra offline, gồm “schema oracle” và kiểm tra thứ tự phụ thuộc. |
+| `backend/main.py` | `POST /api/viz/geogebra` (+`?format=commands`), rate-limit `VIZ_EXPORT_LIMIT`, trần body `MAX_VIZ_BODY_CHARS`, `expose_headers` cho 4 header metadata. |
+| `backend/security_limits.py` | `VIZ_EXPORT_LIMIT = "20/minute"`, `MAX_VIZ_BODY_CHARS = 512_000`. |
+| `frontend/src/lib/ggbExport.js` (mới) | `countExportableGeometry()` (ẩn nút khi không có gì để xuất), `downloadGgb()`, `fetchGgbCommands()`. |
+| `frontend/src/components/duomath/GgbExportButton.jsx` (mới) | Nút “⬇ .ggb” + “📋 Lệnh”, hiện số đối tượng **do server trả về**. |
+| 3 engine của widget | `MathVizGeometry2D.js` (SVG), `MathVizJSXGraph.js`, `MathVizKonvaGeometry2D.js` đều gắn nút — học sinh dùng engine nào cũng xuất được. |
+| `.github/workflows/quality-gate.yml` | Thêm bước “Export — MathViz → GeoGebra worksheet (.ggb)” vào job `offline-suites`. |
+
+Hai thứ được **cố ý không** xuất: trạng thái xem của widget (engine đang chọn, điểm đang kéo,
+“ghost” của phép biến đổi) — tệp chứa *bài toán*, không chứa thao tác xem; và ảnh thu nhỏ
+`geogebra_thumbnail.png` (không bắt buộc, GeoGebra tự tạo lại khi lưu).
+
+### Hai lỗi thật bắt được ngay khi dựng (nhờ chạy thật, không nhờ đọc lại mã)
+
+1. **`E` bị đổi thành `PE`.** Tôi so tên dành riêng bằng chữ thường, mà GeoGebra **phân biệt hoa
+   thường**: `e` mới là hằng số Euler, `E` là tên điểm hoàn toàn hợp lệ. Hậu quả nếu bỏ qua: mọi
+   điểm `E`, `X`, `Y` trong bài đều bị đổi tên thành `PE`, `PX`… Bản vá: so khớp **đúng nguyên văn**
+   và thêm `xAxis/yAxis/zAxis` vào danh sách dành riêng.
+2. **Điểm `H` (trực tâm) bị mất tên, thành `O2`.** Tâm đường tròn do exporter tự sinh trùng toạ độ
+   với điểm thật của bài, và vì “đã có điểm ở đó” nên giữ tên cũ. Hậu quả: trong GeoGebra học sinh
+   thấy `O2` ở chỗ đáng lẽ là `H`, tệ hơn là lệnh `Circle(O2, …)` cũng theo tên sai. Bản vá: tách
+   “mô tả endpoint” khỏi “tạo điểm”, cho điểm tự sinh **nhận tên của bài** khi bài có điểm ở đó, và
+   **phân giải nhãn ở bước render** nên mọi lệnh tham chiếu tự động đi theo tên mới
+   (`c2 = Circle(H, 2.04)`).
+
+### Kiểm chứng
+
+- `python backend/test_geogebra_export.py` → **91/91** (`ALL_GEOGEBRA_EXPORT_TESTS_PASSED`), đã thêm
+  vào job `offline-suites`. Nội dung đáng chú ý:
+  - **schema oracle**: mọi tag con của `<element>` phải nằm trong danh sách tài liệu, mọi `type`
+    phải thuộc enum `elType`, chỉ dùng 4 loại (`point`, `segment`, `line`, `polygon`, `conic`);
+  - **thứ tự phụ thuộc**: mỗi lệnh chỉ được tham chiếu đối tượng khai báo *phía trên* nó (GeoGebra
+    chạy từ trên xuống) — lỗi mà chỉ chạy thật mới lộ;
+  - **không có bộ đệm hình học**: không `<matrix>` nào, và mọi đối tượng phụ thuộc không có `<coords>`;
+  - **giữ đúng toạ độ**: `A(-0.8, 3.5)`, `C(3, −1.8)`, `E(1.13, 0.81)` khớp nguyên văn; điểm trùng
+    toạ độ không bị nhân đôi (9 điểm cho hình mẫu);
+  - **không bỏ im lặng**: `arc`, `r = 0`, tâm thiếu toạ độ, đoạn thiếu đầu, layer không phải object…
+    đều có mặt trong `skipped` kèm lý do, phần dùng được vẫn xuất;
+  - **nhãn**: `M'` → `M` + caption, `(O)` → `O` + caption, `x` (dành riêng) → `Px` + caption, tiếng
+    Việt giữ nguyên trong caption, id trùng được thêm hậu tố, không nhãn nào trùng nhau;
+  - **tất định**: hai lần xuất ra byte giống nhau; hình khác ⇒ `id` UUID khác;
+  - **thoát ký tự**: `& < > "` và tiếng Việt trong `title`/`caption` quay vòng chính xác.
+- **Bằng chứng HTTP thật** (uvicorn + `TestClient` trên `main.app`, không chạy lifespan/DB):
+  - `POST /api/viz/geogebra` → **200**, `content-type: application/vnd.geogebra.file`,
+    `content-disposition: attachment; filename="duomath-hinh-hoc.ggb"`,
+    `x-duomath-objects: 7`, `x-duomath-skipped: 1`, ZIP hợp lệ (`testzip: None`) và chỉ chứa
+    `geogebra.xml`;
+  - `POST /api/viz/geogebra?format=commands` → **200** với
+    `['A = (0, 0)', 'B = (4, 0)', 'C = (0, 3)', 'O1 = (2, 1.5)', 's1 = Segment(A, B)',
+    'poly1 = Polygon(A, B, C)', 'c1 = Circle(O1, 2.5)']`;
+  - JSON hỏng → **400** · `{"layers": "nope"}` → **400** · body quá lớn → **413** · `{}` → **200**
+    (tệp rỗng hợp lệ, không lỗi).
+- Cổng frontend: `node scripts/check-api-base.mjs` = OK (chỉ dùng `resolveApiBase`) ·
+  `tsc -p tsconfig.syntax.json` = 0 lỗi · `tsc -p tsconfig.checkjs.json` = 0 lỗi ·
+  `eslint src/lib/ggbExport.js src/components/duomath/GgbExportButton.jsx` = 0 lỗi.
+  (`eslint` trên các file widget 2500 dòng cũ thì hết RAM cục bộ — cùng giới hạn đã biết của máy
+  dev, không phải lỗi mã.)
+
+### Hạn chế đã biết
+
+1. **Không thể kiểm “GeoGebra desktop mở được tệp” ngay trong CI** (không có GeoGebra, không có
+   mạng trong job offline). Bù lại bằng 3 lớp: bám đúng đặc tả + schema oracle ở trên, cách viết
+   duy nhất `<expression>` (cú pháp thanh nhập), và nút **“📋 Lệnh”** để học sinh dán trực tiếp vào
+   geogebra.org — con đường chắc chắn chạy kể cả khi bản XML có trục trặc với một phiên bản nào đó.
+2. Một số layer của IR chưa có tương ứng trong bộ 4 loại đang vẽ (ví dụ `arc`): chúng được báo là
+   “chưa hỗ trợ” chứ chưa được chuyển thành cung. Muốn thêm thì cần thêm `command_of()` + một mục
+   trong test.
+3. Nút xuất chưa có trong bản PWA offline (trang offline không gọi được API) — đúng như thiết kế,
+   nhưng đáng ghi lại.
+
+### Việc còn lại (không chặn)
+
+- Mở thử một tệp `.ggb` bằng GeoGebra thật **một lần** (việc của chủ dự án, cần trình duyệt) — đây
+  là bước kiểm chứng cuối mà CI không làm thay được.
+- Roadmap §4 còn 2 mục chưa làm: **1. Step-by-step Animated Canvas** và **3. Vietnamese Math Voice
+  Agent** (mục 3 cần micro + dịch vụ nhận dạng giọng nói nên phải cân nhắc quyền riêng tư trước).
+
+
+
