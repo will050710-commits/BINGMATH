@@ -57,6 +57,33 @@ DEFAULT_INDEX_PATH = os.environ.get(
 DEFAULT_EMBEDDING_MODEL = os.environ.get("MATH_EMBEDDING_MODEL", "AITeamVN/Vietnamese_Embedding")
 EMBEDDING_QUERY_PREFIX = os.environ.get("MATH_EMBEDDING_QUERY_PREFIX", "")
 EMBEDDING_PASSAGE_PREFIX = os.environ.get("MATH_EMBEDDING_PASSAGE_PREFIX", "")
+_EMBEDDINGS_OFF = {"off", "false", "0", "no", "disable", "disabled"}
+_EMBEDDINGS_OFF_LOGGED = False
+
+
+def embeddings_disabled() -> bool:
+    """MATH_RETRIEVAL_EMBEDDINGS: off, or auto (default = use it when installed).
+
+    Đợt 4H-2b, and the reason it exists: the dense half of the hybrid search
+    encodes the ENTIRE problem bank with a transformer the first time somebody
+    asks a question, and it did that inside the request's event loop. On a small
+    single-worker instance that is minutes of CPU and a memory spike (plus a
+    HuggingFace model download on a cold container) — the whole service stops
+    answering, the platform replies 502 with its own HTML error page, and the
+    browser reports that page (no CORS headers) as a CORS failure. That is
+    exactly the production incident of 2026-09-28.
+
+    Set MATH_RETRIEVAL_EMBEDDINGS=off to keep the model out of the process: the
+    hybrid search still runs on its TF-IDF half, trading a little recall for a
+    service that stays alive. Off is a no-op when the package is not installed.
+    """
+    global _EMBEDDINGS_OFF_LOGGED
+    disabled = os.environ.get("MATH_RETRIEVAL_EMBEDDINGS", "auto").strip().lower() in _EMBEDDINGS_OFF
+    if disabled and not _EMBEDDINGS_OFF_LOGGED:
+        _EMBEDDINGS_OFF_LOGGED = True
+        logger.info("[EmbeddingBackend] dense retrieval disabled by MATH_RETRIEVAL_EMBEDDINGS "
+                    "— TF-IDF-only hybrid search.")
+    return disabled
 RRF_K = 60  # standard RRF damping constant — well-established default
 
 _STOPWORDS = {
@@ -96,6 +123,8 @@ class EmbeddingBackend:
     def _ensure_loaded(self) -> bool:
         if self._encode_fn is not None:
             return True
+        if embeddings_disabled():
+            return False
         if self._model is not None:
             return True
         if self._load_attempted and not self.available:

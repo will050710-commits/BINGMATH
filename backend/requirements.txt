@@ -25,7 +25,14 @@ json-repair>=0.30.0
 # Phase 4 / Đợt 4E — FSRS (Free Spaced Repetition Scheduler) for the relearn
 # list. Package name is `fsrs` (the guide calls it py-fsrs); 6.x is pure Python.
 fsrs>=6.0.0
-sentence-transformers>=3.0.0
+# Đợt 4H-2b: sentence-transformers is deliberately NOT here any more. It pulls
+# torch (~2 GB of wheels, RAM and load time), and its dense retrieval path
+# encodes the WHOLE problem bank the first time a student asks something — on a
+# small instance that froze the single worker, and the platform answered 502 with
+# its own HTML page, which the browser reports as a CORS failure (production,
+# 2026-09-28). Retrieval now runs on its TF-IDF half by design. Install the extra
+# only on an instance with the memory for it:
+#     pip install -r requirements-retrieval.txt
 
 # ── Unlimited-OCR Spaces API & Multi-page PDF (lightweight client) ──
 gradio_client>=2.0.0

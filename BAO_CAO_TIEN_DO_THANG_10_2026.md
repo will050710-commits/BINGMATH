@@ -119,6 +119,44 @@ mindmap
 - `tsc -p tsconfig.syntax.json` và `tsc -p tsconfig.checkjs.json`: **exit 0**; `check-api-base.mjs`: **exit 0**.
 - Các suite cũ giữ nguyên kết quả: MathReader, MathSolver, VNHSGE bank, GeoGebra export, TypeSafe guard, benchmark hồi quy (30/30, 100%).
 
+### 2.8. Nguyên Nhân Gốc Thật: Ứng Dụng Tự Treo, Không Phải Proxy (Đợt 4H-2b)
+
+Bước kiểm chứng production bằng script probe (không dùng browser) sau khi 2.7 lên `main` cho thấy
+điều quan trọng hơn cả triệu chứng ban đầu:
+
+| Phép đo trên production (trước khi bản sửa được deploy) | Kết quả |
+|---|---|
+| `OPTIONS /api/chat` từ origin Vercel | **200 + ACAO đúng** (CORS thật sự không hỏng) |
+| `GET /api/health` | **không phản hồi trong 30 s** — endpoint rẻ nhất của hệ thống |
+| `GET /api/changelog` | **không phản hồi trong 30 s** |
+| `POST /api/chat` (chỉ chữ, không ảnh) | **502 sau 175 s**, body là **trang HTML lỗi của Render**, không phải JSON của ứng dụng |
+
+Hai kết luận:
+
+1. Lỗi **không** liên quan tới ảnh lớn: request chỉ-chữ cũng chết, và **cả service** (kể cả
+   `/api/health`) ngừng trả lời ⇒ ứng dụng treo, không phải proxy chặn riêng endpoint chat.
+2. Trang 502 đó do **Render** sinh ra, nằm *ngoài* `CORSMiddleware`, nên **không có header CORS** —
+   và đó chính xác là lý do browser báo "No 'Access-Control-Allow-Origin' header is present".
+   "Lỗi CORS" là hệ quả, không phải nguyên nhân.
+
+**Nguyên nhân gốc:** `backend/requirements.txt` cài `sentence-transformers` ⇒ pip kéo **torch (~2 GB)**
+vào instance nhỏ; phần *dense* của hybrid retrieval mã hoá **toàn bộ ngân hàng đề** bằng transformer
+ngay lần hỏi đầu tiên (kèm việc tải model từ HuggingFace trên container lạnh), và lời gọi đó chạy
+**đồng bộ ngay trong event loop** của uvicorn (`main.py:3700-3703` trước khi sửa). Với `--workers 1`,
+một request như vậy khoá toàn bộ vòng lặp sự kiện: mọi request khác — kể cả `/api/health` — xếp hàng
+chờ, proxy trả 502, browser báo CORS. Điều này cũng giải thích vì sao chatbot trả lời cụt/ngắn: request
+của học sinh bị huỷ trước khi pipeline kịp sinh xong câu trả lời.
+
+**Bản sửa Đợt 4H-2b:**
+
+| Việc | Chi tiết |
+|---|---|
+| Đưa mọi việc CPU-bound ra khỏi event loop | `asyncio.to_thread` cho `retrieve_math_context`, `retrieve_similar_problems`, `preprocess_image_b64` (PIL/CLAHE) và `preprocess_geometry_image` (OpenCV) — `/api/health` vẫn trả lời được trong lúc ảnh đang xử lý |
+| Có ngân sách riêng cho retrieval | `CHAT_RETRIEVAL_BUDGET_S` (10 s): hết hạn thì trả lời **không kèm** khối tham chiếu, chứ không trả 504 — vì câu trả lời vẫn hữu ích |
+| Bỏ torch khỏi production | `sentence-transformers` ra khỏi `requirements.txt`, chuyển thành extra tuỳ chọn `requirements-retrieval.txt`; hybrid search chạy bằng nửa TF-IDF đúng như thiết kế `EmbeddingBackend` đã có sẵn |
+| Công tắc rõ ràng, có thể đảo ngược | `MATH_RETRIEVAL_EMBEDDINGS=off` (mặc định production, khai báo trong `render.yaml`); đổi sang `auto` sau khi cài extra trên instance đủ RAM |
+| Bằng chứng trong CI | `test_chat_budget.py` nay **62/62**: thêm 2 phép đo *hành vi* (một lời gọi đồng bộ khoá vòng lặp ⇒ ~0 vòng ticker; cùng lời gọi đó qua `to_thread` ⇒ >10 vòng) và 11 kiểm tra cấu trúc (đã offload chưa, ngân sách, không còn `sentence-transformers` trong requirements, công tắc trong `render.yaml`) |
+
 ---
 
 ## 3. KẾT QUẢ ĐO LƯỜNG & KIỂM THỬ THỰC NGHIỆM (BENCHMARKS)

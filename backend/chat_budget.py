@@ -67,6 +67,10 @@ CHAT_VISION_BUDGET_S = env_budget("CHAT_VISION_BUDGET_S", 45.0, 5.0, 90.0)
 CHAT_VISION_AGENT_BUDGET_S = env_budget("CHAT_VISION_AGENT_BUDGET_S", 25.0, 5.0, 90.0)
 # Deterministic checks + cross-family critic + at most one repair round.
 CHAT_VERIFY_BUDGET_S = env_budget("CHAT_VERIFY_BUDGET_S", 25.0, 5.0, 90.0)
+# Knowledge-base / problem-bank retrieval (Đợt 4H-2b). It is CPU-bound and runs in
+# a thread, and the answer is still useful without the reference block — so this
+# budget decides only how long we WAIT for retrieval, never whether we answer.
+CHAT_RETRIEVAL_BUDGET_S = env_budget("CHAT_RETRIEVAL_BUDGET_S", 10.0, 1.0, 30.0)
 
 # Shown when the request outlives its budget. Deliberately actionable (what the
 # student can do next) and honest (it does NOT pretend the answer failed).
@@ -135,4 +139,5 @@ def stage_plan() -> Dict[str, float]:
         "vision_s": CHAT_VISION_BUDGET_S,
         "vision_agent_s": CHAT_VISION_AGENT_BUDGET_S,
         "verify_s": CHAT_VERIFY_BUDGET_S,
+        "retrieval_s": CHAT_RETRIEVAL_BUDGET_S,
     }

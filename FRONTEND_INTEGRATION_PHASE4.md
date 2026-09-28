@@ -857,6 +857,13 @@ mà không sửa được lỗi. Ghi chú này được nhắc lại ngay trong 
   quan tới đợt này.
 - Bước kiểm chứng cuối cần người: gửi lại đúng tấm ảnh đã gây lỗi trên bản deploy mới và xem
   `/api/health` (`chat_budgets_s`, `text_tiers`) — CI không đo được proxy production.
+- Nguyên nhân gốc thật hoá ra **nặng hơn phần frontend**: một lời gọi `sentence_transformers` đồng bộ
+  trong event loop (cộng torch ~2 GB trong `requirements.txt`) làm **cả service** ngừng trả lời, và
+  Render trả trang 502 *không có header CORS* — đó mới là "lỗi CORS" mà người dùng thấy. Phần frontend
+  ở trên vẫn cần (nó rút ngắn cửa sổ im lặng và nói đúng lý do), nhưng bản sửa quyết định là ở backend:
+  xem **Đợt 4H-2b** trong `BAO_CAO_TIEN_DO_THANG_10_2026.md` §2.8 (`asyncio.to_thread` cho retrieval +
+  preprocessing, `CHAT_RETRIEVAL_BUDGET_S`, bỏ `sentence-transformers` khỏi production,
+  `MATH_RETRIEVAL_EMBEDDINGS=off`).
 
 
 

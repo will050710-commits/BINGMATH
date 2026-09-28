@@ -3565,7 +3565,8 @@ async def chat(request: Request):
         # Risk 5. media_type is forced to JPEG since that's what comes out.
         try:
             _with_grid = os.environ.get("VISION_GRID_OVERLAY", "false").lower() in ("true", "1", "yes")
-            raw_b64, _img_meta = preprocess_image_b64(raw_b64, with_grid=_with_grid)
+            raw_b64, _img_meta = await asyncio.to_thread(
+                preprocess_image_b64, raw_b64, with_grid=_with_grid)
             media_type = "image/jpeg"
         except Exception as e_prep:
             logger.debug(f"Image preprocessing skipped, using original bytes: {e_prep}")
@@ -3575,7 +3576,10 @@ async def chat(request: Request):
         try:
             from image_preprocessing import preprocess_geometry_image
             _raw_img_bytes = base64.b64decode(raw_b64)
-            _, _cv_hints = preprocess_geometry_image(_raw_img_bytes)
+            # Đợt 4H-2b: OpenCV (deskew + Hough) is the heaviest CPU step per
+            # image; a thread keeps the single event loop answering /api/health
+            # while it runs instead of freezing the whole service.
+            _, _cv_hints = await asyncio.to_thread(preprocess_geometry_image, _raw_img_bytes)
             if _cv_hints.get("cv_processed"):
                 logger.info(f"[OpenCV] Structural hints: lines~{_cv_hints.get('line_count_estimate')}, circles~{_cv_hints.get('circle_count_estimate')}")
         except Exception as e_cv:
@@ -3697,10 +3701,27 @@ async def chat(request: Request):
         system_prompt = cached_system_prompt(prompt_variant, _widget)
 
 
-    retrieved_kb = retrieve_math_context(user_message)
+    # Đợt 4H-2b: retrieval is CPU-bound (the dense half encodes the WHOLE problem
+    # bank on first use) and it used to run INSIDE the event loop, so one cold
+    # request froze the entire single-worker service — /api/health included — and
+    # the platform answered 502 with its own HTML error page, which carries no
+    # CORS headers and is therefore reported by the browser as a CORS failure.
+    # Off the loop, and bounded: the answer is still useful without the reference
+    # block, so a slow knowledge base must never delay it.
+    try:
+        retrieved_kb = await asyncio.wait_for(
+            asyncio.to_thread(retrieve_math_context, user_message),
+            timeout=_budget.clamp(chat_budget.CHAT_RETRIEVAL_BUDGET_S),
+        )
+    except Exception as e_kb:
+        logger.warning("[Chat] KB retrieval skipped (%s: %s)", type(e_kb).__name__, e_kb)
+        retrieved_kb = ""
     try:
         from math_problem_retrieval import retrieve_similar_problems
-        retrieved_examples = retrieve_similar_problems(user_message, top_k=2)
+        retrieved_examples = await asyncio.wait_for(
+            asyncio.to_thread(retrieve_similar_problems, user_message, 2),
+            timeout=_budget.clamp(chat_budget.CHAT_RETRIEVAL_BUDGET_S),
+        )
     except Exception as e_retr:
         logger.debug(f"Problem-bank retrieval skipped: {e_retr}")
         retrieved_examples = ""

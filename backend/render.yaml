@@ -118,6 +118,19 @@ services:
         value: "25"
       - key: CHAT_VERIFY_BUDGET_S
         value: "25"
+      # How long a chat request may WAIT for knowledge-base retrieval. The answer
+      # is still useful without the reference block, so retrieval can never be the
+      # reason a student gets nothing.
+      - key: CHAT_RETRIEVAL_BUDGET_S
+        value: "10"
+      # Đợt 4H-2b — retrieval stays TF-IDF-only on this instance. The dense path
+      # needs torch (~2 GB) and encodes the whole problem bank on the first search;
+      # that is what froze the worker and produced the 502 that the browser read as
+      # a CORS error. Switch to "auto" only together with
+      # `pip install -r requirements-retrieval.txt` on an instance with the memory
+      # for it.
+      - key: MATH_RETRIEVAL_EMBEDDINGS
+        value: "off"
       # Local OCR stays OFF by design (easyocr+torch is ~2 GB and does not fit
       # this instance; the vision models do that job). If it is ever enabled, the
       # weights go here instead of a hard-coded "D:\easyocr_models", which only

@@ -147,8 +147,55 @@ def test_timeout_payload():
           "không phải lỗi kết nối" in cb.TIMEOUT_REPLY)
     plan = cb.stage_plan()
     check("stage_plan exposes every knob /api/health reports",
-          set(plan) == {"request_s", "vision_s", "vision_agent_s", "verify_s"}
+          set(plan) == {"request_s", "vision_s", "vision_agent_s", "verify_s", "retrieval_s"}
           and plan["request_s"] == cb.CHAT_REQUEST_TIMEOUT_S)
+
+
+# ── 3b. the invariant behind 4H-2b: a blocking call must not own the loop ────
+
+def test_event_loop_liveness():
+    """Why offloading matters: this IS the 502 mechanism.
+
+    While a synchronous call runs, nothing else on the event loop progresses —
+    which is how a slow retrieval became "the whole API is dead", a platform 502
+    with its own HTML body, and therefore a CORS error in the browser.
+    """
+    print("\n[event-loop liveness]")
+    import asyncio as _asyncio
+    import time as _time
+
+    def blocking(seconds):
+        _time.sleep(seconds)
+        return "done"
+
+    async def ticks_while(call):
+        state = {"ticks": 0, "stop": False}
+
+        async def ticker():
+            while not state["stop"]:
+                state["ticks"] += 1
+                await _asyncio.sleep(0.01)
+
+        task = _asyncio.create_task(ticker())
+        await call()
+        state["stop"] = True
+        await task
+        return state["ticks"]
+
+    async def in_loop():
+        async def blocked():
+            blocking(0.3)
+        return await ticks_while(blocked)
+
+    async def offloaded():
+        return await ticks_while(lambda: _asyncio.to_thread(blocking, 0.3))
+
+    stalled = _asyncio.run(in_loop())
+    served = _asyncio.run(offloaded())
+    check("a synchronous call inside the loop stops every other task (the 502 mechanism)",
+          stalled <= 2, f"{stalled} loop turns")
+    check("the same call offloaded with to_thread lets the server keep answering",
+          served >= 10, f"{served} loop turns")
 
 
 # ── 4. main.py must still wire all of it ────────────────────────────────────
@@ -208,6 +255,40 @@ def test_main_py_wiring():
     check("an answer with no tier recorded stays visible in the telemetry",
           '"_no_model"' in MAIN)
 
+    # Đợt 4H-2b: the CPU-bound half of the pipeline must not own the event loop.
+    check("the knowledge-base call is offloaded to a thread",
+          "asyncio.to_thread(retrieve_math_context, user_message)" in MAIN)
+    check("the problem-bank (embedding) call is offloaded too",
+          "asyncio.to_thread(retrieve_similar_problems, user_message, 2)" in MAIN)
+    check("both retrieval calls are bounded by the retrieval budget",
+          MAIN.count("chat_budget.CHAT_RETRIEVAL_BUDGET_S") >= 2,
+          str(MAIN.count("chat_budget.CHAT_RETRIEVAL_BUDGET_S")))
+    check("image preprocessing (PIL/CLAHE) is offloaded",
+          "asyncio.to_thread(\n                preprocess_image_b64" in MAIN)
+    check("the OpenCV hint pass is offloaded",
+          "asyncio.to_thread(preprocess_geometry_image, _raw_img_bytes)" in MAIN)
+    check("no CPU-bound stage was left running inside the loop",
+          "retrieved_kb = retrieve_math_context(" not in MAIN
+          and "= preprocess_image_b64(raw_b64, with_grid=" not in MAIN)
+    check("retrieval is optional, so its timeout only drops the reference block",
+          'retrieved_kb = ""' in MAIN and 'retrieved_examples = ""' in MAIN)
+
+    # Torch is what made the instance stop answering at all — keep it out.
+    reqs = io.open(os.path.join(BACKEND_DIR, "requirements.txt"), encoding="utf-8").read()
+    check("sentence-transformers (torch, ~2 GB) is out of the production requirements",
+          "sentence-transformers" not in strip_comments(reqs))
+    check("it survives as a documented optional extra",
+          os.path.exists(os.path.join(BACKEND_DIR, "requirements-retrieval.txt")))
+    render = io.open(os.path.join(BACKEND_DIR, "render.yaml"), encoding="utf-8").read()
+    check("production switches the dense retrieval path off",
+          re.search(r'MATH_RETRIEVAL_EMBEDDINGS\s*\n\s*value:\s*"off"', render) is not None)
+    retrieval = io.open(os.path.join(BACKEND_DIR, "math_problem_retrieval.py"), encoding="utf-8").read()
+    check("the gate lives in the retrieval module",
+          "def embeddings_disabled()" in retrieval and "MATH_RETRIEVAL_EMBEDDINGS" in retrieval)
+    check("the gate cannot break the test-injected embedder",
+          retrieval.index("if self._encode_fn is not None:")
+          < retrieval.index("if embeddings_disabled():"))
+
     # /api/health must describe reality, not aspiration.
     health = MAIN[MAIN.find('@app.get("/api/health")'):]
     next_route = health.find("@app.get", 10)     # 10 skips the decorator itself
@@ -236,6 +317,7 @@ def main():
     test_env_budget()
     test_stage_budget()
     test_timeout_payload()
+    test_event_loop_liveness()
     test_main_py_wiring()
     print(f"\n{checks - len(failures)}/{checks} checks passed")
     if failures:

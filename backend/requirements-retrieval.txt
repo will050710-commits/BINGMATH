@@ -1,0 +1,17 @@
+# backend/requirements-retrieval.txt
+#
+# OPTIONAL extra — the dense (embedding) half of the hybrid problem retrieval.
+#
+# Install this ONLY on an instance that can host a transformer: torch alone is
+# ~2 GB of wheels and needs ~1 GB of RAM at inference, and the first search
+# encodes the whole problem bank. On a small instance this is exactly what made
+# /api/chat look like a CORS failure — the single worker stopped answering, the
+# platform replied 502 with its own error page, and the browser blamed CORS
+# (production, 2026-09-28). See backend/math_problem_retrieval.py.
+#
+# After installing, set MATH_RETRIEVAL_EMBEDDINGS=auto (or 1/on) so the dense
+# path is used again; `off` keeps it disabled even when the package is present.
+# The model itself downloads from HuggingFace on first use — pre-warm it in the
+# build step, or point HF_HOME at a persistent disk, so no student pays that
+# latency on a cold container.
+sentence-transformers>=3.0.0
