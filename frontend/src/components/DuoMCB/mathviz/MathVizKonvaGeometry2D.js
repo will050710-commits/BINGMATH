@@ -6,6 +6,7 @@ import {
   Move, Palette, Download, Sparkles, Link2
 } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
+import GgbExportButton from '../../duomath/GgbExportButton';
 
 const CANVAS_SIZE = 520;
 const fmt = (n, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : '—');
@@ -909,7 +910,8 @@ export default function MathVizKonvaGeometry2D({ data, onSwitchEngine }) {
         </div>
 
         {/* Engine switcher buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <GgbExportButton data={data} />
           <div style={{
             display: 'flex',
             background: isLightBg ? '#f1f5f9' : '#161b22',

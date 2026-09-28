@@ -4,6 +4,7 @@ import { RotateCcw, Plus, Trash2, Compass, Sparkles, ZoomIn, ZoomOut, Maximize2,
 import MathVizTitle from './MathVizTitle';
 import MathVizJSXGraph from './MathVizJSXGraph';
 import MathVizKonvaGeometry2D from './MathVizKonvaGeometry2D';
+import GgbExportButton from '../../duomath/GgbExportButton';
 
 const CANVAS_SIZE = 520;
 const fmt = (n, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : '—');
@@ -1127,7 +1128,8 @@ export default function MathVizGeometry2D({ data }) {
     <div style={container}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <MathVizTitle icon="📐" title={data?.title} fallback="Hình học phẳng 2D (Simple Display)" />
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <GgbExportButton data={data} />
         <button
           onClick={() => setEngine('konva')}
           style={{

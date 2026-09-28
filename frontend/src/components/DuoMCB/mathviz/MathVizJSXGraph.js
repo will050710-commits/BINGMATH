@@ -4,6 +4,7 @@ import JXG from 'jsxgraph';
 import '@/styles/jsxgraph.css';
 import { ZoomIn, ZoomOut, RotateCcw, CheckCircle2, AlertTriangle, Compass } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
+import GgbExportButton from '../../duomath/GgbExportButton';
 
 export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }) {
   const containerRef = useRef(null);
@@ -638,7 +639,8 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }
           fallback="Hình học phẳng 2D (Adjusting Mode)"
         />
 
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <GgbExportButton data={data} />
           {onSwitchToKonva && (
             <button
               onClick={onSwitchToKonva}

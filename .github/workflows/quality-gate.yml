@@ -64,6 +64,15 @@ jobs:
         working-directory: backend
         run: python test_vnhsge_bank.py
 
+      # Roadmap Q4/2026 item 2 — the GeoGebra exporter. Not "a file came out":
+      # the suite re-opens the .ggb and holds geogebra.xml against the GeoGebra
+      # manual (documented tags, documented element types, dependency order,
+      # deterministic bytes), because a worksheet that silently loses an object
+      # is worse than no export at all. Stdlib only, so it adds no dependency.
+      - name: Export — MathViz → GeoGebra worksheet (.ggb)
+        working-directory: backend
+        run: python test_geogebra_export.py
+
       - name: Anti-hallucination — TypeSafe guard
         working-directory: backend
         run: python test_typesafe_guard.py

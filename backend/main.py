@@ -50,7 +50,7 @@ import sympy
 import httpx # pyright: ignore[reportMissingImports]
 import orjson
 from fastapi import FastAPI, Request, HTTPException, Depends # pyright: ignore[reportMissingImports]
-from fastapi.responses import JSONResponse, StreamingResponse # pyright: ignore[reportMissingImports]
+from fastapi.responses import JSONResponse, StreamingResponse, Response # pyright: ignore[reportMissingImports]
 from fastapi.middleware.cors import CORSMiddleware # pyright: ignore[reportMissingImports]
 from fastapi.middleware.gzip import GZipMiddleware # pyright: ignore[reportMissingImports]
 from fastapi.middleware.trustedhost import TrustedHostMiddleware # pyright: ignore[reportMissingImports]
@@ -130,8 +130,9 @@ from slowapi.errors import RateLimitExceeded  # pyright: ignore[reportMissingImp
 from security_limits import (  # Phase 0: rate limiting + payload caps
     limiter, CHAT_LIMIT, SESSION_LIMIT, TRANSLATE_LIMIT, ANALYZE_LIMIT,
     GRADING_LIMIT, GEOMETRY_LIMIT, PARSE_FILE_LIMIT, VIDEO_LIMIT,
-    ENHANCE_LIMIT, TYPESAFE_LIMIT, MAX_CHAT_MESSAGE_CHARS,
+    ENHANCE_LIMIT, TYPESAFE_LIMIT, VIZ_EXPORT_LIMIT, MAX_CHAT_MESSAGE_CHARS,
     MAX_IMAGE_B64_CHARS, MAX_DOCUMENT_B64_CHARS, MAX_INSTRUCTIONS,
+    MAX_VIZ_BODY_CHARS,
 )
 from grading import (  # Phase 1: server-side grading (audit finding P1-8)
     answer_key_stats, grade_section, known_test, safe_symbolic_parse,
@@ -2714,6 +2715,15 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
+    # Our own metadata headers (object counts and file id of a .ggb export) are
+    # not on the CORS safelist, so a browser could not read them without this.
+    # They carry no user data — see /api/viz/geogebra.
+    expose_headers=[
+        "Content-Disposition",
+        "X-DuoMath-Objects",
+        "X-DuoMath-Skipped",
+        "X-DuoMath-File-Id",
+    ],
     allow_credentials=False,  # auth uses Bearer tokens, not cookies
     max_age=3600,
 )
@@ -9412,6 +9422,55 @@ async def api_alphageometry_translate(request: Request):
         return JSONResponse({**formal_info, **deduction})
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.post("/api/viz/geogebra")
+@limiter.limit(VIZ_EXPORT_LIMIT)
+async def api_viz_geogebra(request: Request):
+    """Xuất hình MathViz hiện tại thành tệp GeoGebra (.ggb) — Roadmap Q4/2026 §4.2.
+
+    Anonymous on purpose: this is a pure local transform (stdlib `zipfile`, no
+    model call, nothing stored) and the widget is used by visitors who are not
+    signed in — the same reason /api/chat is anonymous-friendly. The payload cap
+    and the rate limit are all it needs. `?format=commands` returns the same
+    construction as GeoGebra input-bar text, for a student who would rather type
+    it into geogebra.org by hand.
+    """
+    raw = await request.body()
+    if len(raw) > MAX_VIZ_BODY_CHARS:
+        raise HTTPException(413, f"Geometry payload too large (max {MAX_VIZ_BODY_CHARS // 1000} KB).")
+    try:
+        payload = json.loads(raw or b"{}")
+    except (ValueError, TypeError):
+        raise HTTPException(400, "Body must be JSON.")
+
+    viz = payload.get("viz") if isinstance(payload, dict) and isinstance(payload.get("viz"), dict) else payload
+
+    from geogebra_export import (  # local import: keeps main.py's import graph light
+        GGB_FILENAME, GGB_MIME, GeoGebraExportError, build_commands, build_ggb,
+    )
+    try:
+        if (request.query_params.get("format") or "ggb").lower() == "commands":
+            commands, report = build_commands(viz)
+            return JSONResponse({"commands": commands, **{k: v for k, v in report.items() if k != "commands"}})
+        data, report = build_ggb(viz)
+    except GeoGebraExportError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:  # never leak a traceback to the client
+        print(f"[viz/geogebra] export failed: {type(e).__name__}: {e}")
+        raise HTTPException(500, "Could not build the GeoGebra file.")
+
+    return Response(
+        content=data,
+        media_type=GGB_MIME,
+        headers={
+            "Content-Disposition": f'attachment; filename="{GGB_FILENAME}"',
+            "X-DuoMath-Objects": str(report["objects"]),
+            "X-DuoMath-Skipped": str(len(report["skipped"])),
+            "X-DuoMath-File-Id": report["id"],
+            "Cache-Control": "no-store",
+        },
+    )
+
 
 @app.post("/api/video/enhance")
 @limiter.limit(ENHANCE_LIMIT)
