@@ -4,6 +4,10 @@ import dynamic from "next/dynamic";
 import styles from "./DuoMCBPage.module.css";
 import Image from "next/image";
 import { createSession, chat, generateVideo } from "./duoServer";
+// Đợt 4H-2: shrink the photo and check the server's cap BEFORE it is posted.
+// src/lib/imageDownscale.js explains why this is the cheapest fix for the
+// production chat timeout; scripts/check-image-downscale.mjs guards it in CI.
+import { prepareImageForUpload } from "@/lib/imageDownscale";
 import { makeSafeEvaluator } from "@/utils/safeMathEval";
 
 // Phase 0 security hardening: shared, memoised mathjs evaluator that replaced
@@ -2042,6 +2046,9 @@ export default function DuoMCBPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [imageBase64, setImageBase64] = useState(null);
+  // Đợt 4H-2: what happened to the attached image (compressed to X KB, or why it
+  // could not be sent). Shown next to the thumbnail instead of failing silently.
+  const [imageNotice, setImageNotice] = useState(null);
   const [savedHistory, setSavedHistory] = useState([]);
 
   useEffect(() => {
@@ -2166,17 +2173,28 @@ export default function DuoMCBPage() {
     }
   };
 
-  const processDroppedFile = (file) => {
+  const processDroppedFile = async (file) => {
     if (!file) return;
     const isImg = file.type?.startsWith("image/") || /\.(png|jpe?g|webp|gif|bmp|svg|heic|avif|ico|tiff)$/i.test(file.name || "");
     if (isImg) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const res = ev.target.result;
-        setImagePreview(res);
-        setImageBase64(res);
-      };
-      reader.readAsDataURL(file);
+      // Đợt 4H-2: downscale BEFORE the bytes become state, so the preview the
+      // student sees is exactly what gets uploaded (a 4-5 MB photo becomes a
+      // ~200 KB JPEG, which is what keeps the pipeline inside its budget).
+      const prepared = await prepareImageForUpload(file);
+      if (!prepared.ok || !prepared.dataUrl) {
+        setImagePreview(null);
+        setImageBase64(null);
+        setImageNotice({
+          kind: "warn",
+          text: prepared.message || "Không đọc được ảnh này. Em thử ảnh khác nhé.",
+        });
+        return;
+      }
+      setImagePreview(prepared.dataUrl);
+      setImageBase64(prepared.dataUrl);
+      setImageNotice(prepared.label
+        ? { kind: "ok", text: `${prepared.label}${prepared.width ? ` (${prepared.width}×${prepared.height})` : ""}` }
+        : null);
       return;
     }
 
@@ -2195,17 +2213,23 @@ export default function DuoMCBPage() {
       return;
     }
 
-    // Default fallback: Try reading as dataURL for any other file format
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const res = ev.target.result;
-      setImagePreview(res);
-      setImageBase64(res);
-    };
-    reader.onerror = () => {
-      alert("Hệ thống hỗ trợ tất cả các định dạng ảnh (.png, .jpg, .webp, v.v.) và tài liệu văn bản (.txt, .md, .json)!");
-    };
-    reader.readAsDataURL(file);
+    // Default fallback: any other format is read as a data URL and attached like
+    // an image. It goes through the same helper, so an oversized file (a 20 MB
+    // .docx, say) is reported here instead of being posted for a guaranteed 413.
+    const prepared = await prepareImageForUpload(file);
+    if (!prepared.ok || !prepared.dataUrl) {
+      setImagePreview(null);
+      setImageBase64(null);
+      setImageNotice({
+        kind: "warn",
+        text: prepared.message
+          || "Hệ thống hỗ trợ ảnh (.png, .jpg, .webp…) và tài liệu văn bản (.txt, .md, .json).",
+      });
+      return;
+    }
+    setImagePreview(prepared.dataUrl);
+    setImageBase64(prepared.dataUrl);
+    setImageNotice(prepared.label ? { kind: "ok", text: prepared.label } : null);
   };
 
   const handlePaste = (e) => {
@@ -2280,6 +2304,7 @@ export default function DuoMCBPage() {
     setInput("");
     setImagePreview(null);
     setImageBase64(null);
+    setImageNotice(null);
 
     const sid = await ensureSession();
     const promptText = rawMsg || (mode === "hint" ? "Gợi ý bài toán từ ảnh" : "Giải bài toán từ ảnh");
@@ -2330,10 +2355,24 @@ export default function DuoMCBPage() {
         image: currentBase64 || null,
         mode: actualMode,
       });
-      if (data.error) throw new Error();
+      if (data.error) {
+        // Đợt 4H-2: chat() already translated the failure into an honest,
+        // specific Vietnamese message (too big / rate-limited / pipeline
+        // timeout / server busy / network). Show THAT instead of the old
+        // one-size-fits-all line, which said "check your connection" even when
+        // the server had answered 504 with a reason.
+        console.warn("[DuoMCB] chat failed:", data.kind || data.status || "unknown");
+        setMessages(prev => [...prev, {
+          role: "assistant",
+          content: data.reply || "⚠️ Không xử lý được yêu cầu này. Em thử lại nhé.",
+          id: Date.now() + 1,
+        }]);
+        return;
+      }
       setMessages(prev => [...prev, { role: "assistant", content: data.reply || "", id: Date.now() + 1, ocr_confirm: data.ocr_confirm, verification: data.verification, perception: data.perception }]);
-    } catch {
-      setMessages(prev => [...prev, { role: "assistant", content: "⚠️ Không thể kết nối hoặc xử lý ảnh. Vui lòng thử lại.", id: Date.now() + 1 }]);
+    } catch (err) {
+      console.error("[DuoMCB] sendMessage failed:", err);
+      setMessages(prev => [...prev, { role: "assistant", content: "🔌 Không kết nối được tới máy chủ DuoMath. Em kiểm tra mạng rồi thử lại nhé.", id: Date.now() + 1 }]);
     } finally {
       setLoading(false);
     }
@@ -2598,13 +2637,25 @@ export default function DuoMCBPage() {
                   <img src={imagePreview} alt="Attached preview" className={styles.attachmentThumb} />
                   <button
                     className={styles.attachmentRemoveBtn}
-                    onClick={() => { setImagePreview(null); setImageBase64(null); }}
+                    onClick={() => { setImagePreview(null); setImageBase64(null); setImageNotice(null); }}
                     title="Xóa ảnh đính kèm"
                   >
                     ✕
                   </button>
                 </div>
               </div>
+            )}
+            {imageNotice && (
+              <p style={{
+                margin: "6px 2px 0",
+                fontSize: 12,
+                fontWeight: 600,
+                lineHeight: 1.4,
+                color: imageNotice.kind === "warn" ? "#fbbf24" : "#38bdf8",
+              }}>
+                {imageNotice.kind === "warn" ? "⚠️ " : "🖼️ "}
+                {imageNotice.text}
+              </p>
             )}
             <div className={styles.inputInnerRow}>
               <input

@@ -91,6 +91,36 @@ mindmap
 
 ---
 
+### 2.7. Khắc Phục Sự Cố "Lỗi CORS Ma" Trên `POST /api/chat` (Đợt 4H-2)
+
+**Triệu chứng thực tế (28/09/2026):** Trên production, `POST /api/chat` gửi từ `https://duomath.vercel.app` thất bại với `ERR_FAILED` kèm thông báo CORS ("No 'Access-Control-Allow-Origin' header is present"). Cùng lúc, chatbot trả lời rất ngắn và chất lượng giảm rõ rệt; các ảnh đề bài 4–5 MB gần như không bao giờ được xử lý.
+
+**Điều tra:** Preflight `OPTIONS` từ đúng origin đó trả **200 + ACAO chính xác**, và một origin không nằm trong allowlist vẫn bị từ chối ⇒ cấu hình CORS **không** hỏng. Sự thật là những request đó **không sinh ra phản hồi cấp ứng dụng nào**: khi proxy nền tảng huỷ một request chạy quá lâu, nó cắt socket trước khi header đầu tiên tới browser, và DevTools không phân biệt được hiện tượng đó với lỗi CORS.
+
+**Nguyên nhân gốc:** cửa sổ "im lặng" của pipeline (giải mã ảnh + CLAHE + 1–2 mô hình vision đọc đề + mô hình văn bản + bước phản biện) dài hơn ngưỡng timeout của proxy, trong khi client **không có** timeout riêng và payload ảnh gửi lên tới 4–5 MB.
+
+**Bốn phần đã sửa:**
+
+| Phần | Nội dung | Tệp |
+|---|---|---|
+| **A. Chặn trên phía server** | `_ChatDeadlineMiddleware` đo *thời gian tới byte đầu tiên* và trả **504 + JSON**; middleware đăng ký **trước** `CORSMiddleware` nên nằm *bên trong* nó — nhờ vậy phản hồi 504 vẫn có header CORS và browser đọc được lý do thật. | `backend/main.py`, `backend/chat_budget.py` |
+| **B. Ngân sách từng chặng** | `asyncio.wait_for` + `StageBudget.clamp()` cho từng chặng (vision 45 s / vision-agent 25 s / kiểm chứng 25 s) — luôn **nhỏ hơn** tổng 75 s nên các chặng không thể cộng dồn vượt hạn. Chặng quá hạn thì tự suy giảm: perception chậm → rơi về đường vision cũ; phản biện chậm → vẫn trả lời kèm nhãn "chưa kiểm chứng" thay vì mất cả câu trả lời. | `backend/main.py` |
+| **C. Nén ảnh & báo lỗi trung thực** | `prepareImageForUpload()` thu nhỏ ảnh trước khi gửi (cạnh dài 1600 px, JPEG q85: ảnh 4–5 MB → ~200–300 KB, có nhãn "Đã nén…"), chặn ảnh vượt `MAX_IMAGE_B64_CHARS`; client phân loại lỗi (quá lớn / quá nhanh / quá hạn / server bận / mất mạng) và tự thử lại 1 lần với lỗi tạm thời. | `frontend/src/lib/imageDownscale.js`, `chatErrors.js`, `duoServer.js`, `DuoMCBPage.js` |
+| **D. Nói thật & đo được** | `/api/health` không còn báo `llama-3.1-8b-instant` hay "(via local EasyOCR)" — nay liệt kê đúng thang model text/vision đang chạy, `ocr_engine`, `ocr_model_dir`, `chat_budgets_s`. Telemetry `ai_quality_log` ghi **model đã trả lời** (trước đây ghi model của bộ phản biện, nên không thể biết tầng nào đang gánh production). Đường dẫn weights EasyOCR chuyển sang biến `EASYOCR_MODEL_DIR`. | `backend/main.py`, `backend/render.yaml` |
+
+**Vì sao KHÔNG chuyển UI sang SSE:** nhánh `if use_stream:` của `/api/chat` chỉ phát `{token}/{done}` và **return sớm**, bỏ qua validate MathViz, TypeSafe guard, kiểm chứng và các nhãn `perception`/`verification`; hơn nữa với request có ảnh, chuỗi vision vẫn chạy trước byte đầu tiên nên SSE không rút ngắn cửa sổ im lặng. Chuyển sang SSE sẽ **mất tính năng mà không sửa được lỗi** — quyết định này được ghi trong `duoServer.js` và có guard CI canh giữ.
+
+**Sửa kèm:** `THREE.Clock` (deprecated từ r183 — đúng cảnh báo xuất hiện trong console production) đã đổi sang `THREE.Timer`: `update()` → `getDelta()`/`getElapsed()`, `connect(document)` theo Page Visibility API, `dispose()` khi unmount (`CosmosBackground.js`).
+
+**Bằng chứng kiểm thử (offline, không cần API key):**
+
+- `test_chat_budget.py`: **48/48 checks passed** — parser ngân sách an toàn (giá trị 0/rác/âm đều rơi về mặc định), ngân sách từng chặng cộng dồn không vượt hạn, payload 504 đầy đủ, và kiểm tra "wiring" của `main.py`: thứ tự middleware trong CORS, từng chặng có `wait_for`, telemetry ghi tầng trả lời, `/api/health` không được phép nói sai trở lại.
+- Guard frontend (Node, không cần dependency): `check-image-downscale.mjs` **23/23** (khớp giới hạn với `security_limits.py`, chặn đường upload thô), `check-chat-errors.mjs` **25/25** (client timeout 95 s > ngân sách server 75 s để 504 của server luôn thắng), `check-three-api.mjs` **6/6**.
+- `tsc -p tsconfig.syntax.json` và `tsc -p tsconfig.checkjs.json`: **exit 0**; `check-api-base.mjs`: **exit 0**.
+- Các suite cũ giữ nguyên kết quả: MathReader, MathSolver, VNHSGE bank, GeoGebra export, TypeSafe guard, benchmark hồi quy (30/30, 100%).
+
+---
+
 ## 3. KẾT QUẢ ĐO LƯỜNG & KIỂM THỬ THỰC NGHIỆM (BENCHMARKS)
 
 Toàn bộ hệ thống đã vượt qua 100% các bài kiểm thử đơn vị và tích hợp:
@@ -115,7 +145,7 @@ Toàn bộ hệ thống đã vượt qua 100% các bài kiểm thử đơn vị 
 ## 4. KẾ HOẠCH PHÁT TRIỂN TIẾP THEO (ROADMAP Q4/2026)
 
 1. **Step-by-step Animated Canvas**: Trình chiếu từng nét vẽ hình học tương ứng theo từng bước của bài giải.
-2. **GeoGebra Exporter (.ggb)**: Xuất trực tiếp cấu hình hình học đã nắn chỉnh sang định dạng GeoGebra file để học sinh nghiên cứu sâu.
+2. **GeoGebra Exporter (.ggb)**: Xuất trực tiếp cấu hình hình học đã nắn chỉnh sang định dạng GeoGebra file để học sinh nghiên cứu sâu. *(Đã hoàn thành — Đợt 7: `backend/geogebra_export.py`, `POST /api/viz/geogebra`, nút "Xuất .ggb" trong MathViz.)*
 3. **Vietnamese Math Voice Agent**: Tích hợp nhận diện giọng nói thuật ngữ toán học chuyên sâu.
 
 ---

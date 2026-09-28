@@ -102,3 +102,25 @@ services:
       # Optional: retention window in days for anonymous sessions/AI materials.
       - key: DATA_RETENTION_DAYS
         value: "30"
+      # ── Đợt 4H-2 — wall-clock budgets for one /api/chat request ─────────────
+      # Production failed with "ERR_FAILED + phantom CORS" on POST /api/chat:
+      # the request produced no response at all, and a browser reports a socket
+      # torn down before the headers as a missing CORS header. These values are
+      # what make the pipeline answer before the platform proxy gives up (its
+      # ceiling is ~100 s), and what turn an over-budget request into an honest
+      # 504 instead of a silent kill. They are published by /api/health under
+      # `chat_budgets_s`, so they can be lowered without a redeploy.
+      - key: CHAT_REQUEST_TIMEOUT_S
+        value: "75"
+      - key: CHAT_VISION_BUDGET_S
+        value: "45"
+      - key: CHAT_VISION_AGENT_BUDGET_S
+        value: "25"
+      - key: CHAT_VERIFY_BUDGET_S
+        value: "25"
+      # Local OCR stays OFF by design (easyocr+torch is ~2 GB and does not fit
+      # this instance; the vision models do that job). If it is ever enabled, the
+      # weights go here instead of a hard-coded "D:\easyocr_models", which only
+      # existed on one Windows dev machine and used to crash the boot on Linux.
+      - key: EASYOCR_MODEL_DIR
+        sync: false

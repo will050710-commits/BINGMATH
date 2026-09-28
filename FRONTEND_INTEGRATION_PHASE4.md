@@ -809,5 +809,56 @@ Hai thứ được **cố ý không** xuất: trạng thái xem của widget (en
 - Roadmap §4 còn 2 mục chưa làm: **1. Step-by-step Animated Canvas** và **3. Vietnamese Math Voice
   Agent** (mục 3 cần micro + dịch vụ nhận dạng giọng nói nên phải cân nhắc quyền riêng tư trước).
 
+---
+
+## Đợt 4H-2 — Sự cố "CORS ma" trên `POST /api/chat` (phần frontend)
+
+Sự cố production 28/09/2026 **không phải** lỗi CORS: preflight `OPTIONS` từ origin Vercel vẫn trả
+**200 + ACAO đúng**, còn `POST` thì **không có phản hồi cấp ứng dụng** — proxy nền tảng cắt socket
+trước khi header đầu tiên tới browser, và DevTools báo hiện tượng đó là lỗi CORS. Phần frontend của
+bản sửa gồm ba việc, mỗi việc có một guard CI riêng chạy bằng Node thuần (không cần dependency):
+
+1. **`src/lib/imageDownscale.js` — nén ảnh trước khi gửi.** `prepareImageForUpload(file)` thu nhỏ
+   cạnh dài về 1600 px và mã hoá JPEG q85 (ảnh 4–5 MB → ~200–300 KB), giữ nguyên tỉ lệ, không bao
+   giờ phóng to, bỏ qua SVG/GIF, và **không bao giờ làm mất ảnh vì lý do hình thức**: mọi nhánh lỗi
+   (không có canvas, giải mã hỏng, mã hoá ra tệp lớn hơn) đều rơi về dữ liệu gốc. `DuoMCBPage` hiển
+   thị nhãn "Đã nén …" và chặn hẳn ảnh vượt `MAX_IMAGE_B64_CHARS`; giới hạn này được **đối chiếu
+   trực tiếp** với `backend/security_limits.py` trong `check-image-downscale.mjs` (23/23 checks) nên
+   hai bên không thể lệch nhau.
+2. **`src/lib/chatErrors.js` — lỗi phải nói được lý do.** `classifyChatFailure(status)` tách "có
+   status" (413/429/504/5xx/4xx) khỏi "không có phản hồi" (mạng/huỷ), và mỗi loại có một câu tiếng
+   Việt chỉ đúng việc học sinh nên làm. `duoServer.chat()` thêm timeout 95 s (lớn hơn ngân sách 75 s
+   của server để **504 của server luôn thắng**), tự thử lại 1 lần với lỗi tạm thời, và hiển thị
+   `reply` mà server gửi kèm 504 thay vì câu "kiểm tra kết nối" chung chung. Guard:
+   `check-chat-errors.mjs` (25/25 checks).
+3. **`CosmosBackground.js` — `THREE.Clock` → `THREE.Timer`.** Clock deprecated từ three r183 (đúng
+   cảnh báo xuất hiện trong console production). Timer cần `update()` mỗi frame trước khi đọc
+   `getDelta()`/`getElapsed()`, có `connect(document)` theo Page Visibility API (tab ẩn ⇒ delta 0,
+   không còn cú nhảy rotation khi tab quay lại) và `dispose()` trong cleanup. Guard:
+   `check-three-api.mjs` (6/6 checks, quét toàn bộ `src/`).
+
+**Vì sao vẫn dùng non-streaming.** Nhánh `if use_stream:` của `/api/chat` chỉ phát
+`{token}`/`{done}`, **return sớm**, và do đó bỏ qua validate MathViz, TypeSafe guard, kiểm chứng
+(`verification`) cùng nhãn `perception`/`ocr_confirm`. Với request có ảnh, chuỗi vision vẫn chạy
+trước byte đầu tiên, nên SSE **không** rút ngắn cửa sổ im lặng — chuyển UI sang SSE sẽ mất tính năng
+mà không sửa được lỗi. Ghi chú này được nhắc lại ngay trong `duoServer.js` và được canh bằng guard
+("no chat call site switches this UI onto the SSE path").
+
+### Hạn chế đã biết của bản sửa này
+
+- Ngân sách chặng được chọn theo *suy luận* (ngưỡng ~100 s của proxy nền tảng) vì máy local không đo
+  được proxy production. Vì vậy `/api/health` công bố `chat_budgets_s` để hạ ngưỡng bằng biến môi
+  trường (`CHAT_REQUEST_TIMEOUT_S`, `CHAT_VISION_BUDGET_S`, `CHAT_VISION_AGENT_BUDGET_S`,
+  `CHAT_VERIFY_BUDGET_S`) mà không cần deploy lại.
+- `next build`/eslint đầy đủ vẫn không chạy được trên máy này (~1.3 GB RAM trống). Cổng thay thế cục
+  bộ: `tsc -p tsconfig.syntax.json`, `tsc -p tsconfig.checkjs.json` (đều exit 0), `check-api-base.mjs`
+  và 3 guard Node mới; job `frontend-build` trong CI vẫn chạy bundler thật.
+- `test_fsrs_scheduler.py` không chạy được ở venv cục bộ vì thiếu gói `fsrs` (CI có cài) — không liên
+  quan tới đợt này.
+- Bước kiểm chứng cuối cần người: gửi lại đúng tấm ảnh đã gây lỗi trên bản deploy mới và xem
+  `/api/health` (`chat_budgets_s`, `text_tiers`) — CI không đo được proxy production.
+
+
+
 
 

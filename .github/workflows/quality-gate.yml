@@ -77,6 +77,17 @@ jobs:
         working-directory: backend
         run: python test_typesafe_guard.py
 
+      # Đợt 4H-2 — the request budgets behind the 2026-09-28 production failure
+      # ("ERR_FAILED + phantom CORS" on POST /api/chat). Pure stdlib, so it adds
+      # no dependency, and it checks the WIRING in main.py too: the deadline
+      # middleware must stay registered INSIDE CORSMiddleware (that is what puts
+      # the CORS headers on the 504), each expensive stage must stay wrapped in
+      # its clamped budget, and /api/health must not go back to advertising an
+      # OCR engine that is not installed.
+      - name: Chat budgets — deadline guard + per-stage budgets
+        working-directory: backend
+        run: python test_chat_budget.py
+
       - name: Math regression benchmark (ground truth vs answers)
         working-directory: backend
         run: python tests/eval_math_regression.py
@@ -126,6 +137,32 @@ jobs:
       - name: No hard-coded localhost API base in src/
         working-directory: frontend
         run: node scripts/check-api-base.mjs
+
+      # Đợt 4H-2 — the client half of the same production failure. These three
+      # node guards need no dependencies (they import the pure modules from
+      # src/lib directly), so they run in the syntax job and cost a second:
+      #   * imageDownscale: the pixel budget we upload with, pinned against
+      #     backend/security_limits.py, plus "the upload path cannot go back to a
+      #     bare FileReader.readAsDataURL" (the 4-5 MB payload that outlived the
+      #     proxy — 23 checks);
+      #   * chatErrors: every failure the browser can produce maps to its own
+      #     actionable Vietnamese message, and the client timeout stays ABOVE the
+      #     server budget so the server's real 504 is what the student reads
+      #     (the incident was reported as a CORS error — 25 checks);
+      #   * threeApi: no deprecated THREE.Clock anywhere (three r183+ warns), and
+      #     the Timer migration keeps its update()/connect()/dispose() contract
+      #     (6 checks).
+      - name: Image downscale + upload cap (no 5 MB payloads)
+        working-directory: frontend
+        run: node scripts/check-image-downscale.mjs
+
+      - name: Chat failure messages + timeout ordering
+        working-directory: frontend
+        run: node scripts/check-chat-errors.mjs
+
+      - name: No deprecated Three.js APIs (THREE.Clock → THREE.Timer)
+        working-directory: frontend
+        run: node scripts/check-three-api.mjs
 
   frontend-build:
     name: Frontend build (real bundler + Penrose trios)

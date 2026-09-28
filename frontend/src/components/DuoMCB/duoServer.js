@@ -3,6 +3,12 @@
 
 import { authFetch } from "@/lib/authFetch";
 import { API_BASE as API } from "@/lib/apiBase";
+import {
+  CHAT_TIMEOUT_MS,
+  classifyChatFailure,
+  chatFailureMessage,
+  isRetryableKind,
+} from "@/lib/chatErrors";
 
 export async function createSession() {
   try {
@@ -16,8 +22,31 @@ export async function createSession() {
   }
 }
 
+// ── Đợt 4H-2: why this function looks the way it does ───────────────────────
+// Production (2026-09-28): POST /api/chat from the Vercel origin failed with
+// ERR_FAILED + "No 'Access-Control-Allow-Origin' header is present", while the
+// preflight from that origin answered 200 with the right ACAO header. A request
+// the platform proxy kills before the headers arrive is indistinguishable from a
+// CORS failure in DevTools, so this client translates instead of guessing:
+// a status means the server answered, no status means the connection died (and
+// a slow pipeline, not the network, is the likely reason).
+//
+// The server now answers 504 + JSON from inside its CORS middleware when the
+// pipeline outlives its budget, and CHAT_TIMEOUT_MS waits a little longer than
+// that budget so the server's specific explanation is what the student sees.
+//
+// Streaming is deliberately NOT used here. The SSE paths of /api/chat emit only
+// {token}/{done} and return BEFORE MathViz validation, the TypeSafe guard, the
+// verification pass and the perception badges (backend/main.py, the
+// `if use_stream:` branch) — so switching the UI to SSE would drop features
+// without fixing the silent window: with an image, the vision chain still runs
+// before the first byte.
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function chat(sessionId, message, options = {}) {
-  const { image = null, stream = false, mode = "hint" } = options;
+  const { image = null, stream = false, mode = "hint", signal = null } = options;
   const body = {
     session_id: sessionId,
     message,
@@ -25,23 +54,52 @@ export async function chat(sessionId, message, options = {}) {
     mode,
     ...(image ? { image } : {}),
   };
-  try {
-    const res = await authFetch("/api/chat", {
-      base:    API,
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify(body),
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error(`[duoServer] chat HTTP ${res.status}:`, errText);
-      return { error: true, reply: `Server error ${res.status}` };
+
+  const attempt = async () => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+    const forwardAbort = () => controller.abort();
+    if (signal) signal.addEventListener("abort", forwardAbort, { once: true });
+    try {
+      const res = await authFetch("/api/chat", {
+        base:    API,
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(body),
+        signal:  controller.signal,
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        const kind = classifyChatFailure(res.status);
+        console.error(`[duoServer] chat HTTP ${res.status} (${kind}):`, errText.slice(0, 300));
+        // The server's own timeout reply is more useful than generic copy.
+        let reply = "";
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed && typeof parsed.reply === "string") reply = parsed.reply;
+        } catch { /* not JSON — fall through to the mapped message */ }
+        return { error: true, kind, status: res.status, reply: reply || chatFailureMessage(kind) };
+      }
+      return await res.json();
+    } catch (err) {
+      const kind = err?.name === "AbortError" ? "timeout" : "network";
+      console.error(`[duoServer] chat ${kind}:`, err?.message || err);
+      return { error: true, kind, status: 0, reply: chatFailureMessage(kind) };
+    } finally {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", forwardAbort);
     }
-    return await res.json();
-  } catch (err) {
-    console.error("[duoServer] chat failed:", err);
-    return { error: true, reply: "Network error — check your connection." };
+  };
+
+  let result = await attempt();
+  if (result.error && isRetryableKind(result.kind)) {
+    // One quiet retry: these kinds are transient, and the reported case was a
+    // request that died without an app-level response at all.
+    console.warn(`[duoServer] retrying chat after ${result.kind}…`);
+    await delay(700);
+    result = await attempt();
   }
+  return result;
 }
 
 export async function resetSession(sessionId) {

@@ -54,6 +54,8 @@ from fastapi.responses import JSONResponse, StreamingResponse, Response # pyrigh
 from fastapi.middleware.cors import CORSMiddleware # pyright: ignore[reportMissingImports]
 from fastapi.middleware.gzip import GZipMiddleware # pyright: ignore[reportMissingImports]
 from fastapi.middleware.trustedhost import TrustedHostMiddleware # pyright: ignore[reportMissingImports]
+# Phase 4 / Đợt 4H-2: base class for the chat deadline guard (see _ChatDeadlineMiddleware).
+from starlette.middleware.base import BaseHTTPMiddleware # pyright: ignore[reportMissingImports]
 
 from werkzeug.security import generate_password_hash, check_password_hash # pyright: ignore[reportMissingImports]
 
@@ -568,14 +570,28 @@ def get_identity(request: Request) -> str:
     return decode_token(auth[7:])
 
 # ── OCR (optional) ───────────────────────────────────────────────────────────
+# Production is vision-model-only BY DECISION, not by accident: easyocr pulls
+# torch (~2 GB of wheels and RAM), which does not fit the instance the API runs
+# on, and it is deliberately absent from requirements.txt. /api/health reports
+# `ocr_available` from what actually loaded, so it can never claim an engine
+# that is not there.
+# The weights directory is configurable and defaults to a WRITABLE path inside
+# the app: the previous hard-coded "D:\\easyocr_models" existed on exactly one
+# Windows dev machine and would have raised on Linux — and because only
+# ImportError was caught, that would have crashed the boot, not degraded it.
+OCR_MODEL_DIR = os.environ.get("EASYOCR_MODEL_DIR") or os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), ".easyocr_models")
 try:
     import easyocr # pyright: ignore[reportMissingImports]
-    # Lưu weights của mô hình ở ổ D để tránh tràn dung lượng ổ C
-    ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False, model_storage_directory="D:\\easyocr_models")
+    ocr_reader = easyocr.Reader(['vi', 'en'], gpu=False, model_storage_directory=OCR_MODEL_DIR)
     _ocr_available = True
-except ImportError:
+except Exception as _e_ocr:  # noqa: BLE001 — ImportError, or an unusable weights dir
     ocr_reader = None
     _ocr_available = False
+    if not isinstance(_e_ocr, ImportError):
+        logger.warning("[OCR] easyocr is installed but could not initialise (%s) — "
+                       "continuing without local OCR.", _e_ocr)
+
 
 # ── Config ────────────────────────────────────────────────────────────────────
 DB_PATH   = os.path.join(os.path.dirname(__file__), "duomath.db")
@@ -602,6 +618,11 @@ import fsrs_scheduler
 # the identity hash and the DDL live in vnhsge_bank.py, shared with
 # scripts/import_vnhsge.py (the only writer — it enforces the licence decision).
 import vnhsge_bank
+# Đợt 4H-2 — the wall-clock budgets for a single chat request (chat_budget.py):
+# an upper bound on time-to-first-byte plus per-stage budgets that compose under
+# it, so a stalled pipeline answers an honest 504 instead of being killed by the
+# proxy — a kill the browser reports as a CORS failure (see the module docstring).
+import chat_budget
 
 
 def _mr_summary(perception) -> dict:
@@ -2699,6 +2720,51 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
+
+# ── Phase 4 / Đợt 4H-2: make a stalled chat request fail *honestly* ──────────
+# Production symptom (2026-09-28): POST /api/chat from the Vercel origin died
+# with ERR_FAILED plus a phantom CORS error, while the preflight OPTIONS from
+# that same origin answered 200 with the correct ACAO header (and an unlisted
+# origin was still rejected). The allowlist was never the bug: those requests
+# produced no app-level response at all, and a browser reports a connection torn
+# down before the headers as "No 'Access-Control-Allow-Origin' header is present".
+#
+# This guard answers 504 + JSON instead of being killed mid-flight. Registration
+# order matters: middleware runs outermost-first and `add_middleware` PREPENDS,
+# so being added before CORSMiddleware keeps this guard INSIDE it — which is
+# exactly what gets the CORS headers onto the 504 so the browser can read it.
+class _ChatDeadlineMiddleware(BaseHTTPMiddleware):
+    """Bounds /api/chat's time-to-first-byte (not the whole stream).
+
+    `call_next` returns as soon as the response *starts*, so an answer that has
+    already begun streaming is never cut off by this guard — only the silent
+    window that the proxy would otherwise kill.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method != "POST" or request.url.path != "/api/chat":
+            return await call_next(request)
+        started = time.perf_counter()
+        try:
+            return await asyncio.wait_for(call_next(request),
+                                          timeout=chat_budget.CHAT_REQUEST_TIMEOUT_S)
+        except (asyncio.TimeoutError, TimeoutError):
+            elapsed = time.perf_counter() - started
+            logger.error(
+                "[Chat] produced no response within %.0fs (budget %.0fs) — answering 504 so the "
+                "client sees the real cause instead of a proxy kill that looks like CORS.",
+                elapsed, chat_budget.CHAT_REQUEST_TIMEOUT_S)
+            quality_log(surface="chat", tier="timeout", provider="deadline",
+                        latency_ms=int(elapsed * 1000))
+            return JSONResponse(
+                chat_budget.timeout_payload(elapsed, chat_budget.CHAT_REQUEST_TIMEOUT_S),
+                status_code=504,
+                headers={"X-DuoMath-Timeout": "1"},
+            )
+
+
+app.add_middleware(_ChatDeadlineMiddleware)
+
 # Phase 3: reject requests whose Host header we do not serve (Host-header
 # injection / cache-poisoning). Add extra domains through ALLOWED_HOSTS.
 _ALLOWED_HOSTS = env_list("ALLOWED_HOSTS") or [
@@ -3449,6 +3515,13 @@ async def chat(request: Request):
     if not user_message:
         user_message = "Hãy giải bài toán trong ảnh này cho em."  # fallback khi chỉ có ảnh
 
+    # Đợt 4H-2: one wall-clock budget for the whole request. Every expensive stage
+    # below takes min(its own budget, what is left), so the stages cannot sum past
+    # CHAT_REQUEST_TIMEOUT_S — that sum is what used to let the proxy kill the
+    # connection, and a kill before the headers is what the browser reported as a
+    # CORS failure.
+    _budget = chat_budget.StageBudget(chat_budget.CHAT_REQUEST_TIMEOUT_S)
+
     # Phase 1 security fix: bind the session to the logged-in account and refuse
     # access to a session owned by somebody else (previously any holder of the
     # session uuid could read or wipe the conversation).
@@ -3521,11 +3594,16 @@ async def chat(request: Request):
                     _mr_phash = _vision_cache.compute_phash(raw_b64)
                 except Exception:
                     _mr_phash = None
-                perception = await math_reader.read_consensus(
-                    raw_b64, media_type=media_type, user_hint=user_message,
-                    chat_fn=_openrouter_chat,
-                    sha256=_img_meta.get("sha256", ""),
-                    phash=_mr_phash,
+                # Đợt 4H-2: bounded — on timeout this degrades to the legacy vision
+                # path below instead of spending the whole request budget here.
+                perception = await asyncio.wait_for(
+                    math_reader.read_consensus(
+                        raw_b64, media_type=media_type, user_hint=user_message,
+                        chat_fn=_openrouter_chat,
+                        sha256=_img_meta.get("sha256", ""),
+                        phash=_mr_phash,
+                    ),
+                    timeout=_budget.clamp(chat_budget.CHAT_VISION_BUDGET_S),
                 )
                 if perception.get("needs_confirm"):
                     _cands = perception.get("candidates") or []
@@ -3568,8 +3646,11 @@ async def chat(request: Request):
         if _vision_agent.is_configured():
             try:
                 print(f"[Chat] Invoking Stage 1 Vision Agent ({_vision_agent.model} via OpenRouter)...")
-                vision_description, success = await _vision_agent.extract_with_fallback(
-                    raw_b64, media_type=media_type, user_hint=user_message
+                vision_description, success = await asyncio.wait_for(
+                    _vision_agent.extract_with_fallback(
+                        raw_b64, media_type=media_type, user_hint=user_message
+                    ),
+                    timeout=_budget.clamp(chat_budget.CHAT_VISION_AGENT_BUDGET_S),
                 )
                 if success and vision_description:
                     print("[Chat] Stage 1 Vision extraction succeeded! Passing structured geometry to Gemini Canvas Engine.")
@@ -3798,7 +3879,9 @@ async def chat(request: Request):
                 headers={
                     "Cache-Control": "no-cache",
                     "X-Accel-Buffering": "no",
-                    "Access-Control-Allow-Origin": "*",
+                    # Đợt 4H-2: the hard-coded "*" was removed here too. One CORS
+                    # policy only — CORSMiddleware's allowlist — so the streaming
+                    # paths cannot drift away from ALLOWED_ORIGINS.
                 },
             )
         # ── Tier 0.5 Streaming: Groq / Qwen3-27B (Text-Only & Vision-Extracted) ──
@@ -3908,7 +3991,10 @@ async def chat(request: Request):
                 headers={
                     "Cache-Control": "no-cache",
                     "X-Accel-Buffering": "no",
-                    "Access-Control-Allow-Origin": "*",
+                    # Đợt 4H-2: the hard-coded "*" was removed. CORSMiddleware wraps
+                    # this response and sets the origin from ALLOWED_ORIGINS; a second,
+                    # wider policy is both redundant and a trap — a wildcard ACAO is
+                    # rejected by the browser the day credentials are turned on.
                 },
             )
         else:
@@ -3959,7 +4045,8 @@ async def chat(request: Request):
                 headers={
                     "Cache-Control": "no-cache",
                     "X-Accel-Buffering": "no",
-                    "Access-Control-Allow-Origin": "*",
+                    # Đợt 4H-2: see the note on the other StreamingResponse above —
+                    # one CORS policy only, owned by CORSMiddleware.
                 },
             )
     else:
@@ -3988,6 +4075,12 @@ async def chat(request: Request):
         fallback_models = [m for m in fallback_models if m and not (m in seen_models or seen_models.add(m))]
 
         reply = None
+        # Đợt 4H-2: WHICH tier actually answered. Before this, the chat telemetry
+        # row stored the CRITIC's model, so /api/admin/ai-quality could not answer
+        # the one question the model ladder needs — "is a free fallback carrying
+        # production?" — and model tuning was guesswork. See the quality_log call
+        # at the end of this branch.
+        _answered = {"provider": "", "model": ""}
 
         # ── Tier 0.5: Groq / Qwen3-27B (Math & Vision-Extracted Geometry Priority) ──
         # Kích hoạt khi: không có ảnh HOẶC ảnh đã được Vision AI trích xuất thành text (vision_description).
@@ -4016,6 +4109,7 @@ async def chat(request: Request):
                         reply = _groq05_resp.json()["choices"][0]["message"]["content"]
                         if reply and reply.strip():
                             print(f"[Chat] Groq ({_groq_priority_model}) thanh cong — Tier 0.5!")
+                            _answered.update(provider="groq", model=_groq_priority_model)
                             break   # thanh cong, thoat khoi vong pool
                         else:
                             print(f"[WARN] Groq Tier 0.5 ({_groq_priority_model}) tra ve rong — thu model tiep theo")
@@ -4043,6 +4137,7 @@ async def chat(request: Request):
                 if resp.status_code == 200:
                     reply = resp.json()["choices"][0]["message"]["content"]
                     print(f"[Chat] Generated reply via {llm_provider} ({hf_model_name})")
+                    _answered.update(provider=llm_provider, model=hf_model_name)
             except Exception as ex_hf:
                 print(f"[WARN] {llm_provider} call failed: {ex_hf}. Falling back to Gemini.")
 
@@ -4127,6 +4222,7 @@ async def chat(request: Request):
                     except Exception as e2:
                         print(f"[WARN] Direct retry failed: {e2}")
             if reply:
+                _answered.update(provider="gemini", model=current_model)
                 break
 
         # ── Tier 2 Fallback: Groq Ultra-Fast SOTA Models ──────────────────────
@@ -4157,6 +4253,7 @@ async def chat(request: Request):
                     if groq_resp.status_code == 200:
                         reply = groq_resp.json()["choices"][0]["message"]["content"]
                         print(f"[Chat] Successfully generated reply via Groq fallback ({groq_m})!")
+                        _answered.update(provider="groq", model=groq_m)
                         break
                     else:
                         print(f"[WARN] Groq model {groq_m} returned {groq_resp.status_code}: {groq_resp.text[:100]}")
@@ -4180,6 +4277,7 @@ async def chat(request: Request):
                         max_tokens=max_tokens,
                     )
                     reply = _or_reply
+                    _answered.update(provider="openrouter", model=_or_model)
                     print(f"[Chat] Successfully generated reply via OpenRouter fallback ({_or_model})!")
                 except Exception as ex_or:
                     print(f"[WARN] OpenRouter fallback failed: {_scrub_secrets(str(ex_or)[:200])}")
@@ -4188,6 +4286,7 @@ async def chat(request: Request):
         if not reply:
             print("[INFO] Using local MathGPT Engine for instant, reliable response")
             reply = generate_mock_mathgpt_reply(user_message, _widget, chat_mode)
+            _answered.update(provider="local", model="local-mathgpt")
 
 
 
@@ -4352,7 +4451,20 @@ async def chat(request: Request):
                 _ir = math_solver.build_problem_ir(perception, user_message)
                 if not _ir.get("transcription") and not _ir.get("latex"):
                     _ir["transcription"] = user_message[:1200]
-                math_verification = await math_solver.verify_and_repair(_ir, reply, chat_fn=_openrouter_chat)
+                # Đợt 4H-2: the critic is a second opinion, not a gate on the
+                # request. On timeout the student still gets the answer — carrying
+                # the honest "chưa kiểm chứng" badge — instead of losing everything.
+                try:
+                    math_verification = await asyncio.wait_for(
+                        math_solver.verify_and_repair(_ir, reply, chat_fn=_openrouter_chat),
+                        timeout=_budget.clamp(chat_budget.CHAT_VERIFY_BUDGET_S),
+                    )
+                except (asyncio.TimeoutError, TimeoutError):
+                    logger.warning("[Chat] Math verification exceeded %.0fs — answering with the "
+                                   "unverified label.", chat_budget.CHAT_VERIFY_BUDGET_S)
+                    math_verification = {"verified": False, "checks": [], "critic": None,
+                                         "repaired": False, "reply": reply,
+                                         "notes": "hết thời gian kiểm chứng"}
                 reply = math_verification.get("reply") or reply
                 _badge = math_solver.unverified_note(math_verification)
                 if _badge:
@@ -4367,12 +4479,20 @@ async def chat(request: Request):
         # have perception), so the ladder can be re-ordered from real outcomes.
         try:
             if math_verification:
+                _critic_model = str(((math_verification.get("critic") or {}).get("model")) or "")
                 quality_log(surface="chat",
-                            model=str(((math_verification.get("critic") or {}).get("model")) or "")[:80],
-                            tier="verify_ok" if math_verification.get("verified") else "verify_failed",
+                            # Đợt 4H-2 fix: this row used to store the CRITIC's model,
+                            # which made "which tier is answering production?" impossible
+                            # to read from the telemetry. The tier that answered goes in
+                            # model/provider now; the critic moves to notes.
+                            model=str(_answered.get("model") or "")[:80],
+                            provider=str(_answered.get("provider") or "")[:24],
+                            tier=("verify_ok" if math_verification.get("verified") else "verify_failed")
+                                 + ("" if _answered.get("model") else "_no_model"),
                             latency_ms=int((time.time() - _t0) * 1000),
                             verified=math_verification.get("verified"),
-                            notes=str(math_verification.get("notes") or "")[:200])
+                            notes=(("critic=" + _critic_model + "; ") if _critic_model else "")
+                                  + str(math_verification.get("notes") or "")[:200])
             elif perception:
                 quality_log(surface="perception",
                             model=",".join(perception.get("readers") or [])[:80],
@@ -4382,6 +4502,14 @@ async def chat(request: Request):
                             fallback="needs_confirm" if perception.get("needs_confirm") else "")
         except Exception as _e_qlog:
             logger.debug("[Chat] quality log skipped (%s)", _e_qlog)
+
+        # Đợt 4H-2: one line per answer with the tier, the vision path, the latency
+        # and the budget left. Render's log had NO timing during the ERR_FAILED
+        # incident, so "timeout or crash?" was unanswerable from the outside.
+        print(f"[Chat] answered_by={_answered.get('provider') or '?'}:{_answered.get('model') or '?'}"
+              f" mode={chat_mode} image={'yes' if image_data else 'no'}"
+              f" vision={'agent' if vision_description else ('reader' if perception else 'none')}"
+              f" elapsed={time.time() - _t0:.1f}s budget_left={_budget.remaining():.1f}s")
 
         history.append({"role": "assistant", "content": reply})
         save_history(session_id, history)
@@ -5422,14 +5550,42 @@ async def health():
         db_ms, db_ok = round((time.perf_counter() - t0) * 1000, 2), True
     except Exception:
         db_ms, db_ok = -1, False
+    # Đợt 4H-2: describe what will ACTUALLY answer, read from the same env the
+    # request path reads. These fields used to be hard-coded strings naming a
+    # model the pipeline never called ("llama-3.1-8b-instant") and an OCR engine
+    # that is not installed ("via local EasyOCR") — a monitor trusting them would
+    # draw the wrong conclusion during an outage, which is exactly what happened.
+    _groq_models = [m.strip() for m in os.environ.get(
+        "GROQ_CHAT_MODELS", "qwen/qwen3.8-27b,openai/gpt-oss-120b,openai/gpt-oss-20b"
+    ).split(",") if m.strip()]
+    _or_chat = _openrouter_models("OPENROUTER_CHAT_MODELS", OPENROUTER_CHAT_MODELS_DEFAULT)
+    _readers = math_reader.reader_models()
     return JSONResponse({
         "status":           "ok" if db_ok else "degraded",
         "service":          "DuoMath API v4 (FastAPI) — MathGPT Edition",
         "db_latency_ms":    db_ms,
         "keep_alive":       bool(SELF_URL),
-        "text_model":       "llama-3.1-8b-instant",
-        "vision_model":     "llama-3.3-70b-versatile (via local EasyOCR)",
+        # Text ladder, in the order the chat handler actually tries it.
+        "text_model":       (f"groq:{_groq_models[0]}" if GROQ_KEY and _groq_models else "")
+                            or f"gemini:{os.environ.get('GEMINI_MODEL', 'gemini-3.6-flash')}",
+        "text_tiers":       [t for t in [
+                                f"groq:{_groq_models[0]}" if GROQ_KEY and _groq_models else "",
+                                f"gemini:{os.environ.get('GEMINI_MODEL', 'gemini-3.6-flash')}",
+                                f"openrouter:{_or_chat[0]}" if _or_chat else "",
+                                "local-mathgpt (deterministic, offline)",
+                            ] if t],
+        # Vision: the verified MathReader first, then the geometry agent's ladder.
+        "vision_model":     (f"math_reader:{_readers[0]}" if _readers else "") or _vision_agent.model,
+        "vision_models":    _readers,
+        "vision_agent_model":   _vision_agent.model,
+        "vision_agent_enabled": _vision_agent.is_configured(),
+        "vision_grid_overlay":  os.environ.get("VISION_GRID_OVERLAY", "false").lower() in ("true", "1", "yes"),
         "ocr_available":    _ocr_available,
+        "ocr_engine":       "easyocr (local)" if _ocr_available else "none — vision models only (by design)",
+        "ocr_model_dir":    OCR_MODEL_DIR,
+        # Đợt 4H-2: the budgets that decide whether a hard image can be answered
+        # or has to come back as an explicit 504.
+        "chat_budgets_s":   chat_budget.stage_plan(),
         "mathgpt_mode":     "socratic",
         "lightrag_nodes":   len(MATH_CONCEPT_GRAPH["nodes"]),
         "lightrag_edges":   len(MATH_CONCEPT_GRAPH["edges"]),

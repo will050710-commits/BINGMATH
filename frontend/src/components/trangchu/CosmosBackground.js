@@ -522,7 +522,16 @@ export default function CosmosBackground() {
     window.addEventListener("resize", onResize);
 
     // ─── Animation Loop (60 FPS Solid) ───────────────────────────────────────
-    let clock = new THREE.Clock();
+    // Đợt 4H-2: THREE.Clock is deprecated since r183 — the production console on
+    // three@0.185.1 printed its warning verbatim: "Clock: This module has been
+    // deprecated. Please use THREE.Timer instead."
+    // Timer also fits this scene better: update() advances the internal state
+    // ONCE per frame (so getDelta/getElapsed cannot disagree), and
+    // connect(document) uses the Page Visibility API to report delta 0 for a
+    // background tab instead of one huge jump that snapped the tesseract
+    // rotation forward on the first frame after the tab woke up.
+    const timer = new THREE.Timer();
+    timer.connect(document);
     let frameId = null;
     let isHidden = false;
 
@@ -537,8 +546,8 @@ export default function CosmosBackground() {
       frameId = requestAnimationFrame(animate);
       if (isHidden) return;
 
-      const delta = Math.min(clock.getDelta(), 0.1);
-      const time = clock.getElapsedTime();
+      timer.update();
+      const time = timer.getElapsed();
 
       // 1. Camera Parallax (Damped Harmonic Spring)
       mouse.x += (mouse.targetX - mouse.x) * 0.045;
@@ -759,6 +768,7 @@ export default function CosmosBackground() {
     // ─── Cleanup ─────────────────────────────────────────────────────────────
     return () => {
       cancelAnimationFrame(frameId);
+      timer.dispose();          // Đợt 4H-2: stops the Page Visibility listener too
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mousedown", onMouseDown);
