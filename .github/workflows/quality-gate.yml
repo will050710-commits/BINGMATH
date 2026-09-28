@@ -88,6 +88,16 @@ jobs:
         working-directory: backend
         run: python test_chat_budget.py
 
+      # Đợt 4H-2b — the retrieval layer whose dense half used to freeze the whole
+      # service in production (torch + a synchronous encode inside the event
+      # loop). sentence-transformers is absent here, which is now exactly the
+      # production configuration: this suite proves the TF-IDF-only path still
+      # ranks, fuses (RRF) and formats, so removing the transformer is a
+      # supported mode rather than a silent downgrade.
+      - name: Retrieval — hybrid worked-example search (TF-IDF-only fallback)
+        working-directory: backend
+        run: python test_math_problem_retrieval.py
+
       - name: Math regression benchmark (ground truth vs answers)
         working-directory: backend
         run: python tests/eval_math_regression.py

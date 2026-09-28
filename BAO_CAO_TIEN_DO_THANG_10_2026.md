@@ -157,6 +157,23 @@ của học sinh bị huỷ trước khi pipeline kịp sinh xong câu trả l�
 | Công tắc rõ ràng, có thể đảo ngược | `MATH_RETRIEVAL_EMBEDDINGS=off` (mặc định production, khai báo trong `render.yaml`); đổi sang `auto` sau khi cài extra trên instance đủ RAM |
 | Bằng chứng trong CI | `test_chat_budget.py` nay **62/62**: thêm 2 phép đo *hành vi* (một lời gọi đồng bộ khoá vòng lặp ⇒ ~0 vòng ticker; cùng lời gọi đó qua `to_thread` ⇒ >10 vòng) và 11 kiểm tra cấu trúc (đã offload chưa, ngân sách, không còn `sentence-transformers` trong requirements, công tắc trong `render.yaml`) |
 
+**Bằng chứng sau khi deploy (probe trên production, không dùng browser):**
+
+| Phép đo | Trước | Sau |
+|---|---|---|
+| `POST /api/chat` chỉ chữ | treo > 120 s → **502 HTML của Render** (không header CORS) | **200 trong 1.3–1.8 s** (chạy 3 lần liên tiếp, đáp án đúng, health vẫn ok sau mỗi lần) |
+| Ảnh 12 MP (740 KB) — hành vi client cũ | treo vô hạn → browser báo lỗi CORS | **504 sau 79.6 s** kèm `X-DuoMath-Timeout: 1`, ACAO đúng, kèm hướng dẫn tiếng Việt |
+| Ảnh sau khi nén (187 KB) — client mới | không áp dụng | **200 sau 75.5 s**, trả lời thật, health vẫn sống |
+| Payload ảnh | 740 KB → base64 986 KB | **187 KB → 249 KB (−75 %)** |
+| `/api/health` | `llama-3.1-8b-instant`, "(via local EasyOCR)", không có ngân sách | thang model thật + `ocr_engine`, `ocr_model_dir`, `chat_budgets_s` (gồm `retrieval_s`) |
+
+Lưu ý trung thực: đường **ảnh** vẫn mất ~75 s (sát ngân sách 75 s) vì phải chạy MathReader + vision agent
++ mô hình văn bản cho một ảnh; request 740 KB bị 504 đúng như thiết kế, còn 187 KB thì vừa đủ. Muốn
+khoảng an toàn rộng hơn cho ảnh khó thì hoặc tăng `CHAT_REQUEST_TIMEOUT_S` (biến môi trường, mặc định
+75 s, trần thực tế của proxy ~100 s), hoặc rút bớt việc của chặng vision. Một request 502 duy nhất quan
+sát được trong lúc kiểm chứng rơi đúng vào lúc Render đang swap instance (health trước/sau đều ok, và
+3 request text sau đó đều 1.3–1.8 s) — đó là hiện tượng của deploy, không phải của pipeline.
+
 ---
 
 ## 3. KẾT QUẢ ĐO LƯỜNG & KIỂM THỬ THỰC NGHIỆM (BENCHMARKS)
