@@ -7,6 +7,15 @@ import {
 } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
 import GgbExportButton from '../../duomath/GgbExportButton';
+// Đợt 8 / 4I: the shared vocabulary + the generic point walk, so this engine
+// stops keeping its own list of "kinds that have points".
+import { collectLayerPoints, canonicalKind, ENGINE_SUPPORT } from '@/lib/mathvizKinds';
+// Đợt 8 / 4I: outline sampling shared with the JSXGraph engine, so a `region`
+// (straight edges and arcs in one closed path) and an `ellipse` use ONE definition
+// of where the curve goes instead of two that can disagree.
+import {
+  sampleArcPoints, sampleEllipse, sampleSectorOutline, sampleRegionOutline, pointsToFlat,
+} from '@/lib/mathvizOutline';
 
 const CANVAS_SIZE = 520;
 const fmt = (n, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : '—');
@@ -54,6 +63,39 @@ function footOnLine(P, L1, L2) {
   const len2 = dx * dx + dy * dy;
   const t = len2 > 1e-9 ? ((P.x - L1.x) * dx + (P.y - L1.y) * dy) / len2 : 0;
   return { x: L1.x + t * dx, y: L1.y + t * dy };
+}
+
+// ── Arc / sector geometry (đợt 8 / 4I) ────────────────────────────────────────
+// Konva.Arc is parametrised as (rotation, angle, clockwise) in SCREEN degrees,
+// which is a different shape from the MathViz layer's (center, from, to), so the
+// conversion lives here instead of being repeated inline at the call site.
+// Added because "arc" and "sector" are part of the checked vocabulary
+// (backend/mathviz_contract.py) while this engine drew neither: an arc layer
+// simply produced nothing and the figure came out visibly truncated.
+function konvaArcParams(centerPx, fromPx, toPx, largeArc) {
+  const [cx, cy] = centerPx;
+  const radius = Math.max(0.5, Math.hypot(fromPx[0] - cx, fromPx[1] - cy));
+  const start = Math.atan2(fromPx[1] - cy, fromPx[0] - cx);
+  const end = Math.atan2(toPx[1] - cy, toPx[0] - cx);
+  // In screen coordinates (y down) a positive cross product is the
+  // clockwise-on-screen direction, which is Konva's positive rotation.
+  const cross = (fromPx[0] - cx) * (toPx[1] - cy) - (fromPx[1] - cy) * (toPx[0] - cx);
+  const clockwise = cross > 0;
+  let sweep = end - start;
+  if (clockwise) { while (sweep < 0) sweep += Math.PI * 2; }
+  else { while (sweep > 0) sweep -= Math.PI * 2; }
+  // "large_arc" asks for the reflex side of the same chord.
+  if (largeArc && Math.abs(sweep) < Math.PI) sweep -= Math.sign(sweep) * Math.PI * 2;
+  const toDeg = (rad) => (rad * 180) / Math.PI;
+  return { radius, rotation: toDeg(start), angle: Math.abs(toDeg(sweep)), clockwise };
+}
+
+/** A point reference → pixel pair: inline {x,y}, or an id resolved in-scene. */
+function layerPointPx(ref, toPxFn, idIndex) {
+  if (ref && Number.isFinite(ref.x) && Number.isFinite(ref.y)) return toPxFn(ref.x, ref.y);
+  const id = typeof ref === 'string' ? ref : (ref && (ref.id || ref.name));
+  if (id && idIndex && idIndex[id]) return toPxFn(idIndex[id].x, idIndex[id].y);
+  return null;
 }
 
 function computeTriangleCenters(A, B, C) {
@@ -404,10 +446,17 @@ export default function MathVizKonvaGeometry2D({ data, onSwitchEngine }) {
 
     // Multi-Layer mode (Composite)
     if (hasLayers && layers) {
+      // Every point any layer declares, indexed by id (đợt 8 / 4I). Layers may
+      // reference a point by id alone ({"kind":"angle","points":["B","A","C"]},
+      // {"kind":"label","at":"Q"}), and until this index existed such a layer
+      // simply drew nothing.
+      const layerIdIndex = {};
+      collectLayerPoints(layers).forEach((pt) => { layerIdIndex[pt.id] = pt; });
+
       layers.forEach((lay) => {
         const layColor = lay.color || palette.polyStroke;
 
-        if (lay.kind === 'polygon' && lay.points && lay.points.length >= 3) {
+        if ((lay.kind === 'polygon' || lay.kind === 'triangle') && lay.points && lay.points.length >= 3) {
           const flatPts = [];
           lay.points.forEach((p) => {
             const [px, py] = toPx(p.x, p.y);
@@ -438,16 +487,192 @@ export default function MathVizKonvaGeometry2D({ data, onSwitchEngine }) {
             shadowBlur: 6,
             shadowOpacity: 0.35,
           }));
-        } else if ((lay.kind === 'line' || lay.kind === 'segment') && lay.from && lay.to) {
-          const [x1, y1] = toPx(lay.from.x, lay.from.y);
-          const [x2, y2] = toPx(lay.to.x, lay.to.y);
-          geomLayer.add(new Konva.Line({
-            points: [x1, y1, x2, y2],
-            stroke: layColor,
-            strokeWidth: 2,
-            dash: lay.style === 'dashed' ? [6, 5] : undefined,
-            lineCap: 'round',
-          }));
+        } else if ((lay.kind === 'line' || lay.kind === 'segment' || lay.kind === 'ray') && (lay.from || lay.to)) {
+          const from = layerPointPx(lay.from, toPx, layerIdIndex);
+          const to = layerPointPx(lay.to, toPx, layerIdIndex);
+          if (from && to) {
+            // A ray has no end: extend past `to` to the canvas edge, so it can
+            // never be mistaken for the segment it would otherwise look like.
+            let end = to;
+            if (lay.kind === 'ray') {
+              const dx = to[0] - from[0], dy = to[1] - from[1];
+              const len = Math.hypot(dx, dy) || 1;
+              const reach = width * 1.5;
+              end = [to[0] + (dx / len) * reach, to[1] + (dy / len) * reach];
+            }
+            geomLayer.add(new Konva.Line({
+              points: [from[0], from[1], end[0], end[1]],
+              stroke: layColor,
+              strokeWidth: 2,
+              dash: lay.style === 'dashed' ? [6, 5] : undefined,
+              lineCap: 'round',
+            }));
+          }
+        } else if ((lay.kind === 'arc' || lay.kind === 'sector') && lay.center) {
+          const center = layerPointPx(lay.center, toPx, layerIdIndex);
+          const from = layerPointPx(lay.from, toPx, layerIdIndex);
+          const to = layerPointPx(lay.to, toPx, layerIdIndex);
+          if (center && from && to) {
+            const largeArc = lay.large_arc === true || lay.arc === 'major';
+            const isSector = lay.kind === 'sector';
+            if (isSector) {
+              // A sector is a closed wedge, so it is drawn as a filled polygon built
+              // from the shared outline (two radii + the arc) — the same maths as the
+              // SVG engine, which is why both now agree pixel-for-pixel.
+              geomLayer.add(new Konva.Line({
+                points: pointsToFlat(sampleSectorOutline(center, from, to, largeArc)),
+                closed: true,
+                fill: lay.fill || 'rgba(56, 189, 248, 0.2)',
+                stroke: layColor,
+                strokeWidth: 2,
+                lineCap: 'round',
+              }));
+            } else {
+              const params = konvaArcParams(center, from, to, largeArc);
+              geomLayer.add(new Konva.Arc({
+                x: center[0],
+                y: center[1],
+                // A ring of zero thickness IS the open curve; the 0.999 factor
+                // keeps the arc visible instead of collapsing it.
+                innerRadius: params.radius * 0.999,
+                outerRadius: params.radius,
+                rotation: params.rotation,
+                angle: params.angle,
+                clockwise: params.clockwise,
+                stroke: layColor,
+                strokeWidth: 2,
+                dash: lay.style === 'dashed' ? [6, 5] : undefined,
+              }));
+            }
+          }
+        } else if (lay.kind === 'region') {
+          // Was reported as "unsupported by Konva" until the outline walk was shared
+          // with the JSXGraph engine. A curved region needs a custom path, and Konva
+          // supplies one: a Shape whose sceneFunc traces the sampled outline.
+          const outline = sampleRegionOutline(lay.path || lay.points, (ref) => {
+            if (ref && Number.isFinite(ref.x) && Number.isFinite(ref.y)) return [ref.x, ref.y];
+            const id = typeof ref === 'string' ? ref : (ref && (ref.id || ref.name));
+            const hit = id ? layerIdIndex[id] : null;
+            return hit ? [hit.x, hit.y] : null;
+          });
+          const flat = pointsToFlat(outline.map(([x, y]) => toPx(x, y)));
+          if (flat.length >= 6) {
+            geomLayer.add(new Konva.Shape({
+              fill: lay.fill || 'rgba(148, 163, 184, 0.3)',
+              stroke: lay.color || undefined,
+              strokeWidth: lay.color ? (lay.strokeWidth || 1) : 0,
+              listening: false,
+              sceneFunc: (ctx, shape) => {
+                ctx.beginPath();
+                ctx.moveTo(flat[0], flat[1]);
+                for (let i = 2; i < flat.length; i += 2) ctx.lineTo(flat[i], flat[i + 1]);
+                ctx.closePath();
+                ctx.fillStrokeShape(shape);
+              },
+            }));
+          }
+        } else if (lay.kind === 'polyline' && Array.isArray(lay.points)) {
+          const pts = lay.points.map((p) => layerPointPx(p, toPx, layerIdIndex)).filter(Boolean);
+          if (pts.length >= 2) {
+            geomLayer.add(new Konva.Line({
+              points: pts.flat(),
+              stroke: layColor,
+              strokeWidth: 2,
+              dash: lay.style === 'dashed' ? [6, 5] : undefined,
+              lineCap: 'round',
+              lineJoin: 'round',
+              tension: 0,
+            }));
+          }
+        } else if (lay.kind === 'ellipse' && lay.center) {
+          const center = layerPointPx(lay.center, toPx, layerIdIndex);
+          if (center) {
+            // Sampled through the shared helper (JSXGraph does the same), so the two
+            // engines draw the same ellipse instead of each approximating its own.
+            const outlineMath = sampleEllipse(
+              [lay.center.x ?? 0, lay.center.y ?? 0],
+              lay.a || lay.rx || 3, lay.b || lay.ry || 2,
+            );
+            geomLayer.add(new Konva.Line({
+              points: pointsToFlat(outlineMath.map(([x, y]) => toPx(x, y))),
+              closed: true,
+              fill: lay.fill || 'rgba(255, 60, 172, 0.12)',
+              stroke: layColor,
+              strokeWidth: 2.2,
+              dash: lay.style === 'dashed' ? [6, 5] : undefined,
+            }));
+          }
+        } else if (lay.kind === 'angle') {
+          const refs = lay.points || lay.of || [];
+          const pts = refs.map((p) => layerPointPx(p, toPx, layerIdIndex)).filter(Boolean);
+          if (pts.length === 3) {
+            // Vertex is the SECOND entry (A-B-C), as the contract documents.
+            const [p0, vertex, p2] = pts;
+            const rPx = Math.max(14, Math.min(32, (lay.radius || 0.6) * effectiveScale));
+            const a1 = Math.atan2(p0[1] - vertex[1], p0[0] - vertex[0]);
+            const a2 = Math.atan2(p2[1] - vertex[1], p2[0] - vertex[0]);
+            const arm1 = [vertex[0] + Math.cos(a1) * rPx, vertex[1] + Math.sin(a1) * rPx];
+            const arm2 = [vertex[0] + Math.cos(a2) * rPx, vertex[1] + Math.sin(a2) * rPx];
+            const rightAngle = lay.right_angle === true;
+            const corner = [arm1[0] + (arm2[0] - vertex[0]), arm1[1] + (arm2[1] - vertex[1])];
+            geomLayer.add(new Konva.Line({
+              points: rightAngle
+                ? [arm1[0], arm1[1], corner[0], corner[1], arm2[0], arm2[1]]
+                : [...arm1, ...arm2],
+              stroke: lay.color || '#fbbf24',
+              strokeWidth: 1.6,
+              closed: false,
+            }));
+            if (!rightAngle) {
+              // Mark the MINOR sweep, which is the angle a textbook draws: below
+              // 180° go clockwise from arm1, otherwise start at arm2 instead.
+              const toDeg = (rad) => (rad * 180) / Math.PI;
+              const a1Deg = toDeg(a1), a2Deg = toDeg(a2);
+              const cwSweep = ((a2Deg - a1Deg) % 360 + 360) % 360;
+              const minor = cwSweep <= 180
+                ? { rotation: a1Deg, angle: cwSweep }
+                : { rotation: a2Deg, angle: 360 - cwSweep };
+              geomLayer.add(new Konva.Wedge({
+                x: vertex[0],
+                y: vertex[1],
+                radius: rPx,
+                angle: Math.max(1, minor.angle),
+                rotation: minor.rotation,
+                fill: lay.fill || 'rgba(251, 191, 36, 0.25)',
+                stroke: lay.color || '#fbbf24',
+                strokeWidth: 1,
+              }));
+            }
+          }
+        } else if (lay.kind === 'points' && Array.isArray(lay.data)) {
+          // Point badges are drawn on the points layer further down, but the
+          // branch has to exist for every leaf this engine claims (the node
+          // guard checks the claim against the branches).
+          lay.data.forEach((pt) => {
+            // A point without numeric coordinates is not a point the contract
+            // recognises (mathviz_contract.iter_point_dicts requires both), so it
+            // is skipped rather than handed to Konva as NaN.
+            if (!pt || !Number.isFinite(pt.x) || !Number.isFinite(pt.y)) return;
+            const [px, py] = toPx(pt.x, pt.y);
+            geomLayer.add(new Konva.Circle({
+              x: px, y: py, radius: 4.2,
+              fill: pt.color || palette.pointFill,
+              stroke: palette.badgeBorder,
+              strokeWidth: 1,
+            }));
+          });
+        } else if (lay.kind === 'label') {
+          const at = layerPointPx(lay.at || lay.point, toPx, layerIdIndex);
+          if (at) {
+            geomLayer.add(new Konva.Text({
+              x: at[0] + 6,
+              y: at[1] - 16,
+              text: String(lay.text || lay.label || ''),
+              fontSize: lay.fontSize || 13,
+              fontStyle: 'bold',
+              fill: lay.color || palette.text,
+            }));
+          }
         }
       });
     }
@@ -882,6 +1107,42 @@ export default function MathVizKonvaGeometry2D({ data, onSwitchEngine }) {
   const labelStyle = { fontSize: 10.5, color: isLightBg ? '#64748b' : '#8b949e', marginBottom: 2 };
   const valueStyle = { fontSize: 13.5, fontWeight: 'bold', color: isLightBg ? '#0f172a' : '#f0f6fc' };
 
+  // What this engine will NOT draw (đợt 8 / 4I). Konva is the one engine whose
+  // support list is deliberately smaller than the contract (a mixed `region`
+  // needs a custom sceneFunc we do not ship), so it is also the one engine where
+  // saying so out loud matters most — the student sees the notice and can switch
+  // to JSXGraph/SVG with the buttons right next to it.
+  const konvaNotices = useMemo(() => {
+    const notes = [];
+    const missing = [];
+    (data?.layers || []).forEach((lay) => {
+      const kind = canonicalKind(lay?.kind);
+      if (kind && ENGINE_SUPPORT.konva.indexOf(kind) === -1 && missing.indexOf(kind) === -1) {
+        missing.push(kind);
+      }
+    });
+    if (missing.length > 0) {
+      notes.push(`Engine Konva chưa vẽ được: ${missing.join(', ')} — em chuyển sang JSXGraph/SVG ở trên để xem đủ hình.`);
+    }
+    const report = data?._render;
+    if (report && Array.isArray(report.skipped) && report.skipped.length > 0) {
+      const names = report.skipped.map((item) => item?.kind).filter(Boolean).join(', ');
+      notes.push(`${report.skipped.length} lớp bị bỏ (kind lạ${names ? `: ${names}` : ''}).`);
+    }
+    if (report && Array.isArray(report.constructions_unsolved) && report.constructions_unsolved.length > 0) {
+      notes.push(`${report.constructions_unsolved.length} dựng hình chưa giải được toạ độ chính xác.`);
+    }
+    // A tangency placed by a guaranteed property (collinear between the centres)
+    // rather than exactly — reported so the drawing never claims more precision
+    // than the solver actually established.
+    if (report && Array.isArray(report.approximate) && report.approximate.length > 0) {
+      const names = report.approximate.filter(Boolean).join(', ');
+      notes.push(`${report.approximate.length} điểm tiếp xúc vẽ gần đúng (thẳng hàng hai tâm`
+        + `${names ? `: ${names}` : ''}).`);
+    }
+    return notes;
+  }, [data]);
+
   return (
     <div
       style={{
@@ -902,6 +1163,19 @@ export default function MathVizKonvaGeometry2D({ data, onSwitchEngine }) {
         flexDirection: 'column',
       }}
     >
+      {/* What this engine cannot draw, said out loud (đợt 8 / 4I). A figure that
+          loses a part must never be a silent surprise. */}
+      {konvaNotices.length > 0 && (
+        <div style={{
+          marginBottom: 10, padding: '7px 11px', borderRadius: 8,
+          background: 'rgba(245, 158, 11, 0.12)',
+          border: '1px solid rgba(245, 158, 11, 0.4)',
+          color: '#fbbf24', fontSize: 11.5, lineHeight: 1.5,
+        }}>
+          {konvaNotices.map((note) => (<div key={note}>⚠️ {note}</div>))}
+        </div>
+      )}
+
       {/* Title & Engine Switcher Bar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

@@ -623,6 +623,14 @@ import vnhsge_bank
 # it, so a stalled pipeline answers an honest 504 instead of being killed by the
 # proxy — a kill the browser reports as a CORS failure (see the module docstring).
 import chat_budget
+# Đợt 8 / 4I — how much work a diagram deserves, decided before the expensive
+# stages run. Every per-stage budget here SUMS to no more than
+# CHAT_REQUEST_TIMEOUT_S, which is what the fixed stage budgets did not do.
+import diagram_complexity
+# Đợt 8 / 4I — the geometry vocabulary as a checked contract. The prompt, the
+# validators and the three renderers all read THIS module now, so a kind can no
+# longer be taught, accepted, and silently undrawable at the same time.
+import mathviz_contract
 
 
 def _mr_summary(perception) -> dict:
@@ -694,6 +702,23 @@ _SOCRATIC_BASE = f"""Bạn là **DuoMCB** (chú Cú Xanh Toán học thông thá
 - Ở chế độ Giải Đầy Đủ: Trình bày bài giải bài bản, chứng minh chi tiết từng bước, nêu rõ căn cứ định lý và kết luận rõ ràng.
 - **TUYỆT ĐỐI KHÔNG** xuất suy nghĩ nội tâm (internal thought, scratchpad, ghi chú nháp bằng tiếng Anh hay tự độc thoại). LUÔN trả lời trực tiếp cho học sinh bằng tiếng Việt sư phạm, hoàn chỉnh."""
 
+def mathviz_prompt_block(widget: str | None) -> str:
+    """Visual rules + the widget's schema snippet + the geometry vocabulary.
+
+    Đợt 8 / 4I: the kind table is appended HERE rather than inside
+    ``_WIDGET_PROMPT_SNIPPETS`` so that every prompt variant which teaches
+    geometry_2d — hint, solution, visualizer, image-with-vision — teaches the
+    SAME vocabulary the validator and the three renderers enforce. That
+    sameness is the whole fix: the model used to be taught four kinds while
+    the rule books knew more.
+    """
+    name = widget if widget in _WIDGET_PROMPT_SNIPPETS else "geometry_2d"
+    block = _VISUAL_RULES + _WIDGET_PROMPT_SNIPPETS[name]
+    if name == "geometry_2d":
+        block += "\n\n" + mathviz_contract.prompt_vocabulary()
+    return block
+
+
 @lru_cache(maxsize=64)
 def cached_system_prompt(variant: str = "text", widget: str | None = None) -> str:
     """MathGPT system prompt — 5 variants: text (Socratic hint), image (Vision Socratic),
@@ -724,7 +749,6 @@ def cached_system_prompt(variant: str = "text", widget: str | None = None) -> st
             "Do NOT include conversational chatter or filler text. Output clear numbered steps."
         )
     elif variant == "visualizer":
-        target_snippet = _WIDGET_PROMPT_SNIPPETS.get(widget) if widget else _WIDGET_PROMPT_SNIPPETS["geometry_2d"]
         base = (
             "Bạn là chuyên gia trực quan hóa toán học và mô hình hóa hình học tương tác MathViz của DuoMath.\n\n"
             "## NHIỆM VỤ CHÍNH: TẬP TRUNG TẠO MÔ HÌNH HÌNH HỌC / ĐỒ THỊ TƯƠNG TÁC (MATHVIZ)\n"
@@ -735,9 +759,7 @@ def cached_system_prompt(variant: str = "text", widget: str | None = None) -> st
             "3. BẮT BUỘC đóng ngoặc JSON đầy đủ và kết thúc câu trả lời bằng ```.\n"
             "4. KHÔNG cần tự tính toán tọa độ số thập phân cho các điểm phụ (như trực tâm, chân đường cao, trung điểm, tâm ngoại tiếp, giao điểm). Chỉ cần khai báo tọa độ 3 đỉnh chính (A, B, C hoặc Ia, Ib, Ic), các điểm còn lại chỉ cần khai báo ID trong 'layers' hoặc 'constructions', hệ thống giải tích hình học của DuoMath sẽ tự động tính toán tọa độ chuẩn xác 100%!\n\n"
             + _LATEX_RULES
-            + _VISUAL_RULES
-            + "\n"
-            + target_snippet
+            + mathviz_prompt_block(widget)
         )
         return base
     elif variant == "image_with_vision":
@@ -753,8 +775,7 @@ def cached_system_prompt(variant: str = "text", widget: str | None = None) -> st
             + "   - Sử dụng widget \"geometry_2d\" với cấu trúc \"layers\" đa tầng: định nghĩa đầy đủ polygon, lines, circle, points. Vẽ nét thanh mảnh (strokeWidth: 1.5 - 2), màu sắc rõ ràng (các đa giác/tam giác xanh neon #10b981 hoặc #3b82f6, đường tròn viền xanh/hồng mảnh, các đường phụ nét đứt màu vàng/đỏ).\n"
             + "3. **Gợi ý định hướng giải (Socratic Hints)**: Nêu 2-3 gợi ý sắc sảo dựa trên cấu hình (bổ đề hình thang, chùm điều hòa, phương tích, trục đẳng phương, góc nội tiếp, tam giác đồng dạng...).\n"
             + _LATEX_RULES
-            + "\n" + _VISUAL_RULES
-            + "\n" + _WIDGET_PROMPT_SNIPPETS["geometry_2d"]
+            + "\n" + mathviz_prompt_block("geometry_2d")
         )
         return base
     elif variant == "image":
@@ -784,8 +805,7 @@ def cached_system_prompt(variant: str = "text", widget: str | None = None) -> st
         )
     # Append mathviz visual rules + per-widget schema snippet + golden few-shot demo when widget is known
     if widget and widget in _WIDGET_PROMPT_SNIPPETS:
-        base += _VISUAL_RULES
-        base += _WIDGET_PROMPT_SNIPPETS[widget]
+        base += mathviz_prompt_block(widget)
         if widget in _WIDGET_FEW_SHOT_DEMOS:
             base += "\n\n## VÍ DỤ MẪU HOÀN CHỈNH (FEW-SHOT GOLDEN CALIBRATION - HỌC THEO ĐỊNH DẠNG NÀY):\n"
             base += _WIDGET_FEW_SHOT_DEMOS[widget]
@@ -1487,6 +1507,25 @@ Ví dụ Đường tròn (O, R) đường kính AB, điểm C trên (O) với AC
    {"point":"E","type":"intersection","of":["A","C","B","D"]},
    {"point":"H","type":"foot","of":["E","A","B"]}
  ]}
+4. CUNG TRÒN, HÌNH QUẠT VÀ MIỀN TÔ (dạng "kì dị" mà 4 kind cũ KHÔNG diễn tả được): dùng "arc", "sector", "region".
+Ví dụ ĐÚNG — ba cung nội tiếp tam giác $ABC$ vuông tại $A$ ($AB=3$, $AC=4$, $BC=5$), các cung tiếp xúc nhau tại $P$, $Q$, $R$:
+{"type":"mathviz.v1","widget":"geometry_2d","title":"Ba cung nội tiếp tam giác $ABC$ vuông tại $A$",
+ "layers":[
+   {"kind":"polygon","points":[{"id":"A","x":0,"y":0},{"id":"B","x":0,"y":3},{"id":"C","x":4,"y":0}],"color":"#e2e8f0"},
+   {"kind":"arc","center":{"id":"A","x":0,"y":0},"from":{"id":"R","x":1,"y":0},"to":{"id":"P","x":0,"y":1},"color":"#38bdf8"},
+   {"kind":"arc","center":{"id":"B","x":0,"y":3},"from":{"id":"Q","x":1.6,"y":1.8},"to":{"id":"P","x":0,"y":1},"color":"#38bdf8"},
+   {"kind":"arc","center":{"id":"C","x":4,"y":0},"from":{"id":"Q","x":1.6,"y":1.8},"to":{"id":"R","x":1,"y":0},"color":"#38bdf8"},
+   {"kind":"region","fill":"rgba(148, 163, 184, 0.3)","path":[
+     {"type":"point","id":"P","x":0,"y":1},
+     {"type":"arc","center":{"id":"A","x":0,"y":0},"from":{"id":"P","x":0,"y":1},"to":{"id":"Q","x":1.6,"y":1.8}},
+     {"type":"point","id":"Q","x":1.6,"y":1.8}]},
+   {"kind":"points","data":[{"id":"A","x":0,"y":0},{"id":"B","x":0,"y":3},{"id":"C","x":4,"y":0},
+     {"id":"P","x":0,"y":1},{"id":"Q","x":1.6,"y":1.8},{"id":"R","x":1,"y":0}]},
+   {"kind":"angle","points":["B","A","C"],"right_angle":true}
+ ]}
+QUY TẮC BẮT BUỘC: mọi điểm được nhắc tới trong "center"/"from"/"to"/"path"/"points"/"through_3pts"
+PHẢI được khai báo trong cùng payload (một layer "points" hoặc "polygon").
+Nếu hình có chi tiết mà bảng kind không diễn tả được: xấp xỉ bằng "polyline" + "points" và nói rõ trong lời giải.
 ''',
 
 
@@ -1874,6 +1913,14 @@ def validate_mathviz(widget: str, data: dict) -> list[str]:
     if widget == "geometry_2d" and "mode" in data and data.get("mode") not in _VALID_2D_MODES:
         errors.append(f"giá trị 'mode' không hợp lệ: '{data.get('mode')}'. Phải thuộc {_VALID_2D_MODES}")
 
+    # Đợt 8 / 4I: the layer KIND vocabulary and the construction types are
+    # validated too. Without this, a model that invented a kind ("sector_arc",
+    # "spiral") or pointed a circle at an undeclared point validated CLEAN —
+    # so the two repair tiers below never ran and the student got a figure
+    # quietly missing a part. Errors here are exactly what triggers them.
+    if widget == "geometry_2d":
+        errors.extend(mathviz_contract.geometry_2d_errors(data))
+
     return errors
 
 
@@ -1947,6 +1994,7 @@ async def _repair_mathviz_with_free_openrouter(widget: str, broken_json: str, er
     prompt = (
         f"Sua loi JSON sau cho khoi mathviz widget '{widget}'. "
         f"Loi: {'; '.join(errors)}. "
+        f"{mathviz_contract.repair_vocabulary()} "
         f"CHI tra ve dung 1 object JSON hop le, khong them chu, khong markdown fences.\n\n"
         f"JSON goc:\n{broken_json}"
     )
@@ -3496,6 +3544,17 @@ async def run_retention(request: Request):
 async def chat(request: Request):
     d = await request.json()
     _t0 = time.time()   # Đợt 4C: latency for ai_quality_log
+    # Đợt 8 / 4I: the cost plan for this figure. Initialised here (not in the
+    # image branch) because the soft-deadline check further down runs for
+    # text-only requests too, where there is no figure to measure — `_plan`
+    # stays None and every consumer falls back to the fixed budget. Assigning it
+    # only inside `if image_data:` is a NameError waiting for the first text
+    # request that reaches that check.
+    _tier = None
+    _plan = None
+    # Đợt 8 / 4I: WHICH tier answered, for the same reason — the soft-deadline
+    # branch reports it before the model ladder ever runs.
+    _answered = {"provider": "", "model": ""}
     session_id   = d.get("session_id") or str(uuid.uuid4())
     user_message = (d.get("message") or "").strip()
     image_data   = d.get("image")
@@ -3585,12 +3644,31 @@ async def chat(request: Request):
         except Exception as e_cv:
             logger.debug(f"OpenCV structural preprocessing skipped: {e_cv}")
 
+        # ── Đợt 8 / 4I: measure the figure BEFORE spending on it ──────────────
+        # The line/circle counts above were computed and then only pasted into the
+        # prompt as prose. Here they (plus the length of the message) pick a cost
+        # plan whose stages SUM to the request budget, so a dense drawing cannot
+        # eat the whole 75 s and leave the student with nothing at all.
+        try:
+            _tier = diagram_complexity.estimate(_cv_hints, text_chars=len(user_message or ""))
+            _plan = diagram_complexity.plan_for(_tier["tier"])
+            logger.info("[Chat] %s", diagram_complexity.describe(_tier, _plan))
+        except Exception as e_plan:
+            logger.debug(f"Complexity estimate skipped: {e_plan}")
+            _tier, _plan = None, None
+
         # ── Stage 1a (Đợt 4A): Verified MathReader ────────────────────────────
         # Read once, cross-check with a second model from another family when
         # the first is unsure, re-read the cropped region when a formula fails
         # the SymPy gate, and hand the solver a *typed transcription* instead of
         # raw pixels. The legacy geometry agent below remains the fallback path.
-        if image_data and _mr_dual_read_mode() != "never":
+        # Đợt 8 / 4I: the plan decides WHETHER to read, and for how long. On an
+        # "extreme" figure reading is skipped outright (plan math_reader = 0): the
+        # picture is handed to the answer model with the OpenCV hint text and a
+        # "draw the essentials only" instruction, which is what actually fits in
+        # the budget. Skipping is a deliberate downgrade, logged as such.
+        _reader_budget = _plan["math_reader"] if _plan else chat_budget.CHAT_VISION_BUDGET_S
+        if image_data and _reader_budget > 0 and _mr_dual_read_mode() != "never":
             try:
                 _mr_phash = None
                 try:
@@ -3607,7 +3685,7 @@ async def chat(request: Request):
                         sha256=_img_meta.get("sha256", ""),
                         phash=_mr_phash,
                     ),
-                    timeout=_budget.clamp(chat_budget.CHAT_VISION_BUDGET_S),
+                    timeout=_budget.clamp(_reader_budget),
                 )
                 if perception.get("needs_confirm"):
                     _cands = perception.get("candidates") or []
@@ -3646,15 +3724,19 @@ async def chat(request: Request):
             except Exception as ex_reader:
                 logger.warning("[Chat] MathReader error: %s — legacy vision path next.", ex_reader)
 
-        # Stage 1: Attempt specialized Olympiad geometry diagram extraction via OpenRouter
-        if _vision_agent.is_configured():
+        # Stage 1: Attempt specialized Olympiad geometry diagram extraction via OpenRouter.
+        # Đợt 8 / 4I: only when the plan still affords it AND the reader above did
+        # not already produce a transcription — running both on a dense figure is
+        # exactly how the two stages used to sum past the request budget.
+        _agent_budget = _plan["vision_agent"] if _plan else chat_budget.CHAT_VISION_AGENT_BUDGET_S
+        if _vision_agent.is_configured() and _agent_budget > 0 and not vision_description:
             try:
                 print(f"[Chat] Invoking Stage 1 Vision Agent ({_vision_agent.model} via OpenRouter)...")
                 vision_description, success = await asyncio.wait_for(
                     _vision_agent.extract_with_fallback(
                         raw_b64, media_type=media_type, user_hint=user_message
                     ),
-                    timeout=_budget.clamp(chat_budget.CHAT_VISION_AGENT_BUDGET_S),
+                    timeout=_budget.clamp(_agent_budget),
                 )
                 if success and vision_description:
                     print("[Chat] Stage 1 Vision extraction succeeded! Passing structured geometry to Gemini Canvas Engine.")
@@ -3708,10 +3790,13 @@ async def chat(request: Request):
     # CORS headers and is therefore reported by the browser as a CORS failure.
     # Off the loop, and bounded: the answer is still useful without the reference
     # block, so a slow knowledge base must never delay it.
+    # Đợt 8 / 4I: the retrieval budget now comes from the plan, so an
+    # "extreme" figure spends 3 s here instead of 10 s twice.
+    _retrieval_budget = _plan["retrieval"] if _plan else chat_budget.CHAT_RETRIEVAL_BUDGET_S
     try:
         retrieved_kb = await asyncio.wait_for(
             asyncio.to_thread(retrieve_math_context, user_message),
-            timeout=_budget.clamp(chat_budget.CHAT_RETRIEVAL_BUDGET_S),
+            timeout=_budget.clamp(_retrieval_budget),
         )
     except Exception as e_kb:
         logger.warning("[Chat] KB retrieval skipped (%s: %s)", type(e_kb).__name__, e_kb)
@@ -3720,7 +3805,7 @@ async def chat(request: Request):
         from math_problem_retrieval import retrieve_similar_problems
         retrieved_examples = await asyncio.wait_for(
             asyncio.to_thread(retrieve_similar_problems, user_message, 2),
-            timeout=_budget.clamp(chat_budget.CHAT_RETRIEVAL_BUDGET_S),
+            timeout=_budget.clamp(_retrieval_budget),
         )
     except Exception as e_retr:
         logger.debug(f"Problem-bank retrieval skipped: {e_retr}")
@@ -3741,6 +3826,13 @@ async def chat(request: Request):
         full_system_prompt += typesafe_guard.get_system_guard_prompt_contract(mode=chat_mode, widget=_widget)
     except Exception as _e_ts:
         logger.debug(f"TypeSafe prompt contract skipped: {_e_ts}")
+
+    # Đợt 8 / 4I: the plan's drawing instruction. On a dense figure this is what
+    # turns "an answer that never arrives" into "a correct answer with a
+    # simplified drawing" — it is the only instruction that makes a 2048-token
+    # budget enough for a picture with a dozen labelled points.
+    if _plan and _plan.get("draw_hint"):
+        full_system_prompt += f"\n\n## YÊU CẦU RIÊNG CHO HÌNH NÀY:\n{_plan['draw_hint']}\n"
 
 
     # Map conversation history to Gemini structure (keep last 12 for long proofs)
@@ -3811,10 +3903,13 @@ async def chat(request: Request):
         })
         history.append({"role": "user", "content": user_message})
 
-    # Token budget calculation — generous for image/solution to avoid truncation
+    # Token budget calculation — generous for image/solution to avoid truncation.
+    # Đợt 8 / 4I: on an "extreme" figure the plan caps this lower (2048) and asks
+    # for a schematic drawing, because a 4096-token answer is what makes a dense
+    # request outlive its budget in the first place.
     _has_widget = chat_mode not in ("solution", "raw_solution") and _widget is not None
     if image_data:
-        max_tokens = 4096   # Optimal for Gemini flash models to avoid 503 high-demand rejects
+        max_tokens = (_plan or {}).get("max_tokens") or 4096
     elif chat_mode in ("solution", "raw_solution"):
         max_tokens = 4096   # Full solutions need room for derivations
     elif _has_widget:
@@ -3849,6 +3944,75 @@ async def chat(request: Request):
     is_custom_provider = (llm_provider in ("openai_compatible", "huggingface") or bool(openai_base_url)) and llm_provider != "gemini"
     print(f"[Chat] provider={llm_provider if is_custom_provider else 'gemini'}, model={hf_model_name if is_custom_provider else gemini_model}, mode={chat_mode}, widget={_widget}, has_image={'yes' if image_data else 'no'}, max_tokens={max_tokens}")
 
+    # ── Đợt 8 / 4I: the generation budget ───────────────────────────────────
+    # Every call that produces the ANSWER now takes min(its own budget, what is
+    # left of the request). Before this, generation used hard-coded client
+    # timeouts (90 s / 60 s / 30 s per retry) while the stages around it were
+    # carefully bounded — so a dense diagram could still outlive CHAT_REQUEST_
+    # TIMEOUT_S between two stages and be killed with no answer at all, which is
+    # exactly the failure this đợt exists to remove.
+    _gen_budget = (_plan or {}).get("generate") or chat_budget.CHAT_GENERATE_BUDGET_S
+    _gen_left = _budget.clamp(_gen_budget)
+
+    # ── Đợt 8 / 4I: soft deadline — answer with what we ALREADY have ─────────
+    # The hard deadline (chat_budget/_ChatDeadlineMiddleware) is a safety net: it
+    # answers 504 and the student loses everything, including the problem the
+    # reader already transcribed. This check runs earlier and degrades instead:
+    # the transcription plus a local-engine answer and a minimal figure, clearly
+    # labelled as partial, with the actionable advice. A reply that says "here is
+    # what I read, and here is the outline — send the rest separately" is worth
+    # far more than a timeout notice.
+    _partial_note = ""
+    if _plan and _budget.remaining() <= diagram_complexity.soft_deadline_s():
+        try:
+            _partial_reply = generate_mock_mathgpt_reply(user_message, _widget, chat_mode)
+        except Exception as e_partial:
+            logger.warning("[Chat] partial local answer failed (%s)", e_partial)
+            _partial_reply = ""
+        # What we already read: the reader's typed contract (or its LaTeX / text
+        # blocks) beats the legacy agent's prose, since it is what the solver
+        # would have consumed.
+        _seen = ""
+        if perception:
+            _seen = (perception.get("contract")
+                     or " ; ".join((perception.get("latex") or [])[:6])
+                     or " ".join((perception.get("text_blocks") or [])[:3]))
+        _seen = _seen or vision_description or ""
+        _partial_note = (
+            "⏳ Hình này rất phức tạp nên mình chưa kịp giải trọn vẹn trong thời gian cho phép. "
+            "Dưới đây là phần mình đã xử lý được:\n\n"
+        )
+        if _seen:
+            _partial_note += f"**Đề bài mình đọc được:**\n{str(_seen)[:1500]}\n\n"
+        if _partial_reply:
+            _partial_note += _partial_reply
+        else:
+            _partial_note += ("Em thử tách bài thành từng câu nhỏ, hoặc gõ lại đề bằng chữ "
+                              "ngắn gọn để mình trả lời đầy đủ nhé.")
+        _partial_note += (
+            "\n\n> 💡 *Em có thể hỏi tiếp từng phần (ví dụ: \"giải câu b\", \"vẽ hình này\") — "
+            "mình trả lời trọn vẹn cho từng phần nhỏ hơn.*"
+        )
+        _answered.update(provider="local", model="local-mathgpt")
+        try:
+            quality_log(surface="chat", tier="soft_deadline", provider="local",
+                        model="local-mathgpt", latency_ms=int((time.time() - _t0) * 1000))
+        except Exception as _e_qlog_partial:
+            logger.debug("[Chat] partial quality log skipped (%s)", _e_qlog_partial)
+        print(f"[Chat] answered_by=local:local-mathgpt tier=soft_deadline "
+              f"complexity={(_plan or {}).get('tier')} elapsed={time.time() - _t0:.1f}s "
+              f"budget_left={_budget.remaining():.1f}s")
+        history.append({"role": "assistant", "content": _partial_note})
+        save_history(session_id, history)
+        return JSONResponse({
+            "reply": _partial_note,
+            "session_id": session_id,
+            "history_length": len(history),
+            "partial": True,
+            "complexity": (_plan or {}).get("tier"),
+            **( {"perception": _mr_summary(perception)} if perception else {} ),
+        })
+
     if use_stream:
         if is_custom_provider:
             endpoint_url = f"{openai_base_url}/chat/completions" if openai_base_url else "https://api-inference.huggingface.co/v1/chat/completions"
@@ -3864,7 +4028,7 @@ async def chat(request: Request):
             async def generate_custom_provider():
                 full_reply = []
                 try:
-                    async with client.stream("POST", endpoint_url, headers=hf_headers, json=hf_payload, timeout=90) as resp:
+                    async with client.stream("POST", endpoint_url, headers=hf_headers, json=hf_payload, timeout=_gen_left) as resp:
                         resp.raise_for_status()
                         async for raw_line in resp.aiter_lines():
                             if not raw_line:
@@ -3932,7 +4096,7 @@ async def chat(request: Request):
                             "POST", f"{GROQ_BASE}/chat/completions",
                             headers=groq_headers(),
                             json=_gs_payload,
-                            timeout=30
+                            timeout=_gen_left
                         ) as resp:
                             if resp.status_code == 429:
                                 print(f"[WARN] Groq stream ({_gs_model}) 429 — thu model tiep theo trong pool")
@@ -3985,7 +4149,7 @@ async def chat(request: Request):
                 }
                 fallback_reply = []
                 try:
-                    async with client.stream("POST", _gem_url, json=_gem_pl, timeout=90) as resp2:
+                    async with client.stream("POST", _gem_url, json=_gem_pl, timeout=_gen_left) as resp2:
                         resp2.raise_for_status()
                         async for raw_line2 in resp2.aiter_lines():
                             if not raw_line2:
@@ -4035,7 +4199,7 @@ async def chat(request: Request):
             async def generate():
                 full_reply = []
                 try:
-                    async with client.stream("POST", url, json=payload, timeout=90) as resp:
+                    async with client.stream("POST", url, json=payload, timeout=_gen_left) as resp:
                         resp.raise_for_status()
                         async for raw_line in resp.aiter_lines():
                             if not raw_line:
@@ -4101,6 +4265,11 @@ async def chat(request: Request):
         # the one question the model ladder needs — "is a free fallback carrying
         # production?" — and model tuning was guesswork. See the quality_log call
         # at the end of this branch.
+        #
+        # Đợt 8 / 4I: the initialisation moved UP to the top of chat() (next to
+        # `_t0`), because the soft-deadline branch — which answers before this
+        # ladder ever runs — also reports which tier answered. Keeping it here
+        # meant that branch referenced a name that did not exist yet.
         _answered = {"provider": "", "model": ""}
 
         # ── Tier 0.5: Groq / Qwen3-27B (Math & Vision-Extracted Geometry Priority) ──
@@ -4124,7 +4293,10 @@ async def chat(request: Request):
                         f"{GROQ_BASE}/chat/completions",
                         headers=groq_headers(),
                         json=_groq05_payload,
-                        timeout=30,
+                        # Đợt 8 / 4I: bounded by the generation budget, not a fixed
+                        # 30 s — three pool entries at 30 s each is 90 s of clock
+                        # spent on ONE stage.
+                        timeout=_gen_left,
                     )
                     if _groq05_resp.status_code == 200:
                         reply = _groq05_resp.json()["choices"][0]["message"]["content"]
@@ -4320,15 +4492,22 @@ async def chat(request: Request):
             _viz_errors = validate_mathviz(actual_widget, _viz_block)
 
             # Tier 1 (existing): one same-model Gemini retry with the errors appended.
-            if _viz_errors:
+            # Đợt 8 / 4I: only worth it when a whole answer still fits in the
+            # remaining clock — on a dense figure that retry is exactly what
+            # pushed the request past its budget. 15 s is one clamped generation
+            # slot; below that the repair tiers run instead (they are narrow JSON
+            # calls, not full replies).
+            _retry_worth_it = _budget.remaining() > 15.0
+            if _viz_errors and _retry_worth_it:
                 print(f"[MathViz] Schema errors for widget '{actual_widget}': {_viz_errors} — retrying once with Gemini")
                 retry_contents = gemini_contents + [
                     {"role": "model", "parts": [{"text": reply}]},
-                    {"role": "user", "parts": [{"text": f"Khối mathviz bị lỗi: {'; '.join(_viz_errors)}. Hãy trả lại TOÀN BỘ câu trả lời, sửa đúng schema."}]}
+                    {"role": "user", "parts": [{"text": f"Khối mathviz bị lỗi: {'; '.join(_viz_errors)}. {mathviz_contract.repair_vocabulary()} Hãy trả lại TOÀN BỘ câu trả lời, sửa đúng schema."}]}
                 ]
                 retry_payload = {**payload, "contents": retry_contents}
                 try:
-                    resp2 = await client.post(url, json=retry_payload, timeout=30)
+                    resp2 = await client.post(url, json=retry_payload,
+                                              timeout=_budget.clamp(_gen_budget))
                     resp2.raise_for_status()
                     reply2 = resp2.json()["candidates"][0]["content"]["parts"][0]["text"]
                     _reply2_text, _viz2 = _extract_mathviz_block(reply2)
@@ -4348,7 +4527,7 @@ async def chat(request: Request):
             # ONLY the corrected JSON, not a whole new reply. Cheaper than
             # another full-reply retry and works even when Gemini itself is
             # the one that's rate-limited.
-            if _viz_errors and _viz_block is not None:
+            if _viz_errors and _viz_block is not None and _budget.remaining() > 8.0:
                 _fixed = await _repair_mathviz_with_free_openrouter(
                     actual_widget, json.dumps(_viz_block, ensure_ascii=False), _viz_errors
                 )
@@ -4419,6 +4598,28 @@ async def chat(request: Request):
                     except Exception as e_verif:
                         logger.debug(f"MathViz QA verification gate skipped: {e_verif}")
 
+                    # 6. Vocabulary normalization + the render report (đợt 8 / 4I).
+                    #    Alias kinds ("wedge", "shaded") are rewritten to their
+                    #    contract names; a kind no renderer can draw is dropped
+                    #    and NAMED. The report is stamped on the payload as
+                    #    `_render` and shows up as the UI's warning chip, instead
+                    #    of the layer simply vanishing from the drawing.
+                    try:
+                        _viz_block, _render_report = mathviz_contract.normalize_geometry_2d(_viz_block)
+                        if _render_report.get("skipped") or _render_report.get("unsupported"):
+                            logger.info("[MathViz] Render report: skipped=%s unsupported=%s "
+                                        "mapped=%s engine_min=%s",
+                                        _render_report.get("skipped"),
+                                        _render_report.get("unsupported"),
+                                        _render_report.get("mapped"),
+                                        _render_report.get("engine_min"))
+                        # Points the analytic solver could not resolve stay at
+                        # their raw coordinates, so they must be part of the
+                        # report the student sees.
+                        _viz_block["_render"]["constructions_unsolved"] = list(_unsolved)
+                    except Exception as e_render:
+                        logger.debug(f"MathViz render report skipped: {e_render}")
+
                 except Exception as e_align:
                     logger.debug(f"MathViz auto-align/snap skipped: {e_align}")
 
@@ -4467,8 +4668,13 @@ async def chat(request: Request):
         # answer gets exactly ONE repair round; if it still fails, the reply is
         # labelled instead of being presented as certain.
         math_verification = None
+        # Đợt 8 / 4I: the critic's budget comes from the plan too, and the plan may
+        # say 0 for it (an "extreme" figure: verifying a long answer would cost
+        # more than answering it did). Skipping is recorded, not silent — the
+        # student gets the honest "chưa kiểm chứng" badge either way.
+        _verify_budget = _plan["verify"] if _plan else chat_budget.CHAT_VERIFY_BUDGET_S
         try:
-            if math_solver.should_verify(user_message, reply, perception):
+            if _verify_budget > 0 and math_solver.should_verify(user_message, reply, perception):
                 _ir = math_solver.build_problem_ir(perception, user_message)
                 if not _ir.get("transcription") and not _ir.get("latex"):
                     _ir["transcription"] = user_message[:1200]
@@ -4478,11 +4684,11 @@ async def chat(request: Request):
                 try:
                     math_verification = await asyncio.wait_for(
                         math_solver.verify_and_repair(_ir, reply, chat_fn=_openrouter_chat),
-                        timeout=_budget.clamp(chat_budget.CHAT_VERIFY_BUDGET_S),
+                        timeout=_budget.clamp(_verify_budget),
                     )
                 except (asyncio.TimeoutError, TimeoutError):
                     logger.warning("[Chat] Math verification exceeded %.0fs — answering with the "
-                                   "unverified label.", chat_budget.CHAT_VERIFY_BUDGET_S)
+                                   "unverified label.", _verify_budget)
                     math_verification = {"verified": False, "checks": [], "critic": None,
                                          "repaired": False, "reply": reply,
                                          "notes": "hết thời gian kiểm chứng"}
@@ -4530,6 +4736,7 @@ async def chat(request: Request):
         print(f"[Chat] answered_by={_answered.get('provider') or '?'}:{_answered.get('model') or '?'}"
               f" mode={chat_mode} image={'yes' if image_data else 'no'}"
               f" vision={'agent' if vision_description else ('reader' if perception else 'none')}"
+              f" complexity={(_plan or {}).get('tier') or 'text'}"
               f" elapsed={time.time() - _t0:.1f}s budget_left={_budget.remaining():.1f}s")
 
         history.append({"role": "assistant", "content": reply})

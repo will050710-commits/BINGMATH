@@ -44,11 +44,24 @@ not auto-rewrite them. Concyclicity snapping is applied only to explicit
 
 import math
 import copy
+import os
+import sys
 from typing import Dict, Any, List, Tuple, Optional
 
 import numpy as np
 
 from geometry_verification import is_collinear_2d, distance_2d
+
+# Đợt 8 / 4I: the layer-kind vocabulary lives in ONE module now (one source of
+# truth shared with the prompt, the validator and the client mirror). The
+# sys.path line mirrors the defensive import style already used elsewhere in
+# this package, so this module stays importable when it is loaded from a test
+# run whose CWD is not backend/.
+try:
+    import mathviz_contract
+except ImportError:  # pragma: no cover — only when CWD is not backend/
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import mathviz_contract
 
 Point2D = Tuple[float, float]
 
@@ -67,18 +80,19 @@ def _collect_point_refs(viz: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
     Returns the ACTUAL dicts (not copies) so in-place edits propagate back
     into `viz["layers"]` automatically — mirrors the pattern already used
     in geometry_canvas_solver.py.
+
+    Đợt 8 / 4I: the walk comes from mathviz_contract instead of a literal
+    four-kind tuple (polygon/triangle/points, plus nothing else). That tuple is
+    why a point belonging to an `arc`, `sector`, `angle`, `polyline`, `ellipse`
+    or `region` layer was never collected — so it was never snapped, and an arc
+    drawn from it no longer met the circle it was supposed to be tangent to.
     """
     refs: Dict[str, Dict[str, float]] = {}
     for lay in viz.get("layers", []) or []:
-        kind = lay.get("kind")
-        if kind in ("polygon", "triangle") and isinstance(lay.get("points"), list):
-            for p in lay["points"]:
-                if isinstance(p, dict) and "id" in p and "x" in p and "y" in p:
-                    refs[p["id"]] = p
-        elif kind == "points" and isinstance(lay.get("data"), list):
-            for p in lay["data"]:
-                if isinstance(p, dict) and "id" in p and "x" in p and "y" in p:
-                    refs[p["id"]] = p
+        for _, point in mathviz_contract.iter_point_dicts(lay):
+            pid = point.get("id") or point.get("name")
+            if isinstance(pid, str) and pid.strip():
+                refs[pid.strip()] = point
     return refs
 
 

@@ -5,6 +5,13 @@ import MathVizTitle from './MathVizTitle';
 import MathVizJSXGraph from './MathVizJSXGraph';
 import MathVizKonvaGeometry2D from './MathVizKonvaGeometry2D';
 import GgbExportButton from '../../duomath/GgbExportButton';
+// Đợt 8 / 4I: the arc/region path maths is shared with the JSXGraph and Konva
+// engines (src/lib/mathvizOutline.js) — one definition of where a curve goes.
+import {
+  arcSweepFlag as _arcSweepFlag,
+  arcPathData as _arcPathData,
+  regionPathData as _regionPathData,
+} from '@/lib/mathvizOutline';
 
 const CANVAS_SIZE = 520;
 const fmt = (n, d = 2) => (Number.isFinite(n) ? n.toFixed(d) : '—');
@@ -1078,6 +1085,110 @@ export default function MathVizGeometry2D({ data }) {
 
   const polyToPath = (pts) => pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ') + ' Z';
 
+  // ── Arc / sector / region builders (đợt 8 / 4I) ─────────────────────────────
+  // "arc", "sector", "region", "angle", "polyline", "ray" and "ellipse" are part
+  // of the checked MathViz vocabulary (backend/mathviz_contract.py) but this
+  // engine drew none of them except as polygons: those layers fell through to
+  // `return null` at the end of the composite loop, so a figure like the three
+  // tangent arcs of a 3-4-5 triangle arrived visibly truncated with NO warning.
+  // Everything below exists so that a declared layer either renders or is
+  // reported (the `unsupportedKinds` chip), never silently dropped.
+
+  /** A point reference → pixel pair: inline {x,y}, or an id resolved in-scene. */
+  const pointPxByRef = (ref) => {
+    if (ref && Number.isFinite(ref.x) && Number.isFinite(ref.y)) return toPx(ref.x, ref.y);
+    const id = typeof ref === 'string' ? ref : (ref?.id || ref?.name);
+    if (id) {
+      const found = allCompositePoints.find((p) => p && (p.id === id || p.name === id));
+      if (found && Number.isFinite(found.x) && Number.isFinite(found.y)) return toPx(found.x, found.y);
+    }
+    return null;
+  };
+
+  /** Which of the two SVG arcs matches the centre we were given.
+   *  All three points are already in PIXELS here, and SVG's y axis points down, so
+   *  a positive cross product is the clockwise-on-screen direction (sweep-flag 1).
+   *  The maths itself is shared with the other engines. */
+  const arcSweepFlag = (c, f, t) => _arcSweepFlag(c, f, t);
+
+  const arcPathData = (c, f, t, largeArc, closeWithCenter) =>
+    _arcPathData(c, f, t, largeArc, closeWithCenter);
+
+  /** A region's outline mixes straight edges and arcs — the shaded area between
+   *  two tangent arcs is exactly that — so it is walked in order. The walk itself
+   *  is shared with the other two engines (src/lib/mathvizOutline.js). */
+  const buildRegionPath = (items) => _regionPathData(items, (ref) => {
+    const px = pointPxByRef(ref);
+    return px ? toMath(px[0], px[1]) : null;
+  });
+
+  /** Small filled label pill used by the layers that carry a caption. */
+  const renderLayerLabel = (text, x, y, color) => (
+    <g>
+      <rect x={x - 2} y={y - 12} width={String(text).length * 7 + 8} height={15} rx="3"
+        fill={isLightBg ? 'rgba(255,255,255,0.95)' : 'rgba(13, 17, 23, 0.85)'} />
+      <text x={x + 2} y={y - 2} fontSize="11" fontWeight="bold" fill={color}>{text}</text>
+    </g>
+  );
+
+  /** Kinds this engine will NOT draw — surfaced so a truncated figure is never
+   *  a silent surprise (the .ggb export button already reports the same way). */
+  const drawnKinds = useMemo(() => new Set([
+    'circle', 'polygon', 'triangle', 'line', 'segment', 'ray', 'points',
+    'ellipse', 'arc', 'sector', 'region', 'angle', 'polyline', 'label',
+  ]), []);
+
+  const unsupportedKinds = useMemo(() => {
+    const missing = new Set();
+    (layers || []).forEach((lay) => {
+      const kind = String((lay && lay.kind) || '').toLowerCase();
+      if (kind && !drawnKinds.has(kind)) missing.add(kind);
+    });
+    return [...missing];
+  }, [layers, drawnKinds]);
+
+  /**
+   * One line per thing the student must know about this figure (đợt 8 / 4I).
+   * `unsupportedKinds` is what THIS engine cannot draw; `data._render` is what
+   * the backend already refused to draw (an invented kind, reference to a point
+   * that was never declared) or could not resolve exactly (a construction type
+   * outside the analytic solver). Both used to be invisible.
+   */
+  const renderNotices = useMemo(() => {
+    const notes = [];
+    if (unsupportedKinds.length > 0) {
+      notes.push({ key: 'kinds',
+        text: `${unsupportedKinds.length} loại hình chưa vẽ được: ${unsupportedKinds.join(', ')}` });
+    }
+    const report = data && data._render;
+    if (report) {
+      const skipped = Array.isArray(report.skipped) ? report.skipped : [];
+      if (skipped.length > 0) {
+        const names = skipped.map((item) => item && item.kind).filter(Boolean).join(', ');
+        notes.push({ key: 'skipped', text: `${skipped.length} lớp bị bỏ (kind lạ${names ? `: ${names}` : ''})` });
+      }
+      const dangling = Array.isArray(report.dangling) ? report.dangling : [];
+      if (dangling.length > 0) {
+        notes.push({ key: 'dangling', text: `${dangling.length} lớp trỏ tới điểm chưa khai báo` });
+      }
+      const unsolved = Array.isArray(report.constructions_unsolved) ? report.constructions_unsolved : [];
+      if (unsolved.length > 0) {
+        notes.push({ key: 'unsolved',
+          text: `${unsolved.length} dựng hình chưa giải được toạ độ chính xác` });
+      }
+      // A tangency the solver could only place by a guaranteed property (collinear
+      // between the two centres), not exactly. Kept apart from the unsolved line so
+      // the student knows what IS guaranteed and what is not.
+      const approx = Array.isArray(report.approximate) ? report.approximate : [];
+      if (approx.length > 0) {
+        const names = approx.filter(Boolean).join(', ');
+        notes.push({ key: 'approx',
+          text: `${approx.length} điểm tiếp xúc vẽ gần đúng (thẳng hàng hai tâm${names ? `: ${names}` : ''})` });
+      }
+    }
+    return notes;
+  }, [unsupportedKinds, data]);
+
   const container = isFullscreen
     ? {
         position: 'fixed',
@@ -1126,6 +1237,30 @@ export default function MathVizGeometry2D({ data }) {
 
   return (
     <div style={container}>
+      {/* Render-coverage chip (đợt 8 / 4I). Modelled on GgbExportButton's
+          "N phần chưa hỗ trợ": a figure that loses a part must SAY so, because
+          the alternative — used until now — was a silently truncated drawing.
+          Two sources are merged: what this engine cannot draw, and what the
+          backend's `_render` report already flagged (unknown kinds dropped,
+          dangling point ids, constructions left unsolved). */}
+      {renderNotices.length > 0 && (
+        <div
+          title="Các phần chưa được vẽ hết — chi tiết ở đây để em không bị hiểu sai hình."
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+            marginBottom: 8, padding: '6px 10px', borderRadius: 8,
+            background: 'rgba(245, 158, 11, 0.12)',
+            border: '1px solid rgba(245, 158, 11, 0.4)',
+            color: '#fbbf24', fontSize: 11.5,
+          }}
+        >
+          <span>⚠️</span>
+          {renderNotices.map((note) => (
+            <span key={note.key} style={{ whiteSpace: 'nowrap' }}>{note.text}</span>
+          ))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
         <MathVizTitle icon="📐" title={data?.title} fallback="Hình học phẳng 2D (Simple Display)" />
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1763,6 +1898,149 @@ export default function MathVizGeometry2D({ data }) {
                       </g>
                     );
                   }
+if (layer.kind === 'arc' || layer.kind === 'sector') {
+                    const c = pointPxByRef(layer.center);
+                    const f = pointPxByRef(layer.from);
+                    const t = pointPxByRef(layer.to);
+                    if (!c || !f || !t) return null;
+                    const isSector = layer.kind === 'sector';
+                    return (
+                      <g key={`lay_arc_${lIdx}`}>
+                        <path
+                          d={arcPathData(c, f, t, layer.large_arc === true || layer.arc === 'major', isSector)}
+                          fill={isSector ? (layer.fill || 'rgba(56, 189, 248, 0.18)') : 'none'}
+                          stroke={layer.color || '#38bdf8'}
+                          strokeWidth={layer.strokeWidth || 1.8}
+                          strokeDasharray={layer.style === 'dashed' ? '5 4' : layer.style === 'dotted' ? '2 3' : undefined}
+                        />
+                        {layer.label && renderLayerLabel(layer.label, f[0], f[1], layer.color || '#38bdf8')}
+                      </g>
+                    );
+                  }
+                  if (layer.kind === 'region') {
+                    const d = buildRegionPath(layer.path || layer.points);
+                    if (!d) return null;
+                    // A region's caption is optional and has no default anchor, so
+                    // the anchor is looked up ONCE and simply skipped when absent
+                    // (indexing a null point here would crash the whole figure).
+                    const labelAt = layer.label ? pointPxByRef(layer.label_at || layer.at) : null;
+                    return (
+                      <g key={`lay_region_${lIdx}`}>
+                        <path
+                          d={d}
+                          fill={layer.fill || 'rgba(148, 163, 184, 0.28)'}
+                          stroke={layer.color || 'none'}
+                          strokeWidth={layer.strokeWidth || 1}
+                          strokeDasharray={layer.style === 'dashed' ? '5 4' : undefined}
+                        />
+                        {layer.label && labelAt &&
+                          renderLayerLabel(layer.label, labelAt[0], labelAt[1], layer.color || '#94a3b8')}
+                      </g>
+                    );
+                  }
+                  if (layer.kind === 'polyline' && Array.isArray(layer.points)) {
+                    const pts = layer.points.map(pointPxByRef).filter(Boolean);
+                    if (pts.length < 2) return null;
+                    return (
+                      <g key={`lay_pl_${lIdx}`}>
+                        <path
+                          d={pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x},${y}`).join(' ')}
+                          fill="none"
+                          stroke={layer.color || '#38bdf8'}
+                          strokeWidth={layer.strokeWidth || 1.8}
+                          strokeDasharray={layer.style === 'dashed' ? '5 4' : layer.style === 'dotted' ? '2 3' : undefined}
+                        />
+                        {layer.label && renderLayerLabel(layer.label, pts[0][0], pts[0][1], layer.color || '#38bdf8')}
+                      </g>
+                    );
+                  }
+                  if (layer.kind === 'ray') {
+                    const f = pointPxByRef(layer.from);
+                    const t = pointPxByRef(layer.to);
+                    if (!f || !t) return null;
+                    // A ray has no end: extend the direction to the canvas edge so
+                    // it reads as a ray and not as a mistaken segment.
+                    const dx = t[0] - f[0], dy = t[1] - f[1];
+                    const len = Math.hypot(dx, dy) || 1;
+                    const reach = CANVAS_SIZE * 1.5;
+                    const end = [t[0] + (dx / len) * reach, t[1] + (dy / len) * reach];
+                    return (
+                      <g key={`lay_ray_${lIdx}`}>
+                        <line
+                          x1={f[0]} y1={f[1]} x2={end[0]} y2={end[1]}
+                          stroke={layer.color || '#e2e8f0'}
+                          strokeWidth={layer.strokeWidth || 1.8}
+                          strokeDasharray={layer.style === 'dashed' ? '4 3' : layer.style === 'dotted' ? '2 3' : undefined}
+                        />
+                        {layer.label && renderLayerLabel(layer.label, t[0], t[1], layer.color || '#e2e8f0')}
+                      </g>
+                    );
+                  }
+                  if (layer.kind === 'ellipse') {
+                    const c = pointPxByRef(layer.center);
+                    if (!c) return null;
+                    const rx = toLen(layer.a ?? layer.rx ?? 3);
+                    const ry = toLen(layer.b ?? layer.ry ?? 2);
+                    return (
+                      <g key={`lay_el_${lIdx}`}>
+                        <ellipse
+                          cx={c[0]} cy={c[1]} rx={rx} ry={ry}
+                          fill={layer.fill || 'rgba(255, 60, 172, 0.12)'}
+                          stroke={layer.color || '#ff3cac'}
+                          strokeWidth={layer.strokeWidth || 2}
+                          strokeDasharray={layer.style === 'dashed' ? '5 4' : undefined}
+                        />
+                        {layer.label && renderLayerLabel(layer.label, c[0] + rx * 0.7, c[1] - ry * 0.7, layer.color || '#ff3cac')}
+                      </g>
+                    );
+                  }
+                  // An unknown kind is no longer a silent hole in the figure: the
+                  // name is collected by `unsupportedKinds` and shown on the chip.
+                  if (layer.kind === 'angle') {
+                    const refs = layer.points || layer.of || [];
+                    const pts = refs.map(pointPxByRef).filter(Boolean);
+                    if (pts.length !== 3) return null;
+                    const [p0, v, p2] = pts;   // the vertex is the SECOND entry: A-B-C
+                    const rPx = Math.max(12, Math.min(30, (layer.radius || 0.6) * effectiveScale));
+                    const a1 = Math.atan2(p0[1] - v[1], p0[0] - v[0]);
+                    const a2 = Math.atan2(p2[1] - v[1], p2[0] - v[0]);
+                    const arm1 = [v[0] + Math.cos(a1) * rPx, v[1] + Math.sin(a1) * rPx];
+                    const arm2 = [v[0] + Math.cos(a2) * rPx, v[1] + Math.sin(a2) * rPx];
+                    const rightAngle = layer.right_angle === true;
+                    // Right angle → the classic little square; otherwise a small
+                    // filled sector, which is what a textbook draws.
+                    const corner = [arm1[0] + (arm2[0] - v[0]), arm1[1] + (arm2[1] - v[1])];
+                    const d = rightAngle
+                      ? `M${arm1[0]},${arm1[1]} L${corner[0]},${corner[1]} L${arm2[0]},${arm2[1]}`
+                      : `M${arm1[0]},${arm1[1]} A${rPx},${rPx} 0 0,${arcSweepFlag(v, arm1, arm2)} ${arm2[0]},${arm2[1]} L${v[0]},${v[1]} Z`;
+                    return (
+                      <path
+                        key={`lay_angle_${lIdx}`}
+                        d={d}
+                        fill={rightAngle ? 'none' : (layer.fill || 'rgba(251, 191, 36, 0.25)')}
+                        stroke={layer.color || '#fbbf24'}
+                        strokeWidth={layer.strokeWidth || 1.6}
+                      />
+                    );
+                  }
+                  if (layer.kind === 'label') {
+                    const p = pointPxByRef(layer.at || layer.point);
+                    if (!p) return null;
+                    return (
+                      <text
+                        key={`lay_lbl_${lIdx}`}
+                        x={p[0]} y={p[1]}
+                        fontSize={layer.fontSize || 12}
+                        fontWeight="bold"
+                        fill={layer.color || (isLightBg ? '#0f172a' : '#f0f6fc')}
+                        textAnchor={layer.textAnchor || 'middle'}
+                      >
+                        {layer.text || layer.label || ''}
+                      </text>
+                    );
+                  }
+                  // An unknown kind is no longer a silent hole in the figure: the
+                  // name is collected by `unsupportedKinds` and shown on the chip.
                   return null;
                 })}
               </>

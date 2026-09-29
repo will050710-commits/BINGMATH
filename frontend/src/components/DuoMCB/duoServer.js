@@ -93,6 +93,21 @@ export async function chat(sessionId, message, options = {}) {
 
   let result = await attempt();
   if (result.error && isRetryableKind(result.kind)) {
+    // Đợt 8 / 4I: an IMAGE request does not get the automatic retry.
+    //
+    // A picture is the slow case by definition, and the server already spent its
+    // budget on it: the reader transcribed the page, the plan decided what to
+    // skip, and the soft deadline replied with whatever it had. Retrying sends
+    // the whole 4 MB picture again and waits another 95 s, so a student who was
+    // about to get a partial answer instead waits ~190 s for the same wall — and
+    // the second attempt burns the vision quota again. A text request stays
+    // cheap to retry, so it keeps the retry.
+    const hasImage = Boolean(image);
+    if (hasImage) {
+      console.warn(`[duoServer] not retrying a ${result.kind} on an image request ` +
+        "(the server already spent its budget on it)");
+      return result;
+    }
     // One quiet retry: these kinds are transient, and the reported case was a
     // request that died without an app-level response at all.
     console.warn(`[duoServer] retrying chat after ${result.kind}…`);

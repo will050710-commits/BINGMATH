@@ -11,7 +11,7 @@
 
 Trong tháng 10/2026, dự án DuoMath đã tập trung nâng cấp toàn diện hạ tầng Backend nhằm giải quyết triệt để **5 rủi ro kỹ thuật trọng yếu** (5 Core Risks) trong luồng phân tích hình ảnh và trực quan hóa hình học MathViz, đồng thời tối ưu hóa chi phí vận hành ở mức 100% Free Tier:
 
-`mermaid
+```mermaid
 mindmap
   root((DuoMath Tháng 10/2026))
     Nắn Chỉnh Hình Học (Risk 1)
@@ -37,7 +37,22 @@ mindmap
       Ngưỡng Hamming Distance <= 6
       Chuỗi Model Vision Free Tier
       Latency Cache Hit < 15ms
-`
+    Hợp Đồng Từ Vựng MathViz (Đợt 8)
+      14 Layer Kind Có Kiểm Chứng
+      Alias wedge sang sector shaded sang region
+      Engine Support svg jsxgraph konva
+      Render Report skipped unsupported dangling
+      Chip Cảnh Báo N Phần Chưa Vẽ Được
+    Bó Hẹp Theo Ngân Sách (Đợt 8)
+      Phân Loại simple rich extreme
+      Tổng Các Chặng Không Vượt 75 Giây
+      Chặn Cả Lời Gọi Sinh Câu Trả Lời
+      Soft Deadline Trả Kết Quả Một Phần
+    Dựng Hình Kì Dị (Đợt 8)
+      circle_circle_tangency Giải Đúng Toạ Độ
+      Hệ Phương Trình Tam Giác Ba Cung Tiếp Xúc
+      Regex Tiếng Việt Tiếp Xúc Trung Điểm Cung
+```
 
 ---
 
@@ -50,7 +65,8 @@ mindmap
   - **Nắn chỉnh góc chính tắc:** Tự động phát hiện các góc lân cận các góc đặc biệt (^\circ, 45^\circ, 60^\circ, 90^\circ, 120^\circ, 135^\circ, 150^\circ, 180^\circ$ với dung sai $\pm 3^\circ$), sử dụng phép quay vector có dấu qua tan2 để quay đúng chiều và đạt chính xác góc mục tiêu.
   - **Nắn chỉnh thẳng hàng (Collinearity):** Cố định tuyệt đối hai điểm mút (anchors), chỉ chiếu điểm ở giữa lên đường thẳng nối hai mút.
   - **Cổng an toàn kiểm định (erify_snap_safe):** Tích hợp chặt chẽ với geometry_verification.py. Mọi thay đổi nắn chỉnh chỉ được áp dụng nếu không làm tăng sai số hình học tổng thể.
-  - **Bảo toàn cấu trúc hình học:** Nhận diện và ghi nhận các cạnh gần bằng nhau (eport_near_equal_lengths), tuyệt đối không tự ý co dãn cạnh vì việc ép độ dài có thể phá vỡ các góc đã nắn.
+  - **Bảo toàn cấu trúc hình học:** Nhận diện và ghi nhận các cạnh gần bằng nhau (
+eport_near_equal_lengths), tuyệt đối không tự ý co dãn cạnh vì việc ép độ dài có thể phá vỡ các góc đã nắn.
 
 ### 2.2. Khôi Phục JSON MathViz Đa Tầng (Risk 2 — Malformed JSON)
 - **Vấn đề trước đây:** Khi LLM sinh chuỗi JSON cho MathViz có lỗi cú pháp nhỏ (dấu phẩy ở cuối, thiếu ngoặc, chuỗi không bọc nháy kép), hệ thống cũ âm thầm bỏ qua widget, khiến học sinh không xem được hình vẽ.
@@ -68,7 +84,8 @@ mindmap
   - Cung cấp hàm chuyển đổi tọa độ chuẩn xác hai chiều (	o_padded_coords, rom_padded_coords).
 
 ### 2.4. Kiểm Chứng Nhận Thức MathViz Không Chặn (Risk 4 — Schema Rejection)
-- **Vấn đề trước đây:** Việc ép buộc esponseSchema cứng trực tiếp lên mô hình có thể khiến mô hình từ chối phản hồi hoặc làm chậm quá trình streaming văn bản giải toán.
+- **Vấn đề trước đây:** Việc ép buộc 
+esponseSchema cứng trực tiếp lên mô hình có thể khiến mô hình từ chối phản hồi hoặc làm chậm quá trình streaming văn bản giải toán.
 - **Giải pháp triển khai (main.py):**
   - Giữ nguyên luồng trích xuất linh hoạt qua text description.
   - Bổ sung tầng kiểm chứng phẳng confirm_mathviz_understanding chuyên biệt cho widget geometry_2d thông qua hàm _gemini_json.
@@ -82,12 +99,14 @@ mindmap
   - **Tầng 2 (Perceptual dHash):** Tính toán mã băm cảm nhận 64-bit dHash từ ảnh xám  \times 8$. Tra cứu các hình ảnh gần tương đồng (ảnh chụp lại góc khác nhẹ, đổi chuẩn nén) với ngưỡng khoảng cách Hamming $\le 6$.
   - **Chuỗi dự phòng Free-Tier 100%:** Định tuyến chuẩn xác qua endpoint miễn phí :free (qwen/qwen2.5-vl-72b-instruct:free). Khi xảy ra lỗi 429 hoặc gián đoạn mạng, tự động chuyển tầng dự phòng qua qwen/qwen2.5-vl-32b-instruct:free và google/gemma-3-27b-it:free.
 
-### 2.6. Vệ Sinh Bí Mật & Cấu Hình Triển Khai Render (ender.yaml)
+### 2.6. Vệ Sinh Bí Mật & Cấu Hình Triển Khai Render (
+ender.yaml)
 - **Triệt tiêu Hardcoded API Keys:** Đã loại bỏ hoàn toàn các chuỗi khóa Gemini API hardcoded trong main.py. Mọi biến nhạy cảm đều được nạp từ môi trường hệ thống.
 - **Cập nhật Cấu hình Render:**
   - Khai báo đầy đủ biến môi trường: GEMINI_API_KEY, GEMINI_MODEL, OPENROUTER_API_KEY, OPENROUTER_VISION_MODEL, OPENROUTER_VISION_FALLBACK_MODELS, VISION_AGENT_ENABLED.
   - Cấu hình các biến bí mật ở chế độ sync: false đảm bảo không bị rò rỉ qua repository mã nguồn.
-  - Bổ sung các gói phụ thuộc cần thiết vào equirements.txt: Pillow>=10.0.0, json-repair>=0.30.0.
+  - Bổ sung các gói phụ thuộc cần thiết vào 
+equirements.txt: Pillow>=10.0.0, json-repair>=0.30.0.
 
 ---
 
@@ -176,9 +195,128 @@ sát được trong lúc kiểm chứng rơi đúng vào lúc Render đang swap 
 
 ---
 
-## 3. KẾT QUẢ ĐO LƯỜNG & KIỂM THỬ THỰC NGHIỆM (BENCHMARKS)
+### 2.9. Hết "Hình Kì Dị" Bị Vẽ Khuyết & Ảnh Siêu Phức Tạp Ăn Hết Ngân Sách (Đợt 8 / 4I)
 
-Toàn bộ hệ thống đã vượt qua 100% các bài kiểm thử đơn vị và tích hợp:
+**Triệu chứng báo cáo:** (a) hình có cung tròn/miền tô hiện ra **thiếu mảng** mà không có cảnh báo nào
+(ví dụ bài ba cung nội tiếp tam giác vuông 3-4-5: điểm tiếp xúc hiện `Q = (2,4; 1,8)` trong khi đáp số
+chính xác là `(1,6; 1,8)`); (b) ảnh siêu phức tạp trả về "⏳ Bài này cần nhiều thời gian hơn mức hệ
+thống cho phép" và **mất trắng**, kể cả phần đề bài mà bộ đọc đã bóc tách xong.
+
+**Nguyên nhân gốc — một từ vựng, ba phiên bản khác nhau:**
+
+| Nơi | Hiểu `kind` gì | Hệ quả |
+|---|---|---|
+| Prompt `geometry_2d` (`main.py`) | 4 kind: `circle`, `polygon`, `line`, `points` | Model không được dạy `arc`, `sector`, `region`, `angle`, `polyline` |
+| Renderer JSXGraph | đã vẽ `arc`, `angle`, `ray`, `polyline` | Prompt dạy thiếu — model không bao giờ dùng |
+| Renderer Konva + SVG | 3 nhánh, còn lại `return null` | Layer rơi mất **im lặng**, không log, không badge |
+| 5 bộ giải (`geometry_snapping`, `construction_solver`, `implicit_extractor`, `canvas_solver`, `viewbox_normalizer`) | thu điểm theo tuple 4 kind | Điểm của cung/quạt/miền **không bao giờ** được giải & nắn ⇒ cung không chạm đường tròn |
+| `validate_mathviz` | không kiểm `layers[].kind`, không kiểm tham chiếu điểm | Lỗi này **validate sạch** ⇒ 2 tầng tự sửa sẵn có **không bao giờ chạy** |
+
+**Giải pháp — hai nửa:**
+
+1. **Một hợp đồng từ vựng có kiểm chứng** (`backend/mathviz_contract.py` + mirror
+   `frontend/src/lib/mathvizKinds.js` + cổng `check-mathviz-kinds.mjs` parse **cả hai** phía):
+   `LAYER_KINDS`, `KIND_ALIASES` (`wedge`→`sector`, `shaded`→`region`…), `ENGINE_SUPPORT` (engine nào
+   vẽ được kind nào — cổng assert **có nhánh code thật** trong từng file renderer), `render_report`
+   (`skipped`/`unsupported`/`incomplete`/`dangling`/`engine_min`). Prompt dạy đúng bảng kind này ở
+   **mọi** biến thể (hint, solution, visualizer, image), validator coi kind lạ / điểm treo là **lỗi**
+   nên 2 tầng sửa tự kích hoạt, và payload được stamp `_render` để UI hiện chip
+   "⚠️ N loại hình chưa vẽ được".
+2. **Bó hẹp việc theo ngân sách** (`backend/diagram_complexity.py`): `estimate()` phân loại
+   `simple|rich|extreme` từ `_cv_hints` (số đoạn thẳng/số đường tròn mà OpenCV **đã tính sẵn** nhưng
+   trước đây chỉ dán vào prompt dưới dạng văn xuôi); `plan_for()` biến tier thành kế hoạch từng chặng
+   với **bất biến kiểm được: tổng các chặng ≤ `CHAT_REQUEST_TIMEOUT_S`** (đó chính là tổng trước đây
+   vượt trần và khiến proxy cắt kết nối). Chặng `generate` (lời giải, kể cả mạng) được thêm vào
+   `chat_budget.CHAT_GENERATE_BUDGET_S` — trước đây mọi lời gọi sinh dùng timeout cứng 90/60/30 s.
+3. **Trả kết quả một phần thay vì 504 trắng**: khi chỉ còn ≤ `SOFT_DEADLINE_S` (12 s), hệ thống trả
+   **200 JSON** gồm đề bài đã đọc + hướng giải từ engine local + nhãn `"partial": true` và gợi ý tách
+   câu hỏi; log `tier="soft_deadline"`.
+4. **Dựng hình "kì dị" được giải thật**: thêm primitive `circle_circle_tangency`, `arc_midpoint`,
+   `excenter`; hệ phương trình tam giác cho bộ ba tiếp xúc lẫn nhau
+   (`r_A = (AB + AC − BC)/2`) — đúng bài toán báo cáo; thêm regex tiếng Việt "tiếp xúc", "trung điểm
+   cung", "bàng tiếp"; 5 bộ thu điểm dùng chung `iter_point_dicts` của hợp đồng.
+
+**Bằng chứng chạy thật (bài ba cung nội tiếp, 3-4-5, tam giác vuông tại A):**
+
+```
+P,Q,R = (0.0, 1.0) (1.6, 1.8) (1.0, 0.0)   unsolved= []
+engine_min= jsxgraph  skipped= []  dangling= []
+verify= True          snap safe= True
+```
+`Q` trước đây model đoán `(2,4; 1,8)` → nay chính xác `(1,6; 1,8)`; cả ba điểm tiếp xúc nằm **trên cả
+hai** đường tròn (được assert trong `test_geometry_pipeline.py`).
+
+Với hình có kind bịa `spiral` + alias `wedge`, chạy kiểm chứng trên chính payload đó:
+
+```
+BEFORE validate: ["kind không hợp lệ trong 'layers': #3='spiral'. Phải thuộc [...]"]
+mapped   = [{'index': 2, 'from': 'wedge', 'to': 'sector'}]
+skipped  = [{'index': 3, 'kind': 'spiral', 'reason': 'unknown_kind'}]
+unsolved = ['Q']   ← được báo ra UI, không im lặng
+```
+
+**Bảng trước/sau:**
+
+| Chỉ số | Trước | Sau |
+|---|---|---|
+| Kind được prompt dạy | 4 (`circle/polygon/line/points`) | **14** (đúng bằng tập renderer vẽ được) |
+| Layer lạ | rơi mất im lặng (không log/badge) | **validate lỗi** ⇒ 2 tầng sửa chạy; nếu vẫn lạ ⇒ `skipped` + chip UI |
+| Điểm trong `arc/sector/angle/region` | không được thu ⇒ không nắn | dùng chung 1 bộ thu ⇒ được giải & nắn |
+| Điểm tiếp xúc 2 cung (`circle_circle_tangency`) | không có primitive ⇒ giữ toạ độ đoán | **giải chính xác** (1.6; 1.8) |
+| Tổng ngân sách các chặng | 45+25+20+25 s + sinh (không chặn) | **≤ 75 s** (bất biến được test assert) |
+| Lời gọi sinh câu trả lời | timeout cứng 90/60/30 s | `min(CHAT_GENERATE_BUDGET_S, thời gian còn lại)` |
+| Ảnh siêu phức tạp quá hạn | 504 + mất trắng | **200 + kết quả một phần** (`partial: true`) |
+| Client retry khi timeout (có ảnh) | retry ⇒ ~190 s + đốt quota lần 2 | **không retry** với ảnh (server đã dùng hết ngân sách) |
+
+### Kết Quả Chạy Kiểm Thử:
+- `test_geometry_snapping.py`: **6/6 tests passed** (Angle snap, Collinearity, Out-of-tolerance bound, Length reporting, Safety regression gate, Non-geometry guard).
+- `test_geometry_verification.py`: **7/7 tests passed** (Collinearity, Perpendicular/Parallel, Concyclicity, Orthocenter, Tangency, Harmonic cross-ratio, High-level verifier).
+- `test_mathviz.py`: **9/9 widget routing & prompt injection tests passed**, cộng 3 khối kiểm tra mới (từ vựng được dạy ở MỌI biến thể prompt, ví dụ ba cung có trong prompt, kind bịa / điểm treo là lỗi validate).
+- `test_mathviz_contract.py` (mới): **43/43 checks passed** (từ vựng, alias, thu điểm lồng trong arc/region, báo cáo render kể cả `approximate`, normalize, từ vựng dựng hình, và "mọi kind đều có engine vẽ được").
+- `test_diagram_complexity.py` (mới): **63/63 checks passed** (ngưỡng tier, bất biến tổng ngân sách ở 6 mức trần khác nhau, `extreme` tắt đúng các chặng đắt).
+- `test_chat_budget.py`: **105/105 checks passed** (thêm 43 check nối dây: plan thay ngân sách cứng, mọi lời gọi stream đều bị chặn, soft-deadline có thật).
+- `test_geometry_pipeline.py`: **11/11 tests passed** — thêm bài ba cung tiếp xúc đi trọn pipeline, **tiếp xúc đơn lẻ** (4 trường hợp A/B/C/D: một bán kính suy được, bán kính khai qua `r`, không có bán kính ⇒ gần đúng có báo, và bán kính tự quy chiếu bị bác), và **một điểm khai báo nhiều lần phải được cập nhật đồng thời**.
+- `scripts/audit_bound_names.py` (mới): cổng tĩnh cho các nhánh thoát sớm trong `chat()` — `--selftest` **chứng minh cổng bắt được lỗi** (gỡ dòng khởi tạo khỏi bản sao thì báo `UNBOUND -> _answered`), còn nguồn thật thì sạch.
+- Toàn bộ suite backend khác vẫn xanh: `test_geogebra_export` 91/91, `test_math_reader` 36/36, `test_math_solver` 25/25, `test_typesafe_guard` 5/5, `test_vnhsge_bank`, `test_fsrs_scheduler`, `test_math_problem_retrieval`, `tests/eval_math_regression` 30/30 (100%). **Tổng: 20/20 suite backend xanh.**
+- Cổng frontend: `check-mathviz-kinds` **23/23**, `check-chat-errors` **27/27**, `check-image-downscale` **23/23**, `check-api-base` OK, `check-three-api` 6/6; `tsc -p tsconfig.syntax.json` và `tsc -p tsconfig.checkjs.json` đều **exit 0**.
+
+### 2.10. Xử Lý Hai Lưu Ý Còn Lại Của Đợt 8: Tiếp Xúc Đơn Lẻ & Miền Tô Ở Konva
+
+Hai lưu ý được nêu ở cuối đợt 8 đã giải quyết xong, và trong lúc kiểm chứng chúng lộ ra **một lỗi thật nữa**.
+
+**(a) Tiếp xúc đơn lẻ (không thuộc bộ ba lẫn nhau).** Trước đây chỉ bộ ba tiếp xúc lẫn nhau mới giải được;
+một tiếp xúc đứng riêng phải đọc bán kính từ chính điểm đang cần giải (vòng lặp tự quy chiếu:
+`Q=(2.4, 1.8)` ⇒ `r=2.683`) nên cổng kiểm tra trung thực **từ chối** sửa. Nay:
+
+| Trường hợp | Kết quả |
+|---|---|
+| Suy được **một** bán kính (từ `from`/`through` của arc kia, hoặc từ `r`/`radius`) | **Chính xác** — tiếp điểm nằm trên đường nối tâm, cách tâm một khoảng bằng bán kính đó |
+| Không suy được bán kính nào | Ép về **đoạn giữa hai tâm** (tính chất *luôn đúng* của tiếp xúc) và **báo rõ** là gần đúng — khác hẳn trước đây (giữ nguyên toạ độ đoán, không báo gì) |
+
+**Lỗi thật phát hiện khi kiểm chứng:** cùng một điểm có thể được khai báo **nhiều lần** (lớp `points` mang
+nhãn nhìn thấy được, mà mỗi `line`/`arc`/`region` dùng điểm đó cũng in lại toạ độ). Solver trước đây chỉ
+cập nhật **một** bản sao ⇒ chấm hiện ở toạ độ cũ trong khi đầu cung đã dời: đúng triệu chứng "cung không
+chạm đường tròn" nhưng từ nguyên nhân khác. Nay `_write_solved_point` cập nhật **mọi** bản sao, và
+`_collect_point_refs` lấy bản khai báo **đầu tiên** (lớp `points` là nguồn chuẩn cho nhãn).
+
+**(b) Miền tô (region) ở engine Konva.** Phần tính toán cung/miền vốn nằm **riêng tư trong component
+JSXGraph**, nên Konva không có cách nào vẽ đường bao trộn đoạn-cung. Nay phép toán đó nằm trong
+`frontend/src/lib/mathvizOutline.js` dùng chung cho **cả ba** engine, và Konva vẽ miền tô bằng một
+`Konva.Shape` với `sceneFunc` tự đi theo đường bao đã lấy mẫu. Cổng
+`check-mathviz-kinds.mjs` còn chặn việc **nhân bản lại** phép toán đó ở một engine khác.
+
+| Chỉ số | Trước | Sau |
+|---|---|---|
+| Tiếp xúc đơn lẻ, suy được 1 bán kính | không giải | **chính xác** |
+| Tiếp xúc đơn lẻ, không có bán kính | giữ toạ độ đoán, không báo | ép thẳng hàng hai tâm + **báo là gần đúng** (`_render.approximate` + chip UI) |
+| Điểm khai báo nhiều lần | chỉ 1 bản sao được cập nhật | **tất cả** bản sao |
+| Vẽ miền tô | JSXGraph + SVG | **cả 3 engine** (Konva qua `sceneFunc`) |
+| Nơi chứa phép toán cung/miền | 1 bản riêng tư trong JSXGraph | **1 lib dùng chung** + cổng chống nhân bản |
+| Cổng frontend `check-mathviz-kinds` | 17/17 | **23/23** (thêm 6 check cho lib dùng chung) |
+
+---
+
+## 3. KẾT QUẢ ĐO LƯỜNG & KIỂM THỬ THỰC NGHIỆM (BENCHMARKS)
 
 | Chỉ Số Đánh Giá (Benchmark) | Trước Cập Nhật (Tháng 8/2026) | Sau Cập Nhật (Tháng 10/2026) | Ghi Chú Cải Thiện |
 |---|:---:|:---:|---|
@@ -189,11 +327,6 @@ Toàn bộ hệ thống đã vượt qua 100% các bài kiểm thử đơn vị 
 | **Tỷ lệ kiểm định an toàn hình học (erify_snap_safe)** | Chưa có | **100% (Không gây regression)** | Tự động bác bỏ thay đổi nếu làm tăng sai số |
 | **Khả năng phục hồi khi cạn hạn ngạch (Rate Limit)** | Báo lỗi 429 hoặc gián đoạn | **Tự động chuyển tiếp 3 models** | Chuỗi fallback 3 mô hình miễn phí đảm bảo thông suốt |
 | **Chi phí vận hành Vision Model** | Nguy cơ dính phí do thiếu :free | **.00 / tháng** | Cấu hình chuẩn xác 100% Free Tier OpenRouter |
-
-### Kết Quả Chạy Kiểm Thử:
-- 	est_geometry_snapping.py: **6/6 tests passed** (Angle snap, Collinearity, Out-of-tolerance bound, Length reporting, Safety regression gate, Non-geometry guard).
-- 	est_geometry_verification.py: **7/7 tests passed** (Collinearity, Perpendicular/Parallel, Concyclicity, Orthocenter, Tangency, Harmonic cross-ratio, High-level verifier).
-- 	est_mathviz.py: **9/9 widget routing & prompt injection tests passed**.
 
 ---
 

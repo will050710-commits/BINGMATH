@@ -14,7 +14,16 @@ using exact analytic geometry & synthetic geometric constraints:
 
 import math
 import copy
+import os
+import sys
 from typing import Dict, Any, Optional, Tuple
+
+# Đợt 8 / 4I: the shared layer-kind vocabulary (see mathviz_contract.py).
+try:
+    import mathviz_contract
+except ImportError:  # pragma: no cover — only when CWD is not backend/
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import mathviz_contract
 
 Point2D = Tuple[float, float]
 
@@ -64,18 +73,19 @@ def auto_align_geometry_mathviz(viz_data: Dict[str, Any]) -> Dict[str, Any]:
     layers = data.get("layers", [])
 
     # 1. Collect all declared points across all layers
+    #    Đợt 8 / 4I: mathviz_contract's generic walk replaces the literal
+    #    polygon/triangle/points list, so a point declared inside an `arc`,
+    #    `sector`, `angle`, `polyline`, `ellipse` or `region` layer is part of
+    #    the picture too (it used to be invisible here).
     declared_points: Dict[str, Point2D] = {}
     for lay in layers:
-        if lay.get("kind") in ("polygon", "triangle") and "points" in lay:
-            for pt in lay["points"]:
-                pid = pt.get("id")
-                if pid and "x" in pt and "y" in pt:
-                    declared_points[pid] = (float(pt["x"]), float(pt["y"]))
-        elif lay.get("kind") == "points" and "data" in lay:
-            for pt in lay["data"]:
-                pid = pt.get("id")
-                if pid and "x" in pt and "y" in pt:
-                    declared_points[pid] = (float(pt["x"]), float(pt["y"]))
+        for _, pt in mathviz_contract.iter_point_dicts(lay):
+            pid = pt.get("id") or pt.get("name")
+            if isinstance(pid, str) and pid.strip():
+                try:
+                    declared_points[pid.strip()] = (float(pt["x"]), float(pt["y"]))
+                except (KeyError, TypeError, ValueError):
+                    continue
 
     # 2. Check if main triangle ABC is present
     has_abc = all(k in declared_points for k in ("A", "B", "C"))

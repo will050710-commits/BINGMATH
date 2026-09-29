@@ -118,6 +118,31 @@ python test_geometry_verification.py
 
 # 4. Kiểm tra bộ truy xuất bài toán mẫu Hybrid RAG (TF-IDF + Embedding RRF)
 python test_math_problem_retrieval.py
+
+# 5. (Đợt 8 / 4I) Kiểm tra HỢP ĐỒNG TỪ VỰNG MathViz: kind hợp lệ, alias, thu điểm
+#    lồng trong arc/sector/region, báo cáo render (_render), và từ vựng dựng hình.
+python test_mathviz_contract.py
+
+# 6. (Đợt 8 / 4I) Kiểm tra phân loại ĐỘ PHỨC TẠP của hình và bất biến tổng ngân sách
+#    các chặng ≤ CHAT_REQUEST_TIMEOUT_S (đây là tổng trước đây vượt trần).
+python test_diagram_complexity.py
+
+# 7. (Đợt 8 / 4I) Kiểm tra nối dây ngân sách trong main.py: plan thay ngân sách cứng,
+#    mọi lời gọi sinh câu trả lời đều bị chặn, soft-deadline trả kết quả một phần.
+python test_chat_budget.py
+
+# 8. (Đợt 8 / 4I) Kiểm tra tĩnh: các nhánh thoát sớm trong chat() (soft-deadline,
+#    báo cáo render) không dùng tên nào trước khi nó được gán — lớp lỗi NameError
+#    chỉ xuất hiện trên đường khó thử tay nhất. --selftest chứng minh cổng này bắt được.
+python scripts/audit_bound_names.py --selftest
+python scripts/audit_bound_names.py
+```
+
+Cổng tương ứng phía frontend (không cần cài dependency):
+
+```bash
+node scripts/check-mathviz-kinds.mjs   # hợp đồng từ vựng: Python ↔ mirror JS ↔ 3 renderer
+node scripts/check-chat-errors.mjs     # thông điệp lỗi + thứ tự timeout + luật retry
 ```
 
 ### Tiêu chí vượt qua kiểm thử thành công:
@@ -126,6 +151,9 @@ Mỗi bài test sẽ hiển thị thông báo thành công tương ứng:
 - `>>> ALL GEOMETRIC SNAPPING TESTS PASSED! <<<`
 - `>>> ALL GEOMETRY VERIFICATION TESTS PASSED! <<<`
 - `>>> ALL HYBRID RETRIEVAL TESTS PASSED! <<<`
+- `>>> ALL MATHVIZ CONTRACT TESTS PASSED! <<<`
+- `>>> ALL DIAGRAM COMPLEXITY TESTS PASSED! <<<`
+- `ALL_CHAT_BUDGET_TESTS_PASSED`
 
 ---
 

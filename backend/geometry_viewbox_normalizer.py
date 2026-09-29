@@ -14,7 +14,17 @@ proportions or angles.
 
 import copy
 import math
+import os
+import sys
 from typing import Dict, Any, List, Tuple, Optional
+
+# Đợt 8 / 4I: the shared layer-kind vocabulary. Uses it for the generic point
+# walk, so an arc/region/polyline/angle's own points are inside the viewbox too.
+try:
+    import mathviz_contract
+except ImportError:  # pragma: no cover — only when CWD is not backend/
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import mathviz_contract
 
 SAFE_BOUND = 4.0
 TRIGGER_BOUND = 5.2
@@ -25,48 +35,37 @@ def _collect_bounds(viz_data: Dict[str, Any]) -> Optional[Tuple[float, float, fl
     """
     Computes (min_x, max_x, min_y, max_y) enclosing all geometric elements:
     polygons, points, line endpoints, circle perimeters, and ellipses.
+
+    Đợt 8 / 4I: point discovery goes through mathviz_contract's generic walk, so
+    an `arc`'s center/from/to, a `region`'s path items, a `polyline`'s vertices,
+    an `angle`'s named vertices and a `label`'s anchor are all inside the
+    bounding box too. Previously they were not: a figure whose far element was an
+    arc tip was judged "fits fine" and clipped at the canvas edge.
     """
     xs: List[float] = []
     ys: List[float] = []
 
+    def add_point(node: Any) -> None:
+        if isinstance(node, dict) and "x" in node and "y" in node:
+            try:
+                xs.append(float(node["x"]))
+                ys.append(float(node["y"]))
+            except (ValueError, TypeError):
+                pass
+
     # Check root points
-    if isinstance(viz_data.get("points"), list):
-        for p in viz_data["points"]:
-            if isinstance(p, dict) and "x" in p and "y" in p:
-                try:
-                    xs.append(float(p["x"]))
-                    ys.append(float(p["y"]))
-                except (ValueError, TypeError):
-                    pass
+    for p in (viz_data.get("points") or []):
+        add_point(p)
 
     # Check layers
     for lay in viz_data.get("layers", []) or []:
         kind = lay.get("kind")
-        if kind in ("polygon", "triangle") and isinstance(lay.get("points"), list):
-            for p in lay["points"]:
-                if isinstance(p, dict) and "x" in p and "y" in p:
-                    try:
-                        xs.append(float(p["x"]))
-                        ys.append(float(p["y"]))
-                    except (ValueError, TypeError):
-                        pass
-        elif kind == "points" and isinstance(lay.get("data"), list):
-            for p in lay["data"]:
-                if isinstance(p, dict) and "x" in p and "y" in p:
-                    try:
-                        xs.append(float(p["x"]))
-                        ys.append(float(p["y"]))
-                    except (ValueError, TypeError):
-                        pass
-        elif kind in ("line", "segment"):
-            for endpoint in (lay.get("from"), lay.get("to")):
-                if isinstance(endpoint, dict) and "x" in endpoint and "y" in endpoint:
-                    try:
-                        xs.append(float(endpoint["x"]))
-                        ys.append(float(endpoint["y"]))
-                    except (ValueError, TypeError):
-                        pass
-        elif kind == "circle":
+
+        # Every declared point, whatever kind declared it.
+        for _, point in mathviz_contract.iter_point_dicts(lay):
+            add_point(point)
+
+        if kind == "circle":
             center = lay.get("center")
             r = lay.get("r") if "r" in lay else lay.get("radius")
             if isinstance(center, dict) and "x" in center and "y" in center and r is not None:
@@ -78,8 +77,8 @@ def _collect_bounds(viz_data: Dict[str, Any]) -> Optional[Tuple[float, float, fl
                     pass
         elif kind == "ellipse":
             center = lay.get("center")
-            a = lay.get("a", 4)
-            b = lay.get("b", 2.5)
+            a = lay.get("a", lay.get("rx", 4))
+            b = lay.get("b", lay.get("ry", 2.5))
             if isinstance(center, dict) and "x" in center and "y" in center:
                 try:
                     cx, cy, ea, eb = float(center["x"]), float(center["y"]), float(a), float(b)
@@ -150,22 +149,16 @@ def normalize_viewbox(viz_data: Dict[str, Any], safe_bound: float = SAFE_BOUND) 
     # 2. Transform layers
     for lay in data.get("layers", []) or []:
         kind = lay.get("kind")
-        if kind in ("polygon", "triangle") and isinstance(lay.get("points"), list):
-            for p in lay["points"]:
-                if isinstance(p, dict) and "x" in p and "y" in p:
-                    p["x"], p["y"] = transform_coord(float(p["x"]), float(p["y"]))
-        elif kind == "points" and isinstance(lay.get("data"), list):
-            for p in lay["data"]:
-                if isinstance(p, dict) and "x" in p and "y" in p:
-                    p["x"], p["y"] = transform_coord(float(p["x"]), float(p["y"]))
-        elif kind in ("line", "segment"):
-            f_pt = lay.get("from")
-            t_pt = lay.get("to")
-            if isinstance(f_pt, dict) and "x" in f_pt and "y" in f_pt:
-                f_pt["x"], f_pt["y"] = transform_coord(float(f_pt["x"]), float(f_pt["y"]))
-            if isinstance(t_pt, dict) and "x" in t_pt and "y" in t_pt:
-                t_pt["x"], t_pt["y"] = transform_coord(float(t_pt["x"]), float(t_pt["y"]))
-        elif kind == "circle":
+
+        # Every declared point, whatever kind declared it (đợt 8 / 4I). The
+        # per-kind branches below then only handle what is NOT a point: radii.
+        for _, point in mathviz_contract.iter_point_dicts(lay):
+            try:
+                point["x"], point["y"] = transform_coord(float(point["x"]), float(point["y"]))
+            except (ValueError, TypeError, KeyError):
+                continue
+
+        if kind == "circle":
             center = lay.get("center")
             r = lay.get("r") if "r" in lay else lay.get("radius")
             if isinstance(center, dict) and "x" in center and "y" in center:
@@ -180,9 +173,8 @@ def normalize_viewbox(viz_data: Dict[str, Any], safe_bound: float = SAFE_BOUND) 
             center = lay.get("center")
             if isinstance(center, dict) and "x" in center and "y" in center:
                 center["x"], center["y"] = transform_coord(float(center["x"]), float(center["y"]))
-            if "a" in lay:
-                lay["a"] = round(float(lay["a"]) * scale, 3)
-            if "b" in lay:
-                lay["b"] = round(float(lay["b"]) * scale, 3)
+            for axis in ("a", "b", "rx", "ry"):
+                if axis in lay:
+                    lay[axis] = round(float(lay[axis]) * scale, 3)
 
     return data

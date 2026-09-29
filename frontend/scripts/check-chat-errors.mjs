@@ -92,6 +92,10 @@ const server = readFileSync(join(FRONTEND_DIR, "src/components/DuoMCB/duoServer.
 check("duoServer classifies the status instead of printing a bare number",
   /classifyChatFailure\(res\.status\)/.test(server));
 check("duoServer applies the one-retry policy", /isRetryableKind\(/.test(server));
+check("duoServer does NOT retry an image request (the server already spent its budget)",
+  /const hasImage = Boolean\(image\)/.test(server) && /if \(hasImage\)/.test(server));
+check("the retry stays available for text requests",
+  /await delay\(700\)/.test(server) && /result = await attempt\(\)/.test(server));
 check("duoServer aborts its own request instead of hanging forever",
   /signal:\s*controller\.signal/.test(server) && /clearTimeout\(timer\)/.test(server));
 check("duoServer keeps the non-streaming default (SSE drops the verification badges)",

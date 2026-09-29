@@ -85,8 +85,40 @@ jobs:
       # its clamped budget, and /api/health must not go back to advertising an
       # OCR engine that is not installed.
       - name: Chat budgets — deadline guard + per-stage budgets
+
         working-directory: backend
         run: python test_chat_budget.py
+
+      # Đợt 8 / 4I — the two halves of "the figure is too big for the pipeline".
+      #   * test_mathviz_contract.py: the geometry VOCABULARY is one checked
+      #     contract (prompt ↔ validator ↔ renderers). Before it, an arc/sector/
+      #     region layer — and every point inside it — was taught to nobody,
+      #     accepted by the validator and silently NOT drawn (61 checks).
+      #   * test_diagram_complexity.py: the cost plan for a dense diagram, whose
+      #     stage budgets must SUM to no more than the request bound — the sum that
+      #     used to exceed it and end in a timeout with nothing answered (63 checks).
+      # Both are stdlib-only, so they add no dependency to this job.
+      - name: MathViz vocabulary contract (kinds, aliases, render coverage)
+        working-directory: backend
+        run: python test_mathviz_contract.py
+
+      - name: Diagram complexity — tiering + the budget-sum invariant
+        working-directory: backend
+        run: python test_diagram_complexity.py
+
+      # Đợt 8 / 4I — a cheap name-binding audit for the blocks this đợt added to
+      # chat(). Two early-exit paths (the soft-deadline answer and the render
+      # report) live inside a 6000-line function whose state is bound hundreds of
+      # lines further down, and `_plan` / `_answered` were genuinely referenced
+      # before they existed — a NameError that only fires on the hardest path to
+      # test by hand (a dense figure, on a slow request). Stdlib only.
+      #   `--selftest` runs FIRST and removes the early initialisation from a copy
+      #   of the real file: a guard that cannot fail would be no guard at all.
+      - name: chat() early-exit paths — no name is used before it is bound
+        working-directory: backend
+        run: |
+          python scripts/audit_bound_names.py --selftest
+          python scripts/audit_bound_names.py
 
       # Đợt 4H-2b — the retrieval layer whose dense half used to freeze the whole
       # service in production (torch + a synchronous encode inside the event
@@ -169,6 +201,15 @@ jobs:
       - name: Chat failure messages + timeout ordering
         working-directory: frontend
         run: node scripts/check-chat-errors.mjs
+
+      # Đợt 8 / 4I — the client half of the vocabulary contract. It parses
+      # backend/mathviz_contract.py AND the three renderers, so the kinds the
+      # prompt teaches, the validator accepts and each engine actually draws can
+      # never drift apart again (17 checks; no dependencies — it imports
+      # src/lib/mathvizKinds.js directly).
+      - name: MathViz vocabulary — contract vs. client mirror vs. renderers
+        working-directory: frontend
+        run: node scripts/check-mathviz-kinds.mjs
 
       - name: No deprecated Three.js APIs (THREE.Clock → THREE.Timer)
         working-directory: frontend

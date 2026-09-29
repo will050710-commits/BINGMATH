@@ -67,6 +67,13 @@ CHAT_VISION_BUDGET_S = env_budget("CHAT_VISION_BUDGET_S", 45.0, 5.0, 90.0)
 CHAT_VISION_AGENT_BUDGET_S = env_budget("CHAT_VISION_AGENT_BUDGET_S", 25.0, 5.0, 90.0)
 # Deterministic checks + cross-family critic + at most one repair round.
 CHAT_VERIFY_BUDGET_S = env_budget("CHAT_VERIFY_BUDGET_S", 25.0, 5.0, 90.0)
+# Đợt 8 / 4I — the ANSWER itself, network included. This was the one hole left:
+# every stage around it was bounded, but generation used hard-coded client
+# timeouts (90 s for a Gemini stream, 60 s for OpenRouter, 30 s for each retry),
+# so a dense diagram could still outlive the request between two stages and die
+# with no answer at all. Anything that calls a model now takes
+# min(this budget, what is left of the request).
+CHAT_GENERATE_BUDGET_S = env_budget("CHAT_GENERATE_BUDGET_S", 40.0, 5.0, 90.0)
 # Knowledge-base / problem-bank retrieval (Đợt 4H-2b). It is CPU-bound and runs in
 # a thread, and the answer is still useful without the reference block — so this
 # budget decides only how long we WAIT for retrieval, never whether we answer.
@@ -140,4 +147,5 @@ def stage_plan() -> Dict[str, float]:
         "vision_agent_s": CHAT_VISION_AGENT_BUDGET_S,
         "verify_s": CHAT_VERIFY_BUDGET_S,
         "retrieval_s": CHAT_RETRIEVAL_BUDGET_S,
+        "generate_s": CHAT_GENERATE_BUDGET_S,
     }

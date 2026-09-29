@@ -15,9 +15,20 @@ geometry_construction_solver can compute exact analytic coordinates.
 import re
 import copy
 import logging
+import os
+import sys
 from typing import Dict, Any, List, Optional, Set
 
 from geometry_construction_solver import resolve_constructions
+
+# Đợt 8 / 4I: the generic point walk, so a diagram point declared inside an
+# `arc` / `sector` / `region` layer is still seen when deciding which ids count
+# as "already declared".
+try:
+    import mathviz_contract
+except ImportError:  # pragma: no cover — only when CWD is not backend/
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import mathviz_contract
 
 logger = logging.getLogger("geometry_implicit_extractor")
 
@@ -176,28 +187,78 @@ PATTERNS = [
             "of": ["O", "A", m.group(1).upper(), m.group(2).upper()]
         }
     },
+    # Two circles/arcs touching at a point (đợt 8 / 4I). The figure in the bug
+    # report states it as "các cung tiếp xúc nhau tại P, Q, R": the solver had no
+    # primitive for it, so P/Q/R kept whatever coordinates the model guessed and
+    # the arcs visibly failed to meet. Accepted phrasings:
+    #   "hai cung tâm B và tâm C tiếp xúc nhau tại Q"
+    #   "hai đường tròn (B) và (C) tiếp xúc ngoài tại Q"
+    #   "cung tâm B tiếp xúc với cung tâm C tại Q"
+    {
+        "type": "circle_circle_tangency",
+        "regex": re.compile(
+            r"(?:hai\s+)?(?:cung|đường\s*tròn)\s*(?:tâm\s+)?\(?([A-Z])\)?"
+            r"\s*(?:và|với|and)\s*(?:cung|đường\s*tròn)?\s*(?:tâm\s+)?\(?([A-Z])\)?"
+            r"\s*tiếp\s*xúc(?:\s*(?:ngoài|trong))?\s*(?:nhau\s*)?tại\s+([A-Z])",
+            re.IGNORECASE
+        ),
+        "handler": lambda m: {
+            "point": m.group(3).upper(),
+            "type": "circle_circle_tangency",
+            # Only the two centres: resolve_constructions reads the radii back
+            # from the arcs/circles those centres already own (see
+            # _radius_from_circle), which is exact and needs no guess here.
+            "of": [m.group(1).upper(), m.group(2).upper()]
+        }
+    },
+    # Midpoint of an arc: "M là trung điểm cung nhỏ BC" / "trung điểm của cung BC".
+    {
+        "type": "arc_midpoint",
+        "regex": re.compile(
+            r"(?:gọi\s+)?([A-Z])\s+(?:là|is)\s+(?:trung\s+điểm|midpoint)(?:\s+(?:của|của\s+cung|of))?"
+            r"\s*(?:cung\s+)?(?:nhỏ\s+|lớn\s+)?([A-Z])([A-Z])",
+            re.IGNORECASE
+        ),
+        "handler": lambda m: {
+            "point": m.group(1).upper(),
+            "type": "arc_midpoint",
+            "of": ["O", m.group(2).upper(), m.group(3).upper()],
+            "arc": "major" if "lớn" in m.group(0).lower() else "minor"
+        }
+    },
+    # Excenter: "I_a là tâm đường tròn bàng tiếp góc A" / "tâm bàng tiếp".
+    {
+        "type": "excenter",
+        "regex": re.compile(
+            r"([A-Z])\s*(?:là|is)\s*(?:tâm\s*)?(?:đường\s*tròn\s*)?bàng\s*tiếp"
+            r"(?:\s*(?:góc|của\s+góc|opposite|at)\s*([A-Z]))?",
+            re.IGNORECASE
+        ),
+        "handler": lambda m: {
+            "point": m.group(1).upper(),
+            "type": "excenter",
+            "of": ["A", "B", "C"],
+            "vertex": (m.group(2) or "").upper()
+        }
+    },
 ]
 
 
 def _collect_diagram_point_ids(viz_data: Dict[str, Any]) -> Set[str]:
     """
     Collects all unique point IDs declared in layers of the diagram.
+
+    Đợt 8 / 4I: uses mathviz_contract's generic walk, so ids declared inside an
+    `arc`, `sector`, `angle`, `polyline`, `ellipse`, `region` or `label` layer
+    count as declared too. With the old four-kind list they did not, and this
+    module would helpfully re-declare a point that was already there.
     """
-    pids = set()
+    pids: Set[str] = set()
     for lay in viz_data.get("layers", []) or []:
-        kind = lay.get("kind")
-        if kind in ("polygon", "triangle") and isinstance(lay.get("points"), list):
-            for p in lay["points"]:
-                if isinstance(p, dict) and p.get("id"):
-                    pids.add(p["id"])
-        elif kind == "points" and isinstance(lay.get("data"), list):
-            for p in lay["data"]:
-                if isinstance(p, dict) and p.get("id"):
-                    pids.add(p["id"])
-        elif kind in ("line", "segment"):
-            for endpoint in (lay.get("from"), lay.get("to")):
-                if isinstance(endpoint, dict) and endpoint.get("id"):
-                    pids.add(endpoint["id"])
+        for _, point in mathviz_contract.iter_point_dicts(lay):
+            pid = point.get("id") or point.get("name")
+            if isinstance(pid, str) and pid.strip():
+                pids.add(pid.strip())
     return pids
 
 

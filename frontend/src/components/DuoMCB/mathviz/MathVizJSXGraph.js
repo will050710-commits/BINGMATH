@@ -1,10 +1,59 @@
 'use client';
-import { useEffect, useRef, useState, useId } from 'react';
+import { useEffect, useMemo, useRef, useState, useId } from 'react';
 import JXG from 'jsxgraph';
 import '@/styles/jsxgraph.css';
 import { ZoomIn, ZoomOut, RotateCcw, CheckCircle2, AlertTriangle, Compass } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
 import GgbExportButton from '../../duomath/GgbExportButton';
+// Đợt 8 / 4I: the shared vocabulary and the generic point walk. This engine
+// drew `arc`/`angle`/`ray`/`polyline` but silently nothing for `sector`,
+// `region`, `ellipse` or `label`; the import is what makes the vocabulary one
+// checked contract instead of three opinions.
+import { collectLayerPoints, canonicalKind, ENGINE_SUPPORT } from '@/lib/mathvizKinds';
+// Đợt 8 / 4I: the outline maths lives in ONE place now (src/lib/mathvizOutline.js).
+// It used to live here only, which is exactly why the Konva engine had to report
+// `region` as unsupported — it had no way to walk a mixed point/arc outline.
+import {
+  sampleRegionOutline, sampleEllipse, curveXY,
+} from '@/lib/mathvizOutline';
+
+// ── Region/ellipse sampling ──────────────────────────────────────────────────
+// The implementations moved to src/lib/mathvizOutline.js so the Konva engine can
+// reuse them (đợt 8 / 4I). Kept as a named re-export-shaped comment rather than a
+// copy: a second copy is what drifted apart in the first place.
+
+/** Kinds this engine cannot draw (đợt 8 / 4I) — said out loud, never silent. */
+function unsupportedForEngine(layers, engine) {
+  const missing = [];
+  (Array.isArray(layers) ? layers : []).forEach((lay) => {
+    const kind = canonicalKind(lay && lay.kind);
+    if (kind && (ENGINE_SUPPORT[engine] || []).indexOf(kind) === -1 && missing.indexOf(kind) === -1) {
+      missing.push(kind);
+    }
+  });
+  return missing;
+}
+
+/** The payload's own render report from the backend, turned into sentences. */
+function reportNotices(report) {
+  const notes = [];
+  if (report && Array.isArray(report.skipped) && report.skipped.length > 0) {
+    const names = report.skipped.map((item) => item && item.kind).filter(Boolean).join(', ');
+    notes.push(`${report.skipped.length} lớp bị bỏ (kind lạ${names ? `: ${names}` : ''}).`);
+  }
+  if (report && Array.isArray(report.constructions_unsolved) && report.constructions_unsolved.length > 0) {
+    notes.push(`${report.constructions_unsolved.length} dựng hình chưa giải được toạ độ chính xác.`);
+  }
+  // A point the solver could only place by a GUARANTEED property (collinear between
+  // the two centres) instead of exactly. Saying so is the whole point of keeping
+  // the two categories apart from `constructions_unsolved`.
+  if (report && Array.isArray(report.approximate) && report.approximate.length > 0) {
+    const names = report.approximate.filter(Boolean).join(', ');
+    notes.push(`${report.approximate.length} điểm tiếp xúc vẽ gần đúng (giữ đúng tính thẳng hàng`
+      + ` giữa hai tâm${names ? `: ${names}` : ''}).`);
+  }
+  return notes;
+}
 
 export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }) {
   const containerRef = useRef(null);
@@ -19,6 +68,21 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }
   }, []);
 
   const verification = data?._verification;
+
+  // What this figure will NOT show (đợt 8 / 4I). Two sources, one chip: the
+  // kinds THIS engine cannot draw, and the backend's `_render` report (unknown
+  // kinds it already dropped, constructions the analytic solver could not
+  // resolve). A truncated figure that says nothing is how an arc silently went
+  // missing before this đợt.
+  const renderNotices = useMemo(() => {
+    const missing = unsupportedForEngine(data?.layers, 'jsxgraph');
+    const notes = [];
+    if (missing.length > 0) {
+      notes.push(`Engine JSXGraph chưa vẽ được: ${missing.join(', ')}.`);
+    }
+    reportNotices(data?._render).forEach((note) => notes.push(note));
+    return notes;
+  }, [data]);
 
   useEffect(() => {
     if (!isClient || !containerRef.current) return;
@@ -80,6 +144,42 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }
         }
       }
     }
+
+    // Points declared inside a layer that has no `data`/`points` array of its
+    // own — an arc's center/from/to, a region's path items, a label's `at`
+    // (đợt 8 / 4I). They were previously invisible here, so those layers had
+    // nothing to draw themselves from.
+    for (const lay of (Array.isArray(data?.layers) ? data.layers : [])) {
+      collectLayerPoints([lay]).forEach((pt) => {
+        if (!pt.id) return;
+        const known = pointsMap[pt.id];
+        if (!known || (known && !Number.isFinite(known.x)) ) {
+          pointsMap[pt.id] = { id: pt.id, x: Number(pt.x), y: Number(pt.y), color: pt.color };
+        }
+      });
+    }
+
+    /** A layer's point reference → a JSXGraph element, or raw [x, y]. */
+    const refPoint = (ref) => {
+      if (!ref) return null;
+      const id = typeof ref === 'string' ? ref : (ref.id || ref.name);
+      if (id && jxgPts[id]) return jxgPts[id];
+      if (typeof ref === 'string' && pointsMap[ref]) {
+        return [pointsMap[ref].x, pointsMap[ref].y];
+      }
+      if (ref && Number.isFinite(ref.x) && Number.isFinite(ref.y)) return [ref.x, ref.y];
+      return null;
+    };
+
+    /** The same reference in MATH coordinates, for the sampled curves. */
+    const refMath = (ref) => {
+      if (!ref) return null;
+      const id = typeof ref === 'string' ? ref : (ref.id || ref.name);
+      if (id && pointsMap[id]) return [pointsMap[id].x, pointsMap[id].y];
+      if (typeof ref === 'string') return null;
+      if (Number.isFinite(ref.x) && Number.isFinite(ref.y)) return [ref.x, ref.y];
+      return null;
+    };
 
     const allPts = Object.values(pointsMap);
     const xs = allPts.map((p) => p.x);
@@ -532,18 +632,68 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }
               });
             }
           } else if (layer.kind === 'arc') {
-            const cId = layer.center?.id || layer.center?.name;
-            const pCenter = jxgPts[cId] || [layer.center?.x || 0, layer.center?.y || 0];
-            const pFrom = jxgPts[layer.from?.id || layer.from?.name];
-            const pTo = jxgPts[layer.to?.id || layer.to?.name];
+            const pCenter = refPoint(layer.center);
+            const pFrom = refPoint(layer.from);
+            const pTo = refPoint(layer.to);
             if (pCenter && pFrom && pTo) {
               board.create('arc', [pCenter, pFrom, pTo], {
                 strokeColor: layer.color || '#3b82f6',
                 strokeWidth: layer.strokeWidth || 1.8,
+                dash: layer.style === 'dashed' ? 2 : 0,
+              });
+            }
+          } else if (layer.kind === 'sector') {
+            // A sector is a filled wedge: JSXGraph's own element does this well,
+            // so nothing is sampled here.
+            const pCenter = refPoint(layer.center);
+            const pFrom = refPoint(layer.from);
+            const pTo = refPoint(layer.to);
+            if (pCenter && pFrom && pTo) {
+              board.create('sector', [pCenter, pFrom, pTo], {
+                strokeColor: layer.color || '#38bdf8',
+                strokeWidth: layer.strokeWidth || 1.4,
+                fillColor: layer.color || '#38bdf8',
+                fillOpacity: typeof layer.fillOpacity === 'number' ? layer.fillOpacity : 0.18,
+                dash: layer.style === 'dashed' ? 2 : 0,
+              });
+            }
+          } else if (layer.kind === 'region') {
+            // A curvilinear region (the classic "area between two tangent arcs")
+            // is a MIXED outline, so it is sampled into a data curve.
+            const outline = sampleRegionOutline(layer.path || layer.points, refMath);
+            if (outline.length >= 3) {
+              board.create('curve', curveXY(outline), {
+                strokeColor: layer.color || '#94a3b8',
+                strokeWidth: layer.strokeWidth || 1,
+                fillColor: layer.fill || 'rgba(148, 163, 184, 0.3)',
+                fillOpacity: typeof layer.fillOpacity === 'number' ? layer.fillOpacity : 0.3,
+                dash: layer.style === 'dashed' ? 2 : 0,
+              });
+            }
+          } else if (layer.kind === 'ellipse') {
+            const c = refMath(layer.center);
+            if (c) {
+              const outline = sampleEllipse(c, layer.a ?? layer.rx ?? 3, layer.b ?? layer.ry ?? 2);
+              board.create('curve', curveXY(outline), {
+                strokeColor: layer.color || '#ff3cac',
+                strokeWidth: layer.strokeWidth || 1.8,
+                fillColor: layer.fill || 'rgba(255, 60, 172, 0.12)',
+                fillOpacity: typeof layer.fillOpacity === 'number' ? layer.fillOpacity : 0.12,
+                dash: layer.style === 'dashed' ? 2 : 0,
+              });
+            }
+          } else if (layer.kind === 'label') {
+            const at = refMath(layer.at || layer.point);
+            if (at) {
+              board.create('text', [at[0], at[1], String(layer.text || layer.label || '')], {
+                fontSize: layer.fontSize || 13,
+                strokeColor: layer.color || '#f0f6fc',
+                anchorX: layer.textAnchor === 'start' ? 'left'
+                  : (layer.textAnchor === 'end' ? 'right' : 'middle'),
               });
             }
           } else if (layer.kind === 'angle') {
-            const pts = (layer.points || layer.of || []).map((p) => jxgPts[typeof p === 'string' ? p : (p.id || p.name)]).filter(Boolean);
+            const pts = (layer.points || layer.of || []).map(refPoint).filter(Boolean);
             if (pts.length === 3) {
               board.create('angle', pts, {
                 type: layer.right_angle ? 'square' : 'sector',
@@ -632,6 +782,18 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }
         position: 'relative',
       }}
     >
+      {/* What this figure will not show, said out loud (đợt 8 / 4I). */}
+      {renderNotices.length > 0 && (
+        <div style={{
+          marginBottom: 10, padding: '7px 11px', borderRadius: 8,
+          background: 'rgba(245, 158, 11, 0.12)',
+          border: '1px solid rgba(245, 158, 11, 0.4)',
+          color: '#fbbf24', fontSize: 11.5, lineHeight: 1.5,
+        }}>
+          {renderNotices.map((note) => (<div key={note}>⚠️ {note}</div>))}
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
         <MathVizTitle
           icon={<Compass size={18} style={{ color: '#38bdf8' }} />}
