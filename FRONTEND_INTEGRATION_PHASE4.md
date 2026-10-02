@@ -865,7 +865,364 @@ mà không sửa được lỗi. Ghi chú này được nhắc lại ngay trong 
   preprocessing, `CHAT_RETRIEVAL_BUDGET_S`, bỏ `sentence-transformers` khỏi production,
   `MATH_RETRIEVAL_EMBEDDINGS=off`).
 
+---
+
+## Đợt canvas-libraries — Shapely · trimesh · MathLive vào ô soạn tin · gỡ hẳn Konva
+
+Quyết định của chủ dự án: *nối thật MathLive, gỡ hẳn Konva, làm shapely, trimesh làm luôn,
+khai báo `matplotlib` + `imageio-ffmpeg`, và test localhost để chắc không timeout.*
+
+### 1. Gỡ engine thứ ba (Konva) — một widget, không còn ba bản trùng
+
+`MathVizGeometry2D.js` (SVG) + `MathVizJSXGraph.js` + `MathVizKonvaGeometry2D.js` cùng vẽ đủ 14
+kind; mỗi giá trị hình học (tâm, trực tâm, diện tích…) bị viết lại 3 lần ở client, thêm 1 lần ở
+server. Konva đã gỡ toàn bộ: xoá file engine, bỏ nhánh `engine === 'konva'` + nút "Konva Mode",
+bỏ prop `onSwitchToKonva`; contract `mathviz_contract.py` + `mathvizKinds.js` +
+`check-mathviz-kinds.mjs` chốt `ENGINE_PREFERENCE = ("jsxgraph", "svg")`; test
+`test_mathviz_contract.py` giờ *cấm* tên `konva` quay lại. Xoá kèm 2 hàm chết theo Konva trong
+`src/lib/mathvizOutline.js` (`pointsToFlat`, `sampleSectorOutline`) và gỡ `konva` khỏi
+`package.json` (lockfile `pnpm install` sạch bóng konva).
+
+### 2. MathLive — từ import chết thành nút Σ thật trong ô soạn tin
+
+`mathlive@0.110` + `MathInput.jsx` tồn tại từ Đợt 1 nhưng *không được mount ở đâu*. Nay
+`DuoMCBPage` nạp lazy `MathInput` (`next/dynamic`) sau nút **Σ**: bật thì ô nhập thành
+`<math-field>` (bàn phím công thức đầy đủ), Enter gửi; nội dung gửi được gói `$…$` để tầng đọc
+hiểu là Toán — chỉ áp dụng cho text gõ từ ô soạn tin, không đổi hành vi các call site gợi ý/công cụ.
+
+### 3. Tầng kiểm định dữ liệu hình học — Shapely + SymPy (`backend/geometry_analytic_checks.py`)
+
+Các bước cũ nắn từng lớp nhưng không hỏi *các lớp có đồng ý nhau không*. Module mới bắt: đa giác
+tự cắt (GEOS `is_valid` + `explain_validity`), đa giác suy biến (kèm ý kiến chính xác của SymPy
+`Rational(str(x))` để không báo nhầm vì nhiễu float), cung/hình quạt có hai đầu lệch đường tròn,
+cùng một point-id khai báo hai toạ độ (nguồn của hình "phụ thuộc thứ tự lớp"), góc vuông khai báo
+sai (SymPy xác nhận trước khi báo), tâm đường tròn không cách đều `through_3pts`, toạ độ NaN/Inf.
+Kết quả gắn vào `_render.conflicts` trong pipeline `/api/chat` và hiện thành chip cảnh báo ở cả
+hai engine. Chỉ dựa vào `mathviz_contract.iter_point_dicts` (một định nghĩa "điểm của payload"),
+tối đa 12 cảnh báo/lượt, không sửa payload.
+
+### 4. Tầng lưới 3D — trimesh (`backend/geometry3d_mesh.py` + `POST /api/geometry3d/mesh`)
+
+Khối ngoài 19 template client trước đây rơi về hộp 1×1×1 trong im lặng. Nay: box/prism/pyramid/
+truncated_pyramid/cylinder/cone/frustum/sphere/ellipsoid/hemisphere/capsule/torus (kèm alias
+tiếng Việt: `hinh_hop_chu_nhat`…), kích thước clamp `[1e-3, 50]`, trần 120k mặt; trả số liệu kiểm
+định (watertight/volume/bbox) + mảng đỉnh–chỉ số cho `THREE.BufferGeometry` + (tuỳ chọn) STL/GLB
+base64. `MathVizGeometry3D.js` tự gọi endpoint khi `solid` lạ, vẽ lưới server, hiện trạng thái và
+nút "⬇ STL". Hemisphere dựng tay bằng lưới UV — đường `slice_plane` của trimesh kéo theo scipy nên
+bị loại khỏi phụ thuộc. Endpoint anonymous-friendly như `/api/viz/geogebra`
+(`VIZ_EXPORT_LIMIT`, trần body 16 KB, không chạy mã của model).
+
+### 5. Khai báo phụ thuộc cho thật
+
+`requirements.txt` thêm `shapely>=2.0`, `trimesh>=4.0`, `matplotlib>=3.8`, `imageio-ffmpeg>=0.4.9`
+(hai gói cuối do `canvas_to_video.py` import nhưng trước đây **không manifest nào khai**).
+`requirements-ai-addons.txt` đổi đầu mục thành **LOCAL ONLY** kèm cảnh báo sự cố 2026-09-28 và
+chuyển `shapely` sang requirements chính. CI `quality-gate.yml` cài `shapely` + `trimesh` và thêm
+2 bước test mới.
+
+### 6. Bằng chứng localhost (2026-09-30, uvicorn cổng 8000 + `pnpm dev` cổng 3000)
+
+- `POST /api/geometry3d/mesh` (prism lục giác): **9 ms**, watertight, volume 41.569 ✓; xuất STL
+  (hemisphere): **37 ms**, 51.284 byte; khối lạ → 400 kèm danh sách hỗ trợ.
+- `POST /api/viz/geogebra`: **9 ms**, 4 đối tượng (không hồi quy).
+- `POST /api/chat` LLM thật: "2+2" **1,3 s** (trả `$4$`); câu hình học mode `solution` **28,4 s**,
+  có payload ```mathviz``` — đều rất dưới ngân sách 75 s của server.
+- `GET /DuoMCB`: **HTTP 200** (50 KB; lần compile-first của `next dev` trên máy yếu 21 s — render
+  154 ms, không lỗi).
+- Guard: frontend 22/22 + 6/6 + 27/27 + 23/23 + three-api OK + `tsc` exit 0; backend 16/16
+  analytic, 30/30 mesh, 91/91 geogebra, 9/9 widget routing, 105/105 chat budget.
+
+### 7. Ghi chú vận hành
+
+- Không cài `requirements-ai-addons.txt` trên Render (torch/easyocr/realesrgan — LOCAL ONLY).
+- Nếu sau này cần CAD thật (STEP/B-Rep/OCCT) hoặc Manim: dựng **service riêng**, không thêm vào
+  service chính; giữ nguyên khe cắm JSON-IR + HTTP như `/api/geometry3d/mesh`.
+
+### 8. Nhật ký test ảnh olympiad trên localhost (2026-09-30 → 10-01)
+
+Gửi 3 ảnh olympiad sẵn có trong `backend/training/hard_geometry_tests/` qua **đúng payload trang
+DuoMCB** (`POST /api/chat` + `Origin: http://localhost:3000`, kèm preflight OPTIONS):
+
+- **Đạt:** CORS/preflight 200 + ACAO đúng origin; **MathReader đọc đúng hình** (conf 0.90–0.95,
+  ~13 s, cache `sha256`); có 2 lượt trả **HTTP 200** (115,5 s có block ```mathviz```; 119,9 s verify
+  `deterministic checks passed`). Nội dung model trích xuất khớp hình: "A, B, C, D, E; B-D-C-E thẳng
+  hàng; AB=6, AC=4, BC=5".
+- **Chưa đạt trên máy này:** phần lớn lượt khác chạm ngân sách và trả **504 + lời nhắn trung thực**
+  (đúng thiết kế soft-deadline) vì nguồn ngoài lúc test rất chậm/chập chờn: OpenRouter free 429,
+  Gemini ~40 s/lượt và lỗi rỗng trong pipeline, Groq **413** khi còn ảnh trong payload, và
+  `VISION_HF_SPACE_ID=WilliamShakespear/duomath-qwen-vl-demo` trả **401 RepositoryNotFound**
+  (Space đã bị xoá/đổi tên).
+- Tổng thời gian ảnh ~115–120 s > timeout client 95 s ⇒ **trên máy này, thả ảnh trong trình duyệt sẽ
+  hiện thông báo timeout của client** dù server vẫn đang xử lý; prompt chữ thì đã nhanh (1,3–28,4 s).
+- Đã sửa `.env` local: slug chết `inclusionai/ling-3.0-flash-vl:free` → `qwen/qwen3.8-27b:free` và
+  fallback theo đúng `render.yaml`. **Đề xuất (chưa làm):** (a) khi đã có văn bản từ MathReader thì
+  bỏ ảnh khỏi payload gửi Groq (tránh 413); (b) cập nhật/gỡ `VISION_HF_SPACE_ID` đã chết;
+  (c) cho timeout gọi Gemini theo `CHAT_GENERATE_BUDGET_S` thay vì timeout ngắn cố định.
+
+### 9. Đợt P1–P7 — bốn đề xuất + trạng thái kiểm chứng trung thực + luồng hình-không-đề (2026-10-01)
+
+Triển khai đầy đủ kế hoạch đã chốt (P1→P7), mỗi phần một commit độc lập:
+
+- **P1 — ngân sách cấp tier.** `chat_budget.py` thêm `CHAT_GEN_MODEL_TIMEOUT_S` (22 s),
+  `CHAT_GEN_RETRY_S` (15 s), `CHAT_TIER_MIN_S` (12 s); mọi call sinh câu trả lời (Gemini tool-round,
+  Groq, OpenRouter helper, custom provider) đều lấy `min(cap, phần còn lại)`; tier không đủ thời
+  gian bị BỎ QUA thay vì bắt đầu rồi chết. Kèm sửa **bug thụt lề chết** trong vòng Tier-1: khối parse
+  phản hồi Gemini 200 nằm trong `if should_continue_attempt:` (cờ không bao giờ true) nên phản hồi
+  thành công không được đọc — nay đã chạy đúng; log lỗi in thêm `type(e).__name__`.
+- **P2 — payload fallback.** Module mới `fallback_policy.py`: `trim_for_tier` (giữ system prompt +
+  4 lượt gần nhất), `fallback_max_tokens` (cap 1600, `CHAT_FALLBACK_MAX_TOKENS`), `shrink_on_tpm`
+  (413 → thử lại CÙNG model với nửa ngân sách trước khi đổi model).
+- **P3/E — trạng thái kiểm chứng trung thực.** `math_solver` có 5 trạng thái
+  (`verified/failed/partial/timeout/not_applicable`), gate `should_verify` chỉ chạy khi đọc đủ tin
+  (`VERIFY_MIN_READ_CONFIDENCE=0.5`) hoặc có đáp án trích được; lớp deterministic chạy TRƯỚC và
+  riêng khỏi `wait_for` của critic (`precomputed_checks`), nên critic hết giờ vẫn giữ được verdict
+  "đã kiểm tra số học" (partial). Badge chọn theo trạng thái: NA → không gắn gì, timeout → ⏳,
+  partial → ℹ️, failed → ⚠️ kèm tên check.
+- **P4 — chip frontend** phân nhánh theo `verification.status` (ẩn với NA; ⏱/ℹ️/⚠️ theo loại) và
+  đọc <0.5 hiện "đọc chưa chắc (X%)" thay vì "0%".
+- **P5/F — luồng hình-không-đề.** Module mới `chat_routing.py`: có đề (transcription/latex có toán
+  hoặc tin nhắn thật) → giải như thường; chỉ có HÌNH đọc được → chế độ **figure-only**: prompt
+  `visualizer`, cấm bịa số/giải, dựng mathviz từ cấu trúc vision, server chèn cứng dòng ℹ️; kill
+  switch `FIGURE_ONLY_ENABLED`. Luật thứ tự "lời giải TRƯỚC, khối ```mathviz SAU CÙNG" ghi rõ trong
+  `_VISUAL_RULES`.
+- **P6 — HF Space opt-in.** `vision_agent` mặc định `VISION_HF_SPACE_ID=""` (Space demo cũ trả 401);
+  `.env` local đã gỡ; harness training có ghi chú.
+- **P7 — timeout client.** Giữ 95 s, thêm guard CHẶN HAI PHÍA (`> serverBudget` và `< 100 s` trần
+  proxy Render) trong `check-chat-errors.mjs`.
+
+**Kiểm chứng:** offline suites mới `test_fallback_policy.py` (15), `test_verify_states.py`,
+`test_chat_routing.py` (28) + mở rộng `test_chat_budget.py` (127/127) đều vào CI `offline-suites`;
+frontend guard cập nhật xanh; `tsc` exit 0. **Smoke live** (uvicorn, ngân sách mặc định):
+`/api/health` công bố các khóa mới (`gen_model_s=22, tier_min_s=12, fallback_max_tokens=1600`);
+chat chữ "1+1" trả `$2$` trong 3,4 s kèm `verification.status="not_applicable"` — **không badge đỏ**,
+đúng ca báo cáo từ lớp học.
+
+### 9b. P1b–P1d — sửa 504 ảnh theo báo cáo LIVE (2026-10-01, từ console của lớp học)
+
+Lượt ảnh + `mode=visualizer` trả **504** dù P1–P7 đã xong. Log chỉ ra bốn mảnh còn thiếu:
+
+1. **Retry "without tools" là vô nghĩa với request ảnh** (payload ảnh vốn không có `tools` từ
+   dòng 4249) — gửi lại y hệt lời gọi đã fail, tốn ~15 s/model (P1b: chỉ retry khi `"tools" in payload`).
+2. **Model chính bị cap 22 s** trong khi một câu trả lời 4096-token cần hơn thế — model đầu giờ
+   được dùng `CHAT_GENERATE_BUDGET_S`, model sau giữ cap nhỏ (P1b).
+3. **Không dành chỗ cho tier local** (`CHAT_LOCAL_FLOOR_S`=10 s): mọi clamp HTTP lấy
+   `remaining − floor`, và request ảnh không đọc được gì (`_blind_image`) thì bỏ qua Groq/OpenRouter
+   (các tier chữ không thấy ảnh; Groq 413 cả 3 model — P1c). Kèm đó: **text của MathReader
+   (`latex`+`text_blocks`) được "thăng cấp" vào `vision_description`** để các tier chữ có đề để trả lời
+   — trước đây agent fail là cả pipeline coi như trang giấy trắng dù MathReader đã đọc xong (P1c).
+4. **Verification đua với deadline**: gần mốc, verification bị bỏ qua (`remaining < floor` →
+   `not_applicable`, note "hết thời gian…"), và khi vẫn chạy thì wait_for bị chặn bởi
+   `remaining − floor` (P1d).
+
+**Kết quả live sau sửa:** ảnh olympiad (`problem_3`) → **HTTP 200 trong 66,6 s, `budget_left=8,5 s`**,
+trả lời từ **local MathGPT** kèm payload `mathviz` hợp lệ (do mọi provider ngoài đều 429/503/413 vào
+ngày test), `verification.status=not_applicable` — hết hẳn 504 và hết badge đỏ. Guard mở rộng:
+`test_chat_budget.py` **142/142**.
 
 
 
+
+
+### 9c. P8 — Cerebras vào thang trả lời + xác minh hai key mới (2026-10-01)
+
+Hai key mới nạp và **kiểm chứng sống**: Gemini `AQ.Ab8…` hợp lệ (`ListModels` → 200, 50 model —
+các 503 trong ngày là *Google quá tải*, body "experiencing high demand", KHÔNG phải key sai);
+Cerebras `csk-rj…` hợp lệ (`GET /v1/models` → 200: `gpt-oss-120b`, `qwen-3.8-27b`). Ghi chú sống:
+Cloudflare của Cerebras chặn fingerprint `urllib` ("error code: 1010") — **httpx mà backend đang
+dùng đi qua bình thường** (test cả GET lẫn POST chat đều 200; không cần User-Agent đặc biệt).
+
+**Tier 1.5 mới** (`CEREBRAS_BASE`/`CEREBRAS_KEY` + `cerebras_headers()`, chèn giữa Gemini và Groq)
+theo đúng luật P1: gate `CHAT_TIER_MIN_S`, clamp `remaining − CHAT_LOCAL_FLOOR_S`, bỏ qua khi
+`_blind_image`, `trim_for_tier` + cap token. Hai phát hiện live quyết định cấu hình:
+
+1. Model reasoning "đói" token trả 200 **không có key `content`** (KeyError) — đọc bằng `.get()`,
+   coi như rỗng và chuyển model kế tiếp; sàn `max_tokens` 2048 → **3072**.
+2. `qwen-3.8-27b` fail **cả hai** lượt chạy live (cháy hết budget reasoning rồi ReadTimeout trong
+   cửa sổ ngắn) trong khi `gpt-oss-120b` trả lời trong vài giây → mặc định
+   `CEREBRAS_CHAT_MODELS=gpt-oss-120b,qwen-3.8-27b` (kèm ghi chú evidence-based trong code).
+
+**Chuỗi leo thang live thật** (`_img_test.py problem_3`, Gemini 503 toàn bộ):
+`3× Gemini 503 → Tier 1.5 Cerebras (qwen KeyError → gpt-oss 200) → answered_by=cerebras:gpt-oss-120b`,
+59,5 s, `budget_left=15,8 s` — **200, không còn 504**. Lượt sau Gemini ngốn clock vào ReadTimeout →
+tier bị gate chặn đúng lúc (còn 10,0 s < 12 s) → local floor trả lời kèm `mathviz` hợp lệ. Lượt thứ
+tư Google hồi phục: `answered_by=gemini:gemini-3.1-flash-lite`, 60,5 s, 4.422 ký tự, `mathviz`
+5 layer (line/points/polygon/segment), `verification.status=timeout` trung thực.
+
+Config: `CEREBRAS_API_KEY` (sync:false) + `CEREBRAS_CHAT_MODELS` vào `render.yaml`, `.env`,
+`.env.example`; `/api/health` thêm `cerebras:<model>` vào `text_tiers`. Guard P8 (6 mục) trong
+`test_chat_budget.py` → **148/148**; routing/verify/fallback giữ nguyên **28/28, 19/19, 15/15**.
+Proof gọn: `_p8_proof.txt`; log thô: `duosteam/backend/_run_out.log`.
+
+
+
+
+### 9d. P11–P13 + P10 — bể khoá, NVIDIA Tier 2.5, Cerebras qwen-first, đồng hồ token (2026-10-01)
+
+#### P11 — Bể khoá đa khoá (`key_pool.py`, mới)
+
+Mọi quota free tính THEO TỪNG KHOÁ — một 429/401/413 là cả nhà cung cấp bị gạch tên hết ngày.
+Bể khoá đổi điều đó:
+
+- `key_pool.py` thuần Python (không mạng, đồng hồ tiêm được): `parse_keys` (phẩy/chấm
+  phẩy/xuống dòng, khử trùng), `key_id` (chỉ 4 ký tự cuối — không bao giờ lộ khoá vào log),
+  `parse_reset_duration` (`"2m59.56s"` — regex `\b` cũ bỏ sót số hạng đầu vì "m59" không có
+  word-boundary; sửa thành `(?![A-Za-z])`), `cooldown_seconds` (ưu tiên `retry-after`, rồi
+  giá trị dài nhất trong `x-ratelimit-reset-*`, 401/403 khoá 1 giờ), `KeyPool` với
+  `request_order / active / note_response / note_ok / snapshot`.
+- `groq_headers()` đọc khoá đang sống từ bể (bỏ cache-global — cache sẽ ghim pipeline vào
+  khoá đang cooldown); mọi POST Groq thường đi qua `_groq_post_with_key_rotation` (**thử CÙNG
+  model bằng khoá kế tiếp** trước khi bỏ model); **stream Groq xoay khoá trước khi xoay model**.
+- Env: `GROQ_API_KEY_SECONDARY` (trống = bể một khoá) vào `.env` / `.env.example` / `render.yaml`.
+- `test_key_pool.py` **56/56** (hành vi bể + wiring) + 3 guard mới trong `test_chat_budget.py`.
+
+#### P12 — NVIDIA NIM: Tier 2.5 "math reasoning" + helper coding
+
+- `NVIDIA_BASE` + `NVIDIA_KEY_POOL` (2 khoá, cùng khuôn bể P11); `_nvidia_chat()` giữ đúng bài
+  học P8: **sàn 3072 token**, `.get("content")` (200-thiếu-content rơi model kế, không KeyError),
+  lỗi mạng cũng rơi model kế, hết model mới `RuntimeError` để caller xuống tier.
+- **Tier 2.5** chèn giữa Groq và OpenRouter
+  (`NVIDIA_MATH_MODELS=nvidia/nemotron-3-super-120b-a12b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning`),
+  đủ 3 luật tier (gate `CHAT_TIER_MIN_S`, clamp `remaining − floor`, bỏ qua ảnh mù) + ghi
+  `_answered` provider=nvidia.
+- `_nvidia_coder()` (`NVIDIA_CODE_MODELS=poolside/laguna-xs-2.1,openai/gpt-oss-20b`) nhận **đúng
+  prompt sửa MathViz** và chạy TRƯỚC OpenRouter trong `_repair_mathviz_with_free_openrouter` —
+  OpenRouter giờ chỉ còn là fallback phía sau.
+- `/api/health` thêm `nvidia:<model>`; `test_nvidia_tier.py` **29/29**.
+
+#### P13 — Cerebras ưu tiên `qwen-3.8-27b` (quyết định của người dùng)
+
+`CEREBRAS_CHAT_MODELS=qwen-3.8-27b,gpt-oss-120b` (default trong code + `.env` + `.env.example`
++ `render.yaml` + guard `test_chat_budget.py`). Bằng chứng P8 (qwen từng cháy reasoning trong
+cửa sổ ngắn) được giữ nguyên trong comment; sàn 3072 là bảo hiểm, và gpt-oss ở lại CÙNG tier
+làm lưới hứng cửa sổ đói token. Probe P12 xác nhận live thứ tự mới.
+
+#### P10 — Đồng hồ token/quota + tab admin "Token & Quota"
+
+- `token_meter.py` thuần: `normalize_openai_usage` (tách `reasoning_tokens`),
+  `normalize_gemini_usage` (`thoughtsTokenCount` cộng vào output nhưng báo riêng),
+  `quota_snapshot` (quét `x-ratelimit-remaining-* / limit-* / reset-*` + `retry-after`),
+  `pct_left` / `gauge_state` (đỏ <15 %, vàng <30 %, **unknown khi thiếu số**), retention fail-safe.
+- Bảng `token_usage_log` (DDL trong `init_db`) + `token_log()` (không bao giờ raise, retention
+  riêng `TOKEN_USAGE_RETENTION_DAYS=30`); gắn tại MỌI choke point: 2 helper xoay khoá (Groq kèm
+  quota header live; NVIDIA self-count + reasoning), Cerebras (kèm quota), Gemini (2 nhánh
+  success), OpenRouter; nhãn `surface` (chat / translate / repair).
+- `GET /api/admin/token-usage?days=1` (admin-only, kẹp 1..90): tổng theo provider/model + ảnh
+  chụp quota live mới nhất + `snapshot()` bể khoá + nhãn trung thực `live+self-count` /
+  `self-count` cho từng provider.
+- Frontend: tab **📊 Token & Quota** trong `AdminPanel` + `TokenGauges.js` (kim lớn
+  Cerebras/Groq chỉ vẽ khi có số live, hàng khoá live/cooldown, bảng tự đếm có cột "Suy nghĩ").
+- `test_token_meter.py` **40/40**; CI thêm 3 bước (key pool, NVIDIA tier, token meter).
+
+#### Hai bug thật bắt được LIVE trong quá trình probe
+
+1. **Loader `.env` nuốt override môi trường** — `main.py` ghi thẳng `os.environ[k]=v` từ file,
+   nên mọi biến của shell / Render dashboard / probe bị đè ngược (probe P12 "khoá invalid" vẫn
+   được trả lời bằng khoá thật, tới 2 lần). Sửa thành **env thắng file** (file chỉ điền biến
+   trống) + guard trong `test_key_pool.py` — đúng hướng 12-factor.
+2. **`_blind_image` chưa gán cho request chữ** — chỉ được set trong nhánh ảnh, nên chat chữ khi
+   các tier trên hỏng ném `UnboundLocalError` → **500 thay vì rơi xuống tier dưới** (đúng kịch
+   bản Gemini outage). Khởi tạo `_blind_image = False` sớm + guard trong `test_nvidia_tier.py`.
+
+#### Kiểm chứng LIVE
+
+- **P11** (`_p11_live.ps1`): chat chữ → `answered_by=groq:qwen/qwen3.8-27b`, 13,7 s, qua helper
+  xoay khoá; `/api/health` công bố đủ 5 tier.
+- **P12** (`_p12_live.ps1`, khoá Groq/Gemini/Cerebras cố tình sai): chuỗi đầy đủ
+  `Groq 401 → Gemini 400×4 → Cerebras qwen→gpt-oss (thứ tự P13!) → Groq 401×3 → Tier 2.5 NVIDIA`
+  → `answered_by=nvidia:nvidia/nemotron-3-super-120b-a12b`, 41,3 s, `budget_left=48,7 s` —
+  **không còn 500**.
+- **P10** (`_p10_live.ps1`): 1 dòng thật trong `token_usage_log` —
+  `groq / qwen/qwen3.8-27b / total=1797 / quota live {"requests":"999","tokens":"6135"}`;
+  `GET /api/admin/token-usage` không auth → **401**.
+- Suite toàn cục: chat_budget **153/153** (guard P11×3, P13×2), key_pool **56/56**, nvidia
+  **29/29**, token_meter **40/40**, routing/verify/fallback **28/28, 19/19, 15/15**;
+  `tsc --noEmit --noResolve --allowJs --jsx preserve` cho `TokenGauges.js` + `AdminPanel.js` →
+  exit 0.
+
+**Còn lại của lô kế hoạch:** P14 (vision NVIDIA + Gemini thay vai OpenRouter — đã test sống
+`meta/llama-3.2-90b-vision-instruct` và `-11b-vision` đọc đúng hình olympiad, 200 OK) và P9a/P9b
+(refine MathViz runtime + thư viện artifact). Khoá đã dán trong chat cần **rotate sau nghiệm
+thu**; `.env` không commit (backup: `duosteam/backend/.env.bak_keys`).
+
+
+
+
+### 9e. P14-fix — báo cáo lớp học: "hình minh hoạ không liên quan" (2026-10-01)
+
+Báo cáo live: học sinh **đính ảnh bài tứ diện $S.ABC$** (chế độ 3D) → nhận về văn bản mẫu
+"🔍 Hình Học Phẳng & Vectơ…" kèm minh hoạ **tam giác 2D generic** — "hình không liên quan gì,
+đưa sai mẫu hình là hình tam giác".
+
+Điều tra (tái hiện: `_repro_3d.py`, `_repro_floor.ps1` + `_repro_floor.py`):
+
+1. Câu gửi đi là **placeholder của UI** — "Minh họa tương tác cho bài toán này." (nút 3D) —
+   nhưng `chat_routing.PLACEHOLDER_MESSAGES` chỉ có 4 biến thể CŨ; **3 câu UI hiện tại**
+   (Gợi ý / Giải chi tiết / Minh họa tương tác) chưa từng có trong danh sách.
+2. Placeholder lọt vào `detect_widget` và khớp các **keyword UI chung** trong danh sách 2D
+   ("tương tác", "bài toán này", "minh họa", "hình học") → widget = `geometry_2d` cho MỌI ảnh,
+   kể cả ảnh chóp/tứ diện (leo thang 3D luôn thắng nếu đề CÓ chữ, nhưng placeholder thì không).
+3. Khi thang tier rơi xuống tầng local, `generate_mock_mathgpt_reply` trả **bài mẫu bịa**
+   ("Cho tam giác ABC… trọng tâm G") + hình tam giác canned — không liên quan gì đến ảnh.
+4. Badge đỏ "⚠️ **Chưa kiểm chứng được đáp án này**" còn bị gắn lên chính câu "mình chưa giải".
+
+Bản vá:
+
+- `chat_routing.PLACEHOLDER_MESSAGES` += 3 câu UI thật (giữ biến thể cũ để tương thích);
+- `detect_widget` **bỏ qua placeholder** (coi như không có chữ) và danh sách keyword 2D gỡ các
+  từ UI chung ("minh họa/hoạ", "tương tác", "bài toán này", "hình học" trần) — chỉ giữ "vẽ
+  hình / dựng hình / hình vẽ" là ý định vẽ tường minh;
+- **đề là placeholder ⇒ mô tả của vision chọn widget** (`detect_widget(vision_description)`)
+  — ảnh "hình chóp / tứ diện" định tuyến `geometry_3d` thay vì mặc định 2D;
+- helper mới `_local_floor_reply()` dùng ở **cả hai** điểm gọi tầng local (soft-deadline +
+  tier 4): request có ảnh → trả về **bản chép đọc được** + nói rõ "chưa phải lời giải", hoặc
+  mời chụp lại rõ hơn, **KHÔNG dựng hình bịa**; request chữ vẫn giữ bài mẫu demo;
+- cờ `_honest_floor`: tầng local trung thực **bỏ qua verification** — không còn badge đỏ trên
+  câu "chưa giải" (cùng tinh thần P3/P5).
+
+Kiểm chứng live (`_repro_floor.ps1`: ép mọi khoá sai + ảnh olympiad thật + placeholder 3D):
+`200 | mathviz_block=False | canned_sample=False | honest_read=True` — reply = note bận +
+bản chép từ ảnh (LABELED POINTS… `AB = 6; AC = 4; BC = 5`, lấy từ vision cache) + mời gửi lại,
+**819 ký tự, KHÔNG badge** (trước sửa: 942 ký tự kèm bài mẫu 2D + badge).
+Suite: routing **42/42** (14 guard mới), chat_budget **153/153**, verify **19/19**, key_pool
+**56/56**, nvidia **29/29**, token_meter **40/40**; `py_compile` OK.
+
+
+
+
+### 9f. P15-fix — báo cáo lớp học: chatbot hiện nguyên khối JSON (2026-10-01)
+
+Báo cáo: response hiển thị **JSON thô** (`"title": "△ABC và các điểm…"`, `"layers":[…]`)
+thay vì hình tương tác.
+
+Điều tra:
+
+1. Frontend chỉ nhận ĐÚNG fence ` ```mathviz ` — không có nó thì khối JSON được render
+   như text thường (đúng như ảnh chụp).
+2. Backend `_extract_mathviz_block` cũng chỉ nhận ĐÚNG ` ```mathviz `. Khi model — đặc biệt
+   các tier fallback (Groq qwen / Nemotron / Cerebras) — gói payload trong ` ```json `,
+   ` ```javascript ` hoặc fence trần, khối đó **đi thẳng ra client**, không hề qua
+   validation / repair / regularization.
+3. Nhánh strip bảo hiểm (`elif "```mathviz" in reply`) cũng không khớp → fence khác lọt lưới
+   hoàn toàn.
+
+Bản vá — hai đầu, cùng một luật "nhận theo GIÁ TRỊ, không theo nhãn fence":
+
+- `mathviz_contract.recover_fenced_mathviz()` (thuần, stdlib): quét MỌI fence, chỉ nhận khi
+  payload parse được thành dict có `widget` và `type` trống/`mathviz.v1` → trả
+  `(text đã bỏ khối, payload)`. Không "cướp" code JSON không liên quan; bỏ qua fence
+  `mathviz` chuẩn (main.py lo, kèm các nhánh json_repair).
+- `main.py _extract_mathviz_block()`: gọi recovery này trước `return raw, None` → payload
+  dưới bất kỳ fence nào cũng vào đúng dây validation/repair/regularization rồi được tái gắn
+  fence chuẩn ở bước ghép reply.
+- Frontend: logic tách khối chuyển từ `DuoMCBPage.js` sang module thuần
+  **`src/lib/mathvizExtract.js`** + 3 luật mới: nhận ` ```json/javascript/bare ` nếu payload
+  LÀ mathviz (type mặc định `mathviz.v1`); payload mathviz không parse được thì **ẩn** (không
+  bao giờ lộ JSON thô); code block không liên quan giữ nguyên.
+- Guard mới `frontend/scripts/check-mathviz-extract.mjs` (**11 case thật**, vào CI) + 11 check
+  mới trong `test_mathviz_contract.py` + 1 wiring check trong `test_chat_budget.py`.
+
+Kiểm chứng: `test_mathviz_contract` ALL PASSED; chat_budget **154/154**; node guard **11/11**
+(exit 0); `tsc --noEmit --noResolve` cho 2 file JSX → exit 0. Live smoke (server khởi động
+lại với code mới, `_repro_viz.py`): 3/3 prompt sinh khối đúng fence chuẩn và parse OK
+(`geometry_2d` ×2, `geometry_3d` ×1) — không hồi quy đường chính.
 
