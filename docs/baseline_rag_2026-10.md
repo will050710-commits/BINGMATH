@@ -115,3 +115,42 @@ Với 6 dòng, RRF (`k=60`) sinh các giá trị trùng nhau (ví dụ `0.03252`
 3. **Chất lượng đầu-cuối** — baseline này đo *truy hồi*, không đo *câu trả lời của model*. Việc "model trả lời tốt hơn nhờ ngữ cảnh" thuộc R4 và cần một bộ đánh giá riêng.
 4. **7 cổng FE + build** — chưa chạy trong môi trường này.
 5. **Không có số nào về token/chi phí** — R0 không gọi LLM.
+
+---
+
+## 6. Bổ sung sau R1 (concept graph tách khỏi `main.py`)
+
+R1 chuyển graph sang `backend/math_concepts.py` + `backend/data/math_concepts.json`.
+Parity đã được pin bằng `backend/test_math_concepts.py` — **40/40**, so với snapshot
+chụp từ code **CŨ** bằng AST extraction (không `import main`).
+
+**Phát hiện quan trọng — một defect tất định đã được đo và sửa:**
+
+| Đo | Kết quả |
+|---|---|
+| Truy vấn có khối lân cận ≥2 dòng | 9 / 20 |
+| **Output KHÁC NHAU giữa 2 process** (2 `PYTHONHASHSEED`) | **9 / 20** |
+| Khác biệt chỉ là hoán vị? | Có — nội dung y hệt |
+| **Sau khi sửa** (dict giữ thứ tự chèn) | **0 / 20** |
+
+`seen_neighbors` là `set`; set of `str` lặp theo thứ tự **ngẫu nhiên theo process**
+(hash randomization). Nghĩa là: cùng một câu hỏi → **prompt khác nhau** ở các worker
+khác nhau. Điều này làm nhiễu mọi phép đo A/B trước/sau (kể cả baseline R0 ở §2: một
+phần chênh lệch nếu đo lại có thể đến từ đây, không phải từ logic), và làm golden test
+byte-identical trở thành bất khả thi.
+
+**Đã sửa:** dedup bằng dict giữ thứ tự chèn — giữ nguyên ngữ nghĩa set, thứ tự ổn định.
+Test pin cả hai chiều: (a) nội dung khớp snapshot cũ sau khi canonicalise **chỉ** khối
+lân cận; (b) 0/20 khác nhau giữa process.
+
+### Hồi quy: không có
+
+34 / 34 mục PASS (30 suite backend + `tests/eval_math_regression.py` +
+`audit_bound_names.py` + `--selftest` + `tests/eval_rag.py`), gồm
+`test_chat_budget.py` (154/154), `test_geogebra_export.py` (91/91),
+`tests/eval_math_regression.py` (30/30, 100 %).
+
+Kiểm tra tích hợp qua `main.py`: graph 13/10, `extract_graph_entities` trả `['dao_ham']`,
+`retrieve_math_context` **identical** với `math_concepts.render_context`,
+`GRAPHABLE_CONCEPT_IDS` không có id mồ côi, `detect_widget` vẫn
+`function_plot` / `geometry_2d`.

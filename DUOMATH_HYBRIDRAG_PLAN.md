@@ -154,11 +154,31 @@ Quy tắc từ đây:
 - **Phát hiện:** Recall@3 `1.000` **bão hoà** vì ngân hàng 6 dòng; **2/2 control bị false positive**
   (`min_score=0.05` quá thấp); RRF sinh điểm **đồng hạng** ⇒ thứ tự không ổn định.
 
-### R1 — Tách dữ liệu graph (parity, không đổi output)
-- `backend/data/math_concepts.json` + `backend/math_concepts.py` (loader, `find_entities`, `neighbors`)
-- `main.py` import loader; `retrieve_math_context` **byte-identical** (golden 20 query)
-- `/api/health` vẫn `lightrag_nodes: 13`, `lightrag_edges: 10`
-- Test: `backend/test_math_concepts.py` → thêm vào job `offline-suites`
+### R1 — Tách dữ liệu graph ✅ HOÀN TẤT
+- `backend/data/math_concepts.json` (13 node / 10 cạnh) + `backend/math_concepts.py`
+  (`GRAPH`, `nodes()`, `edges()`, `find_entities()`, `neighbors()`, `render_context()`)
+- `main.py`: `MATH_CONCEPT_GRAPH = math_concepts.GRAPH`,
+  `extract_graph_entities = math_concepts.find_entities`,
+  `retrieve_math_context` giữ `@lru_cache(maxsize=128)` + delegate.
+  Graph dict 137 dòng + `_re_rag` **đã rời khỏi** `main.py`.
+- Test: `backend/test_math_concepts.py` — **40/40**, đã thêm vào job `offline-suites`
+  (step "Retrieval — concept graph moved out of main.py (parity + determinism)")
+- **Parity:** 20 truy vấn golden, so với snapshot chụp từ code CŨ bằng **AST extraction**
+  (không `import main`) → khớp 100 %; `find_entities` khớp y hệt;
+  `/api/health` vẫn 13/10; `detect_widget` vẫn `function_plot`/`geometry_2d`.
+
+**Phát hiện + sửa trong R1 (đo được, không phải phỏng đoán):**
+`retrieve_math_context` **KHÔNG tất định**. `seen_neighbors` là `set`, mà set of `str`
+lặp theo thứ tự **ngẫu nhiên theo process** (hash randomization, `PYTHONHASHSEED`).
+Đo trên 20 truy vấn golden với 2 giá trị seed: **9/20 render block khác nhau** giữa
+hai process (chỉ là **hoán vị** các dòng lân cận — nội dung y hệt).
+
+Hệ quả thật: cùng một câu hỏi → **prompt khác nhau** ở các worker khác nhau ⇒
+reproducibility và đo A/B đều nhiễu; và **không thể** có golden test byte-identical.
+
+Đã sửa: dedup bằng **dict giữ thứ tự chèn** (giữ nguyên ngữ nghĩa set, thứ tự ổn định).
+`test_math_concepts.py` pin: **0/20 khác nhau giữa process** (child process với
+`PYTHONHASHSEED=12345`).
 
 ### R2 — Fusion nhiều nguồn + BM25 + sửa false positive
 - `backend/retrieval_hybrid.py`: adapter S1/S2/S4/S5 → RRF → **tie-break tất định** → MMR → cap

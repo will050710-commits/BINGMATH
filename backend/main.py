@@ -975,166 +975,28 @@ def cached_system_prompt(variant: str = "text", widget: str | None = None) -> st
 
 
 # ── LightRAG-style Mathematical Knowledge Graph & Retriever ────────────────
-import re as _re_rag  # dùng riêng cho entity matching
+# R1 (HybridRAG): the graph DATA now lives in backend/data/math_concepts.json and
+# the matcher/renderer in backend/math_concepts.py. Two reasons that matter:
+#   * the retriever becomes testable by the CI quality gate, which deliberately
+#     never imports THIS file (importing it binds DB tables, reads .env and builds
+#     provider clients);
+#   * R2 can add retrieval sources without growing this file.
+#
+# Behaviour is unchanged except for ONE fix. The neighbour block used a `set`, and
+# a set of `str` iterates in a per-process RANDOM order (hash randomisation), so
+# the same question could produce a different reference block on different
+# workers. Measured against the pre-move code: 9 of 20 golden queries rendered a
+# different block between two PYTHONHASHSEED values (permutation of the neighbour
+# lines only — same content). It is now an insertion-ordered dict: same content,
+# stable order. test_math_concepts.py compares every golden query to the pre-move
+# output and pins the determinism.
+#
+# `MATH_CONCEPT_GRAPH` stays as an alias because GRAPHABLE_CONCEPT_IDS and
+# /api/health read it.
+import math_concepts
 
-MATH_CONCEPT_GRAPH = {
-    "nodes": {
-        "phuong_trinh_bac_hai": {
-            "id": "phuong_trinh_bac_hai",
-            "name": "Phương trình bậc hai",
-            "english_name": "Quadratic Equation",
-            "keywords": ["phương trình bậc 2", "phương trình bậc hai", "quadratic equation", "quadratic", "pt bậc 2"],
-            "definition": "Phương trình có dạng $ax^2 + bx + c = 0$ (với $a \\neq 0$).",
-            "formulas": "$$ax^2 + bx + c = 0 \\;(a \\neq 0)$$\nNghiệm: $$x = \\frac{-b \\pm \\sqrt{\\Delta}}{2a}$$",
-            "examples": "Giải $x^2 - 5x + 6 = 0$. Ta có $a=1, b=-5, c=6$. $\\Delta = 25 - 24 = 1 > 0$. Nghiệm $x_1=3, x_2=2$."
-        },
-        "biet_thuc_delta": {
-            "id": "biet_thuc_delta",
-            "name": "Biệt thức Delta",
-            "english_name": "Discriminant",
-            "keywords": ["delta", "biệt thức", "discriminant", "∆", "△"],
-            "definition": "Giá trị đại số dùng để xác định số lượng và tính chất nghiệm của phương trình bậc hai.",
-            "formulas": "$$\\Delta = b^2 - 4ac$$\n- $\\Delta > 0$: 2 nghiệm phân biệt.\n- $\\Delta = 0$: 1 nghiệm kép.\n- $\\Delta < 0$: vô nghiệm thực.",
-            "examples": "Với $x^2 + x + 1 = 0$, $\\Delta = 1 - 4 = -3 < 0$ → Phương trình vô nghiệm thực."
-        },
-        "he_thuc_vi_et": {
-            "id": "he_thuc_vi_et",
-            "name": "Hệ thức Vi-ét",
-            "english_name": "Vieta's Formulas",
-            "keywords": ["vi-ét", "viet", "viét", "vieta", "tổng nghiệm", "tích nghiệm"],
-            "definition": "Mối quan hệ giữa các nghiệm và các hệ số của phương trình bậc hai.",
-            "formulas": "$$S = x_1 + x_2 = -\\frac{b}{a}, \\quad P = x_1 \\cdot x_2 = \\frac{c}{a}$$",
-            "examples": "Nhẩm nghiệm $x^2 - 7x + 12 = 0$: $S = 7, P = 12$ → nghiệm $x_1=3, x_2=4$."
-        },
-        "dao_ham": {
-            "id": "dao_ham",
-            "name": "Đạo hàm",
-            "english_name": "Derivative",
-            "keywords": ["đạo hàm", "derivative", "tính đạo hàm", "vi phân", "f'", "y'"],
-            "definition": "Tỉ số giới hạn của số gia hàm số và số gia đối số — đại diện cho tốc độ biến thiên tức thời.",
-            "formulas": "$$f'(x) = \\lim_{\\Delta x \\to 0} \\frac{f(x+\\Delta x) - f(x)}{\\Delta x}$$\nCông thức cơ bản: $(x^n)' = nx^{n-1}$, $(\\sin x)' = \\cos x$, $(e^x)' = e^x$, $(\\ln x)' = \\frac{1}{x}$",
-            "examples": "$f(x) = 3x^2 - 5x \\Rightarrow f'(x) = 6x - 5$."
-        },
-        "cuc_tri": {
-            "id": "cuc_tri",
-            "name": "Cực trị hàm số",
-            "english_name": "Extrema of Functions",
-            "keywords": ["cực trị", "cực đại", "cực tiểu", "extrema", "max", "min", "gtln", "gtnn"],
-            "definition": "Điểm cực đại/cực tiểu là nơi đạo hàm đổi dấu (từ + sang − hoặc ngược lại).",
-            "formulas": "**Quy tắc 1 (xét dấu đạo hàm):** $f'(x_0)=0$ và $f'$ đổi dấu qua $x_0$.\n**Quy tắc 2 (đạo hàm cấp 2):** $f'(x_0)=0$:\n- $f''(x_0)>0$ → Cực tiểu\n- $f''(x_0)<0$ → Cực đại",
-            "examples": "$y = x^2 - 4x$: $y' = 2x-4 = 0 \\Rightarrow x=2$. $y''=2>0$ → Cực tiểu tại $x=2$, $y_{\\min}=-4$."
-        },
-        "tiem_can": {
-            "id": "tiem_can",
-            "name": "Đường tiệm cận",
-            "english_name": "Asymptote",
-            "keywords": ["tiệm cận", "tiệm cận ngang", "tiệm cận đứng", "tiệm cận xiên", "asymptote"],
-            "definition": "Đường thẳng mà đồ thị hàm số tiếp cận vô hạn mà không chạm tới.",
-            "formulas": "- **Tiệm cận đứng** $x=x_0$: khi $\\lim_{x\\to x_0} f(x) = \\pm\\infty$\n- **Tiệm cận ngang** $y=L$: khi $\\lim_{x\\to\\pm\\infty} f(x) = L$\n- **Tiệm cận xiên** $y=ax+b$: khi $a = \\lim_{x\\to\\infty}\\frac{f(x)}{x}$",
-            "examples": "$y = \\frac{2x+1}{x-1}$: TCĐ $x=1$, TCN $y=2$."
-        },
-        "tich_phan": {
-            "id": "tich_phan",
-            "name": "Tích phân",
-            "english_name": "Integral",
-            "keywords": ["tích phân", "nguyên hàm", "integral", "antiderivative", "diện tích", "∫"],
-            "definition": "Phép toán ngược của đạo hàm. Tích phân xác định = diện tích hình phẳng dưới đồ thị.",
-            "formulas": "**Newton-Leibniz:** $$\\int_a^b f(x)\\,dx = F(b) - F(a)$$\n**Tích phân từng phần:** $$\\int u\\,dv = uv - \\int v\\,du$$\n**Nguyên hàm cơ bản:** $\\int x^n dx = \\frac{x^{n+1}}{n+1} + C$",
-            "examples": "$\\int_0^1 x^2\\,dx = \\left[\\frac{x^3}{3}\\right]_0^1 = \\frac{1}{3}$."
-        },
-        "gioi_han": {
-            "id": "gioi_han",
-            "name": "Giới hạn",
-            "english_name": "Limit",
-            "keywords": ["giới hạn", "limit", "lim", "tiến tới", "tiến đến"],
-            "definition": "Giá trị mà hàm số hoặc dãy số tiếp cận khi biến số tiến đến một giá trị xác định.",
-            "formulas": "$$\\lim_{x\\to x_0} f(x) = L$$\nGiới hạn đặc biệt: $\\lim_{x\\to 0}\\frac{\\sin x}{x}=1$, $\\lim_{n\\to\\infty}\\left(1+\\frac{1}{n}\\right)^n = e$",
-            "examples": "$\\lim_{x\\to 2}\\frac{x^2-4}{x-2} = \\lim_{x\\to 2}(x+2) = 4$."
-        },
-        # ── 5 node mới (mở rộng LightRAG) ─────────────────────────────────
-        "xac_suat": {
-            "id": "xac_suat",
-            "name": "Xác suất",
-            "english_name": "Probability",
-            "keywords": ["xác suất", "probability", "biến cố", "không gian mẫu", "p(a)"],
-            "definition": "Số đo mức độ khả năng xảy ra của một biến cố trong một thí nghiệm ngẫu nhiên.",
-            "formulas": "$$P(A) = \\frac{|A|}{|\\Omega|}$$\n**Cộng xác suất:** $P(A\\cup B) = P(A)+P(B)-P(A\\cap B)$\n**Nhân xác suất (độc lập):** $P(A\\cap B) = P(A)\\cdot P(B)$",
-            "examples": "Tung 1 con xúc xắc. $P(\\text{ra số chẵn}) = \\frac{3}{6} = \\frac{1}{2}$."
-        },
-        "to_hop_chinh_hop": {
-            "id": "to_hop_chinh_hop",
-            "name": "Tổ hợp & Chỉnh hợp",
-            "english_name": "Combinations & Permutations",
-            "keywords": ["tổ hợp", "chỉnh hợp", "hoán vị", "combination", "permutation", "c(n,k)", "cnk", "anp"],
-            "definition": "Các phép đếm cách chọn hoặc sắp xếp các phần tử từ một tập hợp.",
-            "formulas": "**Hoán vị:** $P_n = n!$\n**Chỉnh hợp:** $$A_n^k = \\frac{n!}{(n-k)!}$$\n**Tổ hợp:** $$C_n^k = \\binom{n}{k} = \\frac{n!}{k!(n-k)!}$$",
-            "examples": "Chọn 3 người từ 10 người: $C_{10}^3 = \\frac{10!}{3!7!} = 120$ cách."
-        },
-        "ham_so_luong_giac": {
-            "id": "ham_so_luong_giac",
-            "name": "Hàm số lượng giác",
-            "english_name": "Trigonometric Functions",
-            "keywords": ["lượng giác", "sin", "cos", "tan", "cot", "trigonometric", "sinx", "cosx", "tanx"],
-            "definition": "Các hàm tuần hoàn liên quan đến góc và tam giác: sin, cos, tan, cot.",
-            "formulas": "**Công thức cơ bản:** $\\sin^2 x + \\cos^2 x = 1$\n**Nhân đôi:** $\\sin 2x = 2\\sin x\\cos x$, $\\cos 2x = \\cos^2 x - \\sin^2 x$\n**Phương trình:** $\\sin x = a \\Rightarrow x = (-1)^k \\arcsin a + k\\pi$",
-            "examples": "Giải $\\sin x = \\frac{\\sqrt{2}}{2}$: $x = \\frac{\\pi}{4} + 2k\\pi$ hoặc $x = \\pi - \\frac{\\pi}{4} + 2k\\pi$."
-        },
-        "so_phuc": {
-            "id": "so_phuc",
-            "name": "Số phức",
-            "english_name": "Complex Numbers",
-            "keywords": ["số phức", "complex", "số ảo", "phần thực", "phần ảo", "modulus", "|z|"],
-            "definition": "Số có dạng $z = a + bi$ trong đó $a, b \\in \\mathbb{R}$ và $i = \\sqrt{-1}$.",
-            "formulas": "$z = a + bi$, $\\bar{z} = a - bi$ (số phức liên hợp)\n$|z| = \\sqrt{a^2 + b^2}$ (môđun)\n$z_1 \\cdot z_2 = (a_1 a_2 - b_1 b_2) + (a_1 b_2 + a_2 b_1)i$",
-            "examples": "$(3+2i)(1-i) = 3 - 3i + 2i - 2i^2 = 3 - i + 2 = 5 - i$."
-        },
-        "hinh_hoc_khong_gian": {
-            "id": "hinh_hoc_khong_gian",
-            "name": "Hình học không gian",
-            "english_name": "Solid Geometry",
-            "keywords": ["hình hộp", "hình cầu", "hình chóp", "khối lăng trụ", "solid geometry", "thể tích", "diện tích xung quanh", "đường thẳng vuông góc"],
-            "definition": "Nghiên cứu các hình học trong không gian 3 chiều: hình cầu, hình chóp, hình hộp, lăng trụ...",
-            "formulas": "**Hình cầu:** $V = \\frac{4}{3}\\pi R^3$, $S = 4\\pi R^2$\n**Hình chóp:** $V = \\frac{1}{3} S_{\\text{đáy}} \\cdot h$\n**Lăng trụ:** $V = S_{\\text{đáy}} \\cdot h$",
-            "examples": "Hình cầu bán kính $R=3$: $V = \\frac{4}{3}\\pi \\cdot 27 = 36\\pi$."
-        },
-    },
-    "edges": [
-        {"source": "phuong_trinh_bac_hai", "target": "biet_thuc_delta",    "relation": "dùng Delta để xác định số nghiệm"},
-        {"source": "phuong_trinh_bac_hai", "target": "he_thuc_vi_et",      "relation": "áp dụng Vi-ét để nhẩm tổng và tích nghiệm"},
-        {"source": "biet_thuc_delta",    "target": "he_thuc_vi_et",      "relation": "kiểm tra Delta > 0 trước khi áp dụng Vi-ét"},
-        {"source": "dao_ham",            "target": "cuc_tri",            "relation": "dùng f'(x)=0 và xét dấu để tìm cực trị"},
-        {"source": "dao_ham",            "target": "tich_phan",          "relation": "tích phân là phép toán ngược của đạo hàm"},
-        {"source": "gioi_han",           "target": "tiem_can",           "relation": "dùng giới hạn vô cực để tìm tiệm cận"},
-        {"source": "gioi_han",           "target": "dao_ham",            "relation": "định nghĩa đạo hàm dựa trên giới hạn tỉ số số gia"},
-        {"source": "to_hop_chinh_hop",   "target": "xac_suat",          "relation": "tổ hợp/chỉnh hợp dùng để đếm không gian mẫu và biến cố"},
-        {"source": "ham_so_luong_giac",  "target": "dao_ham",            "relation": "đạo hàm của sin/cos/tan áp dụng quy tắc đạo hàm"},
-        {"source": "phuong_trinh_bac_hai","target": "so_phuc",          "relation": "khi Delta < 0 thì nghiệm là số phức"},
-    ]
-}
-
-def extract_graph_entities(query: str) -> list:
-    """Trích xuất node IDs phù hợp từ query — dùng regex để tránh false match."""
-    matched_ids = []
-    q = query.lower()
-    for node_id, node_data in MATH_CONCEPT_GRAPH["nodes"].items():
-        # Khớp node_id hoặc tên đầy đủ (word-boundary safe)
-        if node_data["name"].lower() in q or node_data["english_name"].lower() in q:
-            matched_ids.append(node_id)
-            continue
-        # Khớp keywords — dùng \b chỉ cho từ ASCII, fallback `in` cho tiếng Việt
-        hit = False
-        for kw in node_data["keywords"]:
-            kw_l = kw.lower()
-            # Từ ASCII ngắn (≤4 ký tự, như 'sin', 'lim'): yêu cầu word boundary
-            if kw_l.isascii() and len(kw_l) <= 4:
-                if _re_rag.search(r'\b' + _re_rag.escape(kw_l) + r'\b', q):
-                    hit = True; break
-            else:
-                if kw_l in q:
-                    hit = True; break
-        if hit:
-            matched_ids.append(node_id)
-    return list(dict.fromkeys(matched_ids))  # dedup preserve order
+MATH_CONCEPT_GRAPH = math_concepts.GRAPH
+extract_graph_entities = math_concepts.find_entities
 
 # ── MathViz Widget Routing ────────────────────────────────────────────────────
 # Maps MATH_CONCEPT_GRAPH node IDs → widget type (priority 1: graph-based routing)
@@ -2273,65 +2135,12 @@ async def _repair_mathviz_with_free_openrouter(widget: str, broken_json: str, er
 def retrieve_math_context(query: str) -> str:
     """LightRAG hybrid retriever: Local (node+edge graph) + Global (hướng dẫn chung).
     Kết quả được cache để tái dùng khi cùng query.
+
+    R1: the rendering itself lives in backend/math_concepts.py (see the note
+    where the graph used to be defined). `lru_cache` stays HERE so the chat
+    path's caching semantics are exactly what they were.
     """
-    matched_ids = extract_graph_entities(query)
-    local_contexts: list[str] = []
-    seen_neighbors: set[str] = set()
-
-    for node_id in matched_ids:
-        node = MATH_CONCEPT_GRAPH["nodes"][node_id]
-        local_contexts.append(
-            f"### 📚 {node['name']} ({node['english_name']})\n"
-            f"**Định nghĩa:** {node['definition']}\n"
-            f"**Công thức:**\n{node['formulas']}\n"
-            f"**Ví dụ:** {node['examples']}\n"
-        )
-        relations: list[str] = []
-        for edge in MATH_CONCEPT_GRAPH["edges"]:
-            if edge["source"] == node_id:
-                t = MATH_CONCEPT_GRAPH["nodes"].get(edge["target"])
-                if t:
-                    relations.append(f"  ↳ Liên kết tới **{t['name']}**: {edge['relation']}")
-                    if edge["target"] not in matched_ids:
-                        seen_neighbors.add(edge["target"])
-            elif edge["target"] == node_id:
-                s = MATH_CONCEPT_GRAPH["nodes"].get(edge["source"])
-                if s:
-                    relations.append(f"  ↳ Liên kết từ **{s['name']}**: {edge['relation']}")
-                    if edge["source"] not in matched_ids:
-                        seen_neighbors.add(edge["source"])
-        if relations:
-            local_contexts.append("**Quan hệ trong Knowledge Graph:**\n" + "\n".join(relations) + "\n")
-
-    if seen_neighbors:
-        neighbor_lines = []
-        for n_id in seen_neighbors:
-            n = MATH_CONCEPT_GRAPH["nodes"].get(n_id)
-            if n:
-                first_formula = n["formulas"].splitlines()[0] if n["formulas"] else ""
-                neighbor_lines.append(f"  • **{n['name']}**: {n['definition']} — `{first_formula}`")
-        local_contexts.append("**Khái niệm lân cận liên quan:**\n" + "\n".join(neighbor_lines) + "\n")
-
-    global_ctx = (
-        "**Hướng dẫn hệ thống (Global Context):**\n"
-        "- Giải thích bằng tiếng Việt, kèm thuật ngữ Anh trong ngoặc đơn.\n"
-        "- Luôn dùng LaTeX: $inline$ và $$block$$ cho mọi công thức.\n"
-        "- Áp dụng Socratic method: gợi ý từng bước, không giải thẳng trừ khi được yêu cầu.\n"
-    )
-
-    if matched_ids:
-        return (
-            "=== KNOWLEDGE GRAPH (Local Mode) ===\n"
-            + "\n".join(local_contexts)
-            + "\n=== GLOBAL CONTEXT ===\n"
-            + global_ctx
-            + "=" * 50 + "\n"
-        )
-    return (
-        "=== GLOBAL CONTEXT ===\n"
-        + global_ctx
-        + "=" * 50 + "\n"
-    )
+    return math_concepts.render_context(query)
 
 def extract_text_from_image(image_bytes: bytes) -> str:
     if not _ocr_available or ocr_reader is None:

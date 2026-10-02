@@ -130,6 +130,18 @@ jobs:
         working-directory: backend
         run: python test_diagram_complexity.py
 
+      # R1 of the HybridRAG plan — the concept graph MOVED out of main.py into
+      # backend/math_concepts.py + backend/data/math_concepts.json, and this suite
+      # is why that was worth doing: main.py cannot be imported here (it binds DB
+      # tables, reads .env and builds provider clients), so nothing living in it
+      # was testable by this job. The suite compares 20 golden queries against a
+      # snapshot captured from the OLD code by AST extraction, and pins the one
+      # deliberate change — the neighbour block used to be rendered from a `set`
+      # and therefore permuted between processes (measured: 9 of 20 queries).
+      - name: Retrieval — concept graph moved out of main.py (parity + determinism)
+        working-directory: backend
+        run: python test_math_concepts.py
+
       # Đợt "canvas libraries" — the Shapely/SymPy analytic gate. The suites
       # above prove each layer is DRAWN; this one proves the layers AGREE:
       # a self-intersecting polygon, an arc that misses its own circle, a
