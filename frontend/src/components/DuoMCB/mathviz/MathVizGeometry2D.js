@@ -3,10 +3,10 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { RotateCcw, Plus, Trash2, Compass, Sparkles, ZoomIn, ZoomOut, Maximize2, Minimize2, Move, Palette, X } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
 import MathVizJSXGraph from './MathVizJSXGraph';
-import MathVizKonvaGeometry2D from './MathVizKonvaGeometry2D';
 import GgbExportButton from '../../duomath/GgbExportButton';
-// Đợt 8 / 4I: the arc/region path maths is shared with the JSXGraph and Konva
-// engines (src/lib/mathvizOutline.js) — one definition of where a curve goes.
+// Đợt 8 / 4I (+ Konva removal): the arc/region path maths is shared with the
+// JSXGraph engine (src/lib/mathvizOutline.js) — one definition of where a curve
+// goes, and one engine left to keep it in sync with.
 import {
   arcSweepFlag as _arcSweepFlag,
   arcPathData as _arcPathData,
@@ -1116,7 +1116,7 @@ export default function MathVizGeometry2D({ data }) {
 
   /** A region's outline mixes straight edges and arcs — the shaded area between
    *  two tangent arcs is exactly that — so it is walked in order. The walk itself
-   *  is shared with the other two engines (src/lib/mathvizOutline.js). */
+   *  is shared with the JSXGraph engine (src/lib/mathvizOutline.js). */
   const buildRegionPath = (items) => _regionPathData(items, (ref) => {
     const px = pointPxByRef(ref);
     return px ? toMath(px[0], px[1]) : null;
@@ -1185,6 +1185,15 @@ export default function MathVizGeometry2D({ data }) {
         notes.push({ key: 'approx',
           text: `${approx.length} điểm tiếp xúc vẽ gần đúng (thẳng hàng hai tâm${names ? `: ${names}` : ''})` });
       }
+      // Shapely/SymPy tier (backend/geometry_analytic_checks.py): dữ liệu hình
+      // học mâu thuẫn — đa giác tự cắt, cung không nằm trên đường tròn của nó,
+      // góc vuông khai báo sai… Nói ra thay vì vẽ một hình "trông đúng" nhưng sai.
+      const conflicts = Array.isArray(report.conflicts) ? report.conflicts : [];
+      conflicts.forEach((item, i) => {
+        if (item && item.message_vi) {
+          notes.push({ key: `conflict_${i}`, text: item.message_vi });
+        }
+      });
     }
     return notes;
   }, [unsupportedKinds, data]);
@@ -1218,19 +1227,12 @@ export default function MathVizGeometry2D({ data }) {
   const labelStyle = { fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em' };
   const valueStyle = { fontSize: 13, fontFamily: 'monospace', color: '#e2e8f0', marginTop: 4 };
 
-  // Konva engine (restored WIP): canvas-rendered view, cheaper than JSXGraph
-  // for large composite payloads and a fallback when SVG labels overlap.
-  if (engine === 'konva') {
-    return <MathVizKonvaGeometry2D data={data} onSwitchEngine={() => setEngine('jsxgraph')} />;
-  }
-
   // JSXGraph engine — placed after ALL hooks to satisfy Rules of Hooks
   if (engine === 'jsxgraph') {
     return (
       <MathVizJSXGraph
         data={data}
         onSwitchToSvg={() => setEngine('svg')}
-        onSwitchToKonva={() => setEngine('konva')}
       />
     );
   }
@@ -1265,26 +1267,6 @@ export default function MathVizGeometry2D({ data }) {
         <MathVizTitle icon="📐" title={data?.title} fallback="Hình học phẳng 2D (Simple Display)" />
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
         <GgbExportButton data={data} />
-        <button
-          onClick={() => setEngine('konva')}
-          style={{
-            background: 'rgba(167, 139, 250, 0.15)',
-            border: '1px solid rgba(167, 139, 250, 0.4)',
-            color: '#a78bfa',
-            borderRadius: 6,
-            padding: '4px 10px',
-            fontSize: 11,
-            cursor: 'pointer',
-            fontWeight: 600,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-          title="Chuyển sang engine Konva (canvas)"
-        >
-          <Sparkles size={13} />
-          <span>Konva Mode</span>
-        </button>
         <button
           onClick={() => setEngine('jsxgraph')}
           style={{

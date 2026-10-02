@@ -1,6 +1,8 @@
 // frontend/scripts/check-mathviz-kinds.mjs
 //
-// Đợt 8 / 4I — one vocabulary, three implementations, one gate.
+// Đợt 8 / 4I — one vocabulary, TWO implementations, one gate.
+// (The Konva engine was removed: it duplicated SVG + JSXGraph for every kind
+// and tripled the sync surface the gate below has to hold together.)
 //
 // The bug this guards: `backend/mathviz_contract.py` (the contract), the
 // renderers' dispatch branches, and `src/lib/mathvizKinds.js` (the client
@@ -115,7 +117,7 @@ check("both sides map the same aliases onto the same kinds",
   && [...pyAliases].every(([from, to]) => jsAliases.get(from) === to),
   `python=${pyAliases ? pyAliases.size : "?"} js=${jsAliases.size}`);
 
-const ENGINES = ["svg", "jsxgraph", "konva"];
+const ENGINES = ["svg", "jsxgraph"];
 const pyEngines = ENGINES.map((engine) => {
   const at = python.indexOf(`"${engine}": frozenset(`);
   if (at === -1) return null;
@@ -131,7 +133,7 @@ check("the engine support tables match the contract exactly",
     && sortedJoined(set) === sortedJoined(ENGINE_SUPPORT[ENGINES[i]])),
   `python=${pyEngines.map((s) => (s ? s.size : "?"))} js=${ENGINES.map((e) => ENGINE_SUPPORT[e].length)}`);
 check("the preference order matches",
-  ENGINE_PREFERENCE.join() === "jsxgraph,svg,konva");
+  ENGINE_PREFERENCE.join() === "jsxgraph,svg");
 
 // ── 2. an engine's claim must be backed by a dispatch branch ────────────────
 
@@ -139,7 +141,6 @@ console.log("\n[engine claims ↔ renderer branches]");
 const ENGINE_FILES = {
   svg: join(MATHVIZ_DIR, "MathVizGeometry2D.js"),
   jsxgraph: join(MATHVIZ_DIR, "MathVizJSXGraph.js"),
-  konva: join(MATHVIZ_DIR, "MathVizKonvaGeometry2D.js"),
 };
 
 for (const engine of ENGINE_PREFERENCE) {
@@ -163,15 +164,15 @@ check("the SVG engine's drawn-kinds list matches its ENGINE_SUPPORT",
 
 // ── 2b. the curve maths must stay in ONE place ──────────────────────────────
 //
-// The reason Konva could not draw a `region` was that the outline walk lived inside
-// the JSXGraph component as a private function. Both engines now import
-// src/lib/mathvizOutline.js, and this guard is what keeps a third copy from
-// appearing the next time someone needs it.
+// Before đợt 8 / 4I the outline walk lived inside the JSXGraph component as a
+// private function, so a second engine had no way to draw a `region`. Both
+// engines now import src/lib/mathvizOutline.js, and this guard is what keeps a
+// third copy from appearing the next time someone needs it.
 console.log("\n[shared outline maths]");
 const OUTLINE_LIB = "src/lib/mathvizOutline.js";
 check("the outline library exists and exports the walk",
   read(join(FRONTEND, OUTLINE_LIB)).includes("export function sampleRegionOutline"));
-for (const engine of ["jsxgraph", "konva"]) {
+for (const engine of ["jsxgraph", "svg"]) {
   const source = read(ENGINE_FILES[engine]);
   check(`${engine} imports the shared outline maths`,
     source.includes("@/lib/mathvizOutline"));

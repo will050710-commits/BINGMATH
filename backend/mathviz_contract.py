@@ -13,7 +13,10 @@ geometry "layer kind" is, and nothing tied them together:
     ``_WIDGET_PROMPT_SNIPPETS["geometry_2d"]``;
   * the renderers already understood more: JSXGraph drew ``arc``, ``angle``,
     ``ray`` and ``polyline``, and it drew a ``triangle`` layer's vertices but
-    never its outline; Konva drew only ``polygon``/``circle``/``line``;
+    never its outline (an earlier third engine, Konva, drew only
+    ``polygon``/``circle``/``line`` and has since been REMOVED — two engines
+    remain, SVG and JSXGraph, because a second full engine for the same kinds
+    tripled the maintenance surface without drawing anything new);
   * every geometry SOLVER (snapping, construction resolver, implicit
     extractor, viewbox normalizer) collected points by matching literal
     ``kind`` strings against that same four-item tuple.
@@ -31,7 +34,7 @@ What it guarantees
 * ``KIND_ALIASES`` — the near-miss spellings models actually produce
   (``wedge``/``pie`` → ``sector``, ``shaded``/``area`` → ``region`` …), so a
   correct intention expressed in the wrong word still renders.
-* ``ENGINE_SUPPORT`` — what each of the three renderers really draws.
+* ``ENGINE_SUPPORT`` — what each of the two remaining renderers really draws.
   ``frontend/scripts/check-mathviz-kinds.mjs`` parses BOTH this file and the
   three renderers, so the claim here can never drift from the dispatch
   branches there (the same technique check-image-downscale.mjs already uses
@@ -48,6 +51,8 @@ this file and its test must not need more. main.py does the wiring.
 from __future__ import annotations
 
 import copy
+import json
+import re
 from typing import Any, Dict, Iterable, Iterator, List, Tuple
 
 # ── 1. The vocabulary ────────────────────────────────────────────────────────
@@ -90,7 +95,6 @@ KIND_ALIASES: Dict[str, str] = {
 # Names match the engine files:
 #   svg      → frontend/src/components/DuoMCB/mathviz/MathVizGeometry2D.js
 #   jsxgraph → .../MathVizJSXGraph.js
-#   konva    → .../MathVizKonvaGeometry2D.js
 #
 # A kind listed here MUST have a dispatch branch in that file — the node guard
 # checks it, so this table is a verified claim rather than documentation.
@@ -103,20 +107,14 @@ ENGINE_SUPPORT: Dict[str, frozenset] = {
         "circle", "polygon", "triangle", "line", "segment", "ray", "points",
         "ellipse", "arc", "sector", "region", "angle", "polyline", "label",
     }),
-    # Konva now draws every contract kind too: a mixed `region` needs a custom path,
-    # and Konva supplies one (a Shape whose sceneFunc traces the outline sampled by
-    # the same shared helper JSXGraph uses). Keeping it in sync matters — the node
-    # guard fails if this table and the engine's own branches disagree.
-    "konva": frozenset({
-        "circle", "polygon", "triangle", "line", "segment", "ray", "points",
-        "ellipse", "arc", "sector", "region", "angle", "polyline", "label",
-    }),
 }
 
 # Preference order when we must pick the engine that can draw everything.
 # jsxgraph first: it is MathVizGeometry2D's default engine (the
-# `useState('jsxgraph')` line) and the only interactive one.
-ENGINE_PREFERENCE: Tuple[str, ...] = ("jsxgraph", "svg", "konva")
+# `useState('jsxgraph')` line) and the only interactive one. Konva was removed
+# (it duplicated both engines for the same kinds); a stale name here would make
+# `engine_min` pick an engine no file implements.
+ENGINE_PREFERENCE: Tuple[str, ...] = ("jsxgraph", "svg")
 
 # How many points a kind needs before it can be drawn at all. A layer whose own
 # geometry is incomplete is reported too, instead of producing half a shape.
@@ -391,6 +389,49 @@ def normalize_geometry_2d(viz: Any) -> Tuple[Any, Dict[str, Any]]:
     # logs, so "the figure lost a part" is visible in both places at once.
     data["_render"] = report
     return data, report
+
+# ── Fence recovery (P15-fix, classroom report 2026-10-01) ────────────────────
+# A reply whose payload sat under a PLAIN fence (```json, ```javascript or a
+# bare ```) sailed through the old extractor untouched, and the chat showed the
+# raw JSON instead of a figure (the screenshot in the report). The payload is
+# still a mathviz object — recover it by VALUE, not by the fence's language
+# tag, and let the same validation/repair machinery take over.
+_FENCE_RE = re.compile(r"```[ \t]*(?P<lang>[A-Za-z0-9_+-]*)[ \t]*\r?\n(?P<body>[\s\S]*?)```")
+
+
+def recover_fenced_mathviz(raw: Any) -> Tuple[Any, Any]:
+    """``(text_without_block, payload)`` when a NON-``mathviz`` fence carries a
+    mathviz object, ``(None, None)`` otherwise.
+
+    Only fences whose payload really parses to a dict with a ``widget`` key are
+    claimed (and ``type`` must be absent or ``mathviz.v1``), so an unrelated
+    JSON code block in the answer is never stolen. The canonical
+    ```` ```mathviz ```` fence is deliberately SKIPPED here — main.py's
+    ``_extract_mathviz_block`` owns it, including the json_repair passages.
+    """
+    if not isinstance(raw, str) or "```" not in raw:
+        return None, None
+    for match in _FENCE_RE.finditer(raw):
+        if (match.group("lang") or "").strip().lower() == "mathviz":
+            continue
+        body = (match.group("body") or "").strip()
+        if "mathviz" not in body and '"widget"' not in body:
+            continue
+        try:
+            data = json.loads(body)
+        except Exception:
+            continue
+        if not isinstance(data, dict) or not data.get("widget"):
+            continue
+        declared = data.get("type")
+        if declared not in (None, "", "mathviz.v1"):
+            continue
+        if declared in (None, ""):
+            data["type"] = "mathviz.v1"
+        text = (raw[:match.start()] + raw[match.end():]).strip()
+        return text, data
+    return None, None
+
 
 def geometry_2d_errors(viz: Any) -> List[str]:
     """Vietnamese validation errors for a ``geometry_2d`` payload.

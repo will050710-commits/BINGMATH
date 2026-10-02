@@ -2,9 +2,8 @@
 //
 // Đợt 8 / 4I — outline sampling for the shapes that are not a polygon.
 //
-// Both curved engines need the same three things, and they used to exist only
-// inside the JSXGraph component (or not at all, which is why the Konva engine had
-// to report `region` as unsupported):
+// Both engines need the same three things, and they used to exist only inside
+// the JSXGraph component:
 //
 //   * a data-curve approximation of an `arc`  (JSXGraph has no bare path element);
 //   * a data-curve approximation of an `ellipse`;
@@ -50,13 +49,6 @@ export function sampleEllipse(center, a, b, steps = 72) {
   return out;
 }
 
-/** A sector's outline: the two radii plus the arc between them. */
-export function sampleSectorOutline(center, from, to, largeArc, steps = 28) {
-  const arc = sampleArcPoints(center, from, to, largeArc, steps);
-  if (arc.length < 2) return [];
-  return [center, ...arc, center];
-}
-
 /**
  * Walks a `region`'s outline in order: `{type: 'point'}` items are vertices,
  * `{type: 'arc'}` items are curved edges (a straight chord is used when the item
@@ -79,15 +71,6 @@ export function sampleRegionOutline(items, lookup) {
     if (usable(p)) path.push([p[0], p[1]]);
   });
   return path;
-}
-
-/** [x, y] pairs → the [x, y, x, y, …] flat array Konva's Line/Shape expect. */
-export function pointsToFlat(path) {
-  const flat = [];
-  (Array.isArray(path) ? path : []).forEach(([x, y]) => {
-    if (Number.isFinite(x) && Number.isFinite(y)) flat.push(x, y);
-  });
-  return flat;
 }
 
 /** [x, y] pairs → the two parallel arrays JSXGraph's `curve` expects. */

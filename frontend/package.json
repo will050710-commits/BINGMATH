@@ -18,7 +18,6 @@
     "framer-motion": "^12.35.1",
     "jsxgraph": "^1.13.3",
     "katex": "^0.17.0",
-    "konva": "^10.0.12",
     "lucide-react": "^1.34.0",
     "mafs": "^0.21.0",
     "mathjs": "^15.2.0",

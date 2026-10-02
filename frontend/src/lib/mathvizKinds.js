@@ -46,12 +46,13 @@ export const ENGINE_SUPPORT = {
     "polygon", "polyline", "ray", "region", "sector", "segment", "triangle"],
   jsxgraph: ["angle", "arc", "circle", "ellipse", "label", "line", "points",
     "polygon", "polyline", "ray", "region", "sector", "segment", "triangle"],
-  konva: ["angle", "arc", "circle", "ellipse", "label", "line", "points",
-    "polygon", "polyline", "ray", "region", "sector", "segment", "triangle"],
 };
 
-/** Preference order when we need the engine that can draw everything. */
-export const ENGINE_PREFERENCE = ["jsxgraph", "svg", "konva"];
+/** Preference order when we need the engine that can draw everything.
+ *  Konva was removed (it duplicated both engines for every kind) — a stale
+ *  name here would make `unsupportedEverywhere` answer for an engine no file
+ *  implements. */
+export const ENGINE_PREFERENCE = ["jsxgraph", "svg"];
 
 /** Keys that hold a point OBJECT ({id, x, y}). */
 const SCALAR_POINT_KEYS = [

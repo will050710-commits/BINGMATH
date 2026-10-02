@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { Palette } from 'lucide-react';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import MathVizTitle from './MathVizTitle';
+import { resolveApiBase } from '@/lib/apiBase';
 
 export const BASIC_SOLIDS = {
   cuboid: 'Hình hộp chữ nhật',
@@ -557,6 +558,11 @@ export default function MathVizGeometry3D({ data }) {
   const [wireframeOnly, setWireframeOnly] = useState(false);
   const [autoRotate4D, setAutoRotate4D] = useState(false);
   const [bgColor, setBgColor] = useState('#0d1117');
+  // Tầng trimesh phía máy chủ (backend/geometry3d_mesh.py → /api/geometry3d/mesh):
+  // khối KHÔNG có template trong ALL_SOLIDS_MAP được dựng thật ở server thay vì
+  // rơi về hộp 1×1×1 trong im lặng.
+  const [serverMesh, setServerMesh] = useState(null);
+  const [meshBusy, setMeshBusy] = useState(false);
 
   const mountRef = useRef(null);
   const sceneRef = useRef(null);
@@ -602,6 +608,39 @@ export default function MathVizGeometry3D({ data }) {
       mounted = false;
     };
   }, []);
+
+  // Khối lạ → hỏi server (trimesh). `dims` đổi liên tục khi kéo thanh trượt nên
+  // chờ 350 ms; kết quả cũ bị bỏ qua bằng cờ `cancelled` để không nhấp nháy.
+  useEffect(() => {
+    if (!threeReady) return undefined;
+    if (currentSolid in ALL_SOLIDS_MAP) {
+      setServerMesh(null);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setMeshBusy(true);
+      try {
+        const res = await fetch(`${resolveApiBase()}/api/geometry3d/mesh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ solid: currentSolid, dims }),
+        });
+        const body = await res.json().catch(() => null);
+        if (cancelled) return;
+        if (!res.ok || !body || !body.ok) {
+          setServerMesh({ error: (body && body.error) || `Không dựng được khối (mã ${res.status}).` });
+        } else {
+          setServerMesh({ mesh: body.mesh, report: body.report, solid: body.solid });
+        }
+      } catch {
+        if (!cancelled) setServerMesh({ error: 'Không kết nối được máy chủ để dựng khối.' });
+      } finally {
+        if (!cancelled) setMeshBusy(false);
+      }
+    }, 350);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [threeReady, currentSolid, dims]);
 
   useEffect(() => {
     if (!threeReady || !mountRef.current) return;
@@ -699,7 +738,19 @@ export default function MathVizGeometry3D({ data }) {
       dimLinesGroupRef.current = null;
     }
 
-    const geo = buildGeometry(THREE, currentSolid, dims);
+    let geo = null;
+    if (!(currentSolid in ALL_SOLIDS_MAP) && serverMesh && serverMesh.mesh && serverMesh.mesh.vertices) {
+      // Lưới do server dựng (JSON-IR → trimesh) → BufferGeometry, không cần
+      // template nào ở client.
+      geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(serverMesh.mesh.vertices, 3));
+      if (Array.isArray(serverMesh.mesh.indices) && serverMesh.mesh.indices.length) {
+        geo.setIndex(serverMesh.mesh.indices);
+      }
+      geo.computeVertexNormals();
+    } else {
+      geo = buildGeometry(THREE, currentSolid, dims);
+    }
 
     if (currentSolid === 'tesseract_4d') {
       const lineMat = new THREE.LineBasicMaterial({ color: 0x00e5ff, linewidth: 2 });
@@ -780,7 +831,7 @@ export default function MathVizGeometry3D({ data }) {
       group.add(dGroup);
       dimLinesGroupRef.current = dGroup;
     }
-  }, [threeReady, currentSolid, dims, wireframeOnly]);
+  }, [threeReady, currentSolid, dims, wireframeOnly, serverMesh]);
 
   useEffect(() => {
     if (!threeReady) return;
@@ -828,6 +879,32 @@ export default function MathVizGeometry3D({ data }) {
     dragRef.current.dragging = false;
   }, []);
 
+  // Tải STL của lưới server dựng (cùng endpoint, format="stl") — đúng dữ liệu
+  // đang hiển thị, không phải bản dựng lại ở client.
+  const downloadServerStl = useCallback(async () => {
+    try {
+      const res = await fetch(`${resolveApiBase()}/api/geometry3d/mesh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ solid: currentSolid, dims, format: 'stl' }),
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body || !body.file || !body.file.data_b64) {
+        throw new Error((body && body.error) || 'export failed');
+      }
+      const bytes = Uint8Array.from(atob(body.file.data_b64), (c) => c.charCodeAt(0));
+      const blob = new Blob([bytes], { type: body.file.mime || 'model/stl' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = body.file.filename || 'duomath-khoi.stl';
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setServerMesh((prev) => ({ ...(prev || {}), error: 'Không tải được tệp STL.' }));
+    }
+  }, [currentSolid, dims]);
+
   const f = formulas(currentSolid, dims);
   const maxSection = heightOf(currentSolid, dims) / 2;
 
@@ -839,6 +916,39 @@ export default function MathVizGeometry3D({ data }) {
   return (
     <div style={container}>
       <MathVizTitle icon="🎲" title={data?.title} fallback="Hình học không gian 3D" />
+
+      {/* Khối không có template client → trạng thái của tầng trimesh server. */}
+      {!(currentSolid in ALL_SOLIDS_MAP) && (
+        <div style={{
+          marginBottom: 10, padding: '7px 11px', borderRadius: 8, fontSize: 11.5, lineHeight: 1.5,
+          background: serverMesh && serverMesh.error
+            ? 'rgba(239, 68, 68, 0.12)' : meshBusy ? 'rgba(56, 189, 248, 0.10)' : 'rgba(34, 197, 94, 0.10)',
+          border: `1px solid ${serverMesh && serverMesh.error
+            ? 'rgba(239, 68, 68, 0.45)' : meshBusy ? 'rgba(56, 189, 248, 0.4)' : 'rgba(34, 197, 94, 0.4)'}`,
+          color: serverMesh && serverMesh.error ? '#fca5a5' : meshBusy ? '#7dd3fc' : '#86efac',
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        }}>
+          {meshBusy && <span>⏳ Đang dựng khối “{currentSolid}” bằng máy chủ (trimesh)…</span>}
+          {!meshBusy && serverMesh && serverMesh.error && <span>⚠️ {serverMesh.error}</span>}
+          {!meshBusy && serverMesh && !serverMesh.error && (
+            <>
+              <span>
+                ✅ Khối “{currentSolid}” do máy chủ dựng (trimesh): thể tích ≈{' '}
+                {fmt(serverMesh.report && serverMesh.report.volume)}
+                {serverMesh.report && serverMesh.report.watertight ? ' · kín (watertight)' : ' · hở'}
+              </span>
+              <button
+                onClick={downloadServerStl}
+                style={{
+                  background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.2)',
+                  color: '#e2e8f0', borderRadius: 6, padding: '3px 9px', fontSize: 11, cursor: 'pointer',
+                }}
+                title="Tải lưới STL của khối này"
+              >⬇ STL</button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Top Controls: Main Tabs and Background Color Themes */}
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 12 }}>

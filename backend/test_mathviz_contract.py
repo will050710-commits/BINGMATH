@@ -162,11 +162,11 @@ def test_reports():
               "layers": [{"kind": "region", "path": [
                   {"id": "A", "x": 0, "y": 0}, {"id": "B", "x": 1, "y": 0}]}]})["unsupported"] == [],
           "a region must be drawable, not reported as unsupported")
-    # Konva now draws a region too (a Shape whose sceneFunc traces the shared
-    # outline walk), so the three engines' tables agree. The node guard checks each
-    # claim against that engine's own branches, which is what keeps this honest.
-    check("Konva also draws a mixed region now",
-          "region" in mc.ENGINE_SUPPORT["konva"])
+    # The Konva engine was REMOVED (it duplicated SVG/JSXGraph for every kind and
+    # tripled the sync surface). The tables must not claim it again: a stale name
+    # here would make `engine_min` pick an engine that no file implements.
+    check("the removed Konva engine is not claimed anywhere",
+          "konva" not in mc.ENGINE_SUPPORT and "konva" not in mc.ENGINE_PREFERENCE)
     check("no kind is left without an engine",
           all(any(kind in mc.ENGINE_SUPPORT[e] for e in mc.ENGINE_PREFERENCE)
               for kind in mc.LAYER_KINDS))
@@ -241,12 +241,43 @@ def test_constructions():
           "layers" in mc.repair_vocabulary() and "constructions" in mc.repair_vocabulary())
 
 
+# ── 5. Plain-fence recovery (P15-fix) ───────────────────────────────────────
+
+def test_fence_recovery():
+    print("\n[fence recovery]")
+    payload = '{"type":"mathviz.v1","widget":"geometry_2d","mode":"triangle"}'
+    text, data = mc.recover_fenced_mathviz(f"Lời giải ngắn.\n\n```json\n{payload}\n```")
+    check("a ```json-fenced mathviz payload is recovered",
+          isinstance(data, dict) and data.get("widget") == "geometry_2d")
+    check("...and the block is removed from the visible text",
+          text == "Lời giải ngắn." and "```" not in text)
+    t2, d2 = mc.recover_fenced_mathviz(f"Thử lại.\n```\n{payload}\n```")
+    check("a BARE fence is recovered too",
+          isinstance(d2, dict) and t2 == "Thử lại.")
+    _t3, d3 = mc.recover_fenced_mathviz(f"```javascript\n{payload}\n```")
+    check("a ```javascript fence is recovered", isinstance(d3, dict))
+    check("the canonical ```mathviz fence is left to main.py (skipped here)",
+          mc.recover_fenced_mathviz("```mathviz\n" + payload + "\n```") == (None, None))
+    check("an unrelated JSON code block is NOT stolen",
+          mc.recover_fenced_mathviz('```json\n{"a": 1}\n```') == (None, None))
+    check("an unparseable payload returns nothing (never a guess)",
+          mc.recover_fenced_mathviz("```json\n{broken,,,\n```") == (None, None))
+    check("a wrong declared type is not claimed",
+          mc.recover_fenced_mathviz('```json\n{"type":"other.v1","widget":"geometry_2d"}\n```') == (None, None))
+    _t4, d4 = mc.recover_fenced_mathviz('```json\n{"widget":"geometry_2d","layers":[]}\n```')
+    check("a missing type is defaulted to mathviz.v1",
+          isinstance(d4, dict) and d4.get("type") == "mathviz.v1")
+    check("non-string input is refused",
+          mc.recover_fenced_mathviz(None) == (None, None))
+
+
 if __name__ == "__main__":
     test_vocabulary()
     test_point_discovery()
     test_reports()
     test_normalize()
     test_constructions()
+    test_fence_recovery()
     if FAILED:
         print(f"\n>>> {len(FAILED)} MATHVIZ CONTRACT CHECKS FAILED: {FAILED} <<<")
         sys.exit(1)

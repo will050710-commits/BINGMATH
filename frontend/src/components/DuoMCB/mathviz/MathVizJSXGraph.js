@@ -10,17 +10,15 @@ import GgbExportButton from '../../duomath/GgbExportButton';
 // `region`, `ellipse` or `label`; the import is what makes the vocabulary one
 // checked contract instead of three opinions.
 import { collectLayerPoints, canonicalKind, ENGINE_SUPPORT } from '@/lib/mathvizKinds';
-// Đợt 8 / 4I: the outline maths lives in ONE place now (src/lib/mathvizOutline.js).
-// It used to live here only, which is exactly why the Konva engine had to report
-// `region` as unsupported — it had no way to walk a mixed point/arc outline.
+// Đợt 8 / 4I: the outline maths lives in ONE place now (src/lib/mathvizOutline.js),
+// shared with the SVG engine — one definition of where a curve goes.
 import {
   sampleRegionOutline, sampleEllipse, curveXY,
 } from '@/lib/mathvizOutline';
 
 // ── Region/ellipse sampling ──────────────────────────────────────────────────
-// The implementations moved to src/lib/mathvizOutline.js so the Konva engine can
-// reuse them (đợt 8 / 4I). Kept as a named re-export-shaped comment rather than a
-// copy: a second copy is what drifted apart in the first place.
+// The implementations live in src/lib/mathvizOutline.js so both engines reuse
+// ONE definition (đợt 8 / 4I): a second copy is what drifted apart before.
 
 /** Kinds this engine cannot draw (đợt 8 / 4I) — said out loud, never silent. */
 function unsupportedForEngine(layers, engine) {
@@ -52,10 +50,19 @@ function reportNotices(report) {
     notes.push(`${report.approximate.length} điểm tiếp xúc vẽ gần đúng (giữ đúng tính thẳng hàng`
       + ` giữa hai tâm${names ? `: ${names}` : ''}).`);
   }
+  // Shapely/SymPy tier (backend/geometry_analytic_checks.py): data-level conflicts
+  // — a self-intersecting polygon, an arc whose endpoints miss its own circle, a
+  // declared right angle that is not one. Shown as-is so the figure never looks
+  // more correct than it is.
+  if (report && Array.isArray(report.conflicts)) {
+    report.conflicts.forEach((item) => {
+      if (item && item.message_vi) notes.push(item.message_vi);
+    });
+  }
   return notes;
 }
 
-export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }) {
+export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
   const containerRef = useRef(null);
   const boardRef = useRef(null);
   const rawId = useId();
@@ -803,24 +810,6 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg, onSwitchToKonva }
 
         <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           <GgbExportButton data={data} />
-          {onSwitchToKonva && (
-            <button
-              onClick={onSwitchToKonva}
-              style={{
-                background: 'rgba(167, 139, 250, 0.15)',
-                border: '1px solid rgba(167, 139, 250, 0.4)',
-                color: '#a78bfa',
-                borderRadius: 6,
-                padding: '4px 8px',
-                fontSize: 11,
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-              }}
-              title="Switch to the Konva canvas engine"
-            >
-              Konva Mode
-            </button>
-          )}
           {onSwitchToSvg && (
             <button
               onClick={onSwitchToSvg}
