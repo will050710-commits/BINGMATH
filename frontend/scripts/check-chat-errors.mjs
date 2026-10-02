@@ -87,6 +87,15 @@ check("the server budget is readable from chat_budget.py", Number.isFinite(serve
 check("the client waits ABOVE the server budget, so the server's 504 is what the user sees",
   errors.CHAT_TIMEOUT_MS / 1000 > serverBudget,
   `client=${errors.CHAT_TIMEOUT_MS / 1000}s server=${serverBudget}s`);
+// P7: the other side of the same window. Past ~100 s Render tears the request
+// down before any header arrives — the client would then be waiting for a
+// socket that no longer exists, and the browser reports exactly that as a
+// phantom CORS error (the 2026-09-28 incident). The constant must stay inside
+// (serverBudget, ~100).
+const RENDER_PROXY_CEILING_S = 100;
+check("the client timeout stays BELOW the platform proxy ceiling (~100 s)",
+  errors.CHAT_TIMEOUT_MS / 1000 < RENDER_PROXY_CEILING_S,
+  `client=${errors.CHAT_TIMEOUT_MS / 1000}s ceiling=${RENDER_PROXY_CEILING_S}s`);
 
 const server = readFileSync(join(FRONTEND_DIR, "src/components/DuoMCB/duoServer.js"), "utf8");
 check("duoServer classifies the status instead of printing a bare number",
@@ -109,6 +118,15 @@ check("the old 'Server error <code>' / 'Network error' copy is gone from chat()"
 
 const page = readFileSync(join(FRONTEND_DIR, "src/components/DuoMCB/DuoMCBPage.js"), "utf8");
 check("the UI shows the classified message", /content:\s*data\.reply \|\|/.test(page));
+// P3/P4 — the verification chip must say WHICH state it is: hidden when there
+// was nothing to verify, ⏱ for a timeout, ℹ️ for deterministic-only, ⚠️ only
+// for a real failure. The single scary label was the classroom report.
+check("the verify chip distinguishes timeout/partial from a real failure",
+  /m\.verification\.status === "timeout"/.test(page)
+  && /m\.verification\.status === "partial"/.test(page)
+  && /m\.verification\.status !== "not_applicable"/.test(page));
+check("a low-confidence reading is not presented as a bare 0% fact",
+  /đọc chưa chắc/.test(page));
 check("no chat call site switches this UI onto the SSE path",
   !/stream:\s*true/.test(page));
 check("the old one-size-fits-all failure line is gone",

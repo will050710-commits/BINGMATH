@@ -1,4 +1,8 @@
-@import url('https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+/* 2026-09-30 — Redesign Claude-style (Đợt 1): đã bỏ @import Google Fonts "Exo 2".
+   Đã soát toàn bộ src/: không file nào dùng font-family "Exo 2" nữa, nên đây chỉ
+   còn là một request render-blocking ra fonts.googleapis.com. Font mới
+   (Source Serif 4 cho tiêu đề, JetBrains Mono cho công thức) được self-host qua
+   next/font trong src/app/layout.js → không phải nới CSP, không phụ thuộc mạng ngoài. */
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════
@@ -791,5 +795,277 @@ body {
 
 .animate-live-pulse {
   animation: livePulse 1.4s ease-in-out infinite;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CLAUDE DESIGN SYSTEM — Redesign Đợt 1 (tầng token; chưa đổi layout trang)
+   ---------------------------------------------------------------------------
+   Theme nằm trên <html data-theme="paper|ink">:
+     • ink   — MẶC ĐỊNH toàn app: than ấm #141413, chữ kem #faf9f5
+     • paper — marketing + trang công khai: giấy #f5f4ed, chữ mực #141413
+   Ai quyết định theme: src/lib/themeRoutes.js (theo route) +
+   src/context/ThemeContext.js (lựa chọn thủ công, localStorage "duomath_theme").
+   QUY ƯỚC MỚI: màu trong component phải dùng token dưới đây, không hardcode hex.
+   Bảng màu theo hệ thống thiết kế Claude/Anthropic (parchment / terracotta).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* — ink (mặc định) — */
+  --bg: #141413;
+  --surface: #1c1c1a;
+  --surface-2: #30302e;
+  --surface-glass: rgba(28, 28, 26, 0.88);
+  --text: #faf9f5;
+  --text-muted: #b0aea5;
+  --text-subtle: #87867f;
+  --border: #3a3a37;
+  --border-strong: #4d4c48;
+  --accent: #d97757;         /* coral — accent trên nền tối */
+  --accent-strong: #c96442;  /* terracotta — CTA */
+  --accent-soft: rgba(217, 119, 87, 0.16);
+  --accent-2: #7f8f6f;       /* xanh ô-liu trầm */
+  --danger: #b53333;
+  --focus: #3898ec;
+  --page-bg: #141413;
+  --page-bg-image: radial-gradient(1100px 520px at 50% -8%, #262624 0%, rgba(20, 20, 19, 0) 72%);
+  --skeleton-a: rgba(250, 249, 245, 0.04);
+  --skeleton-b: rgba(250, 249, 245, 0.10);
+  --shadow-whisper: 0 4px 24px rgba(0, 0, 0, 0.30);
+
+  /* Alias cho các rule cũ đang dùng var(--background) / var(--foreground) */
+  --background: var(--bg);
+  --foreground: var(--text);
+  /* Công thức/code: JetBrains Mono self-host qua next/font (layout.js).
+     Khai báo ở đây (sau Tailwind) để thắng giá trị mặc định của Tailwind v4. */
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+[data-theme="paper"] {
+  --bg: #f5f4ed;
+  --surface: #faf9f5;
+  --surface-2: #e8e6dc;
+  --surface-glass: rgba(250, 249, 245, 0.90);
+  --text: #141413;
+  --text-muted: #5e5d59;
+  --text-subtle: #87867f;
+  --border: #e6e4da;
+  --border-strong: #d1cfc5;
+  --accent: #c96442;
+  --accent-strong: #b4553a;
+  --accent-soft: rgba(201, 100, 66, 0.10);
+  --accent-2: #5f7355;
+  --page-bg: #f5f4ed;
+  --page-bg-image: radial-gradient(1200px 560px at 50% -12%, #fdfcf9 0%, rgba(245, 244, 237, 0) 68%);
+  --skeleton-a: rgba(20, 20, 19, 0.04);
+  --skeleton-b: rgba(20, 20, 19, 0.09);
+  --shadow-whisper: 0 4px 24px rgba(0, 0, 0, 0.05);
+}
+
+/* Nền trang: giấy ấm / than ấm — thay gradient "cosmic neon" cũ.
+   Ghi đè rule html::before ở đầu file (cùng độ đặc hiệu, khai báo sau nên thắng). */
+html::before {
+  background-color: var(--page-bg);
+  background-image: var(--page-bg-image);
+  background-repeat: no-repeat;
+}
+
+/* Tailwind v4 — ánh xạ token thành utility:
+   bg-surface · text-muted · border-line · bg-brand · font-display · rounded-card … */
+@theme inline {
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+  --color-brand: var(--accent);
+  --color-brand-strong: var(--accent-strong);
+  --color-brand-soft: var(--accent-soft);
+  --color-olive: var(--accent-2);
+  --color-danger: var(--danger);
+  --font-display: var(--font-source-serif), ui-serif, Georgia, "Times New Roman", serif;
+  --font-ui: var(--font-be-vietnam), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+}
+
+
+/* ── SHIM cho các lớp "neon" cũ: GIỮ NGUYÊN TÊN LỚP, chỉ đổi giá trị sang token
+   Claude. Nhờ vậy 681 file trong src/ không phải sửa class mà giao diện hết neon.
+   Khi nào một lớp không còn file nào dùng thì xoá hẳn (xem báo cáo Đợt 7). ── */
+
+.glass-card,
+.glass-card-glow {
+  background-color: var(--surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-whisper);
+}
+
+.glass-card-glow {
+  border-color: var(--accent-soft);
+}
+
+/* Cắt góc kiểu sci-fi → bo góc kiểu Claude */
+.cut-lg,
+.cut-md {
+  clip-path: none;
+  border-radius: 12px;
+}
+
+.cut-sm {
+  clip-path: none;
+  border-radius: 8px;
+}
+
+.cut-chip {
+  clip-path: none;
+  border-radius: 6px;
+}
+
+.glow-btn {
+  box-shadow: none;
+  text-shadow: none;
+}
+
+.glow-btn:hover {
+  box-shadow: var(--shadow-whisper);
+  text-shadow: none;
+  transform: translateY(-1px);
+}
+
+.skeleton-shimmer {
+  background-image: linear-gradient(90deg, var(--skeleton-a) 25%, var(--skeleton-b) 50%, var(--skeleton-a) 75%);
+  border-radius: 8px;
+}
+
+.xp-bar-track {
+  background-color: var(--surface-2);
+}
+
+.xp-bar-fill {
+  background-color: var(--accent);
+}
+
+/* Glitch/scanline: tắt phần trang trí, chữ vẫn hiển thị bình thường */
+.glitch {
+  color: inherit;
+}
+
+.glitch::before,
+.glitch::after {
+  content: none;
+}
+
+.mcb-dropzone-active {
+  outline: 2px dashed var(--accent) !important;
+  background-color: var(--accent-soft) !important;
+}
+
+/* Công thức toán: KaTeX ăn theo màu chữ của theme, không tự đổi màu */
+.katex {
+  color: inherit;
+}
+
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 2px 0;
+}
+
+/* ── Cụm điều khiển nổi góc dưới-trái: VI/EN + Sáng/Tối ─────────────────────
+   Giữ id #lang-toggle-btn: globals.css (responsive bên dưới) và app mobile
+   (LessonWebViewScreen) đang ẩn phần tử này khi nhúng WebView. */
+.duo-control-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-whisper);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  user-select: none;
+}
+
+.duo-segmented {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.duo-segmented-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.duo-segmented-item:hover {
+  color: var(--text);
+}
+
+.duo-segmented-item[data-active="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 0 0 1px var(--border-strong);
+}
+
+.duo-segmented-item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.duo-pill-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+}
+
+.duo-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.16s ease, color 0.16s ease;
+}
+
+.duo-icon-btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.duo-icon-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
 }
 

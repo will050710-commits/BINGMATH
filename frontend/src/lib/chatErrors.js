@@ -22,7 +22,16 @@
  *
  * Deliberately ABOVE the server's own budget (chat_budget.CHAT_REQUEST_TIMEOUT_S,
  * 75 s by default) so the server's 504 + JSON reply — which carries a specific
- * Vietnamese explanation — wins the race and is what the student sees.
+ * Vietnamese explanation — wins the race and is what the student sees — and
+ * deliberately BELOW the platform proxy's ~100 s ceiling (Render tears a request
+ * down past that; a client that waits longer waits for a socket that no longer
+ * exists, and the browser reports that as a CORS error — the 2026-09-28
+ * incident).
+ *
+ * P7 note: raising this number does NOT make image requests finish sooner — the
+ * server answers (or 504s) first. The room for images lives in the pipeline
+ * (P1/P2 tier budgets), not in this constant. scripts/check-chat-errors.mjs pins
+ * BOTH bounds.
  */
 export const CHAT_TIMEOUT_MS = 95_000;
 

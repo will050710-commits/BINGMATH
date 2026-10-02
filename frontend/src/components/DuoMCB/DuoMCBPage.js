@@ -9,6 +9,10 @@ import { createSession, chat, generateVideo } from "./duoServer";
 // production chat timeout; scripts/check-image-downscale.mjs guards it in CI.
 import { prepareImageForUpload } from "@/lib/imageDownscale";
 import { makeSafeEvaluator } from "@/utils/safeMathEval";
+// P15-fix: the mathviz reply extractor lives in a pure module now, so CI can
+// test every fence variant — a payload under ```json used to leak into the
+// chat as raw JSON (classroom report 2026-10-01).
+import { extractMathvizBlock } from "@/lib/mathvizExtract";
 
 // Phase 0 security hardening: shared, memoised mathjs evaluator that replaced
 // the bypassable `new Function()` sanitizer in the canvas renderer.
@@ -18,42 +22,18 @@ import katex from "katex";
 import "katex/dist/katex.min.css";
 
 const MathVizRenderer = dynamic(() => import("./mathviz/MathVizRenderer"), { ssr: false });
+// MathLive (Phase 4 guide item 2.1) — the visual formula input, now actually
+// wired into the composer (it was built in đợt 1 but never mounted). Loaded
+// lazily: `mathlive` and its virtual-keyboard fonts only reach the browser
+// after the student taps Σ, so the default text path keeps its weight.
+const MathInput = dynamic(() => import("@/components/shared/MathInput"), {
+  ssr: false,
+  loading: () => null,
+});
 
-function extractMathvizBlock(content) {
-  if (!content) return { text: "", vizData: null };
-  const match = content.match(/```mathviz\s*\n?([\s\S]*?)```/);
-  if (match) {
-    const text = (content.substring(0, match.index) + content.substring(match.index + match[0].length)).trim();
-    try {
-      const vizData = JSON.parse(match[1].trim());
-      if (vizData && vizData.type === "mathviz.v1") {
-        return { text, vizData };
-      }
-    } catch (err) {
-      console.warn("[MathViz] Failed to parse mathviz JSON:", err);
-    }
-  }
-
-  // Robust fallback: if ```mathviz exists but closing ``` was truncated or omitted
-  const startIdx = content.indexOf("```mathviz");
-  if (startIdx !== -1) {
-    const text = content.substring(0, startIdx).trim();
-    let rawJson = content.substring(startIdx + "```mathviz".length).trim();
-    rawJson = rawJson.replace(/```+$/, "").trim();
-    try {
-      const vizData = JSON.parse(rawJson);
-      if (vizData && vizData.type === "mathviz.v1") {
-        return { text, vizData };
-      }
-    } catch {
-      // Incomplete/cut-off JSON: return clean text without leaking raw code block
-      return { text, vizData: null };
-    }
-    return { text, vizData: null };
-  }
-
-  return { text: content, vizData: null };
-}
+// extractMathvizBlock moved to src/lib/mathvizExtract.js (P15-fix) — the pure
+// module also recovers a payload fenced as ```json / bare ``` and hides an
+// unparseable mathviz payload instead of leaking it as raw JSON.
 
 const isClient = typeof window !== "undefined";
 
@@ -2040,6 +2020,9 @@ function ToolsDropdown({ onSelect, disabled }) {
 export default function DuoMCBPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  // MathLive (Σ): when on, the composer renders the visual formula field and a
+  // sent message is wrapped in $...$ so the model reads it as mathematics.
+  const [mathMode, setMathMode] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -2293,7 +2276,14 @@ export default function DuoMCBPage() {
   }
 
   async function sendMessage(text, mode = "hint") {
-    const rawMsg = (text !== undefined && text !== null) ? text : input.trim();
+    // MathLive mode: đóng gói LaTeX trong $...$ để tầng đọc hiểu đây là công
+    // thức Toán. Chỉ áp dụng cho nội dung gõ từ ô soạn tin — các call site
+    // truyền text trực tiếp (gợi ý, công cụ) giữ nguyên hành vi cũ.
+    const fromComposer = (text === undefined || text === null);
+    const typed = fromComposer ? input.trim() : text;
+    const rawMsg = (fromComposer && mathMode && typed && !String(typed).includes("$"))
+      ? `$${typed}$`
+      : typed;
     const currentPreview = imagePreview;
     const currentBase64 = imageBase64;
 
@@ -2590,14 +2580,23 @@ export default function DuoMCBPage() {
                           )}
                         </div>
                       )}
-                      {/* Đợt 4B/4C — trạng thái kiểm chứng của câu trả lời */}
-                      {m.role === "assistant" && m.verification && (
+                      {/* Đợt 4B/4C + P3/P4 — trạng thái kiểm chứng theo ĐÚNG loại:
+                          not_applicable (ẩn hẳn), hết giờ (⏱), đã kiểm số học (ℹ️),
+                          thất bại (⚠️). Trước đây mọi trường hợp đều hiện một câu
+                          cảnh báo đỏ — đúng thứ học sinh đã phản hồi. */}
+                      {m.role === "assistant" && m.verification && m.verification.status !== "not_applicable" && (
                         <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
                           {m.verification.verified
                             ? `✅ đã kiểm chứng${m.verification.repaired ? " (có sửa lại)" : ""}`
-                            : "⚠️ chưa kiểm chứng được đáp án"}
+                            : m.verification.status === "timeout"
+                              ? "⏱ chưa kịp kiểm chứng (hết thời gian xử lý)"
+                              : m.verification.status === "partial"
+                                ? "ℹ️ đã kiểm tra số học, chưa có phản biện độc lập"
+                                : "⚠️ chưa kiểm chứng được đáp án"}
                           {m.perception?.confidence != null
-                            ? ` · đọc tin cậy ${Math.round(m.perception.confidence * 100)}%`
+                            ? (m.perception.confidence >= 0.5
+                                ? ` · đọc tin cậy ${Math.round(m.perception.confidence * 100)}%`
+                                : ` · đọc chưa chắc (${Math.round(m.perception.confidence * 100)}%)`)
                             : ""}
                         </div>
                       )}
@@ -2666,6 +2665,29 @@ export default function DuoMCBPage() {
                 onChange={handleImageSelect}
               />
               <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Tải ảnh hoặc tài liệu lên" disabled={loading}>+</button>
+              {/* Σ — MathLive formula input (Phase 4 item 2.1, wired into the composer). */}
+              <button
+                className={styles.imageBtn}
+                onClick={() => setMathMode(m => !m)}
+                title={mathMode ? "Tắt nhập công thức (quay lại văn bản)" : "Nhập công thức Toán (MathLive) — bàn phím công thức đầy đủ"}
+                aria-pressed={mathMode}
+                disabled={loading}
+                style={mathMode ? { color: "#38bdf8", opacity: 1 } : undefined}
+              >Σ</button>
+              {mathMode ? (
+                <div
+                  style={{ flex: 1, minWidth: 0 }}
+                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
+                >
+                  <MathInput
+                    value={input}
+                    onChange={setInput}
+                    placeholder={imagePreview ? "Nhập công thức (LaTeX)…" : "Nhập công thức Toán… Enter để gửi"}
+                    ariaLabel="Nhập công thức Toán"
+                    style={{ padding: "6px 8px", border: "none", background: "none", fontSize: 16 }}
+                  />
+                </div>
+              ) : (
               <textarea
                 ref={inputRef}
                 className={styles.input}
@@ -2676,6 +2698,7 @@ export default function DuoMCBPage() {
                 onPaste={handlePaste}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
               />
+              )}
               <ToolsDropdown onSelect={handleToolSelect} disabled={loading} />
               <button
                 className={`${styles.sendBtn} ${(input.trim() || imageBase64) && !loading ? styles.sendActive : ""}`}

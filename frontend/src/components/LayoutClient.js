@@ -31,87 +31,82 @@ function isLessonPath(pathname) {
   return false;
 }
 
-/** Floating language toggle pill — rendered in bottom-left corner across all pages */
-function LangToggleButton() {
-  const { lang, toggleLang } = useLanguage();
+/**
+ * Cụm điều khiển nổi góc dưới-trái — Redesign Claude-style (Đợt 1).
+ *
+ * Thay pill gradient neon cũ bằng segmented control dùng token --surface/--text/
+ * --accent (xem .duo-* trong globals.css), và thêm nút Sáng/Tối:
+ *   • VI/EN  — vẫn là cùng một LanguageContext (t(vi,en) + localStorage
+ *              "duomath_lang") nên mọi trang song ngữ không đổi hành vi.
+ *   • ☀️/🌙  — ThemeContext: đổi <html data-theme="paper|ink">.
+ *
+ * GIỮ id="lang-toggle-btn" trên phần tử gốc: app mobile
+ * (LessonWebViewScreen) ẩn id này khi nhúng WebView, và globals.css có
+ * media-query responsive cho nó.
+ */
+function LanguageThemeControls() {
+  const { lang, setLang, t } = useLanguage();
+  const { theme, toggleTheme } = useTheme();
   const isVi = lang === "vi";
+  const isPaper = theme === "paper";
 
   return (
     <div
       id="lang-toggle-btn"
-      onClick={toggleLang}
-      title={isVi ? "Switch to English (Chuyển sang Tiếng Anh)" : "Switch to Vietnamese (Chuyển sang Tiếng Việt)"}
-      aria-label={isVi ? "Switch to English" : "Switch to Vietnamese"}
-      style={{
-        position: "fixed",
-        bottom: 24,
-        left: 24,
-        zIndex: 9999,
-        display: "inline-flex",
-        alignItems: "center",
-        padding: "4px",
-        borderRadius: 999,
-        border: "1px solid rgba(255,255,255,0.15)",
-        background: "rgba(2,8,24,0.85)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(34,211,238,0.15)",
-        cursor: "pointer",
-        transition: "all 0.25s cubic-bezier(0.2,0.8,0.2,1)",
-        userSelect: "none",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-3px) scale(1.04)";
-        e.currentTarget.style.borderColor = "rgba(34,211,238,0.4)";
-        e.currentTarget.style.boxShadow = "0 12px 36px rgba(0,0,0,0.6), 0 0 25px rgba(34,211,238,0.3)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = "none";
-        e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)";
-        e.currentTarget.style.boxShadow = "0 8px 32px rgba(0,0,0,0.5), 0 0 20px rgba(34,211,238,0.15)";
-      }}
+      className="duo-control-pill"
+      style={{ position: "fixed", bottom: 24, left: 24, zIndex: 9999 }}
     >
-      {/* VI Option */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "6px 12px",
-        borderRadius: 999,
-        background: isVi
-          ? "linear-gradient(135deg, #f43f5e 0%, #ec4899 100%)"
-          : "transparent",
-        color: isVi ? "white" : "rgba(255,255,255,0.45)",
-        fontSize: 12,
-        fontWeight: 800,
-        letterSpacing: 0.5,
-        boxShadow: isVi ? "0 2px 10px rgba(244,63,94,0.4)" : "none",
-        transition: "all 0.2s ease",
-      }}>
-        <span style={{ fontSize: 14 }}>🇻🇳</span>
-        <span>VI</span>
+      <div
+        className="duo-segmented"
+        role="group"
+        aria-label={t("Chọn ngôn ngữ", "Choose language")}
+      >
+        <button
+          type="button"
+          className="duo-segmented-item"
+          data-active={isVi}
+          aria-pressed={isVi}
+          lang="vi"
+          title={t("Tiếng Việt", "Vietnamese")}
+          onClick={() => setLang("vi")}
+        >
+          <span aria-hidden="true">🇻🇳</span>
+          <span>VI</span>
+        </button>
+        <button
+          type="button"
+          className="duo-segmented-item"
+          data-active={!isVi}
+          aria-pressed={!isVi}
+          lang="en"
+          title={t("Tiếng Anh", "English")}
+          onClick={() => setLang("en")}
+        >
+          <span aria-hidden="true">🇬🇧</span>
+          <span>EN</span>
+        </button>
       </div>
 
-      {/* EN Option */}
-      <div style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 5,
-        padding: "6px 12px",
-        borderRadius: 999,
-        background: !isVi
-          ? "linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%)"
-          : "transparent",
-        color: !isVi ? "white" : "rgba(255,255,255,0.45)",
-        fontSize: 12,
-        fontWeight: 800,
-        letterSpacing: 0.5,
-        boxShadow: !isVi ? "0 2px 10px rgba(14,165,233,0.4)" : "none",
-        transition: "all 0.2s ease",
-      }}>
-        <span style={{ fontSize: 14 }}>🇬🇧</span>
-        <span>EN</span>
-      </div>
+      <span className="duo-pill-divider" aria-hidden="true" />
+
+      <button
+        type="button"
+        className="duo-icon-btn"
+        onClick={toggleTheme}
+        aria-pressed={isPaper}
+        aria-label={
+          isPaper
+            ? t("Đang là nền sáng — chuyển sang nền tối", "Light theme — switch to dark")
+            : t("Đang là nền tối — chuyển sang nền sáng", "Dark theme — switch to light")
+        }
+        title={
+          isPaper
+            ? t("Nền sáng (giấy) · nhấn để đổi", "Light (paper) · click to switch")
+            : t("Nền tối (than) · nhấn để đổi", "Dark (ink) · click to switch")
+        }
+      >
+        <span aria-hidden="true">{isPaper ? "🌙" : "☀️"}</span>
+      </button>
     </div>
   );
 }

@@ -5,9 +5,9 @@
 // The "⬇ .ggb" action on the geometry widget (Roadmap Q4/2026 item 2).
 //
 // Why a separate component instead of more JSX inside MathVizGeometry2D.js:
-// that file is already ~2500 lines and renders three interchangeable engines,
-// so the export lives in one small place the SVG/JSXGraph/Konva headers can
-// each mount, and its state stays out of the drawing code.
+// that file is already ~2500 lines and renders two interchangeable engines,
+// so the export lives in one small place the SVG/JSXGraph headers can each
+// mount, and its state stays out of the drawing code.
 //
 // Honest UI rules, matching the rest of Phase 4:
 //   * nothing is exported when there is nothing to export (no dead button);

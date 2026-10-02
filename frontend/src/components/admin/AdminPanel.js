@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useMathMapStore } from "@/context/MathMapStore";
 import { useAuth } from "@/context/authContext";
 import { resolveApiBase } from "@/lib/apiBase";
+import TokenGauges from "./TokenGauges";
 
 // ── Backend API ─────────────────────────────────────────────────────────────
 // Backend base URL — single source of truth: src/lib/apiBase.js
@@ -1168,6 +1169,7 @@ export default function AdminPanel() {
           { key: "rejected",  label: `❌ Từ chối (${rejectedMaps.length})` },
           { key: "users",     label: `👥 Người dùng` },
           { key: "reports",   label: `🚩 Báo cáo${pendingReports > 0 ? ` (${pendingReports})` : ""}` },
+          { key: "tokens",    label: "📊 Token & Quota" },
           ...(amISuperAdmin ? [{ key: "admins", label: "👑 Quản lý Admin" }] : []),
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
@@ -1318,6 +1320,9 @@ export default function AdminPanel() {
 
         {/* Reports tab */}
         {tab === "reports" && <ReportsTab showNotif={showNotif} />}
+
+        {/* P10 — token/quota meter (self-fetching; admin-only endpoint) */}
+        {tab === "tokens" && <TokenGauges />}
 
         {/* Admin management tab (super admin only) */}
         {tab === "admins" && amISuperAdmin && (
