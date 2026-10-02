@@ -11,7 +11,6 @@
 #     degrades to the Gradio space when cv2 is absent);
 #   * torch / torchvision / realesrgan / basicsr — offline video enhancement
 #     (video_enhancer.py); never needed by the API itself;
-#   * reportlab — the local PDF report generators (generate_*_pdf*.py);
 #   * math-verify — value-based grading; grading.py falls back to the
 #     restricted SymPy parser when it is absent, so leaving it uninstalled in
 #     production is a supported mode.
@@ -27,7 +26,11 @@ torch>=2.0.0
 torchvision>=0.15.0
 realesrgan>=0.3.0
 basicsr>=1.4.2
-reportlab>=4.0.0
+# reportlab was dropped with the local PDF report generators (Đợt 4I cleanup:
+# generate_pdf*.py / generate_*_pdf.py deleted, together with the checked-in
+# PDF, pipeline and HTML report artefacts). Nothing imports reportlab any more —
+# verified before removing, and the comment here is the pointer for whoever
+# wonders why a "PDF" package once lived in this file.
 
 # ── Phase 1 (optional): value-based answer grading ──────────────────────────
 # Used automatically by backend/grading.py when present; the restricted SymPy
