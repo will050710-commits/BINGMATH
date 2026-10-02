@@ -1,0 +1,341 @@
+{
+  "summary": {
+    "bank_rows": 6,
+    "dense_enabled": false,
+    "queries_total": 15,
+    "queries_scored": 13,
+    "queries_control": 2,
+    "recall@1": 0.8462,
+    "recall@3": 1.0,
+    "recall@5": 1.0,
+    "mrr": 0.9103,
+    "ndcg@5": 0.9331,
+    "false_positive_controls": 2,
+    "latency_p50_ms": 0.04,
+    "latency_p95_ms": 0.09
+  },
+  "by_kind": {
+    "exact": {
+      "n": 7,
+      "recall@3": 1.0
+    },
+    "paraphrase": {
+      "n": 6,
+      "recall@3": 1.0
+    }
+  },
+  "per_query": [
+    {
+      "id": "Q01",
+      "kind": "exact",
+      "query": "Cho tam giác ABC nhọn, gọi H là trực tâm, O là tâm đường tròn ngoại tiếp. Chứng minh AH vuông góc với BC.",
+      "expected_ids": [
+        "p1"
+      ],
+      "ranked_ids": [
+        "p1",
+        "p6",
+        "p2",
+        "p3"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.1,
+      "returned": 4
+    },
+    {
+      "id": "Q02",
+      "kind": "exact",
+      "query": "tam giác nhọn trực tâm đường cao vuông góc",
+      "expected_ids": [
+        "p1"
+      ],
+      "ranked_ids": [
+        "p1",
+        "p2",
+        "p6",
+        "p3"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.05,
+      "returned": 4
+    },
+    {
+      "id": "Q03",
+      "kind": "exact",
+      "query": "đường tròn Euler chín điểm chân đường cao trung điểm",
+      "expected_ids": [
+        "p2"
+      ],
+      "ranked_ids": [
+        "p2",
+        "p6",
+        "p3",
+        "p1"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.04,
+      "returned": 4
+    },
+    {
+      "id": "Q04",
+      "kind": "exact",
+      "query": "bán kính đường tròn nội tiếp tam giác vuông tại A tiếp xúc BC",
+      "expected_ids": [
+        "p3"
+      ],
+      "ranked_ids": [
+        "p3",
+        "p6",
+        "p1",
+        "p2"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.05,
+      "returned": 4
+    },
+    {
+      "id": "Q05",
+      "kind": "exact",
+      "query": "Giải phương trình bậc hai x^2 - 5x + 6 = 0",
+      "expected_ids": [
+        "p4"
+      ],
+      "ranked_ids": [
+        "p4"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.03,
+      "returned": 1
+    },
+    {
+      "id": "Q06",
+      "kind": "exact",
+      "query": "giá trị lớn nhất của hàm số bậc hai trên tập số thực",
+      "expected_ids": [
+        "p5"
+      ],
+      "ranked_ids": [
+        "p5",
+        "p4",
+        "p2"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.04,
+      "returned": 3
+    },
+    {
+      "id": "Q07",
+      "kind": "exact",
+      "query": "tam giác ABC nội tiếp đường tròn, H trực tâm, M trung điểm BC, chứng minh AH = 2.OM",
+      "expected_ids": [
+        "p6"
+      ],
+      "ranked_ids": [
+        "p6",
+        "p1",
+        "p3",
+        "p2"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.09,
+      "returned": 4
+    },
+    {
+      "id": "Q08",
+      "kind": "paraphrase",
+      "query": "quan hệ giữa trực tâm và tâm ngoại tiếp trong tam giác, trung điểm cạnh đối diện",
+      "expected_ids": [
+        "p6",
+        "p1"
+      ],
+      "ranked_ids": [
+        "p6",
+        "p1",
+        "p2",
+        "p3"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.05,
+      "returned": 4
+    },
+    {
+      "id": "Q09",
+      "kind": "paraphrase",
+      "query": "tại sao đường cao kẻ từ đỉnh lại vuông góc với cạnh đối diện",
+      "expected_ids": [
+        "p1"
+      ],
+      "ranked_ids": [
+        "p3",
+        "p2",
+        "p1"
+      ],
+      "first_hit_rank": 3,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
+      "ndcg@5": 0.5,
+      "latency_ms": 0.04,
+      "returned": 3
+    },
+    {
+      "id": "Q10",
+      "kind": "paraphrase",
+      "query": "công thức tính bán kính vòng tròn tiếp xúc ba cạnh của một tam giác",
+      "expected_ids": [
+        "p3"
+      ],
+      "ranked_ids": [
+        "p3",
+        "p6",
+        "p1",
+        "p2"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.04,
+      "returned": 4
+    },
+    {
+      "id": "Q11",
+      "kind": "paraphrase",
+      "query": "tìm cực đại của một parabol bằng cách đưa về bình phương đầy đủ",
+      "expected_ids": [
+        "p5"
+      ],
+      "ranked_ids": [
+        "p4",
+        "p5"
+      ],
+      "first_hit_rank": 2,
+      "recall@1": 0.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 0.5,
+      "ndcg@5": 0.6309297535714575,
+      "latency_ms": 0.04,
+      "returned": 2
+    },
+    {
+      "id": "Q12",
+      "kind": "paraphrase",
+      "query": "chín điểm đặc biệt nằm trên cùng một vòng tròn, tâm là trung điểm của đoạn nối hai điểm đặc biệt",
+      "expected_ids": [
+        "p2"
+      ],
+      "ranked_ids": [
+        "p2",
+        "p6",
+        "p4",
+        "p1"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.05,
+      "returned": 4
+    },
+    {
+      "id": "Q13",
+      "kind": "paraphrase",
+      "query": "nghiệm của phương trình bậc hai dựa vào biệt thức",
+      "expected_ids": [
+        "p4"
+      ],
+      "ranked_ids": [
+        "p4",
+        "p2"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "latency_ms": 0.04,
+      "returned": 2
+    },
+    {
+      "id": "Q14",
+      "kind": "control",
+      "query": "cách nấu phở bò ngon tại nhà",
+      "expected_ids": [],
+      "ranked_ids": [
+        "p3"
+      ],
+      "first_hit_rank": 0,
+      "recall@1": null,
+      "recall@3": null,
+      "recall@5": null,
+      "reciprocal_rank": null,
+      "ndcg@5": null,
+      "latency_ms": 0.03,
+      "returned": 1
+    },
+    {
+      "id": "Q15",
+      "kind": "control",
+      "query": "tính tích phân bất định của sin bình phương x",
+      "expected_ids": [],
+      "ranked_ids": [
+        "p4"
+      ],
+      "first_hit_rank": 0,
+      "recall@1": null,
+      "recall@3": null,
+      "recall@5": null,
+      "reciprocal_rank": null,
+      "ndcg@5": null,
+      "latency_ms": 0.04,
+      "returned": 1
+    }
+  ]
+}
