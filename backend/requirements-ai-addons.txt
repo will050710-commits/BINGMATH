@@ -1,9 +1,28 @@
-# Requirements for DuoMCB AI Geometry & Video Enhancement Engine
+# Requirements for DuoMCB AI add-ons — LOCAL / WORKSTATION ONLY.
+#
+# ⚠️  DO NOT `pip install -r` this file on the Render service. torch + easyocr +
+#     realesrgan are the exact packages behind the 2026-09-28 production
+#     incident (the single worker ran out of memory; every /api/chat answered
+#     502, which the browser reports as a CORS error). Production runs
+#     `pip install -r requirements.txt` only — see backend/render.yaml.
+#
+# What each package is for:
+#   * opencv-python + easyocr — local OCR experiments (image_preprocessing.py
+#     degrades to the Gradio space when cv2 is absent);
+#   * torch / torchvision / realesrgan / basicsr — offline video enhancement
+#     (video_enhancer.py); never needed by the API itself;
+#   * reportlab — the local PDF report generators (generate_*_pdf*.py);
+#   * math-verify — value-based grading; grading.py falls back to the
+#     restricted SymPy parser when it is absent, so leaving it uninstalled in
+#     production is a supported mode.
+#
+# Geometry validation (shapely) and 3D meshes (trimesh) MOVED to
+# requirements.txt — they run inside the API now, see
+# backend/geometry_analytic_checks.py and backend/geometry3d_mesh.py.
 opencv-python>=4.8.0
 numpy>=1.24.0
 easyocr>=1.7.0
 sympy>=1.12
-shapely>=2.0.0
 torch>=2.0.0
 torchvision>=0.15.0
 realesrgan>=0.3.0

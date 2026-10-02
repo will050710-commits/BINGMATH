@@ -42,7 +42,7 @@ jobs:
       # main.py, so pulling sentence-transformers/torch would only burn CI
       # minutes. Add packages here as new suites need them.
       - name: Install test dependencies
-        run: pip install "sympy>=1.12" "numpy>=1.26" "Pillow>=10.0.0" "httpx>=0.27.0" "pydantic>=2" "json-repair>=0.30.0" "gradio_client>=2.0.0" "fsrs>=6.0.0"
+        run: pip install "sympy>=1.12" "numpy>=1.26" "Pillow>=10.0.0" "httpx>=0.27.0" "pydantic>=2" "json-repair>=0.30.0" "gradio_client>=2.0.0" "fsrs>=6.0.0" "shapely>=2.0.0" "trimesh>=4.0.0"
 
       - name: Perception — MathReader (dual-read consensus + SymPy gate)
         working-directory: backend
@@ -89,6 +89,30 @@ jobs:
         working-directory: backend
         run: python test_chat_budget.py
 
+      # P11 — the multi-key pool behind the free provider tiers (Groq today;
+      # the NVIDIA keys join the same shape in P12): parsing, provider reset
+      # headers → cooldowns, rotation order with an injected clock, and the
+      # WIRING in main.py. Pure stdlib + source reads — no network, no fastapi.
+      - name: Key pool — rotation + cooldowns (P11)
+        working-directory: backend
+        run: python test_key_pool.py
+
+      # P12 — the NVIDIA NIM tier: Tier 2.5 between Groq and OpenRouter, its
+      # 3072-token reasoning floor, the key-pool rotation, and the coder helper
+      # that now fronts the MathViz repair path. Source-level guards, stdlib
+      # only (main.py cannot be imported without fastapi/network).
+      - name: NVIDIA tier — math reasoning + coder helper (P12)
+        working-directory: backend
+        run: python test_nvidia_tier.py
+
+      # P10 — the token/quota meter: usage normalization for both provider
+      # shapes (OpenAI-compatible + Gemini), quota-header parsing, the honest
+      # self-count/live labels, and the wiring in main.py (DDL, token_log choke
+      # points, admin endpoint). Stdlib only.
+      - name: Token meter — usage + quota gauges (P10)
+        working-directory: backend
+        run: python test_token_meter.py
+
       # Đợt 8 / 4I — the two halves of "the figure is too big for the pipeline".
       #   * test_mathviz_contract.py: the geometry VOCABULARY is one checked
       #     contract (prompt ↔ validator ↔ renderers). Before it, an arc/sector/
@@ -105,6 +129,43 @@ jobs:
       - name: Diagram complexity — tiering + the budget-sum invariant
         working-directory: backend
         run: python test_diagram_complexity.py
+
+      # Đợt "canvas libraries" — the Shapely/SymPy analytic gate. The suites
+      # above prove each layer is DRAWN; this one proves the layers AGREE:
+      # a self-intersecting polygon, an arc that misses its own circle, a
+      # right angle that is not one, the same point id declared twice. Both
+      # suites are offline (they are pure maths, no network, no model).
+      - name: MathViz analytic checks — Shapely/SymPy data conflicts
+        working-directory: backend
+        run: python test_geometry_analytic_checks.py
+
+      # The trimesh tier behind /api/geometry3d/mesh: primitives build with
+      # the right volume/bbox, meshes are watertight where they must be, and
+      # STL/GLB exports obey their container rules (binary STL 84+50n, GLB
+      # magic) — a silent geometry bug here would put a wrong solid on screen.
+      - name: 3D mesh tier — build/validate/export (trimesh)
+        working-directory: backend
+        run: python test_geometry3d_mesh.py
+
+      # P2/P3/P5 of the canvas-libraries follow-up:
+      #   * fallback_policy — the Groq tier answers with a trimmed context and a
+      #     capped length instead of being rejected as "Request too large";
+      #   * verify states — the verification badge distinguishes timeout /
+      #     partial / not-applicable from a real failure (the classroom report);
+      #   * chat routing — a figure with no readable statement gets the
+      #     illustration it can honestly produce, not "send me the problem".
+      # All three are offline (pure functions + source reads).
+      - name: Fallback policy — generation payload shaping (P2)
+        working-directory: backend
+        run: python test_fallback_policy.py
+
+      - name: Verification states — honest badges (P3)
+        working-directory: backend
+        run: python test_verify_states.py
+
+      - name: Chat routing — figure-only vs solve (P5)
+        working-directory: backend
+        run: python test_chat_routing.py
 
       # Đợt 8 / 4I — a cheap name-binding audit for the blocks this đợt added to
       # chat(). Two early-exit paths (the soft-deadline answer and the render
@@ -203,13 +264,21 @@ jobs:
         run: node scripts/check-chat-errors.mjs
 
       # Đợt 8 / 4I — the client half of the vocabulary contract. It parses
-      # backend/mathviz_contract.py AND the three renderers, so the kinds the
+      # backend/mathviz_contract.py AND the two renderers, so the kinds the
       # prompt teaches, the validator accepts and each engine actually draws can
       # never drift apart again (17 checks; no dependencies — it imports
       # src/lib/mathvizKinds.js directly).
       - name: MathViz vocabulary — contract vs. client mirror vs. renderers
         working-directory: frontend
         run: node scripts/check-mathviz-kinds.mjs
+
+      # P15-fix — the reply extractor: a payload fenced as ```json / bare ```
+      # used to leak into the chat as raw JSON (classroom report 2026-10-01).
+      # The logic now lives in src/lib/mathvizExtract.js, a pure module this
+      # guard runs real inputs through (recover-or-hide, never leak).
+      - name: MathViz reply extraction — fence recovery (P15-fix)
+        working-directory: frontend
+        run: node scripts/check-mathviz-extract.mjs
 
       - name: No deprecated Three.js APIs (THREE.Clock → THREE.Timer)
         working-directory: frontend

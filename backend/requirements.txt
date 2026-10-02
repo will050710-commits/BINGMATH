@@ -22,6 +22,16 @@ sympy>=1.12
 numpy>=1.26
 Pillow>=10.0.0
 json-repair>=0.30.0
+
+# ── Geometry tier (MathViz) ──
+# shapely bundles GEOS inside the wheel (~2.5 MB) and powers
+# backend/geometry_analytic_checks.py: polygon self-intersection / degeneracy
+# checks BEFORE a figure reaches a canvas.
+shapely>=2.0.0
+# trimesh (pure Python + numpy) builds, validates and exports the 3D meshes
+# behind /api/geometry3d/mesh — the fallback for solids that have no client
+# template (backend/geometry3d_mesh.py).
+trimesh>=4.0.0
 # Phase 4 / Đợt 4E — FSRS (Free Spaced Repetition Scheduler) for the relearn
 # list. Package name is `fsrs` (the guide calls it py-fsrs); 6.x is pure Python.
 fsrs>=6.0.0
@@ -37,4 +47,13 @@ fsrs>=6.0.0
 # ── Unlimited-OCR Spaces API & Multi-page PDF (lightweight client) ──
 gradio_client>=2.0.0
 pymupdf>=1.27.0
+
+# ── Video render tier (/api/video/generate → canvas_to_video.py) ──
+# These two were imported by canvas_to_video.py but declared NOWHERE, so a fresh
+# deploy crashed the render subprocess instead of answering anything honest.
+# matplotlib is ~8 MB; imageio-ffmpeg ships the ffmpeg binary the MP4 muxer
+# needs. Neither holds meaningful RSS while idle (unlike torch — see the
+# sentence-transformers note above).
+matplotlib>=3.8.0
+imageio-ffmpeg>=0.4.9
 
