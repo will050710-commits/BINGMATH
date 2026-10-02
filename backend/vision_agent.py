@@ -105,7 +105,13 @@ class GeometryVisionAgent:
         self.enabled = os.environ.get("VISION_AGENT_ENABLED", "true").lower() in ("true", "1", "yes")
 
         # Tier 1: Specialized Fine-Tuned DuoMath Vision Agent on Hugging Face ZeroGPU
-        self.hf_space_id = os.environ.get("VISION_HF_SPACE_ID", "WilliamShakespear/duomath-qwen-vl-demo")
+        # P6: the fine-tuned demo Space this default pointed at no longer exists
+        # (its API answers 401 RepositoryNotFound, checked 2026-10-01), so the
+        # Space tier is now OPT-IN: set VISION_HF_SPACE_ID only when a live
+        # Space exists. An empty value simply skips the tier and goes straight
+        # to the OpenRouter vision ladder — `is_configured()` already treats it
+        # that way.
+        self.hf_space_id = os.environ.get("VISION_HF_SPACE_ID", "")
         self.hf_space_token = os.environ.get("VISION_HF_SPACE_TOKEN", "") or os.environ.get("HF_API_KEY", "")
         self._hf_client = None
 

@@ -148,7 +148,11 @@ def test_timeout_payload():
     plan = cb.stage_plan()
     check("stage_plan exposes every knob /api/health reports",
           set(plan) == {"request_s", "vision_s", "vision_agent_s", "verify_s",
-                        "retrieval_s", "generate_s"}
+                        "retrieval_s", "generate_s",
+                        # P1/P2 of the canvas-libraries follow-up: the per-tier
+                        # clamps and the fallback payload cap.
+                        "gen_model_s", "gen_retry_s", "tier_min_s", "local_floor_s",
+                        "fallback_max_tokens"}
           and plan["request_s"] == cb.CHAT_REQUEST_TIMEOUT_S)
     # Đợt 8 / 4I: the ANSWER itself is bounded too. Before this, generation used
     # hard-coded client timeouts while every stage around it was bounded, which is
@@ -245,9 +249,22 @@ def test_complexity_wiring():
           "timeout=_budget.clamp(_retrieval_budget)" in MAIN
           and "chat_budget.CHAT_RETRIEVAL_BUDGET_S)" not in strip_comments(MAIN))
     check("the critic runs under the PLAN's budget",
-          "timeout=_budget.clamp(_verify_budget)" in MAIN)
+          "_budget.clamp(_verify_budget)" in MAIN and "timeout=_verify_wait" in MAIN)
     check("the critic can be skipped on an extreme figure",
-          "_verify_budget > 0 and math_solver.should_verify(" in MAIN)
+          "_verify_budget > 0" in MAIN and "math_solver.should_verify(" in MAIN)
+    # P3/P5 — honest verification states, wired:
+    check("an inapplicable verification is recorded as its own state",
+          "math_solver.STATUS_NOT_APPLICABLE" in MAIN
+          and "Math verification not applicable" in MAIN)
+    check("the free deterministic layer runs before the critic's clock (P3)",
+          "asyncio.to_thread(math_solver.deterministic_checks" in MAIN
+          and "precomputed_checks=_checks0" in MAIN)
+    check("a critic timeout keeps a partial verdict when the free checks passed",
+          "math_solver.STATUS_PARTIAL if _det_ok else math_solver.STATUS_TIMEOUT" in MAIN)
+    check("the appended note is chosen by the verification state",
+          "math_solver.verification_note(" in MAIN)
+    check("a figure-only reply never starts verification (P5)",
+          '_reply_mode != "figure_only"' in MAIN)
 
     check("the ANSWER itself is bounded by the generation budget",
           "_gen_budget = (_plan or {}).get(\"generate\")" in MAIN
@@ -361,7 +378,10 @@ def test_main_py_wiring():
          "verification + critic"),
     ):
         match = re.search(pattern, MAIN)
-        window = MAIN[match.start():match.start() + 900] if match else ""
+        # The budget expression may sit just BEFORE the wait_for call when the
+        # timeout is pre-computed (verify: `_verify_wait`, P1d), so the window
+        # looks slightly backwards too.
+        window = MAIN[max(0, match.start() - 400):match.start() + 900] if match else ""
         check(f"{label} runs under its own clamped budget",
               bool(match) and f"_budget.clamp({budget})" in window, budget)
 
@@ -445,6 +465,166 @@ def test_main_py_wiring():
           "except Exception as _e_ocr" in MAIN)
 
 
+# ── 6. P1/P2 — the tier-level clamps and the fallback payload cap ────────────
+
+def test_tier_clamps():
+    """Đợt P1/P2: the fixed per-provider timeouts are gone from the answer path.
+
+    Đợt 8 / 4I bounded the whole generation stage; inside it, every provider
+    call still had a fixed timeout (15 s per Gemini tool round, 30 s per Groq
+    model, 90 s for the OpenRouter helper), so one unresponsive provider could
+    eat the request before any fallback ran — the local olympiad-image tests
+    showed two Gemini stalls of ~40 s each before Groq ever got a turn. These
+    checks pin the wiring: a clamp on every call, a floor for starting a tier,
+    and the payload shaping that keeps the Groq free tier from rejecting a
+    long geometry prompt as "too large".
+    """
+    print("\n[tier clamps (P1/P2)]")
+
+    if "CHAT_GEN_MODEL_TIMEOUT_S" not in os.environ:
+        check("the per-model ceiling defaults to 22 s", cb.CHAT_GEN_MODEL_TIMEOUT_S == 22.0,
+              str(cb.CHAT_GEN_MODEL_TIMEOUT_S))
+    if "CHAT_GEN_RETRY_S" not in os.environ:
+        check("the no-tools retry ceiling defaults to 15 s", cb.CHAT_GEN_RETRY_S == 15.0)
+    if "CHAT_TIER_MIN_S" not in os.environ:
+        check("the tier floor defaults to 12 s", cb.CHAT_TIER_MIN_S == 12.0)
+    if "CHAT_LOCAL_FLOOR_S" not in os.environ:
+        check("the local-answer floor defaults to 10 s", cb.CHAT_LOCAL_FLOOR_S == 10.0,
+              str(cb.CHAT_LOCAL_FLOOR_S))
+    check("the local floor is smaller than the tier floor (a started tier can finish)",
+          cb.CHAT_LOCAL_FLOOR_S < cb.CHAT_TIER_MIN_S)
+    check("the tier floor is smaller than one model call (a tier must be able to finish)",
+          cb.CHAT_TIER_MIN_S < cb.CHAT_GEN_MODEL_TIMEOUT_S)
+    check("no clamp exceeds the module's own 90 s maximum",
+          max(cb.CHAT_GEN_MODEL_TIMEOUT_S, cb.CHAT_GEN_RETRY_S) <= 90.0)
+
+    saved = dict(os.environ)
+    try:
+        os.environ["DUOMATH_TEST_INT"] = "9999"
+        check("env_int clamps an absurd value to the maximum",
+              cb.env_int("DUOMATH_TEST_INT", 1600, 256, 8192) == 8192)
+        os.environ["DUOMATH_TEST_INT"] = "abc"
+        check("env_int falls back on a typo instead of disabling the cap",
+              cb.env_int("DUOMATH_TEST_INT", 1600, 256, 8192) == 1600)
+    finally:
+        os.environ.clear()
+        os.environ.update(saved)
+
+    check("main.py imports the fallback policy module", "import fallback_policy" in MAIN)
+
+    clean = strip_comments(MAIN)
+    check("the never-true flag that made Gemini's success path dead is gone",
+          "should_continue_attempt" not in clean)
+    check("the rescued parse block still has its signature line",
+          "res_data = resp.json()" in clean)
+
+    start = MAIN.find("# ── Tier 1: Gemini Core Brain")
+    end = MAIN.find("# ── Tier 4 Fallback")
+    check("the tier ladder segment was found", start > -1 and end > start, f"{start}..{end}")
+    segment = strip_comments(MAIN[start:end])
+    stray = re.search(r"timeout=\d", segment)
+    check("no provider call in the answer ladder keeps a fixed numeric timeout",
+          stray is None, stray.group(0) if stray else "")
+    for needle, label in (
+        ("_call_timeout", "the Gemini tool round clamps its timeout"),
+        ("_retry_timeout", "the no-tools retry clamps its timeout"),
+        ("_groq_timeout", "the Groq tier clamps its timeout"),
+        ("CHAT_TIER_MIN_S", "tiers are skipped when the clock is nearly gone"),
+        ("timeout=max(8.0, min(30.0, _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S))",
+         "the OpenRouter tier gets what is left, minus the local floor"),
+    ):
+        check(label, needle in segment)
+    check("the Groq tier-0.5 call also clamps per attempt",
+          "timeout=max(6.0, min(chat_budget.CHAT_GEN_MODEL_TIMEOUT_S, _budget.remaining()))" in clean)
+    check("the Groq tier answers with the trimmed context, not the raw history",
+          '"messages": groq_messages' in segment and "trim_for_tier(" in MAIN)
+    check("the Groq tier caps its answer length", "fallback_max_tokens(" in MAIN)
+    check("a 413 (token-per-minute) gets one retry with a smaller answer",
+          "shrink_on_tpm(" in MAIN and "413" in segment)
+    check("the OpenRouter helper accepts the caller's remaining budget",
+          "timeout: float | None = None" in MAIN
+          and "timeout=float(timeout) if timeout else 90.0" in MAIN)
+    # P1b — the live-report follow-up: the primary model may use the whole
+    # generation budget, every clamp keeps the local floor untouched, and the
+    # no-tools retry no longer re-sends an image payload (which never had tools).
+    check("the primary model gets the generation budget, later models the small cap",
+          "_model_cap = (chat_budget.CHAT_GENERATE_BUDGET_S if _model_index == 0" in MAIN)
+    check("every Gemini call reserves the local-answer floor",
+          "_budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S" in clean)
+    check("the no-tools retry is skipped when the payload never carried tools",
+          'if "tools" in payload:' in clean)
+    # P1c — the live 504 follow-up: MathReader's text reaches the answer tiers,
+    # a blind image skips the text tiers, and every tier reserves the floor.
+    check("MathReader's text is promoted to the generation tiers (P1c)",
+          "vision_description = _mr_text" in MAIN
+          and "chat_routing.perception_text(perception)" in MAIN)
+    check("a blind image skips the text tiers that cannot see it (P1c)",
+          "_blind_image" in MAIN and "and not _blind_image" in MAIN
+          and "ảnh chưa đọc được nội dung" in MAIN)
+    check("Groq and OpenRouter also reserve the local floor (P1c)",
+          clean.count("_budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S") >= 3,
+          str(clean.count("_budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S")))
+    # P1d — the race with the deadline middleware: verification must not start
+    # (let alone wait) once the clock is inside the local floor.
+    check("verification is skipped when the clock is inside the floor (P1d)",
+          "_budget.remaining() >= chat_budget.CHAT_LOCAL_FLOOR_S" in MAIN
+          and "hết thời gian xử lý trước khi kịp kiểm chứng" in MAIN)
+    check("a started verification still cannot eat the floor (P1d)",
+          "_verify_wait = max(1.0, min(_budget.clamp(_verify_budget)," in MAIN
+          and "_budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S" in MAIN)
+    # P8 — Cerebras: the fastest free ladder, wired 2026-10-01 while a Google
+    # outage (503 UNAVAILABLE) left only Groq answering. The tier must obey the
+    # same three rules as every other tier (gate, clamp, reserve the floor), and
+    # the reasoning-model token floor must stay — a starved call answers HTTP
+    # 200 with NO `content` key at all (live: qwen-3.8-27b burned 2048 tokens on
+    # reasoning), which would otherwise abort the tier with a KeyError.
+    check("the Cerebras tier exists and posts to the documented endpoint (P8)",
+          'CEREBRAS_BASE = "https://api.cerebras.ai/v1"' in MAIN
+          and 'f"{CEREBRAS_BASE}/chat/completions"' in segment
+          and "cerebras_headers()" in segment)
+    check("the Cerebras tier is gated like every other tier (P8)",
+          "not reply and CEREBRAS_KEY and not _blind_image" in segment
+          and "and _budget.remaining() >= chat_budget.CHAT_TIER_MIN_S" in segment
+          and "Tier 1.5 Fallback: Cerebras" in segment)
+    check("the Cerebras tier clamps its timeout and reserves the local floor (P8)",
+          "_cb_timeout = max(5.0, min(chat_budget.CHAT_GEN_MODEL_TIMEOUT_S," in segment
+          and "_budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S" in segment)
+    check("Cerebras trims the context and floors max_tokens for its reasoning models (P8)",
+          "cb_messages = fallback_policy.trim_for_tier(" in segment
+          and "cb_max_tokens = max(3072, fallback_policy.fallback_max_tokens(" in segment)
+    check("a 200 without content moves to the next Cerebras model (P8)",
+          '.get("content")' in segment and "trả về rỗng" in segment
+          and "reply = None" in segment)
+    check("health publishes the Cerebras tier when the key is set (P8)",
+          "cerebras:" in MAIN and "if CEREBRAS_KEY else" in MAIN)
+    # P11 — bể khoá: một khoá bị 429/401/413 phải xoay sang khoá kế tiếp thay
+    # vì gạch cả nhà cung cấp cho hết ngày. Hành vi sâu của bể nằm ở
+    # test_key_pool.py; ở đây chỉ giữ WIRING trong main.py — đúng vai của suite
+    # này với mọi tầng khác.
+    check("Groq reads its key through the P11 pool",
+          "GROQ_KEY_POOL = key_pool.KeyPool(" in MAIN
+          and "GROQ_API_KEY_SECONDARY" in MAIN
+          and "return key_pool.headers_for(key or GROQ_KEY_POOL.active())" in clean)
+    check("every plain Groq POST goes through the rotation helper (P11)",
+          clean.count("_groq_post_with_key_rotation(") >= 5,
+          str(clean.count("_groq_post_with_key_rotation(")))
+    check("the Groq stream rotates keys before models (P11)",
+          "headers=key_pool.headers_for(_gs_key)" in clean
+          and "GROQ_KEY_POOL.retryable(resp.status_code) and _gs_i < len(_gs_keys) - 1" in clean)
+    # P13 — quyết định của người dùng 2026-10-01: qwen-3.8-27b đứng đầu thang
+    # Cerebras; gpt-oss-120b ở lại CÙNG tier làm lưới hứng cửa sổ đói reasoning
+    # (sàn 3072 token phía trên là bảo hiểm, không phải lý do bỏ thứ tự này).
+    check("Cerebras prefers qwen-3.8-27b first (P13)",
+          '"CEREBRAS_CHAT_MODELS", "qwen-3.8-27b,gpt-oss-120b"' in MAIN)
+    check("health names qwen-3.8-27b as the first Cerebras model (P13)",
+          "'CEREBRAS_CHAT_MODELS', 'qwen-3.8-27b'" in MAIN)
+    # P15-fix — payload dưới fence KHÁC (```json / ``` trần) phải được trích lại
+    # theo GIÁ TRỊ; nếu không, JSON thô đi thẳng vào chat (báo cáo 2026-10-01:
+    # "response của chatbot bị gì đây" — hiện nguyên khối JSON).
+    check("a plain-fenced mathviz payload is recovered in main.py (P15-fix)",
+          "mathviz_contract.recover_fenced_mathviz(raw)" in MAIN)
+
+
 def main():
     print("=== Chat budget tests (offline) ===")
     test_env_budget()
@@ -453,6 +633,7 @@ def main():
     test_event_loop_liveness()
     test_complexity_wiring()
     test_main_py_wiring()
+    test_tier_clamps()
     print(f"\n{checks - len(failures)}/{checks} checks passed")
     if failures:
         print("FAILED: " + ", ".join(failures))

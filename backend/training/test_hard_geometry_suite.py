@@ -16,6 +16,8 @@ if hasattr(sys.stderr, "reconfigure"):
 from PIL import Image, ImageDraw, ImageFont
 from gradio_client import Client, handle_file
 
+# NOTE (P6, 2026-10-01): this Space answers 401 RepositoryNotFound — point this
+# constant at a live Space (and export HF_TOKEN) before re-running the suite.
 HF_SPACE_ID = "WilliamShakespear/duomath-qwen-vl-demo"
 # Phase 3: never hard-code a token — export HF_TOKEN (or HF_API_KEY) in the
 # environment before running this suite.

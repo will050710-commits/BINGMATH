@@ -22,6 +22,12 @@ services:
         value: "2"
       - key: GROQ_API_KEY
         sync: false
+      # P11 — optional second Groq key for the rotation pool: a 429/401/413 on
+      # one key cools THAT key down and the retry runs on the next one, instead
+      # of retiring the provider's whole tier for the day. Set the value in the
+      # dashboard, never here.
+      - key: GROQ_API_KEY_SECONDARY
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: SELF_URL
@@ -137,3 +143,40 @@ services:
       # existed on one Windows dev machine and used to crash the boot on Linux.
       - key: EASYOCR_MODEL_DIR
         sync: false
+      # ── P8 (2026-10-01) — Cerebras: fastest free text ladder ──────────────
+      # OpenAI-compatible; serves qwen-3.8-27b / gpt-oss-120b, the same model
+      # families the rest of the pipeline already uses. Both are REASONING
+      # models, so the tier floors max_tokens at 3072 — a starved call returns
+      # HTTP 200 with empty content (observed live). Cloudflare fronts this API
+      # and answers "error code: 1010" to some non-browser TLS fingerprints;
+      # our httpx client passes (verified live). Key is a secret: set the value
+      # in the Render dashboard, never here.
+      # P13 (user decision 2026-10-01): qwen-3.8-27b first; gpt-oss-120b is the
+      # in-tier fallback that absorbs a reasoning-starved window.
+      - key: CEREBRAS_API_KEY
+        sync: false
+      - key: CEREBRAS_CHAT_MODELS
+        value: "qwen-3.8-27b,gpt-oss-120b"
+      # ── P12 (2026-10-01) — NVIDIA NIM: math reasoning (Tier 2.5, between
+      # Groq and OpenRouter) + the coding helper behind the MathViz repair
+      # path. OpenAI-compatible; /v1/models carries NO quota headers, so usage
+      # is counted client-side for the admin meter. Both keys join the same
+      # rotation pool as Groq (401/403/413/429 cools one key, the retry runs on
+      # the next). Keys are secrets: set them in the dashboard, never here.
+      # Math models are REASONING models — the tier floors max_tokens at 3072.
+      - key: NVIDIA_API_KEY_PRIMARY
+        sync: false
+      - key: NVIDIA_API_KEY_SECONDARY
+        sync: false
+      - key: NVIDIA_MATH_MODELS
+        value: "nvidia/nemotron-3-super-120b-a12b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"
+      - key: NVIDIA_CODE_MODELS
+        value: "poolside/laguna-xs-2.1,openai/gpt-oss-20b"
+      # ── P10 (2026-10-01) — token/quota meter ──────────────────────────────
+      # Retention for token_usage_log (days; 0 = keep forever). The meter
+      # self-counts every provider from its usage payloads; Cerebras/Groq rows
+      # also carry a live remaining/limit snapshot from their response headers
+      # (Gemini/NVIDIA send none — the admin page labels those "self-count").
+      - key: TOKEN_USAGE_RETENTION_DAYS
+        value: "30"
+

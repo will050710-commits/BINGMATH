@@ -74,6 +74,44 @@ CHAT_VERIFY_BUDGET_S = env_budget("CHAT_VERIFY_BUDGET_S", 25.0, 5.0, 90.0)
 # with no answer at all. Anything that calls a model now takes
 # min(this budget, what is left of the request).
 CHAT_GENERATE_BUDGET_S = env_budget("CHAT_GENERATE_BUDGET_S", 40.0, 5.0, 90.0)
+# Đợt canvas-libraries follow-up (P1) — the SAME invariant at TIER level.
+# Đợt 8 / 4I bounded the answer stage as a whole, but every provider call
+# INSIDE it kept a fixed timeout (15 s per Gemini tool round, 30 s per Groq
+# model, 90 s for the OpenRouter helper), so one unresponsive provider could
+# still burn the whole request before a fallback ever ran — the local
+# olympiad-image tests showed exactly that (two Gemini attempts × ~40 s, then
+# a Groq answer arriving after the deadline had already fired).
+#   * CHAT_GEN_MODEL_TIMEOUT_S — ceiling for ONE model call / tool round;
+#   * CHAT_GEN_RETRY_S         — ceiling for the no-tools retry of one call;
+#   * CHAT_TIER_MIN_S          — never START a new model/tier with less than
+#                                this much of the request left (skip ahead, or
+#                                land on the local MathGPT floor).
+CHAT_GEN_MODEL_TIMEOUT_S = env_budget("CHAT_GEN_MODEL_TIMEOUT_S", 22.0, 5.0, 90.0)
+CHAT_GEN_RETRY_S = env_budget("CHAT_GEN_RETRY_S", 15.0, 5.0, 60.0)
+CHAT_TIER_MIN_S = env_budget("CHAT_TIER_MIN_S", 12.0, 3.0, 60.0)
+# P1b (live-report follow-up): ALWAYS leave this much for the local MathGPT
+# floor. The ladder is only useful if it stops in time for the one tier that
+# cannot fail — without the floor, two slow Gemini attempts (22 s cap + 15 s
+# retry each) consumed the whole 75 s request and the student got a 504 even
+# though an instant local answer was one step away. Raised to 10 s by P1d: the
+# post-generation stages (verification, telemetry, response assembly) still run
+# AFTER the reply exists, and a 3 s cushion lost the race with the deadline
+# middleware twice in a row during the live tests.
+CHAT_LOCAL_FLOOR_S = env_budget("CHAT_LOCAL_FLOOR_S", 10.0, 3.0, 30.0)
+
+
+def env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    """Integer sibling of ``env_budget`` — identical fail-safe rules."""
+    return int(env_budget(name, float(default), float(minimum), float(maximum)))
+
+
+# Đợt canvas-libraries follow-up (P2): the Groq free tier rejects a request
+# whose input + max_tokens crosses its per-minute token budget ("Request too
+# large for model …") — which is what every image request hit once the vision
+# text made the prompt long. The fallback tiers are the safety net, not the
+# showpiece, so they answer with a trimmed context and a capped answer length.
+CHAT_FALLBACK_MAX_TOKENS = env_int("CHAT_FALLBACK_MAX_TOKENS", 1600, 256, 8192)
+CHAT_FALLBACK_KEEP_MESSAGES = env_int("CHAT_FALLBACK_KEEP_MESSAGES", 4, 1, 12)
 # Knowledge-base / problem-bank retrieval (Đợt 4H-2b). It is CPU-bound and runs in
 # a thread, and the answer is still useful without the reference block — so this
 # budget decides only how long we WAIT for retrieval, never whether we answer.
@@ -148,4 +186,10 @@ def stage_plan() -> Dict[str, float]:
         "verify_s": CHAT_VERIFY_BUDGET_S,
         "retrieval_s": CHAT_RETRIEVAL_BUDGET_S,
         "generate_s": CHAT_GENERATE_BUDGET_S,
+        # P1/P2 — per-tier clamps and the fallback payload cap.
+        "gen_model_s": CHAT_GEN_MODEL_TIMEOUT_S,
+        "gen_retry_s": CHAT_GEN_RETRY_S,
+        "tier_min_s": CHAT_TIER_MIN_S,
+        "local_floor_s": CHAT_LOCAL_FLOOR_S,
+        "fallback_max_tokens": CHAT_FALLBACK_MAX_TOKENS,
     }

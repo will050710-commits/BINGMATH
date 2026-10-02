@@ -33,7 +33,13 @@ def _scrub_secrets(message: str) -> str:
     return scrubbed
 
 
-# Manual .env loader (0-dependency)
+# Manual .env loader (0-dependency).
+# P11-fix (2026-10-01): a value ALREADY present in the environment WINS over the
+# file. The old loader wrote the file's value back over it unconditionally, so
+# every override exported by a shell, the Render dashboard or a live probe was
+# silently swallowed — that is exactly how a probe that set "invalid" provider
+# keys still reached a real Groq tier during P12 development. File values now
+# only fill variables that are unset or empty (the 12-factor direction).
 _env_path = os.path.join(os.path.dirname(__file__), ".env")
 if os.path.exists(_env_path):
     with open(_env_path, "r", encoding="utf-8") as f:
@@ -41,7 +47,9 @@ if os.path.exists(_env_path):
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
-                os.environ[k.strip()] = v.strip()
+                _k, _v = k.strip(), v.strip()
+                if os.environ.get(_k) in (None, ""):
+                    os.environ[_k] = _v
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from contextlib import asynccontextmanager
@@ -406,6 +414,112 @@ def quality_log(surface: str, model: str = "", tier: str = "", provider: str = "
         logger.debug("[quality] log skipped: %s", e)
 
 
+def _token_meter_sources() -> dict:
+    """P10 — nhãn TRUNG THỰC cho từng kim đo: provider nào gửi header quota
+    (đo LIVE) và provider nào chỉ có thể tự đếm từ payload usage."""
+    return {
+        "cerebras": "live+self-count",
+        "groq": "live+self-count",
+        "gemini": "self-count",
+        "nvidia": "self-count",
+        "openrouter": "self-count",
+    }
+
+
+def token_log(provider: str, model: str = "", key_id: str = "", usage=None,
+              surface: str = "", quota=None) -> None:
+    """P10 — ghi MỘT dòng cho một lời gọi provider đã trả lời được.
+
+    Không bao giờ raise (cùng hợp đồng với quality_log): đồng hồ đo không được
+    làm hỏng request nó đang đo. `usage` là dict đã chuẩn hoá bởi token_meter.*;
+    `quota` là ảnh chụp remaining/limit khi provider gửi header (Cerebras/Groq),
+    None với Gemini/NVIDIA — trang admin dựa vào đó để ghi "self-count" thay vì
+    vẽ một kim live giả.
+    """
+    try:
+        u = usage or {}
+        db = get_db()
+        try:
+            db.execute(
+                "INSERT INTO token_usage_log (provider, model, key_id, input_tokens,"
+                " output_tokens, total_tokens, reasoning_tokens, surface, quota_json)"
+                " VALUES (?,?,?,?,?,?,?,?,?)",
+                (str(provider)[:24], str(model or "")[:80], str(key_id or "")[:12],
+                 int(u.get("input_tokens") or 0), int(u.get("output_tokens") or 0),
+                 int(u.get("total_tokens") or 0), int(u.get("reasoning_tokens") or 0),
+                 str(surface or "")[:24],
+                 (json.dumps(quota)[:600] if quota else "")),
+            )
+            db.commit()
+            # Cùng cơ chế retention của quality_log: dọn cơ hội, rẻ vì có index.
+            try:
+                days = token_meter.retention_days()
+                if days > 0:
+                    db.execute("DELETE FROM token_usage_log WHERE created_at < datetime('now', ?)",
+                               (f"-{days} days",))
+                    db.commit()
+            except Exception:
+                pass
+        finally:
+            db.close()
+    except Exception as e:  # noqa: BLE001
+        logger.debug("[token-meter] log skipped: %s", e)
+
+
+def token_usage_summary(days: int = 1) -> dict:
+    """P10 — payload cho /api/admin/token-usage.
+
+    Ba phần, và `sources` nói thật phần nào đo được LIVE:
+      * `per_provider` — tổng token/lượt gọi từ log của CHÍNH chúng ta, gom
+        theo provider + model (kèm token suy nghĩ tách riêng — bài học P8);
+      * `live_quota` — ảnh chụp header quota mới nhất mỗi provider (chỉ
+        Cerebras và Groq gửi header, kiểm chứng live 2026-10-01);
+      * `keys` — trạng thái bể khoá live/cooling cho từng khoá (P11).
+    Không bao giờ raise: bảng chưa migrate thì trả khung rỗng kèm ghi chú.
+    """
+    window = f"-{max(1, int(days))} days"
+    db = get_db()
+    try:
+        rows = db.execute(
+            "SELECT provider, model, COUNT(*) AS calls,"
+            " SUM(input_tokens) AS input_tokens, SUM(output_tokens) AS output_tokens,"
+            " SUM(total_tokens) AS total_tokens, SUM(reasoning_tokens) AS reasoning_tokens"
+            " FROM token_usage_log WHERE created_at >= datetime('now', ?)"
+            " GROUP BY provider, model ORDER BY total_tokens DESC LIMIT 80",
+            (window,),
+        ).fetchall()
+        per_provider = [{
+            "provider": r["provider"], "model": r["model"], "calls": r["calls"],
+            "input_tokens": r["input_tokens"] or 0, "output_tokens": r["output_tokens"] or 0,
+            "total_tokens": r["total_tokens"] or 0, "reasoning_tokens": r["reasoning_tokens"] or 0,
+        } for r in rows]
+        live_quota: dict = {}
+        for provider in ("cerebras", "groq", "nvidia", "gemini", "openrouter"):
+            row = db.execute(
+                "SELECT quota_json, created_at FROM token_usage_log"
+                " WHERE provider = ? AND COALESCE(quota_json,'') <> ''"
+                " ORDER BY id DESC LIMIT 1", (provider,)).fetchone()
+            if row and row["quota_json"]:
+                try:
+                    live_quota[provider] = {**json.loads(row["quota_json"]),
+                                            "captured_at": row["created_at"]}
+                except Exception:
+                    pass
+        return {
+            "days": int(days),
+            "per_provider": per_provider,
+            "live_quota": live_quota,
+            "keys": {"groq": GROQ_KEY_POOL.snapshot(), "nvidia": NVIDIA_KEY_POOL.snapshot()},
+            "sources": _token_meter_sources(),
+        }
+    except Exception as e:  # noqa: BLE001
+        return {"days": int(days), "per_provider": [], "live_quota": {}, "keys": {},
+                "sources": _token_meter_sources(),
+                "note": f"meter table is not queryable yet: {e}"}
+    finally:
+        db.close()
+
+
 def quality_summary(days: int = 7) -> dict:
     """Aggregate the last `days` of AI outcomes per surface + model.
 
@@ -597,6 +711,13 @@ except Exception as _e_ocr:  # noqa: BLE001 — ImportError, or an unusable weig
 DB_PATH   = os.path.join(os.path.dirname(__file__), "duomath.db")
 GROQ_BASE = "https://api.groq.com/openai/v1"
 GROQ_KEY  = os.environ.get("GROQ_API_KEY", "")
+# P8 (2026-10-01): Cerebras — OpenAI-compatible and the fastest of the free
+# ladders; it serves the same qwen-3.8-27b / gpt-oss-120b families the pipeline
+# already uses. NOTE: Cloudflare fronts this API and answers "error code: 1010"
+# to some non-browser TLS fingerprints (Python urllib was blocked live); httpx —
+# the client this service uses — passes, verified 2026-10-01.
+CEREBRAS_BASE = "https://api.cerebras.ai/v1"
+CEREBRAS_KEY = os.environ.get("CEREBRAS_API_KEY", "")
 SELF_URL  = os.environ.get("SELF_URL", "")
 
 # ── Vision Agent for Olympiad Geometry (Qwen2.5-VL-72B via OpenRouter) ───────
@@ -623,6 +744,31 @@ import vnhsge_bank
 # it, so a stalled pipeline answers an honest 504 instead of being killed by the
 # proxy — a kill the browser reports as a CORS failure (see the module docstring).
 import chat_budget
+import chat_routing  # P5: figure-only vs solve routing for image requests
+import fallback_policy  # P2: payload shaping for the generation fallback tiers
+# P11 — bể khoá đa khoá cho các tầng free (Groq hôm nay; NVIDIA P12 theo cùng
+# khuôn mẫu): 429/401/413 làm cooldown MỘT khoá rồi thử lại bằng khoá kế tiếp
+# thay vì gạch cả nhà cung cấp; cooldown đọc từ header reset của provider.
+# Xem key_pool.py và test_key_pool.py.
+import key_pool
+# P10 — the token/quota meter: pure parsing in token_meter.py, the SQL in
+# token_log()/token_usage_summary() (same never-raise contract as quality_log).
+import token_meter
+GROQ_KEY_POOL = key_pool.KeyPool(
+    key_pool.parse_keys(os.environ.get("GROQ_API_KEY", ""),
+                        os.environ.get("GROQ_API_KEY_SECONDARY", "")),
+    name="groq",
+)
+# P12 — NVIDIA NIM: math reasoning (Tier 2.5) + the coding helper for the
+# MathViz refine path; its vision models join in P14. OpenAI-compatible, and
+# /v1/models carries NO quota headers, so usage is metered client-side (P10).
+# Same pool shape as Groq: PRIMARY first, SECONDARY adds a rotation key.
+NVIDIA_BASE = "https://integrate.api.nvidia.com/v1"
+NVIDIA_KEY_POOL = key_pool.KeyPool(
+    key_pool.parse_keys(os.environ.get("NVIDIA_API_KEY_PRIMARY", ""),
+                        os.environ.get("NVIDIA_API_KEY_SECONDARY", "")),
+    name="nvidia",
+)
 # Đợt 8 / 4I — how much work a diagram deserves, decided before the expensive
 # stages run. Every per-stage budget here SUMS to no more than
 # CHAT_REQUEST_TIMEOUT_S, which is what the fixed stage budgets did not do.
@@ -653,6 +799,7 @@ def _solver_summary(verification) -> dict:
     v = verification or {}
     return {
         "verified": v.get("verified"),
+        "status": v.get("status"),
         "repaired": v.get("repaired"),
         "mode": v.get("mode"),
         "notes": v.get("notes"),
@@ -1014,7 +1161,10 @@ _WIDGET_KEYWORDS: dict[str, list[str]] = {
         "phép quay", "đối xứng trục", "tịnh tiến", "vị tự", "vectơ", "vector", "trung tuyến", "trọng tâm",
         "hình elip", "elip", "ellipse", "tiêu cự", "tiêu điểm", "tâm sai", "bán trục",
         "đa giác đều", "ngũ giác", "lục giác", "bát giác", "đa giác",
-        "minh họa", "minh hoạ", "vẽ hình", "dựng hình", "hình vẽ", "tương tác", "hình học", "bài toán này"
+        # P14-fix: the generic UI words ("minh họa", "tương tác", "bài toán này",
+        # "hình học") were REMOVED — the threeD placeholder matched them and
+        # routed every image to geometry_2d. Only explicit drawing intent stays.
+        "vẽ hình", "dựng hình", "hình vẽ"
     ],
     "geometry_3d":       [
         "hình chóp", "hình hộp", "hình lăng trụ", "mặt cầu", "mặt nón", "mặt trụ",
@@ -1363,6 +1513,40 @@ def generate_mock_mathgpt_reply(user_message: str, widget: str | None = None, mo
     )
 
 
+def _local_floor_reply(user_message: str, widget: str | None, chat_mode: str, *,
+                       had_image: bool, read_text: str = "") -> str:
+    """P14-fix — câu trả lời CUỐI của thang tier, trung thực với request có ẢNH.
+
+    Trước đây đường local luôn gọi `generate_mock_mathgpt_reply`, kể cả khi
+    request có ảnh: câu trả lời vì thế là một BÀI MẪU bịa ("Cho tam giác ABC…
+    trọng tâm G") kèm hình minh hoạ generic — trong khi ảnh của học sinh là bài
+    khác hẳn. Báo cáo từ lớp học 2026-10-01: ảnh tứ diện $S.ABC$ nhận về minh
+    hoạ tam giác 2D "không liên quan gì".
+
+    Luật mới:
+      * không ảnh → giữ nguyên bài mẫu demo (không có gì để sai);
+      * có ảnh + đọc được gì đó → trả về ĐÚNG những gì đọc được, nói rõ CHƯA
+        giải, KHÔNG dựng hình bịa;
+      * có ảnh + không đọc được gì → mời chụp lại rõ hơn, cũng không bịa.
+    """
+    if not had_image:
+        return generate_mock_mathgpt_reply(user_message, widget, chat_mode)
+    read = (read_text or "").strip()
+    if read:
+        excerpt = read[:600] + ("…" if len(read) > 600 else "")
+        return (
+            "⚠️ Các model AI đang bận nên mình chưa thể giải trọn vẹn lượt này.\n\n"
+            "Đây là **nội dung mình đọc được từ ảnh của em** (chưa phải lời giải):\n\n"
+            f"> {excerpt}\n\n"
+            "Em thử gửi lại sau vài giây, hoặc gõ đề bằng chữ để mình giải chi tiết nhé."
+        )
+    return (
+        "⚠️ Các model AI đang bận và mình **chưa đọc được nội dung trong ảnh** "
+        "nên chưa thể giải lượt này.\n\n"
+        "Em thử chụp lại ảnh rõ hơn (đủ sáng, không nghiêng) hoặc gõ đề bằng chữ giúp mình nhé."
+    )
+
+
 def detect_widget(user_message: str, matched_node_ids: list | None = None) -> str | None:
     """Detect which mathviz widget to use for this message.
     Priority 1: graph node mapping (exact, fast).
@@ -1370,6 +1554,16 @@ def detect_widget(user_message: str, matched_node_ids: list | None = None) -> st
     Priority 3: other keyword scan on user message.
     Returns None if no widget detected — prompt will NOT include mathviz section.
     """
+    # P14-fix (2026-10-01, classroom report): the UI's canned prompts are
+    # INSTRUCTIONS TO THE APP, not geometry facts. The threeD placeholder
+    # ("Minh họa tương tác cho bài toán này.") used to match the generic 2D
+    # keywords and pinned EVERY image — a tetrahedron photo included — to the
+    # geometry_2d template, which the local floor then returned as an unrelated
+    # 2D triangle. A placeholder carries no evidence; blank it and let the
+    # vision text (or the caller's fallback) decide.
+    if user_message and chat_routing.is_placeholder_message(user_message):
+        user_message = ""
+
     # Priority 1: use graph-matched node IDs
     if matched_node_ids:
         for node_id in matched_node_ids:
@@ -1399,6 +1593,8 @@ _VISUAL_RULES = (
     "ĐÚNG MỘT khối ```mathviz chứa JSON hợp lệ theo schema bên dưới.\n"
     "- Nếu câu hỏi thuần lý thuyết/định nghĩa, không có gì cụ thể để vẽ → KHÔNG thêm khối này.\n"
     "- Khối ```mathviz LUÔN là phần cuối cùng, không kèm lời dẫn, không xen giữa các đoạn giải thích.\n"
+    "- Nếu có lời giải: trình bày lời giải TRƯỚC, và bản minh họa ```mathviz đặt SAU CÙNG "
+    "(đúng thứ tự: lời giải → bản minh họa).\n"
     "- Điền toàn bộ số liệu (default, points, dims, params...) khớp ĐÚNG với dữ liệu thật trong đề "
     "bài — TUYỆT ĐỐI không bịa số liệu mẫu khác với đề.\n"
     "- Bám sát đúng tên khóa (key) trong schema, không tự ý đổi tên hay thêm khóa lạ.\n"
@@ -1970,6 +2166,18 @@ def _extract_mathviz_block(raw: str) -> tuple[str, dict | None]:
                 return text, repaired
         except Exception as e_repair:
             logger.debug(f"[MathViz] json_repair could not fix the block: {e_repair}")
+    # P15-fix (classroom report 2026-10-01): the model sometimes wraps the
+    # payload in a PLAIN fence (```json / ```javascript / bare ```). The old
+    # extractor only knew "```mathviz", so such a block sailed through to the
+    # client untouched and the chat showed raw JSON instead of the figure.
+    # Recover it by VALUE — identical validation/repair takes over downstream.
+    try:
+        _alt_text, _alt_data = mathviz_contract.recover_fenced_mathviz(raw)
+        if _alt_data is not None:
+            logger.info("[MathViz] recovered a plain-fenced mathviz block (P15-fix).")
+            return _alt_text, _alt_data
+    except Exception as _e_fence:
+        logger.debug(f"[MathViz] plain-fence recovery skipped: {_e_fence}")
     return raw, None
 
 
@@ -1985,8 +2193,6 @@ async def _repair_mathviz_with_free_openrouter(widget: str, broken_json: str, er
     reply without a visual, same graceful degradation as before this patch).
     """
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
-    if not openrouter_key:
-        return None
     # Phase 4 / Đợt 3: minimax/minimax-m3:free no longer exists on the free tier
     # (verified live 2026-09-26); the repair prompt is a text-only JSON task, so
     # the strongest free model is the right default here.
@@ -1998,6 +2204,33 @@ async def _repair_mathviz_with_free_openrouter(widget: str, broken_json: str, er
         f"CHI tra ve dung 1 object JSON hop le, khong them chu, khong markdown fences.\n\n"
         f"JSON goc:\n{broken_json}"
     )
+    # P12 — bước RẺ trước: helper lập trình NVIDIA nhận đúng prompt sửa này,
+    # không cần OPENROUTER_API_KEY, và chỉ tốn một lượt free trước khi tier
+    # OpenRouter (đắt hơn về quota) được hỏi tới.
+    try:
+        _nv_repair = await _nvidia_coder(prompt, max_tokens=1500, timeout=25.0)
+    except Exception:  # noqa: BLE001 — a future edit must not kill the path
+        _nv_repair = None
+    if _nv_repair:
+        _nv_raw, _nv_used_model = _nv_repair
+        _nv_clean = _re_mathviz.sub(r'^```[a-zA-Z]*\n?|```\s*$', '', _nv_raw).strip()
+        _nv_data = None
+        try:
+            _nv_data = json.loads(_nv_clean)
+        except Exception:
+            if _JSON_REPAIR_AVAILABLE:
+                try:
+                    _nv_fixed = _repair_json(_nv_clean, return_objects=True)
+                    if isinstance(_nv_fixed, str):
+                        _nv_fixed = json.loads(_nv_fixed)
+                    _nv_data = _nv_fixed if isinstance(_nv_fixed, dict) else None
+                except Exception:
+                    _nv_data = None
+        if isinstance(_nv_data, dict) and not validate_mathviz(widget, _nv_data):
+            logger.info(f"[MathViz] NVIDIA coder ({_nv_used_model}) fixed widget '{widget}'.")
+            return _nv_data
+    if not openrouter_key:
+        return None
     headers = {
         "Authorization": f"Bearer {openrouter_key}",
         "HTTP-Referer": "https://duomath.local",
@@ -2554,6 +2787,26 @@ def init_db():
         )""", None),
         ("CREATE INDEX IF NOT EXISTS idx_quality_created ON ai_quality_log(created_at)", None),
         ("CREATE INDEX IF NOT EXISTS idx_quality_surface ON ai_quality_log(surface, model)", None),
+        # ── P10 — token/quota meter ─────────────────────────────────────────
+        # One row per provider call that returned a usable answer. Providers
+        # that send quota headers (Cerebras/Groq) also store the live
+        # remaining/limit snapshot; Gemini/NVIDIA have none, so the admin gauge
+        # must label those "self-count" (see token_meter.py) — never a fake
+        # live number.
+        ("""CREATE TABLE IF NOT EXISTS token_usage_log (
+            id               INTEGER PRIMARY KEY AUTOINCREMENT,
+            provider         TEXT NOT NULL,
+            model            TEXT DEFAULT '',
+            key_id           TEXT DEFAULT '',
+            input_tokens     INTEGER DEFAULT 0,
+            output_tokens    INTEGER DEFAULT 0,
+            total_tokens     INTEGER DEFAULT 0,
+            reasoning_tokens INTEGER DEFAULT 0,
+            surface          TEXT DEFAULT '',
+            quota_json       TEXT DEFAULT '',
+            created_at       TEXT DEFAULT (datetime('now'))
+        )""", None),
+        ("CREATE INDEX IF NOT EXISTS idx_tokens_created ON token_usage_log(provider, created_at)", None),
         # ── Phase 4 / Đợt 4E: spaced repetition for weak skills ────────────
         # One row per (user, weak skill). `card_json` is the fsrs Card state;
         # `reps`/`lapses` are OUR counters because fsrs 6 keeps them in its
@@ -2650,13 +2903,155 @@ def _fetch_scores(db, uid: int):
     ).fetchall()
     return [test_dict(t) for t in tests], [game_dict(g) for g in games]
 
-_groq_headers_cache: dict | None = None
-def groq_headers() -> dict:
-    """Cache header dict — tránh tạo lại mỗi request."""
-    global _groq_headers_cache
-    if _groq_headers_cache is None:
-        _groq_headers_cache = {"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"}
-    return _groq_headers_cache
+def groq_headers(key: str | None = None) -> dict:
+    """Bearer cho khoá Groq ĐANG hoạt động trong bể khoá (P11).
+
+    Đổi từ cache-global sang dựng-mỗi-lần là chủ ý: khoá hoạt động thay đổi khi
+    một khoá bị 429/401/413 (xem key_pool.py) — cache lại sẽ ghim pipeline vào
+    một khoá đang cooldown cho tới khi restart. Một dict không đáng kể so với
+    round-trip HTTP.
+    """
+    return key_pool.headers_for(key or GROQ_KEY_POOL.active())
+
+
+def cerebras_headers() -> dict:
+    """Headers for the Cerebras tier (P8). No cache needed — one dict per call
+    is trivial next to the HTTP round-trip, and this keeps the cached-global
+    pattern of `groq_headers` from growing a second key."""
+    return {"Authorization": f"Bearer {CEREBRAS_KEY}", "Content-Type": "application/json"}
+
+
+async def _groq_post_with_key_rotation(client, url: str, payload: dict,
+                                       *, timeout: float | None = None,
+                                       surface: str = "chat"):
+    """POST một payload lên Groq, xoay khoá khi gặp lỗi CẤP KHOÁ (P11).
+
+    401/403/413/429 là lỗi của MỘT khoá cụ thể: bể khoá ghi cooldown cho khoá
+    đó rồi thử CÙNG model bằng khoá kế tiếp (vòng lặp model ở caller chỉ xoay
+    model — trước P11 đó là đòn duy nhất khi một khoá cạn quota, nên một khoá
+    hỏng là mất luôn cả tầng). Trả về response cuối cùng để caller tự xử lý
+    trạng thái như cũ; lỗi mạng vẫn ném ra nguyên trạng.
+    """
+    keys = GROQ_KEY_POOL.request_order() or [""]
+    last = None
+    for _i, _key in enumerate(keys):
+        last = await client.post(url, headers=key_pool.headers_for(_key),
+                                 json=payload, timeout=timeout)
+        GROQ_KEY_POOL.note_response(_key, last.status_code, last.headers)
+        if last.status_code == 200:
+            # P10: count real usage at the single choke point every Groq call
+            # goes through. Wrapped so a malformed body can never break a call
+            # that has already succeeded.
+            try:
+                token_log("groq", str(payload.get("model") or ""), key_pool.key_id(_key),
+                          token_meter.normalize_openai_usage(last.json()),
+                          surface=surface,
+                          quota=token_meter.quota_snapshot("groq", last.headers))
+            except Exception:
+                pass
+        if not GROQ_KEY_POOL.retryable(last.status_code) or _i == len(keys) - 1:
+            break
+        print(f"[WARN] Groq trả {last.status_code} trên khoá {key_pool.key_id(_key)}"
+              f" — xoay khoá tiếp theo cho cùng model")
+    return last
+
+
+async def _nvidia_post_with_key_rotation(client, url: str, payload: dict,
+                                         *, timeout: float | None = None,
+                                         surface: str = "chat"):
+    """POST lên NVIDIA NIM, xoay khoá như bản Groq (P12) — cùng luật, cùng bể
+    khoá kiểu dữ liệu: 401/403/413/429 làm cooldown một khoá rồi thử lại bằng
+    khoá kế tiếp; response cuối cùng trả về cho caller."""
+    keys = NVIDIA_KEY_POOL.request_order() or [""]
+    last = None
+    for _i, _key in enumerate(keys):
+        last = await client.post(url, headers=key_pool.headers_for(_key),
+                                 json=payload, timeout=timeout)
+        NVIDIA_KEY_POOL.note_response(_key, last.status_code, last.headers)
+        if last.status_code == 200:
+            # P10: NVIDIA sends NO quota headers — self-count only, and keep the
+            # reasoning tokens separate (Nemotron spends most of its budget there).
+            try:
+                token_log("nvidia", str(payload.get("model") or ""), key_pool.key_id(_key),
+                          token_meter.normalize_openai_usage(last.json()),
+                          surface=surface,
+                          quota=token_meter.quota_snapshot("nvidia", last.headers))
+            except Exception:
+                pass
+        if not NVIDIA_KEY_POOL.retryable(last.status_code) or _i == len(keys) - 1:
+            break
+        print(f"[WARN] NVIDIA trả {last.status_code} trên khoá {key_pool.key_id(_key)}"
+              f" — xoay khoá tiếp theo cho cùng model")
+    return last
+
+
+async def _nvidia_chat(models: list, messages: list, *, max_tokens: int,
+                       temperature: float = 0.2, timeout: float,
+                       surface: str = "chat") -> tuple:
+    """Một lượt chat NVIDIA NIM (OpenAI-compatible) có xoay khoá (P12).
+
+    Các model math ở đây cũng là REASONING models: phần suy nghĩ tính vào
+    max_tokens nên giá trị được FLOOR ở 3072 (đúng bài học P8), và câu trả lời
+    đọc bằng `.get("content")` — một HTTP 200 thiếu `content` phải rơi sang
+    model kế tiếp chứ không được ném KeyError giết cả tier. Trả
+    (content, model_used); ném RuntimeError khi mọi model đều rỗng/lỗi để
+    caller chuyển tier.
+    """
+    client = await get_http_client()
+    last_err = "no model configured"
+    for model in models:
+        payload = {
+            "model": model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max(3072, int(max_tokens)),
+        }
+        try:
+            resp = await _nvidia_post_with_key_rotation(
+                client, f"{NVIDIA_BASE}/chat/completions", payload, timeout=timeout,
+                surface=surface)
+        except Exception as exc:  # noqa: BLE001 — a dead tier must not kill the chain
+            last_err = f"{model}: {type(exc).__name__}: {exc}"
+            print(f"[WARN] NVIDIA ({model}) loi mang: {last_err}")
+            continue
+        if resp.status_code != 200:
+            last_err = f"{model}: HTTP {resp.status_code} {resp.text[:120]}"
+            print(f"[WARN] NVIDIA ({last_err})")
+            continue
+        try:
+            _choices = resp.json().get("choices") or [{}]
+            _msg = (_choices[0].get("message") or {})
+        except Exception:
+            _msg = {}
+        content = (_msg.get("content") or "").strip()
+        if content:
+            return content, model
+        last_err = f"{model}: 200 nhung content rong (reasoning an het max_tokens)"
+        print(f"[WARN] NVIDIA ({last_err}) — thu model tiep theo")
+    raise RuntimeError(f"every configured NVIDIA model failed: {last_err}")
+
+
+async def _nvidia_coder(prompt: str, *, max_tokens: int = 1500,
+                        timeout: float = 30.0):
+    """Helper lập trình cho đường sửa MathViz (P12) — bước rẻ tiền trước
+    OpenRouter. `NVIDIA_CODE_MODELS` mặc định poolside/laguna-xs-2.1 →
+    openai/gpt-oss-20b. Trả (content, model) hoặc None khi bể rỗng/mọi model
+    hỏng — caller giữ nguyên các fallback của nó."""
+    if not NVIDIA_KEY_POOL.has_keys():
+        return None
+    models = [m.strip() for m in os.environ.get(
+        "NVIDIA_CODE_MODELS", "poolside/laguna-xs-2.1,openai/gpt-oss-20b"
+    ).split(",") if m.strip()]
+    if not models:
+        return None
+    try:
+        return await _nvidia_chat(models, [{"role": "user", "content": prompt}],
+                                  max_tokens=max_tokens, temperature=0.0,
+                                  timeout=timeout, surface="repair")
+    except Exception as exc:  # noqa: BLE001
+        logger.debug(f"[NVIDIA] coder tier failed: {exc}")
+        return None
+
 
 def ensure_session(sid: str) -> list:
     db = get_db()
@@ -3555,6 +3950,18 @@ async def chat(request: Request):
     # Đợt 8 / 4I: WHICH tier answered, for the same reason — the soft-deadline
     # branch reports it before the model ladder ever runs.
     _answered = {"provider": "", "model": ""}
+    # P12-fix (2026-10-01): `_blind_image` used to be assigned ONLY inside the
+    # image branch, so a TEXT-ONLY request whose higher tiers failed evaluated
+    # `not _blind_image` in the Cerebras/Groq/NVIDIA tier gates and crashed with
+    # UnboundLocalError — a 500 instead of falling through to the next tier.
+    # (Exposed by the P12 live probe running with an invalid Gemini key.) False
+    # is the correct default: no image at all means no blind image.
+    _blind_image = False
+    # P14-fix: the tier-4 floor answers an IMAGE request with the honest note
+    # ("here is what was read / send a clearer photo") instead of a canned
+    # sample problem — and a reply that never claimed to be a solution must not
+    # carry the red "answer unverified" badge either.
+    _honest_floor = False
     session_id   = d.get("session_id") or str(uuid.uuid4())
     user_message = (d.get("message") or "").strip()
     image_data   = d.get("image")
@@ -3743,7 +4150,32 @@ async def chat(request: Request):
                     if _widget is None:
                         _widget = "geometry_2d"
             except Exception as ex:
-                print(f"[Chat] Stage 1 Vision Agent error: {ex}. Falling back to default Gemini vision.")
+                print(f"[Chat] Stage 1 Vision Agent error: {type(ex).__name__}: {ex}. Falling back to default Gemini vision.")
+
+        # ── P1c: hand MathReader's text to the answer tiers ──────────────────
+        # The vision AGENT and MathReader are two readers of the same page. When
+        # the agent fails but MathReader produced text, the generation tiers were
+        # still answering from the empty message alone (Groq/OpenRouter cannot
+        # see the image at all), so a readable page looked unreadable. Promote
+        # that text to `vision_description` — same field, same downstream paths
+        # (image_with_vision variant, figure-only routing, Groq).
+        if image_data and not vision_description and perception:
+            _mr_text = chat_routing.perception_text(perception)
+            if _mr_text:
+                vision_description = _mr_text
+
+        # P14-fix: with a canned placeholder as the message, the only real
+        # geometry evidence is the FIGURE ITSELF — let the vision text pick the
+        # widget, so a "hình chóp / tứ diện" description routes to geometry_3d
+        # instead of the geometry_2d fallback below.
+        if _widget is None and vision_description:
+            _widget = detect_widget(str(vision_description)[:1200])
+
+        # P1c: an image nobody could read is "blind": the text tiers cannot see
+        # the picture, and Groq's free tier rejects the big visualizer prompt
+        # outright (413 × 3 models, seen live 2026-10-01). Attempting them only
+        # burns the clock the local floor needs.
+        _blind_image = bool(image_data) and not vision_description
 
         # If widget not detected and vision agent not used, try local OCR fallback
         if not vision_description and _widget is None:
@@ -3760,6 +4192,23 @@ async def chat(request: Request):
         if _widget is None:
             _widget = "geometry_2d"
 
+    # ── P5: figure-only vs solve routing ─────────────────────────────────────
+    # Vision can read a DRAWING long before it can read a STATEMENT (the local
+    # olympiad tests: structure recognised, numbers absent). In that case the
+    # honest answer is the illustration itself — "gửi đề bài cụ thể" used to be
+    # the whole reply, next to a red badge for a check that had nothing to
+    # verify.
+    _reply_mode = chat_routing.decide_reply_mode(
+        image_data=image_data,
+        perception=perception,
+        vision_description=vision_description,
+        user_message=user_message,
+        enabled=os.environ.get("FIGURE_ONLY_ENABLED", "1").strip().lower()
+                not in ("0", "false", "off", "no"),
+    )
+    if _reply_mode == "figure_only":
+        logger.info("[Chat] figure-only reply: hình đọc được nhưng không có đề bài cụ thể")
+
     # Build prompt variant according to mode & widget
     if is_viz_request:
         system_prompt = (
@@ -3770,7 +4219,10 @@ async def chat(request: Request):
             "Do NOT include any extra text, preamble, or markdown code block wrappers (like ```json). Just output the raw JSON."
         )
     else:
-        if chat_mode in ("visualizer", "threeD"):
+        if _reply_mode == "figure_only":
+            # P5: build the FIGURE, do not attempt a solution.
+            prompt_variant = "visualizer"
+        elif chat_mode in ("visualizer", "threeD"):
             prompt_variant = "visualizer"
         elif chat_mode in ("solution", "raw_solution"):
             prompt_variant = chat_mode
@@ -3859,7 +4311,31 @@ async def chat(request: Request):
                 f"và {_cv_hints.get('circle_count_estimate', 0)} đường tròn trong ảnh. Hãy đối soát với hình và khai báo đầy đủ quan hệ dựng hình.]"
             )
 
-        if vision_description:
+        if vision_description and _reply_mode == "figure_only":
+            # P5 — the illustration-only hand-off. This instruction REPLACES the
+            # solve-first one so the model cannot "answer" a problem it was never
+            # given; main.py adds the calm ℹ️ note afterwards
+            # (chat_routing.FIGURE_ONLY_NOTE), so the promise holds even when
+            # the model forgets its closing line.
+            enhanced_user_message = (
+                f"{user_message}\n\n"
+                f"## CẤU TRÚC HÌNH HỌC TỪ HÌNH ẢNH (Vision AI):\n"
+                f"{vision_description}\n"
+                f"{cv_hint_text}\n\n"
+                f"YÊU CẦU (CHẾ ĐỘ CHỈ-VẼ-HÌNH — KHÔNG CÓ ĐỀ BÀI):\n"
+                f"1. KHÔNG bịa số liệu, KHÔNG tự đặt câu hỏi, KHÔNG giải — chỉ dựng lại hình.\n"
+                f"2. BẮT BUỘC dựng khối ```mathviz ... ``` với widget \"geometry_2d\" thể hiện ĐẦY ĐỦ "
+                f"các điểm/đoạn/đường tròn đã nhận diện, nhãn tên đúng như hình.\n"
+                f"3. Lời dẫn 1–2 câu: nói rõ đây là mô hình theo hình vẽ và mời em gửi đề đầy đủ; "
+                f"khối ```mathviz đặt CUỐI câu trả lời.\n"
+                f"4. TUYỆT ĐỐI KHÔNG đoán toạ độ điểm dựng hình — dùng \"constructions\" khi cần."
+            )
+            gemini_contents.append({
+                "role": "user",
+                "parts": [{"text": enhanced_user_message}]
+            })
+            history.append({"role": "user", "content": f"[Image + Vision AI] {user_message}"})
+        elif vision_description:
             # Stage 2 Handoff: Provide structured geometric primitives to Gemini for precision canvas generation
             enhanced_user_message = (
                 f"{user_message}\n\n"
@@ -3965,7 +4441,12 @@ async def chat(request: Request):
     _partial_note = ""
     if _plan and _budget.remaining() <= diagram_complexity.soft_deadline_s():
         try:
-            _partial_reply = generate_mock_mathgpt_reply(user_message, _widget, chat_mode)
+            # P14-fix: an image request gets the honest floor answer (what was
+            # read / ask for a clearer photo) — the canned sample problem was
+            # unrelated to the student's photo (live report 2026-10-01).
+            _partial_reply = _local_floor_reply(
+                user_message, _widget, chat_mode, had_image=bool(image_data),
+                read_text=(vision_description or chat_routing.perception_text(perception)) or "")
         except Exception as e_partial:
             logger.warning("[Chat] partial local answer failed (%s)", e_partial)
             _partial_reply = ""
@@ -4091,44 +4572,55 @@ async def chat(request: Request):
                 failed = False
                 for _gs_model in _groq05_pool_s:
                     _gs_payload = {**_groq05_s_payload, "model": _gs_model}
+                    # P11: cùng model, KHOÁ kế tiếp trước khi xoay model.
+                    # 429/401/413 làm cooldown một khoá; vòng pool model chỉ là
+                    # đòn thứ hai, không còn là đòn duy nhất.
+                    _gs_keys = GROQ_KEY_POOL.request_order() or [""]
                     try:
-                        async with client.stream(
-                            "POST", f"{GROQ_BASE}/chat/completions",
-                            headers=groq_headers(),
-                            json=_gs_payload,
-                            timeout=_gen_left
-                        ) as resp:
-                            if resp.status_code == 429:
-                                print(f"[WARN] Groq stream ({_gs_model}) 429 — thu model tiep theo trong pool")
-                                continue  # thu model tiep
-                            if resp.status_code != 200:
-                                print(f"[WARN] Groq stream ({_gs_model}) returned {resp.status_code} — fallback Gemini")
-                                failed = True
-                                break
-                            async for raw_line in resp.aiter_lines():
-                                if not raw_line:
-                                    continue
-                                line = raw_line.strip()
-                                if line.startswith("data: "):
-                                    data_str = line[6:]
-                                    if data_str.strip() == "[DONE]":
-                                        break
-                                    try:
-                                        chunk = json.loads(data_str)
-                                        choices = chunk.get("choices", [])
-                                        if choices:
-                                            delta = choices[0].get("delta", {})
-                                            token = delta.get("content", "")
-                                            if token:
-                                                full_reply.append(token)
-                                                yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
-                                    except Exception:
+                        for _gs_i, _gs_key in enumerate(_gs_keys):
+                            async with client.stream(
+                                "POST", f"{GROQ_BASE}/chat/completions",
+                                headers=key_pool.headers_for(_gs_key),
+                                json=_gs_payload,
+                                timeout=_gen_left
+                            ) as resp:
+                                GROQ_KEY_POOL.note_response(_gs_key, resp.status_code, resp.headers)
+                                if GROQ_KEY_POOL.retryable(resp.status_code) and _gs_i < len(_gs_keys) - 1:
+                                    print(f"[WARN] Groq stream ({_gs_model}) {resp.status_code} trên khoá "
+                                          f"{key_pool.key_id(_gs_key)} — xoay khoá tiếp theo")
+                                    continue  # cùng model, khoá kế tiếp
+                                if resp.status_code == 429:
+                                    print(f"[WARN] Groq stream ({_gs_model}) 429 — thu model tiep theo trong pool")
+                                    break  # hết khoá, thử model tiếp
+                                if resp.status_code != 200:
+                                    print(f"[WARN] Groq stream ({_gs_model}) returned {resp.status_code} — fallback Gemini")
+                                    failed = True
+                                    break
+                                async for raw_line in resp.aiter_lines():
+                                    if not raw_line:
                                         continue
-                            if full_reply:
-                                break  # da co token, dung lai
+                                    line = raw_line.strip()
+                                    if line.startswith("data: "):
+                                        data_str = line[6:]
+                                        if data_str.strip() == "[DONE]":
+                                            break
+                                        try:
+                                            chunk = json.loads(data_str)
+                                            choices = chunk.get("choices", [])
+                                            if choices:
+                                                delta = choices[0].get("delta", {})
+                                                token = delta.get("content", "")
+                                                if token:
+                                                    full_reply.append(token)
+                                                    yield f"data: {orjson.dumps({'token': token, 'session_id': session_id}).decode()}\n\n"
+                                        except Exception:
+                                            continue
+                                break  # khoá này stream xong (có hoặc chưa có token)
                     except Exception as _ex_g05s:
                         print(f"[WARN] Groq stream ({_gs_model}) loi: {_ex_g05s} — thu model tiep")
                         continue
+                    if failed or full_reply:
+                        break
                 else:
                     # Toan bo pool deu fail
                     failed = True
@@ -4280,6 +4772,9 @@ async def chat(request: Request):
             # Model pool: nếu qwen3.8-27b bị 429 (rate limit) thì thử model tiếp theo
             _groq05_pool = ["qwen/qwen3.8-27b", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]
             for _groq_priority_model in _groq05_pool:
+                if _budget.remaining() < chat_budget.CHAT_TIER_MIN_S:
+                    print(f"[Chat] Tier 0.5: còn {_budget.remaining():.1f}s — bỏ qua Groq, chuyển tier")
+                    break
                 try:
                     print(f"[Chat] Tier 0.5: Groq ({_groq_priority_model}) cho math canvas (text/vision-extracted)...")
                     _groq05_payload = {
@@ -4289,14 +4784,12 @@ async def chat(request: Request):
                         "max_tokens": max_tokens,
                         "stream": False,
                     }
-                    _groq05_resp = await client.post(
-                        f"{GROQ_BASE}/chat/completions",
-                        headers=groq_headers(),
-                        json=_groq05_payload,
-                        # Đợt 8 / 4I: bounded by the generation budget, not a fixed
-                        # 30 s — three pool entries at 30 s each is 90 s of clock
-                        # spent on ONE stage.
-                        timeout=_gen_left,
+                    # P11: xoay khoá trong bể trước khi bỏ model (429/401/413).
+                    _groq05_resp = await _groq_post_with_key_rotation(
+                        client, f"{GROQ_BASE}/chat/completions", _groq05_payload,
+                        # P1: per attempt — the model ceiling AND what is left of
+                        # the request (Đợt 8 kept only the second half).
+                        timeout=max(6.0, min(chat_budget.CHAT_GEN_MODEL_TIMEOUT_S, _budget.remaining())),
                     )
                     if _groq05_resp.status_code == 200:
                         reply = _groq05_resp.json()["choices"][0]["message"]["content"]
@@ -4326,7 +4819,11 @@ async def chat(request: Request):
                     "max_tokens": max_tokens,
                     "stream": False
                 }
-                resp = await client.post(endpoint_url, headers=hf_headers, json=hf_payload, timeout=60)
+                # P1: same clamp as every other provider call in this stage.
+                resp = await client.post(
+                    endpoint_url, headers=hf_headers, json=hf_payload,
+                    timeout=max(6.0, min(60.0, _budget.remaining())),
+                )
                 if resp.status_code == 200:
                     reply = resp.json()["choices"][0]["message"]["content"]
                     print(f"[Chat] Generated reply via {llm_provider} ({hf_model_name})")
@@ -4335,22 +4832,37 @@ async def chat(request: Request):
                 print(f"[WARN] {llm_provider} call failed: {ex_hf}. Falling back to Gemini.")
 
         # ── Tier 1: Gemini Core Brain ─────────────────────────────────────────
-        for current_model in fallback_models:
+        for _model_index, current_model in enumerate(fallback_models):
             if reply:
                 break
+            # P1: never START a model with less than the tier floor left — the
+            # request must still have room for the Groq/OpenRouter tiers after
+            # this one (and for the local answer as the last resort).
+            if _budget.remaining() < chat_budget.CHAT_TIER_MIN_S:
+                print(f"[Chat] Tier 1: còn {_budget.remaining():.1f}s (<{chat_budget.CHAT_TIER_MIN_S:.0f}s) — ngừng thử Gemini, chuyển tier")
+                break
+            # P1b: the PRIMARY model may use the whole generation budget (a slow
+            # but working provider needs more than 22 s to finish a 4096-token
+            # visualizer answer); every LATER model is a cheap retry, capped at
+            # the small ceiling. Both keep the local floor untouched.
+            _model_cap = (chat_budget.CHAT_GENERATE_BUDGET_S if _model_index == 0
+                          else chat_budget.CHAT_GEN_MODEL_TIMEOUT_S)
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent?key={gemini_api_key}"
             for attempt in range(1):
                 try:
                     curr_payload = json.loads(json.dumps(payload))
                     should_break_model = False
-                    should_continue_attempt = False
-                    # Tool calling multi-turn execution loop (up to 4 iterations)
+                    # Tool calling multi-turn execution loop (up to 4 iterations).
+                    # P1: every call takes min(per-model ceiling, what is left of
+                    # the request) — a fixed 15 s × 4 rounds × 5 models is how one
+                    # unresponsive provider used to eat the whole generation stage.
                     for tool_step in range(4):
-                        resp = await client.post(url, json=curr_payload, timeout=15)
+                        _call_timeout = max(5.0, min(_model_cap, _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S))
+                        resp = await client.post(url, json=curr_payload, timeout=_call_timeout)
                         if resp.status_code == 400 and "tools" in curr_payload:
                             print(f"[WARN] {current_model} returned 400 during tool call — retrying without tools")
                             curr_payload.pop("tools", None)
-                            resp = await client.post(url, json=curr_payload, timeout=15)
+                            resp = await client.post(url, json=curr_payload, timeout=_call_timeout)
                         if resp.status_code in (401, 403, 404, 429, 503):
                             print(f"[WARN] {current_model} returned {resp.status_code} — switching model")
                             should_break_model = True
@@ -4359,67 +4871,171 @@ async def chat(request: Request):
                         
                     if should_break_model:
                         break
-                    if should_continue_attempt:
-                        continue
-                        res_data = resp.json()
-                        candidate = res_data.get("candidates", [{}])[0]
-                        candidate_content = candidate.get("content", {})
-                        parts = candidate_content.get("parts", [])
+                    res_data = resp.json()
+                    candidate = res_data.get("candidates", [{}])[0]
+                    candidate_content = candidate.get("content", {})
+                    parts = candidate_content.get("parts", [])
 
-                        # Check for functionCall
-                        has_func = False
-                        for p in parts:
-                            if "functionCall" in p:
-                                has_func = True
-                                fc = p["functionCall"]
-                                fc_name = fc.get("name")
-                                fc_args = fc.get("args", {})
-                                if fc_name == "evaluate_math":
-                                    math_expr = fc_args.get("expression", "")
-                                    math_res = evaluate_math_expression(math_expr)
-                                    print(f"[MathTool] evaluate_math('{math_expr}') -> {math_res.get('numeric') or math_res.get('exact')}")
-                                    curr_payload["contents"].append({
-                                        "role": "model",
-                                        "parts": parts
-                                    })
-                                    curr_payload["contents"].append({
-                                        "role": "user",
-                                        "parts": [{
-                                            "functionResponse": {
-                                                "name": "evaluate_math",
-                                                "response": math_res
-                                            }
-                                        }]
-                                    })
-                                break
-
-                        if not has_func:
-                            # Final text received - concatenate all text parts
-                            text_parts = [p.get("text", "") for p in parts if "text" in p]
-                            reply = "".join(text_parts).strip()
+                    # Check for functionCall
+                    has_func = False
+                    for p in parts:
+                        if "functionCall" in p:
+                            has_func = True
+                            fc = p["functionCall"]
+                            fc_name = fc.get("name")
+                            fc_args = fc.get("args", {})
+                            if fc_name == "evaluate_math":
+                                math_expr = fc_args.get("expression", "")
+                                math_res = evaluate_math_expression(math_expr)
+                                print(f"[MathTool] evaluate_math('{math_expr}') -> {math_res.get('numeric') or math_res.get('exact')}")
+                                curr_payload["contents"].append({
+                                    "role": "model",
+                                    "parts": parts
+                                })
+                                curr_payload["contents"].append({
+                                    "role": "user",
+                                    "parts": [{
+                                        "functionResponse": {
+                                            "name": "evaluate_math",
+                                            "response": math_res
+                                        }
+                                    }]
+                                })
                             break
+
+                    if not has_func:
+                        # Final text received - concatenate all text parts
+                        text_parts = [p.get("text", "") for p in parts if "text" in p]
+                        reply = "".join(text_parts).strip()
+                        # P10: meter the answer that actually gets used (res_data
+                        # is the same JSON the text was read from). Gemini sends
+                        # no quota headers — self-count only.
+                        if reply:
+                            try:
+                                token_log("gemini", current_model, "",
+                                          token_meter.normalize_gemini_usage(res_data),
+                                          surface="chat")
+                            except Exception:
+                                pass
+                        break
 
                     if reply:
                         break
                 except Exception as e:
-                    print(f"[WARN] Error with {current_model} ({e}) — retrying once without tools")
-                    try:
-                        no_tools_payload = json.loads(json.dumps(payload))
-                        no_tools_payload.pop("tools", None)
-                        resp = await client.post(url, json=no_tools_payload, timeout=15)
-                        if resp.status_code == 200:
-                            res_data = resp.json()
-                            candidate_parts = res_data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
-                            text_parts = [p.get("text", "") for p in candidate_parts if "text" in p]
-                            reply = "".join(text_parts).strip()
-                    except Exception as e2:
-                        print(f"[WARN] Direct retry failed: {e2}")
+                    # P1: the exception TYPE matters — httpx timeouts stringify to
+                    # "" and the old line printed empty parentheses, which is what
+                    # made two local 40 s stalls impossible to diagnose.
+                    print(f"[WARN] Error with {current_model} ({type(e).__name__}: {e}) — retrying once without tools")
+                    # P1b: the retry exists to strip `tools` from the payload. An
+                    # image / viz request never carries tools (line above), so the
+                    # retry would re-send the same failing call and eat ~15 s of
+                    # the clock for nothing (seen live: two Gemini stalls ≈ 74 s
+                    # → 504 before Groq — the only working tier that day — ran).
+                    if "tools" in payload:
+                        try:
+                            no_tools_payload = json.loads(json.dumps(payload))
+                            no_tools_payload.pop("tools", None)
+                            _retry_timeout = max(5.0, min(chat_budget.CHAT_GEN_RETRY_S,
+                                                          _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S))
+                            resp = await client.post(url, json=no_tools_payload, timeout=_retry_timeout)
+                            if resp.status_code == 200:
+                                res_data = resp.json()
+                                candidate_parts = res_data.get("candidates", [{}])[0].get("content", {}).get("parts", [])
+                                text_parts = [p.get("text", "") for p in candidate_parts if "text" in p]
+                                reply = "".join(text_parts).strip()
+                                if reply:
+                                    try:
+                                        token_log("gemini", current_model, "",
+                                                  token_meter.normalize_gemini_usage(res_data),
+                                                  surface="chat")
+                                    except Exception:
+                                        pass
+                        except Exception as e2:
+                            print(f"[WARN] Direct retry failed: {type(e2).__name__}: {e2}")
             if reply:
                 _answered.update(provider="gemini", model=current_model)
                 break
 
+        # ── Tier 1.5: Cerebras — fastest of the free ladders (P8) ─────────────
+        # Inserted between Gemini and Groq on 2026-10-01, when a Google outage
+        # (503 UNAVAILABLE) left this as the best remaining fast text tier. It
+        # follows the same rules as every other tier: gated at CHAT_TIER_MIN_S,
+        # clamped to (remaining − CHAT_LOCAL_FLOOR_S), skipped for a blind image
+        # (it cannot see a picture either).
+        # Model order — USER DECISION 2026-10-01 (P13): qwen-3.8-27b first.
+        # The P8 evidence still stands (live, both runs: qwen burned its whole
+        # token budget on reasoning with no `content`, then a read timeout in a
+        # short window, while gpt-oss-120b answered in seconds), so qwen is
+        # protected by the 3072-token floor below and gpt-oss-120b stays in the
+        # SAME tier as the fallback that absorbs a starved window. One env line
+        # turns this into "qwen only".
+        if not reply and CEREBRAS_KEY and not _blind_image \
+                and _budget.remaining() >= chat_budget.CHAT_TIER_MIN_S:
+            cb_candidates = [
+                m.strip()
+                for m in os.environ.get(
+                    "CEREBRAS_CHAT_MODELS", "qwen-3.8-27b,gpt-oss-120b"
+                ).split(",")
+                if m.strip()
+            ]
+            cb_messages = fallback_policy.trim_for_tier(
+                openai_messages, keep_recent=chat_budget.CHAT_FALLBACK_KEEP_MESSAGES)
+            # Both Cerebras models are REASONING models: the thinking tokens
+            # count against max_tokens, and a starved call comes back as a 200
+            # with NO `content` at all (live 2026-10-01: qwen-3.8-27b consumed
+            # all 2048 on reasoning and the key was simply absent). Floor the
+            # budget at 3072 so the visible answer is not eaten by the thinking.
+            cb_max_tokens = max(3072, fallback_policy.fallback_max_tokens(
+                max_tokens, cap=chat_budget.CHAT_FALLBACK_MAX_TOKENS))
+            for cb_m in cb_candidates:
+                if _budget.remaining() < chat_budget.CHAT_TIER_MIN_S:
+                    print(f"[Chat] Tier 1.5: còn {_budget.remaining():.1f}s — bỏ qua Cerebras, chuyển tier")
+                    break
+                try:
+                    print(f"[Chat] Attempting Tier 1.5 Fallback: Cerebras ({cb_m})...")
+                    _cb_timeout = max(5.0, min(chat_budget.CHAT_GEN_MODEL_TIMEOUT_S,
+                                               _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S))
+                    cb_resp = await client.post(
+                        f"{CEREBRAS_BASE}/chat/completions",
+                        headers=cerebras_headers(),
+                        json={
+                            "model": cb_m,
+                            "messages": cb_messages,
+                            "temperature": 0.3,
+                            "max_tokens": cb_max_tokens,
+                            "stream": False,
+                        },
+                        timeout=_cb_timeout,
+                    )
+                    if cb_resp.status_code == 200:
+                        # `.get` — a starved reasoning model omits `content`
+                        # entirely (KeyError, live 2026-10-01) instead of
+                        # returning an empty string; both must fall through
+                        # to the next model instead of ending the tier.
+                        reply = (cb_resp.json()["choices"][0]["message"] or {}).get("content")
+                        if reply and reply.strip():
+                            print(f"[Chat] Successfully generated reply via Cerebras ({cb_m})!")
+                            _answered.update(provider="cerebras", model=cb_m)
+                            # P10: Cerebras DOES send quota headers — store the
+                            # live snapshot with the usage for the admin gauge.
+                            try:
+                                token_log("cerebras", cb_m, "",
+                                          token_meter.normalize_openai_usage(cb_resp.json()),
+                                          surface="chat",
+                                          quota=token_meter.quota_snapshot("cerebras", cb_resp.headers))
+                            except Exception:
+                                pass
+                            break
+                        print(f"[WARN] Cerebras ({cb_m}) trả về rỗng (reasoning ăn hết max_tokens) — thử model tiếp theo")
+                        reply = None
+                    else:
+                        print(f"[WARN] Cerebras model {cb_m} returned {cb_resp.status_code}: {cb_resp.text[:100]}")
+                except Exception as ex_cb:
+                    print(f"[WARN] Cerebras fallback failed with {cb_m}: {type(ex_cb).__name__}: {ex_cb}")
+
         # ── Tier 2 Fallback: Groq Ultra-Fast SOTA Models ──────────────────────
-        if not reply and GROQ_KEY:
+        if not reply and GROQ_KEY and not _blind_image \
+                and _budget.remaining() >= chat_budget.CHAT_TIER_MIN_S:
             groq_candidates = [
                 m.strip()
                 for m in os.environ.get(
@@ -4427,36 +5043,99 @@ async def chat(request: Request):
                 ).split(",")
                 if m.strip()
             ]
+            # P2: the free tier rejects input + max_tokens past its per-minute
+            # token budget ("Request too large for model …"), which is what
+            # every long geometry prompt hit locally. The fallback tier answers
+            # with a trimmed context and a capped answer length — it is the
+            # safety net, not the showpiece.
+            groq_messages = fallback_policy.trim_for_tier(
+                openai_messages, keep_recent=chat_budget.CHAT_FALLBACK_KEEP_MESSAGES)
+            groq_max_tokens = fallback_policy.fallback_max_tokens(
+                max_tokens, cap=chat_budget.CHAT_FALLBACK_MAX_TOKENS)
             for groq_m in groq_candidates:
+                if _budget.remaining() < chat_budget.CHAT_TIER_MIN_S:
+                    print(f"[Chat] Tier 2: còn {_budget.remaining():.1f}s — bỏ qua Groq, chuyển tier")
+                    break
                 try:
                     print(f"[Chat] Attempting Tier 2 Fallback: Groq ({groq_m})...")
                     groq_payload = {
                         "model": groq_m,
-                        "messages": openai_messages,
+                        "messages": groq_messages,
                         "temperature": 0.3,
-                        "max_tokens": max_tokens,
+                        "max_tokens": groq_max_tokens,
                         "stream": False
                     }
-                    groq_resp = await client.post(
-                        f"{GROQ_BASE}/chat/completions",
-                        headers=groq_headers(),
-                        json=groq_payload,
-                        timeout=30
-                    )
-                    if groq_resp.status_code == 200:
-                        reply = groq_resp.json()["choices"][0]["message"]["content"]
-                        print(f"[Chat] Successfully generated reply via Groq fallback ({groq_m})!")
-                        _answered.update(provider="groq", model=groq_m)
+                    _groq_timeout = max(5.0, min(30.0, _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S))
+                    for _groq_attempt in range(2):
+                        if _groq_attempt == 1:
+                            groq_payload["max_tokens"] = fallback_policy.shrink_on_tpm(groq_max_tokens)
+                            print(f"[WARN] Groq ({groq_m}) bị 413 (TPM) — thử lại cùng model với "
+                                  f"max_tokens={groq_payload['max_tokens']}")
+                        groq_resp = await _groq_post_with_key_rotation(
+                            client, f"{GROQ_BASE}/chat/completions", groq_payload,
+                            timeout=_groq_timeout,
+                        )
+                        if groq_resp.status_code == 200:
+                            reply = groq_resp.json()["choices"][0]["message"]["content"]
+                            print(f"[Chat] Successfully generated reply via Groq fallback ({groq_m})!")
+                            _answered.update(provider="groq", model=groq_m)
+                            break
+                        if groq_resp.status_code != 413:
+                            print(f"[WARN] Groq model {groq_m} returned {groq_resp.status_code}: {groq_resp.text[:100]}")
+                            break
+                    if reply:
                         break
-                    else:
-                        print(f"[WARN] Groq model {groq_m} returned {groq_resp.status_code}: {groq_resp.text[:100]}")
                 except Exception as ex_groq:
-                    print(f"[WARN] Groq fallback failed with {groq_m}: {ex_groq}")
+                    print(f"[WARN] Groq fallback failed with {groq_m}: {type(ex_groq).__name__}: {ex_groq}")
+
+        # ── Tier 2.5: NVIDIA NIM — math reasoning (P12) ────────────────────────
+        # Giữa Groq và OpenRouter: hai model Nemotron là lựa chọn math mạnh nhất
+        # trên khoá free này, và cả hai là REASONING models nên áp đúng bài học
+        # P8 — sàn max_tokens 3072 nằm trong _nvidia_chat() (một lượt bị đói
+        # token trả HTTP 200 không có `content`). Ba luật tier như mọi tier:
+        # gate CHAT_TIER_MIN_S, clamp (remaining − CHAT_LOCAL_FLOOR_S), bỏ qua
+        # khi ảnh mù (hai model này không có thị giác).
+        if not reply and NVIDIA_KEY_POOL.has_keys() and not _blind_image \
+                and _budget.remaining() >= chat_budget.CHAT_TIER_MIN_S:
+            _nv_models = [m.strip() for m in os.environ.get(
+                "NVIDIA_MATH_MODELS",
+                "nvidia/nemotron-3-super-120b-a12b,nvidia/nemotron-3-nano-omni-30b-a3b-reasoning",
+            ).split(",") if m.strip()]
+            _nv_messages = fallback_policy.trim_for_tier(
+                openai_messages, keep_recent=chat_budget.CHAT_FALLBACK_KEEP_MESSAGES)
+            _nv_max_tokens = max(3072, fallback_policy.fallback_max_tokens(
+                max_tokens, cap=chat_budget.CHAT_FALLBACK_MAX_TOKENS))
+            _nv_timeout = max(5.0, min(chat_budget.CHAT_GEN_MODEL_TIMEOUT_S,
+                                       _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S))
+            for _nv_m in _nv_models:
+                if _budget.remaining() < chat_budget.CHAT_TIER_MIN_S:
+                    print(f"[Chat] Tier 2.5: còn {_budget.remaining():.1f}s — bỏ qua NVIDIA, chuyển tier")
+                    break
+                try:
+                    print(f"[Chat] Attempting Tier 2.5 Fallback: NVIDIA ({_nv_m})...")
+                    _nv_reply, _nv_used = await _nvidia_chat(
+                        [_nv_m], _nv_messages, max_tokens=_nv_max_tokens,
+                        temperature=0.3, timeout=_nv_timeout)
+                    reply = _nv_reply
+                    _answered.update(provider="nvidia", model=_nv_used)
+                    print(f"[Chat] Successfully generated reply via NVIDIA ({_nv_used})!")
+                    break
+                except Exception as ex_nv:
+                    print(f"[WARN] NVIDIA fallback failed with {_nv_m}: {type(ex_nv).__name__}: {ex_nv}")
 
         # ── Tier 3 Fallback: OpenRouter High-Quality Free Models ───────────────
         if not reply:
             openrouter_key = os.environ.get("OPENROUTER_API_KEY", "")
-            if openrouter_key:
+            if _blind_image:
+                # P1c: no readable text anywhere — the text tiers cannot see the
+                # picture, so skip straight to the local floor with its honest
+                # "không đọc được nội dung trong ảnh" answer.
+                print("[Chat] Tier 3: ảnh chưa đọc được nội dung — các tier chữ không giúp được, xuống tier cuối")
+            elif openrouter_key and _budget.remaining() < chat_budget.CHAT_TIER_MIN_S:
+                # P1: a tier that cannot finish inside what is left is not a
+                # fallback, it is a way to lose the answer we already have.
+                print(f"[Chat] Tier 3: còn {_budget.remaining():.1f}s — bỏ qua OpenRouter, xuống tier cuối")
+            elif openrouter_key:
                 # Ranked free ladder + server-side failover: one request to
                 # OpenRouter with the whole `models` array instead of one HTTP
                 # round-trip per candidate.
@@ -4468,6 +5147,10 @@ async def chat(request: Request):
                         messages=openai_messages,
                         temperature=0.2,
                         max_tokens=max_tokens,
+                        # P1: the helper's own 90 s default used to outlive the
+                        # request; hand it what is actually left, minus the local
+                        # floor, and cap it (it is a fallback, not the showpiece).
+                        timeout=max(8.0, min(30.0, _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S)),
                     )
                     reply = _or_reply
                     _answered.update(provider="openrouter", model=_or_model)
@@ -4478,7 +5161,14 @@ async def chat(request: Request):
         # ── Tier 4 Fallback: Local MathGPT Deterministic Engine ────────────────
         if not reply:
             print("[INFO] Using local MathGPT Engine for instant, reliable response")
-            reply = generate_mock_mathgpt_reply(user_message, _widget, chat_mode)
+            # P14-fix: an image request that fell through every tier gets the
+            # honest floor answer — a canned sample problem would be unrelated
+            # to the student's photo (the live report: tetrahedron photo →
+            # generic 2D triangle).
+            reply = _local_floor_reply(
+                user_message, _widget, chat_mode, had_image=bool(image_data),
+                read_text=(vision_description or chat_routing.perception_text(perception)) or "")
+            _honest_floor = bool(image_data)
             _answered.update(provider="local", model="local-mathgpt")
 
 
@@ -4620,6 +5310,35 @@ async def chat(request: Request):
                     except Exception as e_render:
                         logger.debug(f"MathViz render report skipped: {e_render}")
 
+                    # 6b. Analytic data checks (tầng Shapely/SymPy). Các bước
+                    #     trên đã nắn từng lớp; bước này hỏi câu còn thiếu:
+                    #     các lớp có ĐỒNG Ý với nhau không? (đa giác tự cắt,
+                    #     cung không nằm trên đường tròn của nó, cùng một điểm
+                    #     khai báo hai toạ độ…). Kết quả gắn vào `_render` và
+                    #     hiện trong chip cảnh báo của cả hai engine.
+                    try:
+                        from geometry_analytic_checks import check_geometry_2d
+                        _conflicts = check_geometry_2d(_viz_block)
+                        _viz_block.setdefault("_render", {})["conflicts"] = _conflicts
+                        if _conflicts:
+                            # Đợt 4I-fix: a plain loop, NOT a comprehension.
+                            # `[c.get("code") for c in _conflicts]` binds AND loads
+                            # the name `c` on the SAME line, while
+                            # scripts/audit_bound_names.py only accepts a binding on
+                            # a strictly EARLIER line (bind_line < load_line). That
+                            # made the CI guard report a false UNBOUND and the gate
+                            # went red. `<=` was rejected as the fix: `x = x + 1`
+                            # also binds and loads on one line and IS a real
+                            # UnboundLocalError, so relaxing the audit would hide
+                            # genuine bugs — fix the code, keep the guard strict.
+                            _conflict_codes = []
+                            for _conflict in _conflicts:
+                                _conflict_codes.append(_conflict.get("code"))
+                            logger.info("[MathViz] Analytic conflicts: %s",
+                                        _conflict_codes)
+                    except Exception as e_conflicts:
+                        logger.debug(f"MathViz analytic checks skipped: {e_conflicts}")
+
                 except Exception as e_align:
                     logger.debug(f"MathViz auto-align/snap skipped: {e_align}")
 
@@ -4661,6 +5380,15 @@ async def chat(request: Request):
         except Exception as _e_guard:
             logger.warning(f"[TypeSafeGuard] Post-guard error: {_e_guard}")
 
+        # ── P5: a figure-only reply says so, once, in a fixed sentence ────────
+        # The prompt already asks the model to; a server-side guarantee is what
+        # the offline suite can pin, and the model cannot forget it.
+        if _reply_mode == "figure_only" and reply:
+            _fo_note = (chat_routing.FIGURE_ONLY_NOTE if "```mathviz" in reply
+                        else chat_routing.FIGURE_ONLY_NO_BLOCK_NOTE)
+            if _fo_note.strip() not in reply:
+                reply = reply.rstrip() + _fo_note
+
         # ── Đợt 4B: verify the finished answer BEFORE it reaches the student ──
         # Deterministic checks run first (substitute the answer back, compare
         # with a SymPy pre-solve, check printed identities, sanity rules); a
@@ -4674,31 +5402,75 @@ async def chat(request: Request):
         # student gets the honest "chưa kiểm chứng" badge either way.
         _verify_budget = _plan["verify"] if _plan else chat_budget.CHAT_VERIFY_BUDGET_S
         try:
-            if _verify_budget > 0 and math_solver.should_verify(user_message, reply, perception):
+            _verify_applicable = (
+                _verify_budget > 0
+                and _budget.remaining() >= chat_budget.CHAT_LOCAL_FLOOR_S   # P1d: do not race the deadline
+                and _reply_mode != "figure_only"   # P5: nothing was solved, nothing to verify
+                and not _honest_floor              # P14-fix: the floor said it did NOT solve
+                and math_solver.should_verify(user_message, reply, perception)
+            )
+            if _verify_applicable:
                 _ir = math_solver.build_problem_ir(perception, user_message)
                 if not _ir.get("transcription") and not _ir.get("latex"):
                     _ir["transcription"] = user_message[:1200]
+                # P3: the deterministic layer is local and costs milliseconds —
+                # run it OUTSIDE the critic's wait_for, so a critic timeout keeps
+                # the honest "đã kiểm tra số học" verdict instead of reporting
+                # nothing at all.
+                _checks0 = []
+                try:
+                    _checks0 = await asyncio.wait_for(
+                        asyncio.to_thread(math_solver.deterministic_checks, _ir, reply),
+                        timeout=3.0,
+                    ) or []
+                except Exception as _e_det:
+                    logger.debug("[Chat] deterministic checks unavailable: %s", _e_det)
                 # Đợt 4H-2: the critic is a second opinion, not a gate on the
                 # request. On timeout the student still gets the answer — carrying
-                # the honest "chưa kiểm chứng" badge — instead of losing everything.
+                # the honest label — instead of losing everything.
                 try:
+                    # P1d: even when verification starts, it may not eat the local
+                    # floor — near the end it gets what is left MINUS the floor,
+                    # so the reply always ships before the deadline middleware.
+                    _verify_wait = max(1.0, min(_budget.clamp(_verify_budget),
+                                                _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S))
                     math_verification = await asyncio.wait_for(
-                        math_solver.verify_and_repair(_ir, reply, chat_fn=_openrouter_chat),
-                        timeout=_budget.clamp(_verify_budget),
+                        math_solver.verify_and_repair(_ir, reply, chat_fn=_openrouter_chat,
+                                                      precomputed_checks=_checks0),
+                        timeout=_verify_wait,
                     )
                 except (asyncio.TimeoutError, TimeoutError):
+                    _det_ok = bool(_checks0) and not math_solver.failed_checks(_checks0)
                     logger.warning("[Chat] Math verification exceeded %.0fs — answering with the "
-                                   "unverified label.", _verify_budget)
-                    math_verification = {"verified": False, "checks": [], "critic": None,
-                                         "repaired": False, "reply": reply,
-                                         "notes": "hết thời gian kiểm chứng"}
+                                   "%s label.", _verify_budget,
+                                   "partial" if _det_ok else "unverified")
+                    math_verification = {
+                        "verified": False,
+                        "status": math_solver.STATUS_PARTIAL if _det_ok else math_solver.STATUS_TIMEOUT,
+                        "checks": _checks0, "critic": None, "repaired": False, "reply": reply,
+                        "notes": ("đã kiểm tra số học; phần phản biện chưa chạy kịp"
+                                  if _det_ok else "hết thời gian kiểm chứng"),
+                    }
                 reply = math_verification.get("reply") or reply
-                _badge = math_solver.unverified_note(math_verification)
+                _badge = math_solver.verification_note(math_verification)
                 if _badge:
                     reply = reply + _badge
-                logger.info("[Chat] Math verification: verified=%s repaired=%s notes=%s",
-                            math_verification.get("verified"), math_verification.get("repaired"),
-                            math_verification.get("notes"))
+                logger.info("[Chat] Math verification: verified=%s status=%s repaired=%s notes=%s",
+                            math_verification.get("verified"), math_verification.get("status"),
+                            math_verification.get("repaired"), math_verification.get("notes"))
+            else:
+                # P3: record WHY nothing was verified — without a scary badge.
+                # This is the state of the reply in the report from the class: a
+                # figure the reader could not turn into a problem statement.
+                math_verification = {
+                    "verified": False, "status": math_solver.STATUS_NOT_APPLICABLE,
+                    "checks": [], "critic": None, "repaired": False, "reply": reply,
+                    "notes": ("ngân sách kiểm chứng = 0 cho lượt này" if _verify_budget <= 0
+                              else ("hết thời gian xử lý trước khi kịp kiểm chứng"
+                                    if _budget.remaining() < chat_budget.CHAT_LOCAL_FLOOR_S
+                                    else "chưa đủ căn cứ để kiểm chứng (đọc đề chưa chắc / chưa có đáp án trích được)")),
+                }
+                logger.info("[Chat] Math verification not applicable: %s", math_verification["notes"])
         except Exception as _e_verify:
             logger.warning("[Chat] Math verification skipped (%s)", _e_verify)
 
@@ -4714,8 +5486,10 @@ async def chat(request: Request):
                             # model/provider now; the critic moves to notes.
                             model=str(_answered.get("model") or "")[:80],
                             provider=str(_answered.get("provider") or "")[:24],
-                            tier=("verify_ok" if math_verification.get("verified") else "verify_failed")
-                                 + ("" if _answered.get("model") else "_no_model"),
+                            tier=(("verify_ok" if math_verification.get("verified")
+                                   else ("verify_skip" if math_verification.get("status") == "not_applicable"
+                                         else "verify_failed"))
+                                  + ("" if _answered.get("model") else "_no_model")),
                             latency_ms=int((time.time() - _t0) * 1000),
                             verified=math_verification.get("verified"),
                             notes=(("critic=" + _critic_model + "; ") if _critic_model else "")
@@ -4734,7 +5508,7 @@ async def chat(request: Request):
         # and the budget left. Render's log had NO timing during the ERR_FAILED
         # incident, so "timeout or crash?" was unanswerable from the outside.
         print(f"[Chat] answered_by={_answered.get('provider') or '?'}:{_answered.get('model') or '?'}"
-              f" mode={chat_mode} image={'yes' if image_data else 'no'}"
+              f" mode={chat_mode} reply={_reply_mode} image={'yes' if image_data else 'no'}"
               f" vision={'agent' if vision_description else ('reader' if perception else 'none')}"
               f" complexity={(_plan or {}).get('tier') or 'text'}"
               f" elapsed={time.time() - _t0:.1f}s budget_left={_budget.remaining():.1f}s")
@@ -5244,7 +6018,8 @@ def _openrouter_budget_ok() -> bool:
 async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 900,
                            temperature: float = 0.2, system: str | None = None,
                            messages: list | None = None, tools: list | None = None,
-                           tool_choice: str | None = None, raw_message: bool = False):
+                           tool_choice: str | None = None, raw_message: bool = False,
+                           timeout: float | None = None, surface: str = "chat"):
     """One OpenRouter call that lets OpenRouter itself fail over through the
     `models` array (it retries on rate-limit / downtime / moderation, and the
     response tells us which model actually answered).
@@ -5299,7 +6074,11 @@ async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 
     resp = None
     while attempts < 3:
         attempts += 1
-        resp = await client.post(OPENROUTER_CHAT_URL, headers=headers, json=payload, timeout=90)
+        # P1: callers pass what is left of the request; the 90 s default stays
+        # only as a ceiling for callers with no budget of their own (the verify
+        # critic, which main() already wraps in its own clamped wait_for).
+        resp = await client.post(OPENROUTER_CHAT_URL, headers=headers, json=payload,
+                                 timeout=float(timeout) if timeout else 90.0)
         if resp.status_code == 200:
             break
         body = resp.text[:300]
@@ -5340,6 +6119,12 @@ async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 
         raise RuntimeError("OpenRouter returned an empty completion")
     _OPENROUTER_QUOTA["count"] += 1
     used_model = data.get("model") or models[0]
+    # P10: OpenRouter has no quota headers — self-count from its usage payload.
+    try:
+        token_log("openrouter", str(used_model or ""), "",
+                  token_meter.normalize_openai_usage(data), surface=surface)
+    except Exception:
+        pass
     if raw_message:
         # Đợt 4B: the tool-calling loop needs the whole assistant message
         # (content + tool_calls), not just the text.
@@ -5353,10 +6138,9 @@ async def _translate_with_groq(prompt: str, text: str):
     if not GROQ_KEY:
         return None
     client = await get_http_client()
-    resp = await client.post(
-        f"{GROQ_BASE}/chat/completions",
-        headers=groq_headers(),
-        json={
+    resp = await _groq_post_with_key_rotation(
+        client, f"{GROQ_BASE}/chat/completions",
+        {
             "model": "llama-3.1-8b-instant",
             "messages": [
                 {"role": "system", "content": _TRANSLATE_SYSTEM},
@@ -5365,6 +6149,7 @@ async def _translate_with_groq(prompt: str, text: str):
             "max_tokens": 1200 if len(text) > 300 else 500,
             "temperature": 0.2,
         },
+        surface="translate",
     )
     resp.raise_for_status()
     data = _parse_json_lenient(resp.json()["choices"][0]["message"]["content"])
@@ -5734,9 +6519,8 @@ async def mathmap_parse_file(request: Request):
     import re as _re
     client = await get_http_client()
     try:
-        resp = await client.post(
-            f"{GROQ_BASE}/chat/completions",
-            headers=groq_headers(), json=payload,
+        resp = await _groq_post_with_key_rotation(
+            client, f"{GROQ_BASE}/chat/completions", payload,
         )
         resp.raise_for_status()
         raw = resp.json()["choices"][0]["message"]["content"]
@@ -5799,6 +6583,10 @@ async def health():
         "text_tiers":       [t for t in [
                                 f"groq:{_groq_models[0]}" if GROQ_KEY and _groq_models else "",
                                 f"gemini:{os.environ.get('GEMINI_MODEL', 'gemini-3.6-flash')}",
+                                (f"cerebras:{os.environ.get('CEREBRAS_CHAT_MODELS', 'qwen-3.8-27b').split(',')[0].strip()}"
+                                 if CEREBRAS_KEY else ""),
+                                (f"nvidia:{os.environ.get('NVIDIA_MATH_MODELS', 'nvidia/nemotron-3-super-120b-a12b').split(',')[0].strip()}"
+                                 if NVIDIA_KEY_POOL.has_keys() else ""),
                                 f"openrouter:{_or_chat[0]}" if _or_chat else "",
                                 "local-mathgpt (deterministic, offline)",
                             ] if t],
@@ -5932,6 +6720,20 @@ async def admin_ai_quality(request: Request, days: int = 7):
     """
     await verify_admin(request)
     return JSONResponse(quality_summary(days=max(1, min(int(days), 90))))
+
+
+@app.get("/api/admin/token-usage")
+@limiter.limit(TYPESAFE_LIMIT)
+async def admin_token_usage(request: Request, days: int = 1):
+    """P10 — đồng hồ token/quota của các tầng free.
+
+    Trả về: tổng token + lượt gọi theo provider/model (tự đếm từ usage của
+    chính các payload), ảnh chụp quota LIVE mới nhất với provider có gửi header
+    (Cerebras/Groq), và trạng thái bể khoá. Admin-only như các endpoint admin
+    khác; `days` kẹp trong 1..90.
+    """
+    await verify_admin(request)
+    return JSONResponse(token_usage_summary(days=max(1, min(int(days), 90))))
 
 
 @app.post("/api/relearn/seed")
@@ -9854,6 +10656,72 @@ async def api_viz_geogebra(request: Request):
             "Cache-Control": "no-store",
         },
     )
+
+
+@app.post("/api/geometry3d/mesh")
+@limiter.limit(VIZ_EXPORT_LIMIT)
+async def api_geometry3d_mesh(request: Request):
+    """Dựng lưới 3D bằng trimesh cho khối chưa có template ở client.
+
+    Đây là tầng fallback của widget `geometry_3d` (MathVizGeometry3D.js chỉ có
+    19 template khối). Body: {"solid": "prism", "dims": {...},
+    "format": null|"stl"|"glb"}. Trả về: số liệu kiểm định
+    (watertight/volume/bbox), mảng đỉnh–chỉ số cho THREE.BufferGeometry, và
+    (tuỳ chọn) tệp nhị phân base64 để tải về.
+
+    Anonymous-friendly như /api/viz/geogebra: đây là biến đổi cục bộ từ SỐ LIỆU
+    client gửi lên (rate-limit + trần body), không gọi AI và không chạy mã của
+    model — cùng nguyên tắc JSON-IR của GeoGebra exporter.
+    """
+    import base64
+
+    raw = await request.body()
+    if len(raw) > 16_384:
+        raise HTTPException(413, "Yêu cầu quá lớn (tối đa 16 KB).")
+    try:
+        payload = orjson.loads(raw or b"{}")
+    except Exception:
+        raise HTTPException(400, "Body phải là JSON.")
+    if not isinstance(payload, dict):
+        raise HTTPException(400, "Body phải là JSON object.")
+
+    try:
+        from geometry3d_mesh import (  # local import: keeps main.py's graph light
+            Geometry3DError, SUPPORTED_SOLIDS, build_mesh, export_bytes,
+            mesh_arrays, mesh_report,
+        )
+    except ImportError as e:
+        raise HTTPException(503, f"Tầng lưới 3D chưa được cài trên máy chủ này ({e}).")
+
+    solid = payload.get("solid")
+    dims = payload.get("dims")
+    fmt = payload.get("format")
+    try:
+        mesh = build_mesh(solid, dims)
+        body = {
+            "ok": True,
+            "solid": str(solid),
+            "solver": "trimesh",
+            "report": mesh_report(mesh),
+            "mesh": mesh_arrays(mesh),
+            "file": None,
+        }
+        if fmt:
+            data, filename, mime = export_bytes(mesh, fmt, str(solid or "khoi"))
+            body["file"] = {
+                "format": str(fmt).lower(),
+                "filename": filename,
+                "mime": mime,
+                "size": len(data),
+                "data_b64": base64.b64encode(data).decode("ascii"),
+            }
+        return JSONResponse(body)
+    except Geometry3DError as e:
+        return JSONResponse({"ok": False, "error": str(e),
+                             "supported": list(SUPPORTED_SOLIDS)}, status_code=400)
+    except Exception as e:  # never leak a traceback to the client
+        print(f"[geometry3d/mesh] failed: {type(e).__name__}: {e}")
+        raise HTTPException(500, "Could not build the 3D mesh.")
 
 
 @app.post("/api/video/enhance")

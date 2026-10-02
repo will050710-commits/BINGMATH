@@ -746,18 +746,55 @@ def verify_mode() -> str:
     return mode if mode in ("off", "auto", "always") else "auto"
 
 
+# P3 (E) — honest verification states. Before this, every non-verified outcome
+# collapsed into one scary badge ("kiểm tra chưa kết luận được"), because the
+# data model could not say WHICH thing had happened:
+#   verified        — checks passed and the critic did not disagree;
+#   failed          — a check failed / the critic said "wrong";
+#   partial         — the local (free) checks passed, the critic never ran;
+#   timeout         — the pipeline ran out of clock before it could conclude;
+#   not_applicable  — there was nothing concrete to verify at all.
+STATUS_VERIFIED = "verified"
+STATUS_FAILED = "failed"
+STATUS_PARTIAL = "partial"
+STATUS_TIMEOUT = "timeout"
+STATUS_NOT_APPLICABLE = "not_applicable"
+
+
+def min_read_confidence() -> float:
+    """VERIFY_MIN_READ_CONFIDENCE (default 0.5) — below this, a reading is not a
+    statement yet: the UI asks the student to confirm it instead, and the
+    verification stage has nothing concrete to stand on."""
+    try:
+        value = float(os.environ.get("VERIFY_MIN_READ_CONFIDENCE", "0.5"))
+    except (TypeError, ValueError):
+        return 0.5
+    return min(0.99, max(0.0, value))
+
+
 def should_verify(user_message: str = "", reply: str = "",
                   perception: Optional[Dict[str, Any]] = None) -> bool:
     """`auto` mode gate: only pay for verification when there is something
-    concrete to check — a perception result, or a reply with an extractable
-    answer next to real maths."""
+    concrete to check — a CONFIDENT perception result, or a reply with an
+    extractable answer next to real maths.
+
+    P3 fix: `if perception: return True` treated a 0 %-confidence reading (the
+    reader saw shapes but no problem statement) as grounds for a full
+    verification round — which then had nothing to verify and ended with the
+    scary "chưa kiểm chứng được đáp án" badge the students reported.
+    """
     mode = verify_mode()
     if mode == "off":
         return False
     if mode == "always":
         return True
     if perception:
-        return True
+        try:
+            confidence = float(perception.get("confidence") or 0.0)
+        except (TypeError, ValueError):
+            confidence = 0.0
+        if confidence >= min_read_confidence():
+            return True
     return bool(extract_candidates(reply)) and bool(re.search(r"[=<>^\\]|frac|sqrt", f"{user_message} {reply}"))
 
 
@@ -815,9 +852,40 @@ async def _repair(ir: Dict[str, Any], reply: str, evidence: Dict[str, Any],
 BADGE_TEMPLATE = ("\n\n> ⚠️ **Chưa kiểm chứng được đáp án này** ({reasons}). "
                   "Em nên đối chiếu lại đề hoặc hỏi giáo viên trước khi tin chắc nhé.")
 
+# P3 — the two calm variants. "The machine could not conclude" is NOT the same
+# sentence as "the machine checked and disagrees", and telling a student the
+# scary one for a 0 %-confidence reading (nothing was ever verifiable) is how
+# the reported screenshot happened.
+PARTIAL_NOTE = ("\n\n> ℹ️ Máy đã **kiểm tra số học** cho câu trả lời này nhưng chưa có "
+                "phản biện độc lập — em vẫn nên đối chiếu lại nhé.")
+TIMEOUT_NOTE = ("\n\n> ⏳ Máy **chưa kịp kiểm chứng** đáp án (hết thời gian xử lý) — "
+                "đáp án chưa được đối chiếu tự động.")
+
+
+def verification_note(verification: Optional[Dict[str, Any]]) -> str:
+    """The note appended to a reply, chosen by the verification STATE (P3).
+
+    * ``not_applicable`` → nothing at all: there was no claim to check, so
+      there is nothing to warn about;
+    * ``timeout`` / ``partial`` → one calm, honest sentence;
+    * anything else unverified (i.e. a real failure) → the actionable warning
+      with its reasons, exactly as before.
+    """
+    v = verification or {}
+    if v.get("verified"):
+        return ""
+    status = str(v.get("status") or "")
+    if status == STATUS_NOT_APPLICABLE:
+        return ""
+    if status == STATUS_TIMEOUT:
+        return TIMEOUT_NOTE
+    if status == STATUS_PARTIAL:
+        return PARTIAL_NOTE
+    return unverified_note(v)
+
 
 def unverified_note(verification: Optional[Dict[str, Any]]) -> str:
-    """Vietnamese note appended to an answer that failed its checks."""
+    """Vietnamese note for an answer that FAILED its checks (the loud case)."""
     v = verification or {}
     if v.get("verified", True):
         return ""
@@ -830,31 +898,40 @@ def unverified_note(verification: Optional[Dict[str, Any]]) -> str:
 
 
 async def verify_and_repair(ir: Dict[str, Any], reply: str, *, chat_fn: Optional[Callable] = None,
-                            mode: Optional[str] = None) -> Dict[str, Any]:
+                            mode: Optional[str] = None,
+                            precomputed_checks: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     """Check a finished answer; repair it ONCE when a check fails, then re-check.
 
-    Returns {reply, verified, checks, critic, repaired, notes, mode}. The caller
-    appends `unverified_note()` to the reply when `verified` is False.
+    Returns {reply, verified, status, checks, critic, repaired, notes, mode}.
+    The caller appends `verification_note()` to the reply when that is not empty.
+
+    ``precomputed_checks`` lets the caller run the deterministic layer on its
+    own clock (P3): when the critic times out, those free results are still
+    reported instead of being thrown away with the whole call.
     """
     mode = (mode or verify_mode()).lower()
-    result: Dict[str, Any] = {"verified": False, "checks": [], "critic": None,
+    result: Dict[str, Any] = {"verified": False, "status": STATUS_NOT_APPLICABLE,
+                              "checks": [], "critic": None,
                               "repaired": False, "notes": "", "reply": reply, "mode": mode}
     if mode == "off" or not str(reply or "").strip():
         result["notes"] = "verification disabled" if mode == "off" else "empty reply"
         result["verified"] = mode == "off"
+        result["status"] = STATUS_VERIFIED if mode == "off" else STATUS_NOT_APPLICABLE
         return result
 
-    checks = deterministic_checks(ir, reply)
+    checks = list(precomputed_checks) if precomputed_checks is not None else deterministic_checks(ir, reply)
     critic = await critic_review(ir, reply, chat_fn=chat_fn)
     bad = failed_checks(checks)
     verdict = (critic or {}).get("verdict")
     result.update(checks=checks, critic=critic)
     if not bad and verdict != "wrong":
         result["verified"] = True
+        result["status"] = STATUS_VERIFIED
         result["notes"] = "deterministic checks passed" + (", critic agrees" if verdict == "correct" else "")
         return result
 
     if chat_fn is None:
+        result["status"] = STATUS_FAILED
         result["notes"] = "checks failed and no model was available to repair"
         return result
 
@@ -868,12 +945,14 @@ async def verify_and_repair(ir: Dict[str, Any], reply: str, *, chat_fn: Optional
         critic_after = await critic_review(ir, repaired_reply, chat_fn=chat_fn)
         if not failed_checks(checks_after) and (critic_after or {}).get("verdict") != "wrong":
             result.update(reply=repaired_reply, checks=checks_after, critic=critic_after,
-                          verified=True, repaired=True, notes="đã sửa và kiểm lại đạt")
+                          verified=True, repaired=True, status=STATUS_VERIFIED,
+                          notes="đã sửa và kiểm lại đạt")
             logger.info("[MathSolver] repaired a failing answer (checks now pass)")
             return result
         result.update(checks=checks_after, critic=critic_after, repaired=True)
 
     result["verified"] = False
+    result["status"] = STATUS_FAILED
     result["notes"] = "kiểm tra không đạt: " + ", ".join(
         str(c.get("name", "?")) for c in (failed_checks(result["checks"]) or bad))
     return result
