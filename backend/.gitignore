@@ -5,6 +5,12 @@ __pycache__/
 
 # Environment variables
 .env
+# Đợt 4I security fix: a key dump named `.env.bak_keys` matched no rule here
+# (`*.bak` requires the extension to BE `bak`; `.env` requires the name to BE
+# `.env`), so it sat untracked with live secrets one `git add -A` away from
+# history. Same lesson as the leaked TypeSafe keys.
+.env.bak_keys
+*.bak_keys
 
 # SQLite & Cache databases
 vision_cache.db

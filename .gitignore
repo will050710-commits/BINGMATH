@@ -13,6 +13,14 @@ backend/archive/
 backend/*.bak
 backend/output.txt
 backend/output_all.txt
+# Đợt 4I security fix: `backend/.env.bak_keys` was sitting UNTRACKED in the
+# working tree with SIX live secrets inside (Groq, Gemini, OpenRouter, HuggingFace
+# Space token, both TypeSafe keys). No rule matched it — `backend/*.bak` does not
+# match `.bak_keys`, and `backend/.env` does not either — so one `git add -A`
+# would have pushed them into history for good: the leaked-TypeSafe-key incident
+# all over again. It was never committed, so no history rewrite is needed.
+backend/.env.bak_keys
+*.bak_keys
 
 # Environment variables
 backend/.env
