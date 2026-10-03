@@ -10,12 +10,12 @@ import auth from '@react-native-firebase/auth';
 // For physical device on same WiFi, use your computer's local IP (e.g. 192.168.x.x)
 // For production, set your deployed backend URL
 export const BASE_URL = __DEV__
-  ? 'http://10.0.2.2:5000'      // Android emulator → host machine
-  : 'https://your-production-url.com'; // Replace with actual production URL
+  ? 'http://10.0.2.2:8000'      // Android emulator → host machine (FastAPI default port 8000)
+  : 'https://duomath.onrender.com'; // Deployed Render backend
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000,
+  timeout: 60000,
   headers: {
     'Content-Type': 'application/json',
   },

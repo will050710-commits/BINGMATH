@@ -2965,12 +2965,14 @@ async def lifespan(application):
     yield
     task.cancel()
 
-# Phase 0 security fix: CORS is now an explicit allowlist (env-driven) instead
-# of the previous `https://*.vercel.app|render.com|netlify.app` wildcard regex,
-# which let ANY attacker-controlled subdomain call the API with credentials.
-# API docs are also disabled in production (endpoint-surface disclosure).
-_DEFAULT_ORIGINS = "http://localhost:3000,http://localhost:3001,https://duomath.vercel.app"
+# Phase 0 security fix: CORS allowlist + scoped Vercel preview regex.
+# Explicit allowlist for local dev and canonical domains, plus a scoped regex
+# for project preview deployments (*.vercel.app scoped to duomath/bingmath).
+_DEFAULT_ORIGINS = "http://localhost:3000,http://localhost:3001,http://localhost:8081,http://localhost:19006,https://duomath.vercel.app,https://bingmath.vercel.app"
 ALLOWED_ORIGINS = env_list("ALLOWED_ORIGINS", _DEFAULT_ORIGINS)
+_DEFAULT_ORIGIN_REGEX = r"^https:\/\/(duomath|bingmath)(-[a-zA-Z0-9_-]+)?\.vercel\.app$"
+_env_origin_regex = os.environ.get("ALLOWED_ORIGIN_REGEX", _DEFAULT_ORIGIN_REGEX).strip()
+ALLOWED_ORIGIN_REGEX = _env_origin_regex if _env_origin_regex and _env_origin_regex.lower() != "none" else None
 
 app = FastAPI(
     title="DuoMath API v4",
@@ -3042,6 +3044,7 @@ app.add_middleware(TrustedHostMiddleware, allowed_hosts=_ALLOWED_HOSTS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
     # Our own metadata headers (object counts and file id of a .ggb export) are
