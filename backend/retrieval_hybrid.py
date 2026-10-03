@@ -114,12 +114,12 @@ CONCEPT_WEIGHTS = {"name": 1.0, "english_name": 0.85, "keyword": 0.7}
 #: when the query really is about it; a concept match is a keyword hit that is
 #: always available. Measured: with concepts first, Q05 ("giai phuong trinh bac
 #: hai x^2-5x+6=0") put the general theory above ex:p4, which IS that equation.
-TIE_BREAK_PRIORITY = {"examples": 0, "templates": 1, "concepts": 2, "exam": 3}
+TIE_BREAK_PRIORITY = {"examples": 0, "dense": 1, "templates": 2, "concepts": 3, "exam": 4}
 
-SOURCE_PRIORITY = {"concepts": 0, "templates": 1, "examples": 2, "exam": 3}
+SOURCE_PRIORITY = {"concepts": 0, "dense": 1, "templates": 2, "examples": 3, "exam": 4}
 
 _ON = {"on", "true", "1", "yes", "enable", "enabled"}
-KNOWN_SOURCES = ("concepts", "examples", "templates", "exam")
+KNOWN_SOURCES = ("concepts", "dense", "examples", "templates", "exam")
 
 
 def _flag(name: str, default: str = "off") -> bool:
@@ -184,13 +184,41 @@ def _exam_available() -> bool:
         return False
 
 
+def dense_enabled() -> bool:
+    """MATH_RETRIEVAL_DENSE names a provider it knows (off by default)."""
+    try:
+        import retrieval_dense
+        return retrieval_dense.enabled()
+    except Exception:
+        return False
+
+
+def _dense_available() -> bool:
+    """`dense` needs the flag AND a key for the chosen provider.
+
+    `retrieval_dense.available()` owns both checks, so this module never has to
+    know which env name holds which key. Imported lazily: the module reaches for
+    httpx, and a missing httpx must degrade to "no dense source", not to an
+    ImportError that takes the whole retriever down.
+    """
+    try:
+        import retrieval_dense
+        return retrieval_dense.available()
+    except Exception:
+        return False
+
+
 def active_sources() -> List[str]:
     """Requested sources that actually exist, in declaration order.
 
     Unknown or unavailable sources are DROPPED, never an error: asking for one that
-    is not implemented is a no-op, so R2 ships without waiting on another plan.
+    is not implemented is a no-op, so R2 ships without waiting on another plan. The
+    DEFAULT list grows by itself when dense retrieval is switched on, so enabling R3
+    is one env line (`MATH_RETRIEVAL_DENSE=gemini`) and never has to be accompanied
+    by a second one that somebody will forget.
     """
-    raw = os.environ.get("MATH_RETRIEVAL_SOURCES", "concepts,examples")
+    default = "concepts,dense,examples" if _dense_available() else "concepts,examples"
+    raw = os.environ.get("MATH_RETRIEVAL_SOURCES", default)
     wanted = [s.strip().lower() for s in raw.split(",") if s.strip()]
     out: List[str] = []
     for name in wanted:
@@ -199,6 +227,8 @@ def active_sources() -> List[str]:
         if name == "templates" and not _templates_available():
             continue
         if name == "exam" and not _exam_available():
+            continue
+        if name == "dense" and not _dense_available():
             continue
         out.append(name)
     return sorted(out, key=lambda s: SOURCE_PRIORITY.get(s, 99))
@@ -272,7 +302,30 @@ def _source_ranking(name: str, query: str, index: Optional[ProblemIndex]):
         return concept_ranking(query)
     if name == "examples":
         return example_ranking(query, index)
+    if name == "dense":
+        return dense_ranking(query, index)
     return []          # templates / exam: feature-detected, not implemented yet
+
+
+def dense_ranking(query: str, index: Optional[ProblemIndex] = None,
+                  top_n: int = 20) -> List[Tuple[str, float, dict]]:
+    """(key, cosine, meta) from the embedding index; [] whenever it is unavailable.
+
+    Deliberately NOT subject to the lexical overlap guard. That guard exists to stop
+    a shared FUNCTION WORD from dragging in an unrelated problem when the only
+    signal available is vocabulary; a cosine in embedding space is the signal that
+    guard was standing in for. Re-applying it here would recreate the exact ceiling
+    R3 is meant to lift (Q11's paraphrase shares one generic token with the right
+    document and nothing else).
+    """
+    if not _dense_available():
+        return []
+    try:
+        import retrieval_dense
+        matrix_index = index if index is not None else get_default_index()
+        return retrieval_dense.get_default_index().ranking(query, matrix_index, top_n)
+    except Exception:
+        return []       # never let an optional source break the fused result
 
 
 # ── fusion ───────────────────────────────────────────────────────────────────

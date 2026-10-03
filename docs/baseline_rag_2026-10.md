@@ -246,3 +246,105 @@ có ý nghĩa (đo được), nên chuyển mặc định chỉ là thay đổi 
 `audit_bound_names.py` + `--selftest` + `tests/eval_rag.py`), FAIL: 0.
 `test_retrieval_hybrid.py` **51/51**. `test_math_problem_retrieval.py` vẫn xanh
 (TF-IDF/RRF cũ không đổi).
+
+---
+
+## 8. R3 — Nửa dense, KHÔNG thêm dependency (số trước/sau cuối)
+
+Tái tạo:
+```powershell
+$env:MATH_RETRIEVAL_DENSE='gemini'      # bật dense
+python backend/tests/eval_rag.py --mode hybrid --json docs/r3_dense_rag_2026-10.json
+python backend/scripts/check_embed_catalog.py --json docs/embed_catalog_2026-10.json
+```
+Mọi suite CI chạy với cờ **off**, nên 36/36 ở §7.7 vẫn là trạng thái mặc định.
+
+### 8.1 Probe trước, tin sau — và probe đã bác bỏ kế hoạch ban đầu
+
+| Model / endpoint | Kết quả ĐO |
+|---|---|
+| `nvidia/nv-embedqa-e5-v5` *(kế hoạch đề xuất primary)* | ❌ **HTTP 410 — end-of-life 2026-08-25** |
+| `nvidia/nv-embedqa-mistral-7b-v2` | ❌ 404 "not found for account" |
+| `nvidia/llama-3.2-nv-embedqa-1b-v1` | ❌ 404 chưa bật cho tài khoản |
+| `nvidia/embed-qa-4` | ❌ 404 chưa bật cho tài khoản |
+| `nvidia/nemotron-3-embed-1b` | ✅ **200, dim 2048** |
+| `gemini-embedding-001` | ✅ **200, dim 3072** (`outputDimensionality=768` cũng chạy) |
+| `nvidia/nv-rerankqa-mistral-4b-v3` (`/v1/ranking`, `/v1/reranking`) | ❌ **404 page not found — không có endpoint rerank** |
+
+Hai hệ quả được đóng cứng vào code:
+1. **Gemini là primary** (không phải NVIDIA như kế hoạch), vì đó là endpoint đã kiểm chứng
+   chạy được bằng khoá repo đang có, và có `taskType` (`RETRIEVAL_QUERY`/`RETRIEVAL_DOCUMENT`)
+   — đúng bất đối xứng query/passage mà bài toán cần.
+2. **Không có tầng rerank.** NVIDIA không mở endpoint nào; dùng LLM làm reranker sẽ tiêu quota
+   free mà tầng chat đang cần, cho một thứ RRF đã lo. Tầng không kiểm chứng được thì không ship.
+
+Script probe được nộp kèm: `backend/scripts/check_embed_catalog.py` (exit 0 khi mọi provider
+có khoá đều trả lời). Chạy lại bất cứ khi nào nhà cung cấp đổi catalog.
+
+### 8.2 Bảng trước/sau — ba chế độ
+
+| Chỉ số | R0 sparse | R2 hybrid | **R3 + dense** |
+|---|---|---|---|
+| Recall@1 | 0.846 | 0.846 | **1.000** |
+| Recall@3 | 1.000 | 0.923 | **1.000** |
+| Recall@5 | 1.000 | 0.923 | **1.000** |
+| MRR | 0.910 | 0.872 | **1.000** |
+| nDCG@5 | 0.933 | 0.885 | **1.000** |
+| FP ngoài miền | 1/2 | 0/2 | **0/2** |
+| FP ví dụ lạc đề | 1/1 | 0/1 | **0/1** |
+| Concept recall (uncovered) | 0.000 | 1.000 | **1.000** |
+| Nguồn dùng | examples | concepts+examples | concepts+**dense**+examples |
+| latency p50 | 0.1 ms | 0.2 ms | **818 ms** |
+
+**Q11 — trần từ vựng của R2 — giờ đạt `ex:p5` ở hạng 1.** Recall@1 từ 0.846 → 1.000.
+
+### 8.3 Ngưỡng cosine: lại phải ĐO, không được đoán
+
+Nguồn `dense` **cố ý** không chịu guard từ vựng (đó là cách nó giải Q11), mà cosine thì
+không bao giờ bằng 0 với văn bản không liên quan — nên lần chạy đầu, FP **tăng** trở lại
+(off-topic 2/2, ví dụ lạc đề 1/1) và xoá sạch thành quả precision của R2.
+
+Chẩn đoán trên golden set cho một **khoảng tách sạch**:
+
+```
+truy vấn đúng chủ đề, tài liệu đúng : 0.719 .. 0.855   (thấp nhất Q09)
+ngoài miền / không có bài, sai nhất : 0.546 .. 0.596   (cao nhất Q15)
+```
+Sweep: floor **0.60–0.70** giữ **13/13 recall và 0 FP**; 0.75 bắt đầu mất hit thật.
+Chọn **0.65** (giữa dải, biên ~0.05 mỗi phía), và **pin hai con số đo được** vào
+`test_retrieval_dense.py` — ai hạ ngưỡng sẽ phải đo lại và sửa test trước.
+
+### 8.4 Không thêm dependency nào
+
+Encoder là **remote**, client là `httpx` (đã có trong production). `requirements.txt`
+**không đổi**. Test pin: module dense không import `sentence_transformers`, không `import torch`;
+`test_chat_budget.py` độc lập pin sentence-transformers ra khỏi requirements. Đây là điều kiện
+để không lặp lại sự cố 2026-09-28.
+
+Cache: `VectorCache` SQLite WAL, khoá `sha256(provider + model + dim + input_type + text)`.
+Có `dim` và `input_type` trong khoá vì đó là những thứ đổi **vector**: tài liệu Gemini ghi rõ
+`gemini-embedding-001` và `gemini-embedding-2` **không tương thích**, và cùng một chuỗi ở
+chế độ query khác passage. Ổ khoá model ⇒ đổi model không thể tái dùng vector cũ.
+
+### 8.5 Bất đối xứng query/passage là thật trong request
+
+Gemini nhận `taskType` (`RETRIEVAL_QUERY` vs `RETRIEVAL_DOCUMENT`), NVIDIA nhận `input_type`
+(`query`/`passage`) — tham số mà tài liệu NVIDIA nói dùng sai sẽ gây "large drops in retrieval
+accuracy". Test khẳng định cả hai đi đúng giá trị, và response của NVIDIA được **sắp lại theo
+`index`** trước khi dùng.
+
+### 8.6 Defect do test bắt được + điểm yếu còn lại
+
+- Test bắt: hai assert đầu của tôi kiểm chuỗi `"key"` (sẽ cấm cả thông báo hữu ích
+  `"no api key"` mà không chứng minh gì). Đã đổi thành kiểm **giá trị khoá** có lọt vào
+  diagnostics không — và đặt khoá đặc trưng để phép kiểm có ý nghĩa thật.
+- **Điểm yếu đã biết:** latency `dense` ~**818 ms/lần** (một HTTP call Gemini + đọc cache).
+  Vẫn nằm trong budget `retrieval` (10 s mặc định), nhưng **đáng kể** so với 0.2 ms của R2,
+  và theo thiết kế nó chạy trên `asyncio.to_thread` nên không chặn event loop.
+  Nếu bật dense ở production, số này phải theo dõi qua `chat_budgets_s` trên `/api/health`.
+
+### 8.7 Hồi quy: không có
+
+36 / 36 mục PASS với cờ dense **off** (trạng thái mặc định), FAIL: 0.
+`test_retrieval_dense.py` **116/116**. `test_retrieval_hybrid.py` 51/51 (không đổi
+hành vi khi dense off — có test pin riêng điều đó).

@@ -1,0 +1,591 @@
+{
+  "summary": {
+    "mode": "hybrid",
+    "bank_rows": 6,
+    "dense_enabled": false,
+    "queries_total": 16,
+    "queries_recall": 13,
+    "queries_control": 2,
+    "queries_uncovered": 1,
+    "recall@1": 1.0,
+    "recall@3": 1.0,
+    "recall@5": 1.0,
+    "mrr": 1.0,
+    "ndcg@5": 1.0,
+    "false_positive_controls": 0,
+    "false_positive_examples": 0,
+    "concept_recall_uncovered": 1.0,
+    "source_totals": {
+      "concepts": 6,
+      "dense": 2,
+      "examples": 38
+    },
+    "latency_p50_ms": 818.25,
+    "latency_p95_ms": 1084.6
+  },
+  "by_kind": {
+    "exact": {
+      "n": 7,
+      "recall@3": 1.0
+    },
+    "paraphrase": {
+      "n": 6,
+      "recall@3": 1.0
+    }
+  },
+  "per_query": [
+    {
+      "id": "Q01",
+      "kind": "exact",
+      "expect": "must_find",
+      "query": "Cho tam giác ABC nhọn, gọi H là trực tâm, O là tâm đường tròn ngoại tiếp. Chứng minh AH vuông góc với BC.",
+      "expected_keys": [
+        "ex:p1"
+      ],
+      "ranked_keys": [
+        "ex:p1",
+        "ex:p6",
+        "ex:p2",
+        "ex:p3"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p1",
+        "ex:p6",
+        "ex:p2",
+        "ex:p3"
+      ],
+      "concept_hits": [
+        "ex:p1"
+      ],
+      "violation": false,
+      "latency_ms": 1084.6,
+      "returned": 4
+    },
+    {
+      "id": "Q02",
+      "kind": "exact",
+      "expect": "must_find",
+      "query": "tam giác nhọn trực tâm đường cao vuông góc",
+      "expected_keys": [
+        "ex:p1"
+      ],
+      "ranked_keys": [
+        "ex:p1",
+        "ex:p2",
+        "ex:p6",
+        "ex:p3"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p1",
+        "ex:p2",
+        "ex:p6",
+        "ex:p3"
+      ],
+      "concept_hits": [
+        "ex:p1"
+      ],
+      "violation": false,
+      "latency_ms": 800.16,
+      "returned": 4
+    },
+    {
+      "id": "Q03",
+      "kind": "exact",
+      "expect": "must_find",
+      "query": "đường tròn Euler chín điểm chân đường cao trung điểm",
+      "expected_keys": [
+        "ex:p2"
+      ],
+      "ranked_keys": [
+        "ex:p2",
+        "ex:p6",
+        "ex:p1",
+        "ex:p3"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p2",
+        "ex:p6",
+        "ex:p1",
+        "ex:p3"
+      ],
+      "concept_hits": [
+        "ex:p2"
+      ],
+      "violation": false,
+      "latency_ms": 898.35,
+      "returned": 4
+    },
+    {
+      "id": "Q04",
+      "kind": "exact",
+      "expect": "must_find",
+      "query": "bán kính đường tròn nội tiếp tam giác vuông tại A tiếp xúc BC",
+      "expected_keys": [
+        "ex:p3"
+      ],
+      "ranked_keys": [
+        "ex:p3",
+        "ex:p6",
+        "ex:p1",
+        "ex:p2"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p3",
+        "ex:p6",
+        "ex:p1",
+        "ex:p2"
+      ],
+      "concept_hits": [
+        "ex:p3"
+      ],
+      "violation": false,
+      "latency_ms": 800.41,
+      "returned": 4
+    },
+    {
+      "id": "Q05",
+      "kind": "exact",
+      "expect": "must_find",
+      "query": "Giải phương trình bậc hai x^2 - 5x + 6 = 0",
+      "expected_keys": [
+        "ex:p4"
+      ],
+      "ranked_keys": [
+        "ex:p4",
+        "concept:phuong_trinh_bac_hai"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "concepts"
+      ],
+      "example_keys": [
+        "ex:p4"
+      ],
+      "concept_hits": [
+        "ex:p4"
+      ],
+      "violation": false,
+      "latency_ms": 818.25,
+      "returned": 2
+    },
+    {
+      "id": "Q06",
+      "kind": "exact",
+      "expect": "must_find",
+      "query": "giá trị lớn nhất của hàm số bậc hai trên tập số thực",
+      "expected_keys": [
+        "ex:p5"
+      ],
+      "ranked_keys": [
+        "ex:p5",
+        "ex:p4"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p5",
+        "ex:p4"
+      ],
+      "concept_hits": [
+        "ex:p5"
+      ],
+      "violation": false,
+      "latency_ms": 1337.91,
+      "returned": 2
+    },
+    {
+      "id": "Q07",
+      "kind": "exact",
+      "expect": "must_find",
+      "query": "tam giác ABC nội tiếp đường tròn, H trực tâm, M trung điểm BC, chứng minh AH = 2.OM",
+      "expected_keys": [
+        "ex:p6"
+      ],
+      "ranked_keys": [
+        "ex:p6",
+        "ex:p1",
+        "ex:p2",
+        "ex:p3"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p6",
+        "ex:p1",
+        "ex:p2",
+        "ex:p3"
+      ],
+      "concept_hits": [
+        "ex:p6"
+      ],
+      "violation": false,
+      "latency_ms": 810.23,
+      "returned": 4
+    },
+    {
+      "id": "Q08",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "query": "quan hệ giữa trực tâm và tâm ngoại tiếp trong tam giác, trung điểm cạnh đối diện",
+      "expected_keys": [
+        "ex:p6",
+        "ex:p1"
+      ],
+      "ranked_keys": [
+        "ex:p6",
+        "ex:p1",
+        "ex:p2",
+        "ex:p3"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p6",
+        "ex:p1",
+        "ex:p2",
+        "ex:p3"
+      ],
+      "concept_hits": [
+        "ex:p6",
+        "ex:p1"
+      ],
+      "violation": false,
+      "latency_ms": 807.08,
+      "returned": 4
+    },
+    {
+      "id": "Q09",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "query": "tại sao đường cao kẻ từ đỉnh lại vuông góc với cạnh đối diện",
+      "expected_keys": [
+        "ex:p1"
+      ],
+      "ranked_keys": [
+        "ex:p1",
+        "ex:p2",
+        "ex:p3",
+        "ex:p6"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples",
+        "dense"
+      ],
+      "example_keys": [
+        "ex:p1",
+        "ex:p2",
+        "ex:p3",
+        "ex:p6"
+      ],
+      "concept_hits": [
+        "ex:p1"
+      ],
+      "violation": false,
+      "latency_ms": 821.97,
+      "returned": 4
+    },
+    {
+      "id": "Q10",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "query": "công thức tính bán kính vòng tròn tiếp xúc ba cạnh của một tam giác",
+      "expected_keys": [
+        "ex:p3"
+      ],
+      "ranked_keys": [
+        "ex:p3",
+        "ex:p6",
+        "ex:p1",
+        "ex:p2"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p3",
+        "ex:p6",
+        "ex:p1",
+        "ex:p2"
+      ],
+      "concept_hits": [
+        "ex:p3"
+      ],
+      "violation": false,
+      "latency_ms": 809.91,
+      "returned": 4
+    },
+    {
+      "id": "Q11",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "query": "tìm cực đại của một parabol bằng cách đưa về bình phương đầy đủ",
+      "expected_keys": [
+        "ex:p5"
+      ],
+      "ranked_keys": [
+        "ex:p5",
+        "concept:cuc_tri"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "dense",
+        "concepts"
+      ],
+      "example_keys": [
+        "ex:p5"
+      ],
+      "concept_hits": [
+        "ex:p5"
+      ],
+      "violation": false,
+      "latency_ms": 820.51,
+      "returned": 2
+    },
+    {
+      "id": "Q12",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "query": "chín điểm đặc biệt nằm trên cùng một vòng tròn, tâm là trung điểm của đoạn nối hai điểm đặc biệt",
+      "expected_keys": [
+        "ex:p2"
+      ],
+      "ranked_keys": [
+        "ex:p2",
+        "ex:p6",
+        "ex:p1"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "examples",
+        "examples"
+      ],
+      "example_keys": [
+        "ex:p2",
+        "ex:p6",
+        "ex:p1"
+      ],
+      "concept_hits": [
+        "ex:p2"
+      ],
+      "violation": false,
+      "latency_ms": 798.86,
+      "returned": 3
+    },
+    {
+      "id": "Q13",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "query": "nghiệm của phương trình bậc hai dựa vào biệt thức",
+      "expected_keys": [
+        "ex:p4"
+      ],
+      "ranked_keys": [
+        "ex:p4",
+        "concept:phuong_trinh_bac_hai",
+        "concept:biet_thuc_delta"
+      ],
+      "first_hit_rank": 1,
+      "recall@1": 1.0,
+      "recall@3": 1.0,
+      "recall@5": 1.0,
+      "reciprocal_rank": 1.0,
+      "ndcg@5": 1.0,
+      "sources": [
+        "examples",
+        "concepts",
+        "concepts"
+      ],
+      "example_keys": [
+        "ex:p4"
+      ],
+      "concept_hits": [
+        "ex:p4"
+      ],
+      "violation": false,
+      "latency_ms": 804.21,
+      "returned": 3
+    },
+    {
+      "id": "Q14",
+      "kind": "control",
+      "expect": "nothing",
+      "query": "cách nấu phở bò ngon tại nhà",
+      "expected_keys": [],
+      "ranked_keys": [],
+      "first_hit_rank": 0,
+      "recall@1": null,
+      "recall@3": null,
+      "recall@5": null,
+      "reciprocal_rank": null,
+      "ndcg@5": null,
+      "sources": [],
+      "example_keys": [],
+      "concept_hits": [],
+      "violation": false,
+      "latency_ms": 780.91,
+      "returned": 0
+    },
+    {
+      "id": "Q15",
+      "kind": "uncovered",
+      "expect": "no_examples",
+      "query": "tính tích phân bất định của sin bình phương x",
+      "expected_keys": [
+        "concept:tich_phan",
+        "concept:ham_so_luong_giac"
+      ],
+      "ranked_keys": [
+        "concept:tich_phan",
+        "concept:ham_so_luong_giac"
+      ],
+      "first_hit_rank": 0,
+      "recall@1": null,
+      "recall@3": null,
+      "recall@5": null,
+      "reciprocal_rank": null,
+      "ndcg@5": null,
+      "sources": [
+        "concepts",
+        "concepts"
+      ],
+      "example_keys": [],
+      "concept_hits": [
+        "concept:tich_phan",
+        "concept:ham_so_luong_giac"
+      ],
+      "violation": false,
+      "latency_ms": 845.69,
+      "returned": 2
+    },
+    {
+      "id": "Q16",
+      "kind": "control",
+      "expect": "nothing",
+      "query": "dự báo thời tiết ngày mai",
+      "expected_keys": [],
+      "ranked_keys": [],
+      "first_hit_rank": 0,
+      "recall@1": null,
+      "recall@3": null,
+      "recall@5": null,
+      "reciprocal_rank": null,
+      "ndcg@5": null,
+      "sources": [],
+      "example_keys": [],
+      "concept_hits": [],
+      "violation": false,
+      "latency_ms": 858.91,
+      "returned": 0
+    }
+  ]
+}

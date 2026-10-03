@@ -142,6 +142,18 @@ jobs:
         working-directory: backend
         run: python test_retrieval_hybrid.py
 
+      # R3 of the HybridRAG plan — the dense half, with NO new dependency: remote
+      # embeddings through httpx (production already has it) while the local
+      # transformer stays out, for the reason test_chat_budget.py pins. Every branch
+      # runs through an httpx.MockTransport, so this job needs no network and no key.
+      # The probe that chose the provider ships as
+      # backend/scripts/check_embed_catalog.py, and it is why the module names Gemini
+      # first: the model the plan originally proposed now returns HTTP 410
+      # (end-of-life), and NVIDIA exposes no rerank route at all.
+      - name: Retrieval — dense remote ladder + vector cache (off by default)
+        working-directory: backend
+        run: python test_retrieval_dense.py
+
       # R1 of the HybridRAG plan — the concept graph MOVED out of main.py into
       # backend/math_concepts.py + backend/data/math_concepts.json, and this suite
       # is why that was worth doing: main.py cannot be imported here (it binds DB

@@ -214,11 +214,41 @@ trên ngân hàng hiện tại kết quả không có nhóm gần trùng (tối 
 MMR chưa có việc để làm — thêm nó lúc này là code không có bằng chứng. Sẽ xét lại ở R5 khi ngân
 hàng lớn hơn.
 
-### R3 — Dense remote (torch-free)
-- `backend/retrieval_dense.py`: `RemoteEmbeddingClient` (NVIDIA/Gemini/OpenRouter, **1 code path OpenAI-compatible** + adapter Gemini) + `VectorCache` SQLite WAL
-- `MATH_RETRIEVAL_DENSE=off` ⇒ không tạo client ⇒ **CI xanh như hôm nay**
-- Warm-up cả bank ở `lifespan` (background, có cap) — **không bao giờ** encode cả bank trong event loop
-- Test: `backend/test_retrieval_dense.py` — phải chứng minh: (a) tắt hết ⇒ y hệt; (b) đổi model ⇒ cache key đổi; (c) `input_type` đúng; (d) 429 ⇒ cooldown rồi thử khoá kế
+### R3 — Dense remote (torch-free) ✅ HOÀN TẤT
+- `backend/retrieval_dense.py` (mới): `RemoteEmbeddingClient` (`httpx.MockTransport` là điểm
+  inject cho test) + `VectorCache` (SQLite WAL) + `DenseIndex` + ladder feature-detect.
+- `backend/test_retrieval_dense.py` (mới, **116/116**) + `backend/scripts/check_embed_catalog.py`
+  (mới, probe nộp kèm) — đã vào job `offline-suites`.
+- R2 nhận nguồn `dense` (feature-detect: cờ bật **và** có khoá).
+
+**Probe bác bỏ kế hoạch ban đầu — đây là lý do phải probe trước:**
+
+| Model / endpoint | Đo được |
+|---|---|
+| `nvidia/nv-embedqa-e5-v5` (kế hoạch đề xuất primary) | ❌ **410 end-of-life 2026-08-25** |
+| `nvidia/nv-embedqa-mistral-7b-v2` / `llama-3.2-nv-embedqa-1b-v1` / `embed-qa-4` | ❌ 404 chưa bật cho tài khoản |
+| **`nvidia/nemotron-3-embed-1b`** | ✅ 200, dim 2048 |
+| **`gemini-embedding-001`** | ✅ 200, dim 3072 (`outputDimensionality` tôn trọng) |
+| Rerank (`/v1/ranking`, `/v1/reranking`) | ❌ **404 — NVIDIA không có endpoint rerank** |
+
+⇒ **ĐẢO ladder: Gemini primary** (endpoint đã kiểm chứng + có `taskType`), NVIDIA secondary,
+OpenRouter chốt cuối. **BỎ hẳn reranker** — không có endpoint free, và dùng LLM rerank sẽ tiêu
+quota mà tầng chat cần; cổng "không kiểm chứng được thì không ship" đã áp dụng.
+
+| | R0 sparse | R2 hybrid | **R3 + dense** |
+|---|---|---|---|
+| Recall@1 | 0.846 | 0.846 | **1.000** |
+| Recall@3 / MRR / nDCG@5 | 1.000 / 0.910 / 0.933 | 0.923 / 0.872 / 0.885 | **1.000 / 1.000 / 1.000** |
+| FP ngoài miền · ví dụ lạc đề | 1/2 · 1/1 | 0/2 · 0/1 | **0/2 · 0/1** |
+| latency p50 | 0.1 ms | 0.2 ms | **818 ms** |
+
+**Ngưỡng cosine — đo, không đoán:** dense cố ý bỏ guard từ vựng (đó là cách giải Q11) nên lần
+chạy đầu FP tăng lại (2/2 · 1/1). Chẩn đoán cho khoảng tách sạch: đúng chủ đề `0.719–0.855`,
+sai `0.546–0.596` ⇒ floor **0.65**, giữ 13/13 recall và 0 FP. Hai con số đo được được **pin**
+vào test để hạ ngưỡng phải đo lại trước.
+
+**Không thêm dependency:** encoder remote, client `httpx` (đã có). `requirements.txt` không đổi;
+test pin không `torch`, không `sentence_transformers`.
 
 ### R4 — Lắp ngữ cảnh theo vai trò + tier
 - `backend/retrieval_context.py` (§4)

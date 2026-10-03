@@ -1,0 +1,84 @@
+{
+  "providers": [
+    {
+      "provider": "nvidia",
+      "skipped": false,
+      "catalog": {
+        "status": 200,
+        "total": 81,
+        "embedding_models": [
+          "nvidia/embed-qa-4",
+          "nvidia/llama-3.2-nemoretriever-1b-vlm-embed-v1",
+          "nvidia/llama-3.2-nv-embedqa-1b-v1",
+          "nvidia/llama-nemotron-embed-vl-1b-v2",
+          "nvidia/nemotron-3-embed-1b",
+          "nvidia/nv-embedqa-mistral-7b-v2",
+          "snowflake/arctic-embed-l"
+        ],
+        "rerank_models": []
+      },
+      "embedding": [
+        {
+          "model": "nvidia/nemotron-3-embed-1b",
+          "status": 200,
+          "dim": 2048
+        },
+        {
+          "model": "nvidia/nv-embedqa-e5-v5",
+          "status": 410,
+          "detail": "The model 'nvidia/nv-embedqa-e5-v5' has reached its end of life on 2026-08-25T09:00:00Z and is no longer available."
+        },
+        {
+          "model": "nvidia/nv-embedqa-mistral-7b-v2",
+          "status": 404,
+          "detail": "Function '6caf65cf-1c3a-4823-89a5-21b821640d99': Not found for account 'BiBS5Xne67YLHmXedFN0I1ZN__EtyUpY8nMWLnJnGek'"
+        },
+        {
+          "model": "nvidia/llama-3.2-nv-embedqa-1b-v1",
+          "status": 404,
+          "detail": "Function 'b51e8011-e772-4c9a-8b02-618e99ae4467': Not found for account 'BiBS5Xne67YLHmXedFN0I1ZN__EtyUpY8nMWLnJnGek'"
+        },
+        {
+          "model": "nvidia/embed-qa-4",
+          "status": 404,
+          "detail": "Function '09c64e32-2b65-4892-a285-2f585408d118': Not found for account 'BiBS5Xne67YLHmXedFN0I1ZN__EtyUpY8nMWLnJnGek'"
+        }
+      ],
+      "rerank": [
+        {
+          "path": "ranking",
+          "status": 404
+        },
+        {
+          "path": "reranking",
+          "status": 404
+        }
+      ]
+    },
+    {
+      "provider": "gemini",
+      "skipped": false,
+      "catalog": {
+        "status": 200,
+        "total": 50,
+        "embedding_models": [
+          "gemini-embedding-001",
+          "gemini-embedding-2",
+          "gemini-embedding-2-preview"
+        ]
+      },
+      "embedding": [
+        {
+          "model": "gemini-embedding-001",
+          "status": 200,
+          "dim": 3072
+        },
+        {
+          "model": "gemini-embedding-2",
+          "status": 200,
+          "dim": 3072
+        }
+      ]
+    }
+  ]
+}
