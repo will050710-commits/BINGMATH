@@ -130,6 +130,18 @@ jobs:
         working-directory: backend
         run: python test_diagram_complexity.py
 
+      # R2 of the HybridRAG plan — the multi-source fusion layer. It exists for two
+      # MEASURED defects, both pinned by its suite: R0 returned a worked example for
+      # BOTH off-topic controls, and a diagnostic over every golden query showed no
+      # single threshold could fix that (the false positives scored HIGHER than the
+      # true answer, because IDF is meaningless on a 6-row bank). The guard is
+      # therefore structural — Vietnamese function words are not content, and a
+      # worked example must share >= 2 content tokens with the query — and the recall
+      # it costs is asserted rather than hidden.
+      - name: Retrieval — hybrid fusion (multi-source RRF) + BM25
+        working-directory: backend
+        run: python test_retrieval_hybrid.py
+
       # R1 of the HybridRAG plan — the concept graph MOVED out of main.py into
       # backend/math_concepts.py + backend/data/math_concepts.json, and this suite
       # is why that was worth doing: main.py cannot be imported here (it binds DB

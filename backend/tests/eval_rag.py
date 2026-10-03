@@ -58,6 +58,54 @@ from math_problem_retrieval import get_default_index  # noqa: E402
 GOLDEN_SET = os.path.join(_HERE, "rag_golden_set.json")
 TOP_K = 5
 
+EXPECT_MUST_FIND = "must_find"
+EXPECT_NO_EXAMPLES = "no_examples"
+EXPECT_NOTHING = "nothing"
+
+#: Short prefixes, shared with `retrieval_hybrid` (which emits `ex:`/`concept:`).
+#: The golden set spells the source out in full ("examples"), so the mapping lives
+#: here — one place, so a renamed prefix cannot silently zero every recall number.
+SOURCE_PREFIX = {"examples": "ex", "concepts": "concept",
+                 "templates": "tpl", "exam": "exam"}
+
+
+def key_for(source: str, doc_id: str) -> str:
+    return f"{SOURCE_PREFIX.get(source, source)}:{doc_id}"
+
+
+# ── mode ─────────────────────────────────────────────────────────────────────
+
+def resolve_mode(requested: str) -> str:
+    """``auto`` | ``sparse`` | ``hybrid`` -> the two the harness can actually run.
+
+    `sparse` is the R0 path (`ProblemIndex.search`, TF-IDF cosine) and stays
+    available forever because it is the recorded baseline. `hybrid` is the R2 path
+    (multi-source RRF). `auto` follows the flag, which is off by default, so an
+    unconfigured run reproduces the baseline instead of silently changing it.
+    """
+    if requested in ("sparse", "hybrid"):
+        return requested
+    try:
+        import retrieval_hybrid
+        return "hybrid" if retrieval_hybrid.enabled() else "sparse"
+    except Exception:
+        return "sparse"
+
+
+def rank(query: str, mode: str, index, top_k: int):
+    """Normalised ranked keys, both modes in the same `source:id` namespace."""
+    if mode == "hybrid":
+        import retrieval_hybrid
+        results = retrieval_hybrid.search(query, top_k=top_k, index=index)
+        return results, [r["key"] for r in results]
+    results = index.search(query, top_k=top_k)
+    return results, [key_for("examples", r.get("id")) for r in results]
+
+
+def expected_keys(item: dict):
+    source = item.get("expected_source", "examples")
+    return [key_for(source, doc_id) for doc_id in (item.get("expected_ids") or [])]
+
 
 # ── metrics ──────────────────────────────────────────────────────────────────
 
@@ -120,77 +168,111 @@ def build_index():
     return get_default_index()
 
 
-def run(golden_path=GOLDEN_SET, top_k=TOP_K, emit_json=None):
+def run(golden_path=GOLDEN_SET, top_k=TOP_K, emit_json=None, mode="auto"):
     with open(golden_path, "r", encoding="utf-8") as handle:
         golden = json.load(handle)
     queries = golden["queries"]
 
     index = build_index()
     dense_on = getattr(index, "_doc_embeddings", None) is not None
+    mode = resolve_mode(mode)
 
     print("=" * 78)
-    print("DUOMATH RETRIEVAL BASELINE (R0) - worked-example source (S2)")
+    print(f"DUOMATH RETRIEVAL HARNESS - mode={mode}")
     print("=" * 78)
     print(f"bank rows          : {len(index.rows)}")
     print(f"index path         : {getattr(index, 'jsonl_path', '?')}")
     print(f"dense (embeddings) : {'ON' if dense_on else 'OFF (production config)'}")
     print(f"queries            : {len(queries)}  (top_k={top_k})")
+    if mode == "hybrid":
+        import retrieval_hybrid
+        print(f"sources            : {retrieval_hybrid.active_sources()}")
+        print(f"min_overlap guard  : {retrieval_hybrid.min_overlap()}")
     print("-" * 78)
-    print(f"{'id':<4} {'kind':<11} {'rank':>4} {'top-3':>20} {'nDCG@5':>7} {'ms':>7}")
+    print(f"{'id':<4} {'kind':<11} {'expect':<12} {'rank':>4} {'top-3':>24} {'ms':>7}")
     print("-" * 78)
 
     rows = []
     latencies = []
     for item in queries:
         query = item["query"]
-        expected = item.get("expected_ids") or []
+        expect = item.get("expect", EXPECT_MUST_FIND)
+        expected = expected_keys(item)
 
         started = time.perf_counter()
-        results = index.search(query, top_k=top_k)
+        results, ranked = rank(query, mode, index, top_k)
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         latencies.append(elapsed_ms)
 
-        ranked = [r.get("id") for r in results]
-        rank = first_hit_rank(ranked, expected)
-        hits = ",".join(ranked[:3]) or "-"
-        score = ndcg_at(ranked, expected, top_k)
+        if expect == EXPECT_MUST_FIND:
+            hit_rank = first_hit_rank(ranked, expected)
+            score = ndcg_at(ranked, expected, top_k)
+            r1, r3, r5 = (recall_at(ranked, expected, k) for k in (1, 3, top_k))
+            rr = reciprocal_rank(ranked, expected)
+        else:
+            hit_rank, score, r1, r3, r5, rr = 0, None, None, None, None, None
 
-        print(f"{item['id']:<4} {item.get('kind', ''):<11} "
-              f"{(rank if rank else '-'):>4} {hits:>20} "
-              f"{'-' if score is None else f'{score:.3f}':>7} {elapsed_ms:>7.1f}")
+        # Violations are counted PER expectation kind, so "dragged in an unrelated
+        # worked example" and "answered an off-topic question at all" stay
+        # distinguishable in the report - they are different defects.
+        example_keys = [k for k in ranked if k.startswith("ex:")]
+        violation = ((expect == EXPECT_NOTHING and bool(ranked))
+                     or (expect == EXPECT_NO_EXAMPLES and bool(example_keys)))
+
+        print(f"{item['id']:<4} {item.get('kind', ''):<11} {expect:<12} "
+              f"{(hit_rank if hit_rank else '-'):>4} "
+              f"{(','.join(ranked[:3]) or '-'):>24} {elapsed_ms:>7.1f}")
 
         rows.append({
             "id": item["id"],
             "kind": item.get("kind", ""),
+            "expect": expect,
             "query": query,
-            "expected_ids": expected,
-            "ranked_ids": ranked,
-            "first_hit_rank": rank,
-            "recall@1": recall_at(ranked, expected, 1),
-            "recall@3": recall_at(ranked, expected, 3),
-            "recall@5": recall_at(ranked, expected, top_k),
-            "reciprocal_rank": reciprocal_rank(ranked, expected),
-            "ndcg@5": score,
+            "expected_keys": expected,
+            "ranked_keys": ranked,
+            "first_hit_rank": hit_rank,
+            "recall@1": r1, "recall@3": r3, "recall@5": r5,
+            "reciprocal_rank": rr, "ndcg@5": score,
+            "sources": ([r.get("source") for r in results] if mode == "hybrid"
+                        else ["examples"] * len(results)),
+            "example_keys": example_keys,
+            "concept_hits": [k for k in ranked if k in expected],
+            "violation": bool(violation),
             "latency_ms": round(elapsed_ms, 2),
             "returned": len(results),
         })
 
     # ── aggregates ───────────────────────────────────────────────────────────
-    positives = [r for r in rows if r["recall@5"] is not None]
-    controls = [r for r in rows if r["recall@5"] is None]
+    recall_rows = [r for r in rows if r["expect"] == EXPECT_MUST_FIND]
+    nothing_rows = [r for r in rows if r["expect"] == EXPECT_NOTHING]
+    uncovered_rows = [r for r in rows if r["expect"] == EXPECT_NO_EXAMPLES]
+
+    source_totals = {}
+    for row in rows:
+        for name in row["sources"]:
+            source_totals[name] = source_totals.get(name, 0) + 1
+
+    concept_total = sum(len(r["expected_keys"]) for r in uncovered_rows)
+    concept_found = sum(len(r["concept_hits"]) for r in uncovered_rows)
 
     summary = {
+        "mode": mode,
         "bank_rows": len(index.rows),
         "dense_enabled": dense_on,
         "queries_total": len(rows),
-        "queries_scored": len(positives),
-        "queries_control": len(controls),
-        "recall@1": round(mean([r["recall@1"] for r in positives]), 4),
-        "recall@3": round(mean([r["recall@3"] for r in positives]), 4),
-        "recall@5": round(mean([r["recall@5"] for r in positives]), 4),
-        "mrr": round(mean([r["reciprocal_rank"] for r in positives]), 4),
-        "ndcg@5": round(mean([r["ndcg@5"] for r in positives]), 4),
-        "false_positive_controls": sum(1 for r in controls if r["returned"] > 0),
+        "queries_recall": len(recall_rows),
+        "queries_control": len(nothing_rows),
+        "queries_uncovered": len(uncovered_rows),
+        "recall@1": round(mean([r["recall@1"] for r in recall_rows]), 4),
+        "recall@3": round(mean([r["recall@3"] for r in recall_rows]), 4),
+        "recall@5": round(mean([r["recall@5"] for r in recall_rows]), 4),
+        "mrr": round(mean([r["reciprocal_rank"] for r in recall_rows]), 4),
+        "ndcg@5": round(mean([r["ndcg@5"] for r in recall_rows]), 4),
+        # Two separate defects, two separate numbers.
+        "false_positive_controls": sum(1 for r in nothing_rows if r["violation"]),
+        "false_positive_examples": sum(1 for r in uncovered_rows if r["violation"]),
+        "concept_recall_uncovered": round(concept_found / concept_total, 4) if concept_total else 0.0,
+        "source_totals": dict(sorted(source_totals.items())),
         "latency_p50_ms": round(percentile(latencies, 50), 2),
         "latency_p95_ms": round(percentile(latencies, 95), 2),
     }
@@ -199,7 +281,7 @@ def run(golden_path=GOLDEN_SET, top_k=TOP_K, emit_json=None):
     # "the lexical matcher cannot see the paraphrase" - two different fixes.
     by_kind = {}
     for kind in sorted({r["kind"] for r in rows}):
-        subset = [r for r in rows if r["kind"] == kind and r["recall@3"] is not None]
+        subset = [r for r in recall_rows if r["kind"] == kind]
         if subset:
             by_kind[kind] = {
                 "n": len(subset),
@@ -207,15 +289,17 @@ def run(golden_path=GOLDEN_SET, top_k=TOP_K, emit_json=None):
             }
 
     print("-" * 78)
-    print(f"Recall@1 {summary['recall@1']:.3f}   "
-          f"Recall@3 {summary['recall@3']:.3f}   "
-          f"Recall@5 {summary['recall@5']:.3f}")
-    print(f"MRR      {summary['mrr']:.3f}   "
-          f"nDCG@5   {summary['ndcg@5']:.3f}")
-    print(f"latency  p50 {summary['latency_p50_ms']:.1f} ms   "
-          f"p95 {summary['latency_p95_ms']:.1f} ms")
-    print(f"false positives on {summary['queries_control']} control queries: "
-          f"{summary['false_positive_controls']}")
+    print(f"[mode={mode}] Recall@1 {summary['recall@1']:.3f}   "
+          f"Recall@3 {summary['recall@3']:.3f}   Recall@5 {summary['recall@5']:.3f}")
+    print(f"MRR {summary['mrr']:.3f}   nDCG@5 {summary['ndcg@5']:.3f}   "
+          f"latency p50 {summary['latency_p50_ms']:.1f} ms  p95 {summary['latency_p95_ms']:.1f} ms")
+    print(f"false positives  off-topic {summary['false_positive_controls']}"
+          f"/{len(nothing_rows)}   unrelated-example {summary['false_positive_examples']}"
+          f"/{len(uncovered_rows)}")
+    print(f"concept recall on uncovered queries: "
+          f"{summary['concept_recall_uncovered']:.3f} ({concept_found}/{concept_total})")
+    if summary["source_totals"]:
+        print(f"sources used     {summary['source_totals']}")
     for kind, stats in by_kind.items():
         print(f"  by kind {kind:<11} n={stats['n']:<3} Recall@3 {stats['recall@3']:.3f}")
     print("=" * 78)
@@ -230,13 +314,16 @@ def run(golden_path=GOLDEN_SET, top_k=TOP_K, emit_json=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="DuoMath retrieval baseline (R0)")
+    parser = argparse.ArgumentParser(description="DuoMath retrieval harness (R0 baseline / R2 hybrid)")
     parser.add_argument("--golden", default=GOLDEN_SET, help="golden-set JSON path")
     parser.add_argument("--top-k", type=int, default=TOP_K)
+    parser.add_argument("--mode", default="auto", choices=("auto", "sparse", "hybrid"),
+                        help="sparse = R0 TF-IDF path; hybrid = R2 multi-source RRF; "
+                             "auto follows MATH_RETRIEVAL_HYBRID (off by default)")
     parser.add_argument("--json", dest="emit_json", default=None,
                         help="also write the full report to this path")
     args = parser.parse_args()
-    run(golden_path=args.golden, top_k=args.top_k, emit_json=args.emit_json)
+    run(golden_path=args.golden, top_k=args.top_k, emit_json=args.emit_json, mode=args.mode)
     return 0
 
 

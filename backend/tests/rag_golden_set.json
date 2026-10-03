@@ -1,101 +1,142 @@
 {
-  "suite_name": "DuoMath retrieval golden set (R0 baseline)",
-  "version": "1.0",
-  "description": "Queries with the problem ids a correct retriever should surface. Written for backend/tests/eval_rag.py, which scores Recall@k / MRR / nDCG@5 / context size / latency offline. Deliberately contains (a) exact-terminology queries, (b) PARAPHRASES with little lexical overlap, and (c) negative controls expected to return nothing - the first two prove the TF-IDF-only configuration is weak exactly where the plan says it is, the third proves it does not invent matches.",
+  "suite_name": "DuoMath retrieval golden set (R0 baseline, R2 expectation model)",
+  "version": "2.0",
+  "description": "Queries with what a correct retriever should surface. Written for backend/tests/eval_rag.py, which scores Recall@k / MRR / nDCG / latency offline, in either sparse (R0) or hybrid (R2) mode.",
   "notes": [
-    "expected_ids refer to backend/data/math_problems.jsonl (p1..p6).",
-    "A query with expected_ids [] is a NEGATIVE CONTROL: a retriever that returns anything for it is producing false positives.",
-    "kind=exact / kind=paraphrase / kind=control is recorded per query so the baseline can separate the two failure modes."
+    "expected_ids refer to backend/data/math_problems.jsonl (p1..p6) when expected_source is 'examples'.",
+    "expected_ids refer to node ids in backend/data/math_concepts.json when expected_source is 'concepts'.",
+    "expect=must_find   -> scored for recall against expected_ids.",
+    "expect=no_examples -> on-topic but absent from the worked-example bank: returning ANY worked example is a false positive; concepts are correct, and expected_ids names the ones that should appear.",
+    "expect=nothing     -> off-topic: returning anything at all is a false positive.",
+    "Version 2.0 splits v1's single 'control' kind in two, because a multi-source retriever makes them different obligations. Q15 asks about an integral of sin^2 x: the concept graph legitimately covers it (Tich phan, Ham so luong giac) even though no worked example does. v1 scored that as a false positive; v2 scores it as what it is - correct concept recall with zero EXAMPLE recall. The example-level false positives R2 removes (Q14->p3, Q15->p4) are unaffected by the reclassification."
   ],
   "queries": [
     {
       "id": "Q01",
       "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "Cho tam giác ABC nhọn, gọi H là trực tâm, O là tâm đường tròn ngoại tiếp. Chứng minh AH vuông góc với BC.",
       "expected_ids": ["p1"]
     },
     {
       "id": "Q02",
       "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "tam giác nhọn trực tâm đường cao vuông góc",
       "expected_ids": ["p1"]
     },
     {
       "id": "Q03",
       "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "đường tròn Euler chín điểm chân đường cao trung điểm",
       "expected_ids": ["p2"]
     },
     {
       "id": "Q04",
       "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "bán kính đường tròn nội tiếp tam giác vuông tại A tiếp xúc BC",
       "expected_ids": ["p3"]
     },
     {
       "id": "Q05",
       "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "Giải phương trình bậc hai x^2 - 5x + 6 = 0",
       "expected_ids": ["p4"]
     },
     {
       "id": "Q06",
       "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "giá trị lớn nhất của hàm số bậc hai trên tập số thực",
       "expected_ids": ["p5"]
     },
     {
       "id": "Q07",
       "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "tam giác ABC nội tiếp đường tròn, H trực tâm, M trung điểm BC, chứng minh AH = 2.OM",
       "expected_ids": ["p6"]
     },
     {
       "id": "Q08",
       "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "quan hệ giữa trực tâm và tâm ngoại tiếp trong tam giác, trung điểm cạnh đối diện",
       "expected_ids": ["p6", "p1"]
     },
     {
       "id": "Q09",
       "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "tại sao đường cao kẻ từ đỉnh lại vuông góc với cạnh đối diện",
       "expected_ids": ["p1"]
     },
     {
       "id": "Q10",
       "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "công thức tính bán kính vòng tròn tiếp xúc ba cạnh của một tam giác",
       "expected_ids": ["p3"]
     },
     {
       "id": "Q11",
       "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "tìm cực đại của một parabol bằng cách đưa về bình phương đầy đủ",
       "expected_ids": ["p5"]
     },
     {
       "id": "Q12",
       "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "chín điểm đặc biệt nằm trên cùng một vòng tròn, tâm là trung điểm của đoạn nối hai điểm đặc biệt",
       "expected_ids": ["p2"]
     },
     {
       "id": "Q13",
       "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
       "query": "nghiệm của phương trình bậc hai dựa vào biệt thức",
       "expected_ids": ["p4"]
     },
     {
       "id": "Q14",
       "kind": "control",
+      "expect": "nothing",
+      "expected_source": "examples",
       "query": "cách nấu phở bò ngon tại nhà",
       "expected_ids": []
     },
     {
       "id": "Q15",
-      "kind": "control",
+      "kind": "uncovered",
+      "expect": "no_examples",
+      "expected_source": "concepts",
       "query": "tính tích phân bất định của sin bình phương x",
+      "expected_ids": ["tich_phan", "ham_so_luong_giac"]
+    },
+    {
+      "id": "Q16",
+      "kind": "control",
+      "expect": "nothing",
+      "expected_source": "examples",
+      "query": "dự báo thời tiết ngày mai",
       "expected_ids": []
     }
   ]

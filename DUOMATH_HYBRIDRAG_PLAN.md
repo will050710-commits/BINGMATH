@@ -180,12 +180,39 @@ reproducibility và đo A/B đều nhiễu; và **không thể** có golden test
 `test_math_concepts.py` pin: **0/20 khác nhau giữa process** (child process với
 `PYTHONHASHSEED=12345`).
 
-### R2 — Fusion nhiều nguồn + BM25 + sửa false positive
-- `backend/retrieval_hybrid.py`: adapter S1/S2/S4/S5 → RRF → **tie-break tất định** → MMR → cap
-- `math_problem_retrieval.py`: thêm BM25 (`k1=1.5`, `b=0.75`), opt-in `MATH_RETRIEVAL_BM25`; giữ `_tfidf_scores` nguyên vẹn
-- **Sửa defect 3.2:** ngưỡng theo kích thước ngân hàng hoặc bắt buộc ≥2 token chung
-- Nguồn `templates` **feature-detect** (không có registry ⇒ bỏ nguồn, không lỗi)
-- Test: `backend/test_retrieval_hybrid.py`; kỳ vọng `false_positive_controls == 0`
+### R2 — Fusion nhiều nguồn + BM25 + sửa false positive ✅ HOÀN TẤT
+- `backend/retrieval_hybrid.py` (mới): adapter `concepts` + `examples` → RRF (`k=60`,
+  **tái dùng** `_reciprocal_rank_fusion` của `math_problem_retrieval`, không viết lại)
+  → **tie-break tất định** (fused → độ đặc hiệu nguồn → key) → cap `top_k`.
+- `math_problem_retrieval.py`: thêm `_bm25_scores` (`k1=1.5`, `b=0.75`, IDF luôn dương),
+  opt-in `MATH_RETRIEVAL_BM25`, **giữ nguyên** `_tfidf_scores`/`search()`.
+- `backend/test_retrieval_hybrid.py` (mới) — **51/51**, đã vào job `offline-suites`.
+- Golden set lên **v2.0** (`expect: must_find | no_examples | nothing`); `eval_rag.py`
+  thêm `--mode sparse|hybrid|auto`.
+
+**Kết quả đo được (bảng đầy đủ ở `docs/baseline_rag_2026-10.md` §7):**
+
+| | R0 sparse | R2 hybrid |
+|---|---|---|
+| FP ngoài miền | 1/2 | **0/2** |
+| FP ví dụ lạc đề | 1/1 | **0/1** |
+| Concept recall (uncovered) | 0.000 | **1.000** |
+| Recall@3 | 1.000 | 0.923 |
+| Recall@1 / MRR | 0.846 / 0.910 | 0.846 / 0.872 |
+
+**Vì sao không chỉnh ngưỡng:** chẩn đoán toàn bộ golden set cho thấy hai false positive có
+TF-IDF **cao hơn đáp án đúng** (0.4195 và 0.3871 so với 0.1959) — với 6 tài liệu thì IDF vô
+nghĩa. Sweep `(min_overlap, min_tfidf)` đều để lọt 2/2. Nên bản sửa là **cấu trúc**: từ chức
+năng tiếng Việt không tính là nội dung + ví dụ phải chia sẻ ≥2 token nội dung.
+
+**Cái giá, ghi rõ:** Q11 mất ví dụ đã giải — đó là **trần truy hồi từ vựng**, và chính là việc
+của R3 (dense). Test pin cả hai vế (sparse *có* ứng viên; guard *loại* nó) để không ai nới
+guard mà không sửa test.
+
+**MMR — HOÃN, có lý do:** spec ghi "MMR + cap", nhưng R2 chỉ làm cap + khử trùng theo key. Lý do:
+trên ngân hàng hiện tại kết quả không có nhóm gần trùng (tối đa 4 ứng viên, khác chủ đề rõ), nên
+MMR chưa có việc để làm — thêm nó lúc này là code không có bằng chứng. Sẽ xét lại ở R5 khi ngân
+hàng lớn hơn.
 
 ### R3 — Dense remote (torch-free)
 - `backend/retrieval_dense.py`: `RemoteEmbeddingClient` (NVIDIA/Gemini/OpenRouter, **1 code path OpenAI-compatible** + adapter Gemini) + `VectorCache` SQLite WAL

@@ -264,6 +264,64 @@ class ProblemIndex:
                 out[i] = s
         return out
 
+    # ---- BM25 (R2, opt-in) ----
+
+    def _build_bm25(self) -> None:
+        """Term frequencies, lengths and IDF for BM25. Built once, on first use.
+
+        Kept SEPARATE from the TF-IDF index instead of replacing it: `_tfidf_scores`
+        and `search()` are pinned by test_math_problem_retrieval.py and are the
+        recorded R0 baseline, so changing them would erase the reference point.
+        """
+        if getattr(self, "_bm25_ready", False):
+            return
+        self._bm25_tf: List[Counter] = []
+        self._bm25_len: List[int] = []
+        for row in self.rows:
+            tokens = _tokenize(row.get("problem", "") + " " + row.get("topic", ""))
+            counts = Counter(tokens)
+            self._bm25_tf.append(counts)
+            self._bm25_len.append(len(tokens))
+        n_docs = max(len(self.rows), 1)
+        self._bm25_avgdl = (sum(self._bm25_len) / n_docs) or 1.0
+        doc_freq = Counter()
+        for counts in self._bm25_tf:
+            for term in counts:
+                doc_freq[term] += 1
+        # The (N - df + 0.5)/(df + 0.5) form stays positive for every df, which
+        # matters on a small bank: a classic `log(N/df)` goes negative for a term
+        # that appears in more than half the documents.
+        self._bm25_idf = {
+            term: math.log(1 + (n_docs - df + 0.5) / (df + 0.5))
+            for term, df in doc_freq.items()
+        }
+        self._bm25_ready = True
+
+    def _bm25_scores(self, query: str, k1: float = 1.5,
+                     b: float = 0.75) -> Dict[int, float]:
+        """{row_index: bm25_score} with length normalisation.
+
+        Why this is opt-in rather than the default: measured on the 6-row bank it
+        changes nothing that matters (R0/R2 both showed the bottleneck is data, not
+        the ranking function). It earns its keep when the bank grows, where long
+        worked solutions currently out-score short ones just by being long.
+        """
+        self._build_bm25()
+        out: Dict[int, float] = {}
+        for i, counts in enumerate(self._bm25_tf):
+            length = self._bm25_len[i] or 1
+            score = 0.0
+            for term in _tokenize(query):
+                freq = counts.get(term)
+                if not freq:
+                    continue
+                idf = self._bm25_idf.get(term, 0.0)
+                score += idf * (freq * (k1 + 1)) / (
+                    freq + k1 * (1 - b + b * length / self._bm25_avgdl))
+            if score > 0:
+                out[i] = score
+        return out
+
     # ---- dense (embedding) ----
 
     def _build_embedding_index(self) -> None:

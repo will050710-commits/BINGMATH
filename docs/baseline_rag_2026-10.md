@@ -154,3 +154,95 @@ Kiểm tra tích hợp qua `main.py`: graph 13/10, `extract_graph_entities` tr�
 `retrieve_math_context` **identical** với `math_concepts.render_context`,
 `GRAPHABLE_CONCEPT_IDS` không có id mồ côi, `detect_widget` vẫn
 `function_plot` / `geometry_2d`.
+
+---
+
+## 7. R2 — Fusion nhiều nguồn + sửa false positive (số trước/sau)
+
+Tái tạo (cùng bộ golden, chỉ khác chế độ chấm):
+```powershell
+python backend/tests/eval_rag.py --mode sparse   # R0: đường TF-IDF-only
+python backend/tests/eval_rag.py --mode hybrid   # R2: concepts + examples qua RRF
+```
+`--mode auto` (mặc định) đi theo cờ `MATH_RETRIEVAL_HYBRID`, mà cờ này **mặc định off**
+⇒ chạy không cấu hình gì sẽ tái lập đúng baseline R0, không âm thầm đổi số.
+
+Golden set đã lên **v2.0**: 13 truy vấn `must_find`, 2 `nothing` (ngoài miền),
+1 `no_examples` (Q15 — đúng chủ đề nhưng ngân hàng đề không có bài nào).
+Việc tách Q15 khỏi nhóm `control` là **sửa cách chấm cho đúng bản chất**: Q15 hỏi tích phân
+`sin²x`, graph khái niệm **có** phủ (Tích phân, Hàm số lượng giác) còn ngân hàng đề thì không.
+v1 gọi đó là false positive; v2 gọi đúng tên: concept recall đúng, example recall bằng 0.
+Số false-positive ở mức **ví dụ** (Q14→p3, Q15→p4) mà R2 loại bỏ **không đổi** vì lần phân loại lại này.
+
+### 7.1 Bảng trước/sau (số thật do script sinh)
+
+| Chỉ số | **R0 sparse** | **R2 hybrid** | Nhận xét |
+|---|---|---|---|
+| Recall@1 | 0.846 | **0.846** | bằng nhau |
+| Recall@3 | 1.000 | 0.923 | ↓ do Q11 (xem 7.3) |
+| Recall@5 | 1.000 | 0.923 | ↓ do Q11 |
+| MRR | 0.910 | 0.872 | ↓ nhẹ do Q11 |
+| nDCG@5 | 0.933 | 0.885 | ↓ nhẹ do Q11 |
+| **FP ngoài miền** | **1/2** | **0/2** | ✅ sửa xong |
+| **FP ví dụ lạc đề** | **1/1** | **0/1** | ✅ sửa xong |
+| Concept recall (uncovered) | 0.000 | **1.000** | ✅ nguồn mới trả đúng |
+| latency p50 / p95 | 0.1 / 0.1 ms | 0.2 / 0.3 ms | +0.2 ms, không đáng kể |
+
+### 7.2 Cách sửa — và vì sao **không** phải chỉnh ngưỡng
+
+Chẩn đoán trên toàn bộ golden set (`_r2_diagnostic`) cho thấy **không ngưỡng nào** tách được:
+
+```
+control Q14 -> p3   overlap 1 ("tại")    tfidf 0.4195
+control Q15 -> p4   overlap 1 ("phương") tfidf 0.3871
+hợp lệ  Q11 -> p5   overlap 1 ("tìm")    tfidf 0.1959   <- đáp án ĐÚNG
+```
+Hai false positive có TF-IDF **cao hơn** đáp án đúng, vì với 6 tài liệu IDF vô nghĩa —
+một token có trong 1/6 văn bản nhận trọng số lớn dù chẳng có nghĩa gì.
+Sweep `(min_overlap, min_tfidf)` từ `1..3 × 0.0..0.4` đều để lọt 2/2.
+
+Nên bản sửa là **cấu trúc**, không phải ngưỡng:
+1. **Từ chức năng tiếng Việt không phải nội dung** — chính chữ `"tại"` làm Q14 đâm vào
+   một bài hình học tình cờ chứa chữ đó.
+2. **Ví dụ phải chia sẻ ≥ 2 token nội dung** với truy vấn (`MATH_RETRIEVAL_MIN_OVERLAP`, mặc định 2).
+
+### 7.3 Cái giá — ghi lại chứ không giấu
+
+Q11 mất ví dụ đã giải. Đây là **trần của truy hồi từ vựng**, không phải lỗi cần "sửa" bằng cách
+nới ngưỡng: bằng chứng từ vựng của Q11 là **tập con thực sự** của hai false positive, nên nới
+ngưỡng để cứu Q11 là lấy lại đúng 2 lỗi vừa sửa. Q11 vẫn nhận `concept:cuc_tri` (từ khoá
+"cực đại" khớp), nên khối tham chiếu vẫn có quy tắc cực trị.
+`test_retrieval_hybrid.py` **pin cả hai vế**: (a) sparse path *có* ứng viên cho Q11;
+(b) guard *loại* nó. Ai muốn nới guard sau này sẽ phải sửa test trước.
+
+### 7.4 Tất định và tie-break (R0 cho thấy RRF sinh điểm đồng hạng)
+
+RRF trên ngân hàng nhỏ thường cho **cùng điểm** cho hai ứng viên, nên thứ tự trong nhóm
+đồng hạng phụ thuộc thứ tự chèn — không đo được trước/sau. Đã sửa bằng khoá tie-break
+tường minh: điểm fused → **ưu tiên nguồn theo độ đặc hiệu bằng chứng** → key.
+Đo được: Q05 `"Giải phương trình bậc hai x^2-5x+6=0"` — ưu tiên nguồn theo khai báo cho
+`concept:phuong_trinh_bac_hai` đứng trên `ex:p4`, tức lý thuyết chung đứng trên
+**chính phương trình đó**; đảo thứ tự tie-break ⇒ `ex:p4` lên đầu và Recall@1 từ 0.692 → 0.846.
+Test pin: 16/16 truy vấn xếp hạng **giống hệt** ở process khác với `PYTHONHASHSEED` khác.
+
+### 7.5 BM25 — có, đã test, nhưng **opt-in**
+
+`ProblemIndex._bm25_scores` (`k1=1.5`, `b=0.75`, IDF dạng `log(1 + (N-df+0.5)/(df+0.5))`
+để không âm khi một term có mặt ở quá nửa văn bản). Giữ **tách biệt** khỏi `_tfidf_scores`
+thay vì thay thế, vì `search()` cũ đang được `test_math_problem_retrieval.py` pin và là
+mốc R0. Bật bằng `MATH_RETRIEVAL_BM25=on`. Mặc định off: trên 6 dòng nó không đổi điều gì
+có ý nghĩa (đo được), nên chuyển mặc định chỉ là thay đổi không có bằng chứng.
+
+### 7.6 Defect do chính test mới bắt được
+
+`_flag()` ban đầu dùng **denylist** ("không phải `off` thì là on"). Test
+`a typo ('of') -> disabled` **fail**: gõ sai `MATH_RETRIEVAL_HYBRID=of` lại **BẬT** tính năng —
+đúng cái ngược lại của "off mặc định, một dòng env để rollback". Đã đổi sang **allowlist**
+(`on/true/1/yes/enable/enabled`). Đây là lý do cờ mới phải có test cho cả giá trị gõ sai.
+
+### 7.7 Hồi quy: không có
+
+35 / 35 mục PASS (31 suite backend + `tests/eval_math_regression.py` +
+`audit_bound_names.py` + `--selftest` + `tests/eval_rag.py`), FAIL: 0.
+`test_retrieval_hybrid.py` **51/51**. `test_math_problem_retrieval.py` vẫn xanh
+(TF-IDF/RRF cũ không đổi).

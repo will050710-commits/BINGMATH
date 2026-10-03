@@ -84,37 +84,60 @@ def edges() -> List[dict]:
     return GRAPH["edges"]
 
 
+def _match(node_data: dict, q: str):
+    """(reason, token) for one node, or (None, None).
+
+    The single source of truth for entity matching: `find_entities()` and
+    `match_details()` both call it, so a fix cannot land in one and miss the other
+    (the "one vocabulary, three copies" failure this repo has already paid for).
+    `reason` is what the hybrid ranker needs in R2 — a name hit is stronger
+    evidence than a keyword hit, and a keyword hit weaker still when the keyword
+    is short and generic ("max", "min", "sin").
+    """
+    if node_data["name"].lower() in q:
+        return ("name", node_data["name"])
+    if node_data["english_name"].lower() in q:
+        return ("english_name", node_data["english_name"])
+    for kw in node_data["keywords"]:
+        kw_l = kw.lower()
+        # Từ ASCII ngắn (≤4 ký tự, như 'sin', 'lim'): yêu cầu word boundary
+        if kw_l.isascii() and len(kw_l) <= 4:
+            if re.search(r"\b" + re.escape(kw_l) + r"\b", q):
+                return ("keyword", kw_l)
+        else:
+            if kw_l in q:
+                return ("keyword", kw_l)
+    return (None, None)
+
+
+def match_details(query: str) -> List[dict]:
+    """`find_entities()` with the reason and the token, for the R2 ranker.
+
+    Additive: `find_entities()` keeps its exact contract (ids only, order
+    preserved, deduped), so widget routing cannot shift.
+    """
+    q = query.lower()
+    out: List[dict] = []
+    for node_id, node_data in GRAPH["nodes"].items():
+        reason, token = _match(node_data, q)
+        if reason:
+            out.append({"id": node_id, "reason": reason, "token": token})
+    return out
+
+
 def find_entities(query: str) -> List[str]:
     """Node ids the query mentions — regex-guarded to avoid false matches.
 
-    Copied verbatim from main.py's `extract_graph_entities` so the routing it
-    feeds (`GRAPHABLE_CONCEPT_IDS`) cannot shift: full name and English name
-    first, then keywords, with a word boundary required for SHORT ASCII keywords
-    ("sin", "lim", "max") because a bare `in` test made those match inside longer
-    words. Vietnamese keywords keep the plain `in` test (no reliable `\\b` for
-    non-ASCII). Result is deduped, order preserved.
+    Full name and English name first, then keywords, with a word boundary required
+    for SHORT ASCII keywords ("sin", "lim", "max") because a bare `in` test made
+    those match inside longer words. Vietnamese keywords keep the plain `in` test
+    (no reliable `\\b` for non-ASCII). Result is deduped, order preserved.
     """
-    matched_ids: List[str] = []
     q = query.lower()
+    matched_ids: List[str] = []
     for node_id, node_data in GRAPH["nodes"].items():
-        # Khớp node_id hoặc tên đầy đủ (word-boundary safe)
-        if node_data["name"].lower() in q or node_data["english_name"].lower() in q:
-            matched_ids.append(node_id)
-            continue
-        # Khớp keywords — dùng \b chỉ cho từ ASCII, fallback `in` cho tiếng Việt
-        hit = False
-        for kw in node_data["keywords"]:
-            kw_l = kw.lower()
-            # Từ ASCII ngắn (≤4 ký tự, như 'sin', 'lim'): yêu cầu word boundary
-            if kw_l.isascii() and len(kw_l) <= 4:
-                if re.search(r"\b" + re.escape(kw_l) + r"\b", q):
-                    hit = True
-                    break
-            else:
-                if kw_l in q:
-                    hit = True
-                    break
-        if hit:
+        reason, _token = _match(node_data, q)
+        if reason:
             matched_ids.append(node_id)
     return list(dict.fromkeys(matched_ids))  # dedup preserve order
 

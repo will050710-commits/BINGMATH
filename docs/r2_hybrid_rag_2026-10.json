@@ -1,6 +1,6 @@
 {
   "summary": {
-    "mode": "sparse",
+    "mode": "hybrid",
     "bank_rows": 6,
     "dense_enabled": false,
     "queries_total": 16,
@@ -8,18 +8,19 @@
     "queries_control": 2,
     "queries_uncovered": 1,
     "recall@1": 0.8462,
-    "recall@3": 1.0,
-    "recall@5": 1.0,
-    "mrr": 0.9103,
-    "ndcg@5": 0.9331,
-    "false_positive_controls": 1,
-    "false_positive_examples": 1,
-    "concept_recall_uncovered": 0.0,
+    "recall@3": 0.9231,
+    "recall@5": 0.9231,
+    "mrr": 0.8718,
+    "ndcg@5": 0.8846,
+    "false_positive_controls": 0,
+    "false_positive_examples": 0,
+    "concept_recall_uncovered": 1.0,
     "source_totals": {
-      "examples": 45
+      "concepts": 6,
+      "examples": 38
     },
-    "latency_p50_ms": 0.07,
-    "latency_p95_ms": 0.08
+    "latency_p50_ms": 0.26,
+    "latency_p95_ms": 0.34
   },
   "by_kind": {
     "exact": {
@@ -28,7 +29,7 @@
     },
     "paraphrase": {
       "n": 6,
-      "recall@3": 1.0
+      "recall@3": 0.8333
     }
   },
   "per_query": [
@@ -68,7 +69,7 @@
         "ex:p1"
       ],
       "violation": false,
-      "latency_ms": 0.2,
+      "latency_ms": 1.06,
       "returned": 4
     },
     {
@@ -107,7 +108,7 @@
         "ex:p1"
       ],
       "violation": false,
-      "latency_ms": 0.07,
+      "latency_ms": 0.29,
       "returned": 4
     },
     {
@@ -146,7 +147,7 @@
         "ex:p2"
       ],
       "violation": false,
-      "latency_ms": 0.06,
+      "latency_ms": 0.25,
       "returned": 4
     },
     {
@@ -185,7 +186,7 @@
         "ex:p3"
       ],
       "violation": false,
-      "latency_ms": 0.07,
+      "latency_ms": 0.34,
       "returned": 4
     },
     {
@@ -197,7 +198,8 @@
         "ex:p4"
       ],
       "ranked_keys": [
-        "ex:p4"
+        "ex:p4",
+        "concept:phuong_trinh_bac_hai"
       ],
       "first_hit_rank": 1,
       "recall@1": 1.0,
@@ -206,7 +208,8 @@
       "reciprocal_rank": 1.0,
       "ndcg@5": 1.0,
       "sources": [
-        "examples"
+        "examples",
+        "concepts"
       ],
       "example_keys": [
         "ex:p4"
@@ -215,8 +218,8 @@
         "ex:p4"
       ],
       "violation": false,
-      "latency_ms": 0.05,
-      "returned": 1
+      "latency_ms": 0.24,
+      "returned": 2
     },
     {
       "id": "Q06",
@@ -228,8 +231,7 @@
       ],
       "ranked_keys": [
         "ex:p5",
-        "ex:p4",
-        "ex:p2"
+        "ex:p4"
       ],
       "first_hit_rank": 1,
       "recall@1": 1.0,
@@ -239,20 +241,18 @@
       "ndcg@5": 1.0,
       "sources": [
         "examples",
-        "examples",
         "examples"
       ],
       "example_keys": [
         "ex:p5",
-        "ex:p4",
-        "ex:p2"
+        "ex:p4"
       ],
       "concept_hits": [
         "ex:p5"
       ],
       "violation": false,
-      "latency_ms": 0.08,
-      "returned": 3
+      "latency_ms": 0.27,
+      "returned": 2
     },
     {
       "id": "Q07",
@@ -290,7 +290,7 @@
         "ex:p6"
       ],
       "violation": false,
-      "latency_ms": 0.08,
+      "latency_ms": 0.28,
       "returned": 4
     },
     {
@@ -331,7 +331,7 @@
         "ex:p1"
       ],
       "violation": false,
-      "latency_ms": 0.07,
+      "latency_ms": 0.26,
       "returned": 4
     },
     {
@@ -367,7 +367,7 @@
         "ex:p1"
       ],
       "violation": false,
-      "latency_ms": 0.08,
+      "latency_ms": 0.23,
       "returned": 3
     },
     {
@@ -406,7 +406,7 @@
         "ex:p3"
       ],
       "violation": false,
-      "latency_ms": 0.06,
+      "latency_ms": 0.27,
       "returned": 4
     },
     {
@@ -418,29 +418,22 @@
         "ex:p5"
       ],
       "ranked_keys": [
-        "ex:p4",
-        "ex:p5"
+        "concept:cuc_tri"
       ],
-      "first_hit_rank": 2,
+      "first_hit_rank": 0,
       "recall@1": 0.0,
-      "recall@3": 1.0,
-      "recall@5": 1.0,
-      "reciprocal_rank": 0.5,
-      "ndcg@5": 0.6309297535714575,
+      "recall@3": 0.0,
+      "recall@5": 0.0,
+      "reciprocal_rank": 0.0,
+      "ndcg@5": 0.0,
       "sources": [
-        "examples",
-        "examples"
+        "concepts"
       ],
-      "example_keys": [
-        "ex:p4",
-        "ex:p5"
-      ],
-      "concept_hits": [
-        "ex:p5"
-      ],
+      "example_keys": [],
+      "concept_hits": [],
       "violation": false,
-      "latency_ms": 0.06,
-      "returned": 2
+      "latency_ms": 0.19,
+      "returned": 1
     },
     {
       "id": "Q12",
@@ -453,7 +446,6 @@
       "ranked_keys": [
         "ex:p2",
         "ex:p6",
-        "ex:p4",
         "ex:p1"
       ],
       "first_hit_rank": 1,
@@ -465,21 +457,19 @@
       "sources": [
         "examples",
         "examples",
-        "examples",
         "examples"
       ],
       "example_keys": [
         "ex:p2",
         "ex:p6",
-        "ex:p4",
         "ex:p1"
       ],
       "concept_hits": [
         "ex:p2"
       ],
       "violation": false,
-      "latency_ms": 0.07,
-      "returned": 4
+      "latency_ms": 0.3,
+      "returned": 3
     },
     {
       "id": "Q13",
@@ -491,7 +481,8 @@
       ],
       "ranked_keys": [
         "ex:p4",
-        "ex:p2"
+        "concept:phuong_trinh_bac_hai",
+        "concept:biet_thuc_delta"
       ],
       "first_hit_rank": 1,
       "recall@1": 1.0,
@@ -501,18 +492,18 @@
       "ndcg@5": 1.0,
       "sources": [
         "examples",
-        "examples"
+        "concepts",
+        "concepts"
       ],
       "example_keys": [
-        "ex:p4",
-        "ex:p2"
+        "ex:p4"
       ],
       "concept_hits": [
         "ex:p4"
       ],
       "violation": false,
-      "latency_ms": 0.05,
-      "returned": 2
+      "latency_ms": 0.18,
+      "returned": 3
     },
     {
       "id": "Q14",
@@ -520,25 +511,19 @@
       "expect": "nothing",
       "query": "cách nấu phở bò ngon tại nhà",
       "expected_keys": [],
-      "ranked_keys": [
-        "ex:p3"
-      ],
+      "ranked_keys": [],
       "first_hit_rank": 0,
       "recall@1": null,
       "recall@3": null,
       "recall@5": null,
       "reciprocal_rank": null,
       "ndcg@5": null,
-      "sources": [
-        "examples"
-      ],
-      "example_keys": [
-        "ex:p3"
-      ],
+      "sources": [],
+      "example_keys": [],
       "concept_hits": [],
-      "violation": true,
-      "latency_ms": 0.04,
-      "returned": 1
+      "violation": false,
+      "latency_ms": 0.14,
+      "returned": 0
     },
     {
       "id": "Q15",
@@ -550,7 +535,8 @@
         "concept:ham_so_luong_giac"
       ],
       "ranked_keys": [
-        "ex:p4"
+        "concept:tich_phan",
+        "concept:ham_so_luong_giac"
       ],
       "first_hit_rank": 0,
       "recall@1": null,
@@ -559,15 +545,17 @@
       "reciprocal_rank": null,
       "ndcg@5": null,
       "sources": [
-        "examples"
+        "concepts",
+        "concepts"
       ],
-      "example_keys": [
-        "ex:p4"
+      "example_keys": [],
+      "concept_hits": [
+        "concept:tich_phan",
+        "concept:ham_so_luong_giac"
       ],
-      "concept_hits": [],
-      "violation": true,
-      "latency_ms": 0.04,
-      "returned": 1
+      "violation": false,
+      "latency_ms": 0.14,
+      "returned": 2
     },
     {
       "id": "Q16",
@@ -586,7 +574,7 @@
       "example_keys": [],
       "concept_hits": [],
       "violation": false,
-      "latency_ms": 0.03,
+      "latency_ms": 0.11,
       "returned": 0
     }
   ]
