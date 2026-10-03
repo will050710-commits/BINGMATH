@@ -10,7 +10,7 @@ const SECTIONS = [
     items: [
       "Thông tin tài khoản: email, tên đăng nhập; họ tên, số điện thoại, trường, lớp nếu bạn tự nhập.",
       "Dữ liệu học tập: kết quả bài kiểm tra, lịch sử trò chơi, XP/coin/huy hiệu, tiến độ theo chủ đề.",
-      "Nội dung bạn chủ động gửi: câu hỏi cho trợ lý DuoMCB và hội thoại kèm theo.",
+      "Nội dung bạn chủ động gửi: câu hỏi cho trợ lý BingMCB và hội thoại kèm theo.",
       "Ảnh chụp bài toán và tài liệu bạn tải lên để hệ thống nhận dạng/phân tích.",
     ],
   },
@@ -72,11 +72,11 @@ export default function PrivacyPage() {
           backdropFilter: "blur(12px)",
         }}>
           <div style={{ fontSize: 12, letterSpacing: 1, textTransform: "uppercase", color: "#22d3ee", fontWeight: 800 }}>
-            DuoMath
+            BingMath
           </div>
           <h1 style={{ fontSize: 28, fontWeight: 900, margin: "8px 0 6px" }}>Chính sách quyền riêng tư</h1>
           <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, margin: 0 }}>
-            Áp dụng cho website và ứng dụng DuoMath. Cập nhật: 26/09/2026.
+            Áp dụng cho website và ứng dụng BingMath. Cập nhật: 26/09/2026.
           </p>
 
           {SECTIONS.map((section) => (

@@ -76,7 +76,7 @@ export default function LoginForm() {
         <div style={{ background: "linear-gradient(135deg, #00d8fe, #13b0ff)", padding: "28px 32px 22px", textAlign: "center", color: "white" }}>
           <div style={{ fontSize: 30, marginBottom: 6 }}>🎓</div>
           <div style={{ fontSize: 21, fontWeight: 800, marginBottom: 3 }}>{t("Đăng nhập", "Sign In")}</div>
-          <div style={{ fontSize: 13, opacity: 0.82 }}>{t("Chào mừng quay lại DuoMath!", "Welcome back to DuoMath!")}</div>
+          <div style={{ fontSize: 13, opacity: 0.82 }}>{t("Chào mừng quay lại BingMath!", "Welcome back to BingMath!")}</div>
         </div>
 
         <form onSubmit={handleSubmit} style={{ padding: "26px 32px 30px" }}>

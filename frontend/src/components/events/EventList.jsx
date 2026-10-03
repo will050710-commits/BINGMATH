@@ -62,7 +62,7 @@ const EVENTS = [
         { label: "Thời gian áp dụng x2 XP", time: "Thứ Hai – Chủ Nhật (00:00 – 23:59)" },
       ],
       items: [
-        "Các MathMap được chọn lọc hàng tuần bởi ban biên tập Duomath.",
+        "Các MathMap được chọn lọc hàng tuần bởi ban biên tập Bingmath.",
         "Hoàn thành ít nhất 80% số câu hỏi trong MathMap để nhận bonus XP.",
         "Bonus x2 XP được ghi nhận ngay sau khi submit kết quả.",
         "Không có giới hạn số lần làm — XP chỉ tính cho lần đạt điểm cao nhất.",

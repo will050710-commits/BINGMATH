@@ -1,4 +1,4 @@
-﻿/* eslint-disable @next/next/no-img-element */
+/* eslint-disable @next/next/no-img-element */
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
@@ -89,7 +89,7 @@ export default function MRMSettings() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `duomath-data-${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `bingmath-data-${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -200,7 +200,7 @@ export default function MRMSettings() {
       }}>
         <Link href="/mrm" style={{ textDecoration: "none" }}>
           <span style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: 2 }}>
-            DUO<span style={{ color: "#22d3ee" }}>MATH</span>
+            BING<span style={{ color: "#22d3ee" }}>MATH</span>
           </span>
         </Link>
         <span style={{ color: "rgba(255,255,255,0.2)" }}>›</span>
@@ -426,7 +426,7 @@ export default function MRMSettings() {
           </div>
           <p style={{ margin: "0 0 14px", fontSize: 12, color: "rgba(255,255,255,0.55)", lineHeight: 1.9 }}>
             Bạn có thể tải về toàn bộ dữ liệu học tập của mình (hồ sơ, kết quả bài test, lịch sử trò chơi,
-            hội thoại với DuoMCB) và xoá vĩnh viễn tài khoản bất cứ lúc nào. Hội thoại ẩn danh và tài liệu
+            hội thoại với BingMCB) và xoá vĩnh viễn tài khoản bất cứ lúc nào. Hội thoại ẩn danh và tài liệu
             tải lên được hệ thống tự động dọn sau 30 ngày. Chi tiết xem{" "}
             <Link href="/privacy" style={{ color: "#22d3ee", textDecoration: "underline" }}>
               Chính sách quyền riêng tư

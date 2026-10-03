@@ -44,7 +44,7 @@ export default function DuoMCBSidebar() {
       if (data.error) throw new Error("server-offline");
       setMessages((p) => [...p, { role: "assistant", content: data.reply, id: Date.now() + 1 }]);
     } catch {
-      setMessages((p) => [...p, { role: "assistant", content: "⚠️ Không thể kết nối với máy chủ DuoMCB. Vui lòng thử lại sau.", id: Date.now() + 1 }]);
+      setMessages((p) => [...p, { role: "assistant", content: "⚠️ Không thể kết nối với máy chủ BingMCB. Vui lòng thử lại sau.", id: Date.now() + 1 }]);
     } finally { setLoading(false); }
   }
 
@@ -55,8 +55,8 @@ export default function DuoMCBSidebar() {
       <button
         className={`${styles.fab} ${isOpen ? styles.fabActive : ""}`}
         onClick={() => setIsOpen((prev) => !prev)}
-        title={isOpen ? "Đóng DuoMCB AI" : "Mở DuoMCB AI"}
-        aria-label={isOpen ? "Đóng DuoMCB AI Chatbot" : "Mở DuoMCB AI Chatbot"}
+        title={isOpen ? "Đóng BingMCB AI" : "Mở BingMCB AI"}
+        aria-label={isOpen ? "Đóng BingMCB AI Chatbot" : "Mở BingMCB AI Chatbot"}
         aria-expanded={isOpen}
       >
         {isOpen ? "✕" : "🎓"}
@@ -66,12 +66,12 @@ export default function DuoMCBSidebar() {
         <>
           <div className={styles.backdrop} onClick={() => setIsOpen(false)} aria-hidden="true" />
 
-          <aside className={styles.panel} role="dialog" aria-label="DuoMCB AI Tutor">
+          <aside className={styles.panel} role="dialog" aria-label="BingMCB AI Tutor">
             <div className={styles.panelHeader}>
               <div className={styles.panelTitle}>
                 <span>🎓</span>
                 <div>
-                  <div className={styles.panelName}>DuoMCB</div>
+                  <div className={styles.panelName}>BingMCB</div>
                   <div className={styles.panelSub}>AI Tutor · EN & VI</div>
                 </div>
               </div>

@@ -171,7 +171,7 @@ export default function Page() {
 
       <header className={styles.header}>
         <div className={styles.headerInfo}>
-          <div className={styles.headerBrand}>DUOSTEAM</div>
+          <div className={styles.headerBrand}>BINGSTEAM</div>
           <div className={styles.headerSub}>Bilingual Math Test 1 — Section 1: SAT Reading (Multiple Choice)</div>
         </div>
         <div className={styles.timer}>⏱ {time}</div>

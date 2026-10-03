@@ -866,7 +866,7 @@ export default function MathMapCreator() {
       }}>
         <Link href="/mrm" style={{ textDecoration: "none" }}>
           <span style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: 2 }}>
-            DUO<span style={{ color: "#22d3ee" }}>MATH</span>
+            BING<span style={{ color: "#22d3ee" }}>MATH</span>
           </span>
         </Link>
         <span style={{ color: "rgba(255,255,255,0.2)" }}>›</span>

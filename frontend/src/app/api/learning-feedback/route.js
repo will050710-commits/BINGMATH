@@ -89,7 +89,7 @@ async function generateWithOpenRouter(systemPrompt, userContent, signal) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
         "HTTP-Referer": process.env.SELF_URL || "https://duomath.vercel.app",
-        "X-Title": "DuoMath AI",
+        "X-Title": "BingMath AI",
       },
       body: JSON.stringify({
         models: OPENROUTER_DEFAULT_MODELS,

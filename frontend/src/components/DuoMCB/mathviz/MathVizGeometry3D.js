@@ -897,7 +897,7 @@ export default function MathVizGeometry3D({ data }) {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = body.file.filename || 'duomath-khoi.stl';
+      anchor.download = body.file.filename || 'bingmath-khoi.stl';
       anchor.click();
       URL.revokeObjectURL(url);
     } catch {

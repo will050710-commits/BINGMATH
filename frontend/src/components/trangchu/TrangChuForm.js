@@ -850,8 +850,8 @@ export default function TrangChuForm() {
     },
     {
       icon: "🤖",
-      title: t("Trợ Lý Giải Toán AI", "DuoMCB AI Assistant"),
-      titleVi: t("DuoMCB AI Assistant", "Trợ Lý Giải Toán AI"),
+      title: t("Trợ Lý Giải Toán AI", "BingMCB AI Assistant"),
+      titleVi: t("BingMCB AI Assistant", "Trợ Lý Giải Toán AI"),
       desc: t(
         "Chatbot AI hỗ trợ đắc lực trong học tập song ngữ. Giải đáp các bài toán từ cơ bản tới nâng cao với từng bước gợi ý tư duy, giải chi tiết và tính năng nhận diện đề bài bằng hình ảnh cực nhạy.",
         "AI Chatbot to support bilingual learning. Solve basic to advanced math problems with step-by-step guidance, detailed solutions, and fast OCR scanning."
@@ -864,8 +864,8 @@ export default function TrangChuForm() {
     },
     {
       icon: "🔍",
-      title: t("Tra Từ Vựng Toán Học", "DuoTranslator"),
-      titleVi: t("DuoTranslator", "Tra Từ Vựng Toán Học"),
+      title: t("Tra Từ Vựng Toán Học", "BingTranslator"),
+      titleVi: t("BingTranslator", "Tra Từ Vựng Toán Học"),
       desc: t(
         "Tính năng tích hợp ngay trong trang bài học. Chỉ cần bôi đen thuật ngữ tiếng Anh, bảng tra cứu thông minh sẽ tự động hiện định nghĩa toán học tiếng Việt, phiên âm IPA chuẩn xác kèm ví dụ.",
         "Directly integrated into lesson pages. Highlight English math terms to instantly view Vietnamese definitions, IPA phonetics, and usage examples."

@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 
@@ -12,18 +13,25 @@ const STORAGE_KEY = "duomath_lang";
  *   t("Tiếng Việt", "English text")  → returns correct string per lang
  */
 export function LanguageProvider({ children }) {
-  const [lang, setLang] = useState("vi"); // default Vietnamese
+  const [lang, setLangState] = useState("vi"); // default Vietnamese
 
   // Hydrate from localStorage on client
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === "en" || saved === "vi") setLang(saved);
+      if (saved === "en" || saved === "vi") setLangState(saved);
     } catch (_) {}
   }, []);
 
+  const setLang = useCallback((next) => {
+    if (next === "vi" || next === "en") {
+      setLangState(next);
+      try { localStorage.setItem(STORAGE_KEY, next); } catch (_) {}
+    }
+  }, []);
+
   const toggleLang = useCallback(() => {
-    setLang((prev) => {
+    setLangState((prev) => {
       const next = prev === "vi" ? "en" : "vi";
       try { localStorage.setItem(STORAGE_KEY, next); } catch (_) {}
       return next;
@@ -37,7 +45,7 @@ export function LanguageProvider({ children }) {
   );
 
   return (
-    <LanguageContext.Provider value={{ lang, toggleLang, t }}>
+    <LanguageContext.Provider value={{ lang, setLang, toggleLang, t }}>
       {children}
     </LanguageContext.Provider>
   );

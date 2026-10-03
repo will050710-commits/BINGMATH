@@ -187,7 +187,7 @@ export default function AppDownloadSection() {
   const { t } = useLanguage();
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText("https://duomath.app").then(() => {
+    navigator.clipboard.writeText("https://bingmath.app").then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -204,7 +204,7 @@ export default function AppDownloadSection() {
       border: "rgba(56,189,248,0.35)",
       glow: "rgba(56,189,248,0.15)",
       textColor: "#38bdf8",
-      action: () => window.open("/duomath.apk", "_blank"),
+      action: () => window.open("/bingmath.apk", "_blank"),
       btnLabel: t("Tải file APK", "Download APK"),
       available: true,
     },
@@ -384,7 +384,7 @@ export default function AppDownloadSection() {
             display: "flex", alignItems: "center", gap: 12,
           }}>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", fontFamily: "monospace", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              🔗 duomath.app
+              🔗 bingmath.app
             </div>
             <button
               onClick={handleCopyLink}

@@ -88,7 +88,7 @@ export default function UniversalTHCSTestEngine({ grade, test, section }) {
           flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontWeight: "800", fontSize: 22, color: "#0d9488", letterSpacing: 1.5 }}>DUOSTEAM</div>
+            <div style={{ fontWeight: "800", fontSize: 22, color: "#0d9488", letterSpacing: 1.5 }}>BINGSTEAM</div>
             <div style={{ color: "#475569", fontSize: 14, marginTop: 4, fontWeight: "500" }}>
               Lớp {grade} ({testData.level}) — Section {section}: Reading Comprehension
             </div>
@@ -187,7 +187,7 @@ export default function UniversalTHCSTestEngine({ grade, test, section }) {
         flexShrink: 0
       }}>
         <div>
-          <div style={{ fontWeight: "800", fontSize: 22, color: "#0d9488", letterSpacing: 1.5 }}>DUOSTEAM</div>
+          <div style={{ fontWeight: "800", fontSize: 22, color: "#0d9488", letterSpacing: 1.5 }}>BINGSTEAM</div>
           <div style={{ color: "#475569", fontSize: 14, marginTop: 4, fontWeight: "500" }}>
             Lớp {grade} ({testData.level}) — Section 3: Bilingual Math (ToanMath)
           </div>

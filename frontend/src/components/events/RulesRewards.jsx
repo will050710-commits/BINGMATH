@@ -8,7 +8,7 @@ const ROUNDS = [
     icon: "🗓",
     label: "Vòng Đăng Ký",
     time: "15/08/2026 – 27/08/2026",
-    desc: "Đăng ký tài khoản Duomath và xác nhận tham dự trước 23:59 ngày 27/08.",
+    desc: "Đăng ký tài khoản Bingmath và xác nhận tham dự trước 23:59 ngày 27/08.",
   },
   {
     icon: "⚡",
@@ -31,7 +31,7 @@ const ROUNDS = [
 ];
 
 const GENERAL_RULES = [
-  "Mỗi thí sinh tham gia tối đa bằng 1 tài khoản Duomath chính chủ.",
+  "Mỗi thí sinh tham gia tối đa bằng 1 tài khoản Bingmath chính chủ.",
   "Mọi hành vi can thiệp phần mềm hoặc gian lận sẽ bị hệ thống tự động loại khỏi bảng xếp hạng và khoá tài khoản vĩnh viễn.",
   "Điểm giải đấu được cộng hệ số 1.5x vào tổng XP tài khoản sau mỗi trận thắng.",
   "⚠️ Lưu ý: Nếu còn 10 phút mà thí sinh chưa hoàn thành lượt thi đấu của mình, hệ thống sẽ tự động tính thua và loại thí sinh đó khỏi vòng đấu.",

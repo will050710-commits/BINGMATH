@@ -832,7 +832,7 @@ export default function AiThiPage() {
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
           <a href="/" style={{ color: "#475569", fontSize: 13, textDecoration: "none", fontWeight: 600 }}>
-            ← DuoMath
+            ← BingMath
           </a>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontSize: 18 }}>🤖</span>

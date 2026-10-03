@@ -292,7 +292,7 @@ export default function QuestionBankPage() {
                   {meta?.import_hint || "python backend/scripts/import_vnhsge.py --help"}
                 </div>
                 <div style={{ marginTop: 6, fontSize: 12.5, color: "rgba(226,232,240,0.7)" }}>
-                  Bản mẫu có sẵn trong repo: <code>backend/data/vnhsge_sample.jsonl</code> (nội dung do DuoMath tự soạn).
+                  Bản mẫu có sẵn trong repo: <code>backend/data/vnhsge_sample.jsonl</code> (nội dung do BingMath tự soạn).
                 </div>
               </div>
             )}

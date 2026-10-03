@@ -19,7 +19,7 @@ import { resolveApiBase } from "@/lib/apiBase";
 /** Layer kinds backend/geogebra_export.py can draw (SUPPORTED_KINDS there). */
 export const SUPPORTED_LAYER_KINDS = ["polygon", "triangle", "circle", "line", "segment", "points"];
 
-const DEFAULT_FILENAME = "duomath-hinh-hoc.ggb";
+const DEFAULT_FILENAME = "bingmath-hinh-hoc.ggb";
 
 function hasXY(value) {
   return Boolean(value) && Number.isFinite(Number(value.x)) && Number.isFinite(Number(value.y));

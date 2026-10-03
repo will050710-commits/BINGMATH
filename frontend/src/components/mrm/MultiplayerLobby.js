@@ -1508,7 +1508,7 @@ export default function MultiplayerLobby() {
           }}>
             <Link href="/mrm" style={{ textDecoration: "none" }}>
               <span style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: 2, fontFamily: "monospace" }}>
-                DUO<span style={{ color: "#a78bfa" }}>MATH</span>
+                BING<span style={{ color: "#a78bfa" }}>MATH</span>
               </span>
             </Link>
             <span style={{ color: "rgba(255,255,255,0.2)" }}>›</span>
@@ -2361,7 +2361,7 @@ export default function MultiplayerLobby() {
                         justifyContent: "center",
                       }}>
                         <span style={{ fontSize: 36, color: "rgba(255,255,255,.65)" }}>✨</span>
-                        <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 8, fontWeight: 900, letterSpacing: 1.5, marginTop: 8 }}>DUOMATH</span>
+                        <span style={{ color: "rgba(255,255,255,0.45)", fontSize: 8, fontWeight: 900, letterSpacing: 1.5, marginTop: 8 }}>BINGMATH</span>
                       </div>
 
                       {/* CARD BACK: Map details */}

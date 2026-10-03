@@ -53,7 +53,7 @@ const MESSAGES = {
   request:
     "⚠️ Yêu cầu chưa hợp lệ hoặc phiên đăng nhập đã hết hạn. Em tải lại trang rồi thử lại nhé.",
   network:
-    "🔌 Không kết nối được tới máy chủ DuoMath. Em kiểm tra mạng rồi thử lại nhé.",
+    "🔌 Không kết nối được tới máy chủ BingMath. Em kiểm tra mạng rồi thử lại nhé.",
   unknown:
     "⚠️ Không xử lý được yêu cầu này. Em thử lại nhé.",
 };

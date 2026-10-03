@@ -207,7 +207,7 @@ export default function DuoTranslate({ children }) {
           <div className={styles.headerLeft}>
             <span className={styles.headerIcon}>🔤</span>
             <div>
-              <div className={styles.headerTitle}>DuoTranslate</div>
+              <div className={styles.headerTitle}>BingTranslate</div>
               <div className={styles.headerSub}>{isEnToVi ? "🇬🇧 EN ➔ 🇻🇳 VI" : "🇻🇳 VI ➔ 🇬🇧 EN"} · song ngữ</div>
               {results?._fallback && (
                 <div style={{ fontSize: 10.5, color: "#fbbf24", marginTop: 2 }}>

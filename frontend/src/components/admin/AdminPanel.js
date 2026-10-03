@@ -965,7 +965,7 @@ export default function AdminPanel() {
           <div style={{ textAlign: "center", marginBottom: 28 }}>
             <div style={{ fontSize: 48, marginBottom: 8 }}>🛡️</div>
             <div style={{ fontSize: 22, fontWeight: 900, color: "white", letterSpacing: 1 }}>
-              DUO<span style={{ color: "#22d3ee" }}>MATH</span>
+              BING<span style={{ color: "#22d3ee" }}>MATH</span>
               <span style={{
                 fontSize: 12, fontWeight: 700, color: "#a78bfa",
                 background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)",
@@ -1093,7 +1093,7 @@ export default function AdminPanel() {
       }}>
         <Link href="/mrm" style={{ textDecoration: "none" }}>
           <span style={{ fontSize: 20, fontWeight: 900, color: "white", letterSpacing: 2 }}>
-            DUO<span style={{ color: "#22d3ee" }}>MATH</span>
+            BING<span style={{ color: "#22d3ee" }}>MATH</span>
           </span>
         </Link>
         <span style={{ color: "rgba(255,255,255,0.2)" }}>›</span>

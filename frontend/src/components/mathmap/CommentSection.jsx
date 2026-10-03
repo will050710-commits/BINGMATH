@@ -33,7 +33,7 @@ const INITIAL_COMMENTS = [
     avatarColor: "from-emerald-400 to-teal-600",
     rank: "B",
     createdAt: "5 giờ trước",
-    body: "MathMap này các bài tập từ câu 5 trở đi rất sát đề thi học kỳ và đề khảo sát chất lượng, cảm ơn đội ngũ Duomath nhiều!",
+    body: "MathMap này các bài tập từ câu 5 trở đi rất sát đề thi học kỳ và đề khảo sát chất lượng, cảm ơn đội ngũ Bingmath nhiều!",
     upvotes: 12,
     hasUpvoted: false,
     replies: [],

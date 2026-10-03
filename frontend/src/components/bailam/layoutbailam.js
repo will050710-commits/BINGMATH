@@ -1,7 +1,7 @@
 import "./globalsbailam.css";
 
 export const metadata = {
-  title: "DUOSTEAM Test",
+  title: "BINGSTEAM Test",
   description: "Reading Test",
 };
 

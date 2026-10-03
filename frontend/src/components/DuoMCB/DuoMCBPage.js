@@ -1407,7 +1407,7 @@ function drawGenericViz(ctx, data, panelW, panelH, t, lang = "vi") {
   ctx.restore();
   ctx.save(); ctx.globalAlpha = Math.min(1, Math.max(0, (t - 0.4) / 0.2));
   ctx.font = "bold 13px 'Sora',sans-serif"; ctx.fillStyle = "#6b7280"; ctx.textAlign = "center";
-  ctx.fillText(lang === "en" ? (data?.title || "DuoMCB Visualizing...") : (data?.title || "DuoMCB Đang vẽ..."), cx, cy + 50);
+  ctx.fillText(lang === "en" ? (data?.title || "BingMCB Visualizing...") : (data?.title || "BingMCB Đang vẽ..."), cx, cy + 50);
   ctx.restore();
 }
 
@@ -1494,7 +1494,7 @@ FOR GEOMETRY / EUCLIDEAN PROBLEMS (Triangles, Circles, Altitudes, Chords, Secant
         const videoSystemPrompt = `Role: AI Generator tạo kịch bản/hình ảnh video bài giảng Toán học trực quan.
 
 1. NHÂN VẬT CHÍNH (SUBJECT):
-- Chú Cú Xanh BingMath của nền tảng DUOMATH / DUOSTEAM (Thân thiện, hóm hỉnh, dẫn dắt học sinh từng bước).
+- Chú Cú Xanh BingMath của nền tảng BINGMATH / BINGSTEAM (Thân thiện, hóm hỉnh, dẫn dắt học sinh từng bước).
 
 2. BỐI CẢNH & GÓC NHÌN (SETTING & CAMERA):
 - Góc nhìn chính diện (Eye-level shot), phẳng cân đối, phong cách bảng phấn lớp học hiện đại.
@@ -1761,7 +1761,7 @@ Output ONLY raw JSON. No markdown, no preamble.`;
       <div className={styles.inlineVideoHeader}>
         <div className={styles.videoModalTitle}>
           <span>🎬</span>
-          <span>DuoMath Video Bài Giảng</span>
+          <span>BingMath Video Bài Giảng</span>
           <span className={styles.videoBadge}>AI Generated</span>
           {videoData?.type && videoData.type !== "other" && (
             <span className={styles.videoTypeBadge}>{videoData.type.toUpperCase()}</span>
@@ -2121,15 +2121,15 @@ export default function DuoMCBPage() {
   function saveConversation() {
     if (messages.length === 0) return;
     const lines = messages.map(m => {
-      const role = m.role === "user" ? "[Bạn]" : "[DuoMCB]";
+      const role = m.role === "user" ? "[Bạn]" : "[BingMCB]";
       const content = m.type === "video" ? `[🎬 Video Giải: ${m.question || ""}]` : (m.content || "");
       return `${role}: ${content}`;
     });
-    const text = `DuoMCB – Cuộc trò chuyện\n${"─".repeat(40)}\n${lines.join("\n\n")}\n${"─".repeat(40)}\nXuất lúc: ${new Date().toLocaleString("vi-VN")}`;
+    const text = `BingMCB – Cuộc trò chuyện\n${"─".repeat(40)}\n${lines.join("\n\n")}\n${"─".repeat(40)}\nXuất lúc: ${new Date().toLocaleString("vi-VN")}`;
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `duomcb-${Date.now()}.txt`;
+    a.href = url; a.download = `bingmcb-${Date.now()}.txt`;
     a.click(); URL.revokeObjectURL(url);
   }
 
@@ -2362,7 +2362,7 @@ export default function DuoMCBPage() {
       setMessages(prev => [...prev, { role: "assistant", content: data.reply || "", id: Date.now() + 1, ocr_confirm: data.ocr_confirm, verification: data.verification, perception: data.perception }]);
     } catch (err) {
       console.error("[DuoMCB] sendMessage failed:", err);
-      setMessages(prev => [...prev, { role: "assistant", content: "🔌 Không kết nối được tới máy chủ DuoMath. Em kiểm tra mạng rồi thử lại nhé.", id: Date.now() + 1 }]);
+      setMessages(prev => [...prev, { role: "assistant", content: "🔌 Không kết nối được tới máy chủ BingMath. Em kiểm tra mạng rồi thử lại nhé.", id: Date.now() + 1 }]);
     } finally {
       setLoading(false);
     }
@@ -2426,7 +2426,7 @@ export default function DuoMCBPage() {
         <div className={styles.sidebarTop}>
           <div className={styles.logo}>
             <span className={styles.logoIcon}></span>
-            {sidebarOpen && <span className={styles.logoText}>DuoMCB</span>}
+            {sidebarOpen && <span className={styles.logoText}>BingMCB</span>}
           </div>
           <button className={styles.toggleBtn} onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? "◀" : "▶"}
@@ -2474,7 +2474,7 @@ export default function DuoMCBPage() {
           >
             ☰
           </button>
-          <span className={styles.headerTitle}>DuoMCB</span>
+          <span className={styles.headerTitle}>BingMCB</span>
           <span className={styles.headerSub}>Bilingual AI Tutor</span>
           <div className={styles.headerActions}>
             {messages.length > 0 && (
@@ -2489,9 +2489,9 @@ export default function DuoMCBPage() {
         <div className={styles.chatArea}>
           {isEmpty ? (
             <div className={styles.welcome}>
-              <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB Logo" width={64} height={64} style={{ width: 64, height: "auto" }} />
-              <h1 className={styles.welcomeTitle}>Hello, I&apos;m DuoMCB</h1>
-              <p className={styles.welcomeSub}>Your bilingual <strong>DUOMATH</strong> chatbot!</p>
+              <Image src="/images/duosteamicon-removebg-preview.webp" alt="BingMCB Logo" width={64} height={64} style={{ width: 64, height: "auto" }} />
+              <h1 className={styles.welcomeTitle}>Hello, I&apos;m BingMCB</h1>
+              <p className={styles.welcomeSub}>Your bilingual <strong>BINGMATH</strong> chatbot!</p>
               <div className={styles.suggestions}>
                 {SUGGESTED.map((s, i) => (
                   <button key={i} className={styles.suggestionCard} onClick={() => sendMessage(s.text)}>
@@ -2508,7 +2508,7 @@ export default function DuoMCBPage() {
                   return (
                     <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`}>
                       <div className={styles.avatar}>
-                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
+                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="BingMCB" width={32} height={32} />
                       </div>
                       <div className={styles.inlineVideoWrapper}>
                         <InlineVideoPlayer
@@ -2525,7 +2525,7 @@ export default function DuoMCBPage() {
                   <div key={m.id} className={`${styles.msgRow} ${m.role === "user" ? styles.userRow : styles.botRow}`} style={{ maxWidth: vizData ? "100%" : undefined }}>
                     {m.role === "assistant" && (
                       <div className={styles.avatar}>
-                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
+                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="BingMCB" width={32} height={32} />
                       </div>
                     )}
                     <div style={{ display: "flex", flexDirection: "column", maxWidth: "100%", width: vizData ? "100%" : undefined }}>
@@ -2613,7 +2613,7 @@ export default function DuoMCBPage() {
               {loading && (
                 <div className={`${styles.msgRow} ${styles.botRow}`}>
                   <div className={styles.avatar}>
-                    <Image src="/images/duosteamicon-removebg-preview.webp" alt="DuoMCB" width={32} height={32} />
+                    <Image src="/images/duosteamicon-removebg-preview.webp" alt="BingMCB" width={32} height={32} />
                   </div>
                   <div className={`${styles.bubble} ${styles.botBubble} ${styles.typingBubble}`}>
                     <span className={styles.dot} /><span className={styles.dot} /><span className={styles.dot} />
@@ -2691,7 +2691,7 @@ export default function DuoMCBPage() {
               <textarea
                 ref={inputRef}
                 className={styles.input}
-                placeholder={imagePreview ? "Nhập yêu cầu thêm hoặc chọn công cụ bên dưới..." : "Hỏi DuoMCB... kéo thả hoặc dán (Ctrl+V) ảnh/tài liệu bất kỳ"}
+                placeholder={imagePreview ? "Nhập yêu cầu thêm hoặc chọn công cụ bên dưới..." : "Hỏi BingMCB... kéo thả hoặc dán (Ctrl+V) ảnh/tài liệu bất kỳ"}
                 value={input}
                 rows={1}
                 onChange={e => setInput(e.target.value)}
@@ -2708,7 +2708,7 @@ export default function DuoMCBPage() {
               >➤</button>
             </div>
           </div>
-          <p className={styles.disclaimer}>DuoMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
+          <p className={styles.disclaimer}>BingMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
         </div>
       </main>
     </div>

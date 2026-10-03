@@ -118,7 +118,7 @@ export default function Changelog({ entries = CHANGELOG_ENTRIES }) {
               {t("Nhật Ký Cập Nhật", "Changelog & System Updates")}
             </h3>
             <p style={{ margin: "3px 0 0", fontSize: 12, color: "rgba(255,255,255,0.45)" }}>
-              {t("Lịch sử phát triển, tính năng mới và cải tiến hiệu năng DuoMath", "History of new features, optimizations and stability releases")}
+              {t("Lịch sử phát triển, tính năng mới và cải tiến hiệu năng BingMath", "History of new features, optimizations and stability releases")}
             </p>
           </div>
         </div>

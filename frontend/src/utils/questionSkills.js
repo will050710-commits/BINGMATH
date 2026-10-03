@@ -1,4 +1,4 @@
-// Question-to-skill mapping and skill metadata for the DUOSTEAM reading test.
+// Question-to-skill mapping and skill metadata for the BINGSTEAM reading test.
 // This file is intentionally simple so you can tweak skills/questions easily.
 
 // Map each question to the skills it exercises.
