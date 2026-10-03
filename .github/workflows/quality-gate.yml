@@ -154,6 +154,17 @@ jobs:
         working-directory: backend
         run: python test_retrieval_dense.py
 
+      # R4 of the HybridRAG plan — the same knowledge shaped per model role. The one
+      # rule it exists to enforce is asserted on real bank content: `chat` and
+      # `solver` receive the worked solution, the `reader` NEVER does (a transcriber
+      # that can see someone else's answer may read numbers that are not in the
+      # photo, and the result still looks like a confident reading). Also pins the
+      # tier caps, the visible truncation marker, and that the MathViz vocabulary
+      # comes from mathviz_contract rather than a second copy.
+      - name: Retrieval — per-role context slices + tier caps
+        working-directory: backend
+        run: python test_retrieval_context.py
+
       # R1 of the HybridRAG plan — the concept graph MOVED out of main.py into
       # backend/math_concepts.py + backend/data/math_concepts.json, and this suite
       # is why that was worth doing: main.py cannot be imported here (it binds DB

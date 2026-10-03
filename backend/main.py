@@ -4053,26 +4053,57 @@ async def chat(request: Request):
     # block, so a slow knowledge base must never delay it.
     # Đợt 8 / 4I: the retrieval budget now comes from the plan, so an
     # "extreme" figure spends 3 s here instead of 10 s twice.
+    #
+    # R4: when MATH_RETRIEVAL_CONTEXT is on, the reference block comes from the
+    # fused retriever (concepts + worked examples + dense) shaped for the answering
+    # model and capped by the SAME complexity tier that budgets the time — instead of
+    # the concept graph plus a separate few-shot block. It REPLACES the two calls
+    # rather than adding a third, for two reasons: the fused search already covers
+    # what both of them returned, and `test_chat_budget.py` pins the budget-sum
+    # invariant with retrieval counted exactly twice. Off (the default) leaves the
+    # original two calls untouched, so an unconfigured deploy is byte-identical.
     _retrieval_budget = _plan["retrieval"] if _plan else chat_budget.CHAT_RETRIEVAL_BUDGET_S
+    _use_context_layer = False
     try:
-        retrieved_kb = await asyncio.wait_for(
-            asyncio.to_thread(retrieve_math_context, user_message),
-            timeout=_budget.clamp(_retrieval_budget),
-        )
-    except Exception as e_kb:
-        logger.warning("[Chat] KB retrieval skipped (%s: %s)", type(e_kb).__name__, e_kb)
-        retrieved_kb = ""
-    try:
-        from math_problem_retrieval import retrieve_similar_problems
-        retrieved_examples = await asyncio.wait_for(
-            asyncio.to_thread(retrieve_similar_problems, user_message, 2),
-            timeout=_budget.clamp(_retrieval_budget),
-        )
-    except Exception as e_retr:
-        logger.debug(f"Problem-bank retrieval skipped: {e_retr}")
-        retrieved_examples = ""
-    if retrieved_examples:
-        retrieved_kb = f"{retrieved_kb}\n\n{retrieved_examples}"
+        import retrieval_context as _retrieval_context
+        _use_context_layer = _retrieval_context.enabled()
+    except Exception as _e_rc:
+        logger.debug("[Chat] retrieval_context unavailable (%s)", _e_rc)
+
+    if _use_context_layer:
+        _ctx_tier = (_plan or {}).get("tier", "simple")
+        try:
+            _ctx_text, _ctx_meta = await asyncio.wait_for(
+                asyncio.to_thread(_retrieval_context.build, "chat", user_message,
+                                  _ctx_tier, _widget, locals().get("_cv_hints")),
+                timeout=_budget.clamp(_retrieval_budget),
+            )
+        except Exception as e_ctx:
+            logger.warning("[Chat] context layer skipped (%s: %s)",
+                           type(e_ctx).__name__, e_ctx)
+            _ctx_text, _ctx_meta = "", {}
+        logger.info("[Chat] context slice: %s", _retrieval_context.summary(_ctx_meta))
+        retrieved_kb = _ctx_text
+    else:
+        try:
+            retrieved_kb = await asyncio.wait_for(
+                asyncio.to_thread(retrieve_math_context, user_message),
+                timeout=_budget.clamp(_retrieval_budget),
+            )
+        except Exception as e_kb:
+            logger.warning("[Chat] KB retrieval skipped (%s: %s)", type(e_kb).__name__, e_kb)
+            retrieved_kb = ""
+        try:
+            from math_problem_retrieval import retrieve_similar_problems
+            retrieved_examples = await asyncio.wait_for(
+                asyncio.to_thread(retrieve_similar_problems, user_message, 2),
+                timeout=_budget.clamp(_retrieval_budget),
+            )
+        except Exception as e_retr:
+            logger.debug(f"Problem-bank retrieval skipped: {e_retr}")
+            retrieved_examples = ""
+        if retrieved_examples:
+            retrieved_kb = f"{retrieved_kb}\n\n{retrieved_examples}"
     full_system_prompt = (
         f"{system_prompt}\n\n"
         f"## REFERENCE MATHEMATICAL KNOWLEDGE (DO NOT COPY DIRECTLY):\n"
