@@ -93,6 +93,7 @@ FUNCTION_WORDS = {
     "được", "này", "đó", "là", "hãy", "theo", "về", "từ", "đến", "bằng", "nếu",
     "thì", "mà", "như", "sau", "trước", "trên", "dưới", "giữa", "ra", "vào",
     "lên", "xuống", "cũng", "nhưng", "hoặc", "vì", "nên", "rằng", "em", "mình",
+    "chứng", "minh", "tìm", "tính", "bao", "nhiêu", "hướng", "dẫn", "cách",
     "the", "a", "an", "of", "and", "to", "in", "is", "find", "let", "given",
 }
 

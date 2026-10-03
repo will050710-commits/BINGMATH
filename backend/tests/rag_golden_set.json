@@ -1,14 +1,15 @@
 {
-  "suite_name": "DuoMath retrieval golden set (R0 baseline, R2 expectation model)",
-  "version": "2.0",
-  "description": "Queries with what a correct retriever should surface. Written for backend/tests/eval_rag.py, which scores Recall@k / MRR / nDCG / latency offline, in either sparse (R0) or hybrid (R2) mode.",
+  "suite_name": "DuoMath retrieval golden set (R0 baseline, R2 expectation model, R5 bank growth)",
+  "version": "3.0",
+  "description": "Queries with what a correct retriever should surface. Written for backend/tests/eval_rag.py, which scores Recall@k / MRR / nDCG / latency offline, in either sparse (R0) or hybrid (R2) mode. v3 (R5) keeps Q01-Q16 unchanged and adds Q17-Q48 for the 53 worked examples and 14 concept nodes added in R5, including four adversarial off-topic controls.",
   "notes": [
-    "expected_ids refer to backend/data/math_problems.jsonl (p1..p6) when expected_source is 'examples'.",
+    "expected_ids refer to backend/data/math_problems.jsonl (p1..p59) when expected_source is 'examples'.",
     "expected_ids refer to node ids in backend/data/math_concepts.json when expected_source is 'concepts'.",
     "expect=must_find   -> scored for recall against expected_ids.",
-    "expect=no_examples -> on-topic but absent from the worked-example bank: returning ANY worked example is a false positive; concepts are correct, and expected_ids names the ones that should appear.",
+    "expect=no_examples -> on-topic but absent from the worked-example bank: returning a worked example is a false positive unless its id is listed in allowed_ids (an on-topic neighbour); concepts are correct, and expected_ids names the ones that should appear.",
     "expect=nothing     -> off-topic: returning anything at all is a false positive.",
-    "Version 2.0 splits v1's single 'control' kind in two, because a multi-source retriever makes them different obligations. Q15 asks about an integral of sin^2 x: the concept graph legitimately covers it (Tich phan, Ham so luong giac) even though no worked example does. v1 scored that as a false positive; v2 scores it as what it is - correct concept recall with zero EXAMPLE recall. The example-level false positives R2 removes (Q14->p3, Q15->p4) are unaffected by the reclassification."
+    "Version 2.0 splits v1's single 'control' kind in two, because a multi-source retriever makes them different obligations.",
+    "Version 3.0 (R5): the bank grew 6 -> 59 rows. Q15 gained allowed_ids [p44, p45] because the bank now contains two honest integral problems; an adjacent integral is on-topic, an unrelated inequality (what the 6-row guard let through at 59 rows) is not. The four new controls are deliberately built from words a maths bank is full of ('chứng minh', 'tìm', 'đường', 'phương')."
   ],
   "queries": [
     {
@@ -17,7 +18,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "Cho tam giác ABC nhọn, gọi H là trực tâm, O là tâm đường tròn ngoại tiếp. Chứng minh AH vuông góc với BC.",
-      "expected_ids": ["p1"]
+      "expected_ids": [
+        "p1"
+      ]
     },
     {
       "id": "Q02",
@@ -25,7 +28,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "tam giác nhọn trực tâm đường cao vuông góc",
-      "expected_ids": ["p1"]
+      "expected_ids": [
+        "p1"
+      ]
     },
     {
       "id": "Q03",
@@ -33,7 +38,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "đường tròn Euler chín điểm chân đường cao trung điểm",
-      "expected_ids": ["p2"]
+      "expected_ids": [
+        "p2"
+      ]
     },
     {
       "id": "Q04",
@@ -41,7 +48,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "bán kính đường tròn nội tiếp tam giác vuông tại A tiếp xúc BC",
-      "expected_ids": ["p3"]
+      "expected_ids": [
+        "p3"
+      ]
     },
     {
       "id": "Q05",
@@ -49,7 +58,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "Giải phương trình bậc hai x^2 - 5x + 6 = 0",
-      "expected_ids": ["p4"]
+      "expected_ids": [
+        "p4"
+      ]
     },
     {
       "id": "Q06",
@@ -57,7 +68,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "giá trị lớn nhất của hàm số bậc hai trên tập số thực",
-      "expected_ids": ["p5"]
+      "expected_ids": [
+        "p5"
+      ]
     },
     {
       "id": "Q07",
@@ -65,7 +78,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "tam giác ABC nội tiếp đường tròn, H trực tâm, M trung điểm BC, chứng minh AH = 2.OM",
-      "expected_ids": ["p6"]
+      "expected_ids": [
+        "p6"
+      ]
     },
     {
       "id": "Q08",
@@ -73,7 +88,10 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "quan hệ giữa trực tâm và tâm ngoại tiếp trong tam giác, trung điểm cạnh đối diện",
-      "expected_ids": ["p6", "p1"]
+      "expected_ids": [
+        "p6",
+        "p1"
+      ]
     },
     {
       "id": "Q09",
@@ -81,7 +99,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "tại sao đường cao kẻ từ đỉnh lại vuông góc với cạnh đối diện",
-      "expected_ids": ["p1"]
+      "expected_ids": [
+        "p1"
+      ]
     },
     {
       "id": "Q10",
@@ -89,7 +109,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "công thức tính bán kính vòng tròn tiếp xúc ba cạnh của một tam giác",
-      "expected_ids": ["p3"]
+      "expected_ids": [
+        "p3"
+      ]
     },
     {
       "id": "Q11",
@@ -97,7 +119,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "tìm cực đại của một parabol bằng cách đưa về bình phương đầy đủ",
-      "expected_ids": ["p5"]
+      "expected_ids": [
+        "p5"
+      ]
     },
     {
       "id": "Q12",
@@ -105,7 +129,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "chín điểm đặc biệt nằm trên cùng một vòng tròn, tâm là trung điểm của đoạn nối hai điểm đặc biệt",
-      "expected_ids": ["p2"]
+      "expected_ids": [
+        "p2"
+      ]
     },
     {
       "id": "Q13",
@@ -113,7 +139,9 @@
       "expect": "must_find",
       "expected_source": "examples",
       "query": "nghiệm của phương trình bậc hai dựa vào biệt thức",
-      "expected_ids": ["p4"]
+      "expected_ids": [
+        "p4"
+      ]
     },
     {
       "id": "Q14",
@@ -125,11 +153,18 @@
     },
     {
       "id": "Q15",
-      "kind": "uncovered",
-      "expect": "no_examples",
+      "kind": "paraphrase",
+      "expect": "must_find",
       "expected_source": "concepts",
       "query": "tính tích phân bất định của sin bình phương x",
-      "expected_ids": ["tich_phan", "ham_so_luong_giac"]
+      "expected_ids": [
+        "tich_phan",
+        "ham_so_luong_giac"
+      ],
+      "allowed_ids": [
+        "p44",
+        "p45"
+      ]
     },
     {
       "id": "Q16",
@@ -138,6 +173,319 @@
       "expected_source": "examples",
       "query": "dự báo thời tiết ngày mai",
       "expected_ids": []
+    },
+    {
+      "id": "Q17",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "M ngoài đường tròn (O;R) có MO = 13, R = 5, cát tuyến MAB với MA = 8, tính MB",
+      "expected_ids": [
+        "p7"
+      ]
+    },
+    {
+      "id": "Q18",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "tính độ dài tiếp tuyến kẻ từ điểm cách tâm 10 đến đường tròn bán kính 6",
+      "expected_ids": [
+        "p8"
+      ]
+    },
+    {
+      "id": "Q19",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "viết phương trình trục đẳng phương của hai đường tròn x^2+y^2-6x+4y+4=0 và x^2+y^2+2x-2y-14=0",
+      "expected_ids": [
+        "p9"
+      ]
+    },
+    {
+      "id": "Q20",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "chứng minh ba điểm O, G, H thẳng hàng trong một tam giác",
+      "expected_ids": [
+        "p10"
+      ]
+    },
+    {
+      "id": "Q21",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "bán kính vòng tròn chín điểm khi biết bán kính đường tròn ngoại tiếp",
+      "expected_ids": [
+        "p11"
+      ]
+    },
+    {
+      "id": "Q22",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "chứng minh hình chiếu của một điểm thuộc đường tròn ngoại tiếp lên ba cạnh tam giác thẳng hàng",
+      "expected_ids": [
+        "p12"
+      ]
+    },
+    {
+      "id": "Q23",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "tính đường chéo hình chữ nhật cạnh 3 và 4 bằng định lý Ptolemy",
+      "expected_ids": [
+        "p13"
+      ]
+    },
+    {
+      "id": "Q24",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "chứng minh MA = MB + MC với M thuộc cung nhỏ BC của tam giác đều nội tiếp",
+      "expected_ids": [
+        "p14"
+      ]
+    },
+    {
+      "id": "Q25",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "tìm AF/FB để AD, BE, CF đồng quy biết BD/DC = 2/3 và CE/EA = 3/4",
+      "expected_ids": [
+        "p15"
+      ]
+    },
+    {
+      "id": "Q26",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "chứng minh ba đường phân giác trong của tam giác đồng quy bằng định lý Ceva",
+      "expected_ids": [
+        "p16"
+      ]
+    },
+    {
+      "id": "Q27",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "M trung điểm BC, N thuộc AC sao cho AN = 2NC, MN cắt AB tại P, tính PA/PB",
+      "expected_ids": [
+        "p17"
+      ]
+    },
+    {
+      "id": "Q28",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "tìm điểm D để A, B, C, D thành hàng điểm điều hòa trên trục số",
+      "expected_ids": [
+        "p18"
+      ]
+    },
+    {
+      "id": "Q29",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "phép nghịch đảo tâm O phương tích 9, OM = 3/2, tính OM'",
+      "expected_ids": [
+        "p19"
+      ]
+    },
+    {
+      "id": "Q30",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "tứ giác nội tiếp AB = 3, BC = 6, CD = 4, tìm DA để là tứ giác điều hòa",
+      "expected_ids": [
+        "p20"
+      ]
+    },
+    {
+      "id": "Q31",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "tìm tọa độ trực tâm tam giác ABC với A(0,3), B(-1,0), C(1,0)",
+      "expected_ids": [
+        "p21"
+      ]
+    },
+    {
+      "id": "Q32",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "điểm đối xứng của trực tâm qua một cạnh nằm trên đường tròn ngoại tiếp",
+      "expected_ids": [
+        "p22"
+      ]
+    },
+    {
+      "id": "Q33",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "thể tích khối chóp tứ giác đều cạnh đáy 6 chiều cao 4",
+      "expected_ids": [
+        "p24"
+      ]
+    },
+    {
+      "id": "Q34",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "thể tích khối cầu có đường kính bằng 6",
+      "expected_ids": [
+        "p26"
+      ]
+    },
+    {
+      "id": "Q35",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "tìm m để x^2 - 2(m+1)x + m^2 + 2 = 0 có hai nghiệm phân biệt",
+      "expected_ids": [
+        "p28"
+      ]
+    },
+    {
+      "id": "Q36",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "giải bất phương trình bậc hai x^2 - 3x - 4 < 0",
+      "expected_ids": [
+        "p31"
+      ]
+    },
+    {
+      "id": "Q37",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "giải phương trình mũ 4^x - 5.2^x + 4 = 0",
+      "expected_ids": [
+        "p35"
+      ]
+    },
+    {
+      "id": "Q38",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "giá trị nhỏ nhất của x + 4/x khi x dương",
+      "expected_ids": [
+        "p38"
+      ]
+    },
+    {
+      "id": "Q39",
+      "kind": "paraphrase",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "tìm điểm cực đại và cực tiểu của hàm số y = x^3 - 3x + 1",
+      "expected_ids": [
+        "p42"
+      ]
+    },
+    {
+      "id": "Q40",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "xác suất để tổng hai mặt xúc xắc bằng 7 khi gieo hai lần",
+      "expected_ids": [
+        "p49"
+      ]
+    },
+    {
+      "id": "Q41",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "giải phương trình số phức z^2 + 2z + 5 = 0",
+      "expected_ids": [
+        "p55"
+      ]
+    },
+    {
+      "id": "Q42",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "examples",
+      "query": "giải phương trình lượng giác sin x = 1/2",
+      "expected_ids": [
+        "p57"
+      ]
+    },
+    {
+      "id": "Q43",
+      "kind": "control",
+      "expect": "nothing",
+      "expected_source": "examples",
+      "query": "chứng minh thư nhân dân cấp ở đâu",
+      "expected_ids": []
+    },
+    {
+      "id": "Q44",
+      "kind": "control",
+      "expect": "nothing",
+      "expected_source": "examples",
+      "query": "tìm đường đến bưu điện gần nhất",
+      "expected_ids": []
+    },
+    {
+      "id": "Q45",
+      "kind": "control",
+      "expect": "nothing",
+      "expected_source": "examples",
+      "query": "hướng dẫn cài đặt ứng dụng trên máy tính cá nhân",
+      "expected_ids": []
+    },
+    {
+      "id": "Q46",
+      "kind": "control",
+      "expect": "nothing",
+      "expected_source": "examples",
+      "query": "giá vàng hôm nay là bao nhiêu",
+      "expected_ids": []
+    },
+    {
+      "id": "Q47",
+      "kind": "uncovered",
+      "expect": "no_examples",
+      "expected_source": "concepts",
+      "query": "chứng minh bất đẳng thức Bunhiacopxki dạng Engel",
+      "expected_ids": [
+        "bat_dang_thuc_bunhiacopxki"
+      ]
+    },
+    {
+      "id": "Q48",
+      "kind": "exact",
+      "expect": "must_find",
+      "expected_source": "concepts",
+      "query": "ứng dụng đường thẳng Euler và đường thẳng Simson",
+      "expected_ids": [
+        "duong_thang_euler",
+        "duong_thang_simson"
+      ]
     }
   ]
 }

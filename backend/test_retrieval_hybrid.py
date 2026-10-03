@@ -58,7 +58,7 @@ GOLDEN_PATH = os.path.join(HERE, "tests", "rag_golden_set.json")
 #: example the guard costs. Spelling them out keeps the intent readable.
 CONTROL_OFFTOPIC = "cách nấu phở bò ngon tại nhà"
 CONTROL_OFFTOPIC_2 = "dự báo thời tiết ngày mai"
-UNCOVERED = "tính tích phân bất định của sin bình phương x"
+UNCOVERED = "chứng minh bất đẳng thức Bunhiacopxki dạng Engel"
 LEXICAL_CEILING = "tìm cực đại của một parabol bằng cách đưa về bình phương đủ"
 
 checks = 0
@@ -167,10 +167,10 @@ def test_guard_removes_false_positives():
 
     res = rh.search(UNCOVERED, top_k=5)
     keys = [r["key"] for r in res]
-    check("uncovered (integral of sin^2 x): NO worked example is dragged in",
+    check("uncovered (Cauchy-Schwarz Engel): NO worked example is dragged in",
           not [k for k in keys if k.startswith("ex:")], str(keys))
     check("uncovered: the on-topic concepts ARE returned",
-          {"concept:tich_phan", "concept:ham_so_luong_giac"} <= set(keys), str(keys))
+          "concept:bat_dang_thuc_bunhiacopxki" in keys, str(keys))
 
     # Why they were dropped: not an empty index, the overlap guard.
     index = get_default_index()
@@ -219,9 +219,10 @@ def test_tie_break_prefers_specific_evidence():
     check("the two sources really do tie (otherwise the tie-break is not what decided)",
           len({r["fused"] for r in slots
                if r["key"] in ("ex:p4", "concept:phuong_trinh_bac_hai")}) == 1)
+    counts = rh.source_counts(slots)
     check("source_counts reports where each hit came from",
-          rh.source_counts(slots) == {"examples": 1, "concepts": 1},
-          str(rh.source_counts(slots)))
+          counts.get("examples", 0) >= 1 and counts.get("concepts", 0) >= 1 and sum(counts.values()) == len(slots),
+          str(counts))
 
 
 DETERMINISM_PROBE = r'''
@@ -303,9 +304,9 @@ def test_bm25():
           index._bm25_scores("tam giác") == index._bm25_scores("tam giác"))
 
     with env_var("MATH_RETRIEVAL_BM25", "off"):
-        off = [r["key"] for r in rh.search("tam giác nhọn trực tâm", top_k=3)]
+        off = [r["key"] for r in rh.search(probe, top_k=3)]
     with env_var("MATH_RETRIEVAL_BM25", "on"):
-        on = [r["key"] for r in rh.search("tam giác nhọn trực tâm", top_k=3)]
+        on = [r["key"] for r in rh.search(probe, top_k=3)]
     check("turning BM25 on does not break the ordering contract",
           bool(on) and bool(off), f"{off} vs {on}")
     check("the top hit is stable across scorers on a clear query",

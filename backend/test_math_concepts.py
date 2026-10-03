@@ -6,9 +6,9 @@ this suite is the reason it was worth moving.
 
 What is asserted
 ----------------
-1. **Structure** — 13 nodes / 10 edges (the numbers /api/health advertises), every
-   node carries the seven required fields, every node's `id` matches its dict key,
-   every edge resolves to a real node and is not duplicated.
+1. **Structure** — 27 nodes / 22 edges (the numbers /api/health advertises; 13 / 10
+   before R5), every node carries the seven required fields, every node's `id` matches
+   its dict key, every edge resolves to a real node and is not duplicated.
 2. **Entity matching is unchanged** — `find_entities()` returns exactly the ids the
    pre-move `extract_graph_entities()` returned, for 20 golden queries. This is
    what protects widget routing (`GRAPHABLE_CONCEPT_IDS`) from shifting.
@@ -45,9 +45,26 @@ MAIN_PATH = os.path.join(HERE, "main.py")
 DATA_PATH = os.path.join(HERE, "data", "math_concepts.json")
 
 #: The numbers /api/health publishes. If the graph grows, these change WITH the
-#: health endpoint — never one without the other.
-EXPECTED_NODES = 13
-EXPECTED_EDGES = 10
+#: health endpoint — never one without the other. R5 added 14 nodes (geometry /
+#: Olympiad concepts + the two classical inequalities) and 12 edges between them.
+EXPECTED_NODES = 27
+EXPECTED_EDGES = 22
+
+#: The pre-R5 graph. Every golden snapshot was captured from these 13 nodes, and a
+#: node's rendered block includes EVERY edge touching it - so an R5 edge attached to
+#: one of these would silently change a block the golden test pins byte-for-byte.
+ORIGINAL_NODES = frozenset({
+    "phuong_trinh_bac_hai", "biet_thuc_delta", "he_thuc_vi_et", "dao_ham", "cuc_tri",
+    "tiem_can", "tich_phan", "gioi_han", "xac_suat", "to_hop_chinh_hop",
+    "ham_so_luong_giac", "so_phuc", "hinh_hoc_khong_gian"})
+ORIGINAL_EDGES = 10
+
+#: The R5 additions, so a rename or an accidental delete is caught by id.
+R5_NODES = (
+    "truc_tam", "phuong_tich", "truc_dang_phuong", "duong_thang_euler",
+    "duong_tron_chin_diem", "duong_thang_simson", "tu_giac_dieu_hoa",
+    "hang_diem_dieu_hoa", "phep_nghich_dao", "dinh_ly_ceva", "dinh_ly_menelaus",
+    "dinh_ly_ptolemy", "bat_dang_thuc_cosi", "bat_dang_thuc_bunhiacopxki")
 
 NEIGHBOUR_HEADER = "**Khái niệm lân cận liên quan:**"
 GLOBAL_HEADER = "=== GLOBAL CONTEXT ==="
@@ -285,6 +302,111 @@ def test_main_wiring():
     check("widget routing still reads the alias", "GRAPHABLE_CONCEPT_IDS" in main)
 
 
+# ── 6. R5: the geometry / Olympiad nodes ─────────────────────────────────────
+
+#: widget names the app can actually render (GRAPHABLE_CONCEPT_IDS values + the 2D
+#: keyword route). A viz_template outside this set would name a figure nobody draws.
+KNOWN_WIDGETS = {"geometry_2d", "geometry_3d", "function_plot", "unit_circle_wave",
+                 "complex_plane", "distribution"}
+
+#: (query, node that must be found, node that must NOT be found)
+R5_QUERIES = (
+    ("tính phương tích của điểm M đối với đường tròn", "phuong_tich", "truc_dang_phuong"),
+    ("viết phương trình trục đẳng phương của hai đường tròn", "truc_dang_phuong", "phuong_tich"),
+    ("chứng minh O, G, H thẳng hàng trên đường thẳng Euler", "duong_thang_euler", "duong_tron_chin_diem"),
+    ("chứng minh đường tròn chín điểm đi qua trung điểm các cạnh", "duong_tron_chin_diem", "duong_thang_euler"),
+    ("đường tròn Euler của tam giác", "duong_tron_chin_diem", "duong_thang_euler"),
+    ("cho tam giác ABC nhọn có trực tâm H", "truc_tam", "duong_thang_euler"),
+    ("tìm đường thẳng Simson của điểm P", "duong_thang_simson", "truc_tam"),
+    ("chứng minh ABCD là tứ giác điều hoà", "tu_giac_dieu_hoa", "hang_diem_dieu_hoa"),
+    ("chứng minh bốn điểm lập thành hàng điểm điều hòa", "hang_diem_dieu_hoa", "tu_giac_dieu_hoa"),
+    ("tìm ảnh của đường tròn qua phép nghịch đảo tâm O", "phep_nghich_dao", "phuong_tich"),
+    ("dùng định lý Ceva chứng minh ba đường đồng quy", "dinh_ly_ceva", "dinh_ly_menelaus"),
+    ("áp dụng định lý Menelaus cho ba điểm thẳng hàng", "dinh_ly_menelaus", "dinh_ly_ceva"),
+    ("định lý Ptolemy cho tứ giác nội tiếp", "dinh_ly_ptolemy", "tu_giac_dieu_hoa"),
+    ("chứng minh bất đẳng thức Cô-si cho ba số dương", "bat_dang_thuc_cosi", "bat_dang_thuc_bunhiacopxki"),
+    ("dùng bất đẳng thức Bunhiacopxki để tìm giá trị nhỏ nhất", "bat_dang_thuc_bunhiacopxki",
+     "bat_dang_thuc_cosi"),
+)
+
+
+def test_r5_nodes():
+    print("\n[R5] geometry / Olympiad nodes: reachable, isolated from the pinned subgraph, routing-neutral")
+    import mathviz_contract
+    nodes = math_concepts.nodes()
+    edges = math_concepts.edges()
+
+    check("all 14 R5 nodes exist by id", all(n in nodes for n in R5_NODES),
+          str([n for n in R5_NODES if n not in nodes]))
+    check("the 13 original nodes are all still present", ORIGINAL_NODES <= set(nodes))
+    check("the graph is exactly original + R5 (nothing else crept in)",
+          set(nodes) == ORIGINAL_NODES | set(R5_NODES),
+          str(sorted(set(nodes) - ORIGINAL_NODES - set(R5_NODES))))
+
+    touching_original = [e for e in edges
+                         if e["source"] in ORIGINAL_NODES or e["target"] in ORIGINAL_NODES]
+    check("only the original 10 edges touch an original node (golden blocks stay byte-exact)",
+          len(touching_original) == ORIGINAL_EDGES,
+          f"{len(touching_original)} edges touch the original subgraph")
+    check("no R5 edge crosses between the original and the new nodes",
+          all((e["source"] in ORIGINAL_NODES) == (e["target"] in ORIGINAL_NODES)
+              for e in edges))
+    check("every R5 node has at least one edge (it is part of the graph, not an island)",
+          all(math_concepts.neighbors(n) for n in R5_NODES),
+          str([n for n in R5_NODES if not math_concepts.neighbors(n)]))
+
+    misses = []
+    for query, must, must_not in R5_QUERIES:
+        found = math_concepts.find_entities(query)
+        if must not in found or must_not in found:
+            misses.append((query, found))
+    check(f"all {len(R5_QUERIES)} R5 queries find their own node and not the neighbouring one",
+          not misses, str(misses[:2]))
+
+    check("the matcher stays diacritic-sensitive (unaccented geometry still finds nothing)",
+          math_concepts.find_entities("duong thang Euler va truc tam") == [])
+    check("a bare 'euler' does not match the Euler-line node (it needs the full phrase)",
+          "duong_thang_euler" not in math_concepts.find_entities("phương pháp euler giải gần đúng"))
+    check("'nghịch đảo' alone (reciprocal in algebra) does not match inversion",
+          "phep_nghich_dao" not in math_concepts.find_entities("tìm nghịch đảo của số phức z"))
+
+    # viz fields: optional, but when present they must point at things that exist.
+    with_viz = [n for n in R5_NODES if "viz_template" in nodes[n]]
+    check("the 12 geometry nodes carry a viz_template; the 2 inequalities do not (no figure to draw)",
+          len(with_viz) == 12 and not any("viz_template" in nodes[n]
+                                          for n in ("bat_dang_thuc_cosi",
+                                                    "bat_dang_thuc_bunhiacopxki")),
+          str(len(with_viz)))
+    check("every viz_template names a widget the app renders",
+          all(nodes[n]["viz_template"] in KNOWN_WIDGETS for n in with_viz),
+          str({nodes[n]["viz_template"] for n in with_viz}))
+    check("every viz_layers entry is a kind in the MathViz contract (one vocabulary, not two)",
+          all(set(nodes[n]["viz_layers"]) <= set(mathviz_contract.LAYER_KINDS) for n in with_viz),
+          str([(n, sorted(set(nodes[n]["viz_layers"]) - set(mathviz_contract.LAYER_KINDS)))
+               for n in with_viz]))
+    check("the original nodes gained no viz field (their records are untouched)",
+          not any("viz_template" in nodes[n] or "viz_layers" in nodes[n] for n in ORIGINAL_NODES))
+
+    # Routing neutrality: widget routing reads GRAPHABLE_CONCEPT_IDS. If an R5 id were
+    # added to it, "chứng minh ... trực tâm" would start routing through the graph
+    # instead of the keyword path - a behaviour change that needs its own evidence.
+    with io.open(MAIN_PATH, encoding="utf-8") as fh:
+        main_src = fh.read()
+    start = main_src.index("GRAPHABLE_CONCEPT_IDS: dict[str, str] = {")
+    block = main_src[start:main_src.index("}", start)]
+    check("no R5 node id is in GRAPHABLE_CONCEPT_IDS (widget routing is unchanged by R5)",
+          not any(f'"{n}"' in block for n in R5_NODES))
+    check("every widget in KNOWN_WIDGETS is mentioned by main.py (the set is not invented)",
+          all(f'"{w}"' in main_src for w in KNOWN_WIDGETS))
+
+    rendered = math_concepts.render_context("cho tam giác ABC nhọn có trực tâm H")
+    node = nodes["truc_tam"]
+    check("an R5 node renders through the same card as every other node",
+          "### 📚 Trực tâm tam giác (Orthocenter)" in rendered and node["formulas"] in rendered)
+    check("viz fields are NOT rendered into the prompt (they are metadata, not reference text)",
+          "viz_template" not in rendered and "geometry_2d" not in rendered)
+
+
 # ── run ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -293,6 +415,7 @@ def main():
     test_render_golden()
     test_determinism()
     test_main_wiring()
+    test_r5_nodes()
 
     print(f"\n{checks - len(failures)}/{checks} checks passed")
     if failures:

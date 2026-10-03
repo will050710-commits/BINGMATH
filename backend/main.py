@@ -381,8 +381,10 @@ async def verify_admin(request: Request) -> int:
 
 def quality_log(surface: str, model: str = "", tier: str = "", provider: str = "",
                 latency_ms: int = 0, verified=None, consensus: str = "",
-                confidence=None, fallback: str = "", notes: str = "") -> None:
-    """Phase 4 / Đợt 4C — record one AI outcome.
+                confidence=None, fallback: str = "", notes: str = "",
+                retrieval_sources: str = "", context_chars: int = 0,
+                dense_hit: int = 0) -> None:
+    """Phase 4 / Đợt 4C + R5 telemetry — record one AI outcome.
 
     Never raises: telemetry must never break the request it is measuring (same
     contract as audit_admin)."""
@@ -391,11 +393,13 @@ def quality_log(surface: str, model: str = "", tier: str = "", provider: str = "
         try:
             db.execute(
                 "INSERT INTO ai_quality_log (surface, model, tier, provider, latency_ms,"
-                " verified, consensus, confidence, fallback, notes) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                " verified, consensus, confidence, fallback, notes,"
+                " retrieval_sources, context_chars, dense_hit) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (str(surface)[:24], str(model or "")[:80], str(tier or "")[:24], str(provider or "")[:24],
                  int(latency_ms or 0), None if verified is None else int(bool(verified)),
                  str(consensus or "")[:24], None if confidence is None else float(confidence),
-                 str(fallback or "")[:24], str(notes or "")[:300]),
+                 str(fallback or "")[:24], str(notes or "")[:300],
+                 str(retrieval_sources or "")[:120], int(context_chars or 0), int(bool(dense_hit))),
             )
             db.commit()
             # Đợt 4E cleanup: opportunistic retention so the telemetry table does
@@ -2592,10 +2596,17 @@ def init_db():
             confidence REAL,
             fallback   TEXT DEFAULT '',
             notes      TEXT DEFAULT '',
+            retrieval_sources TEXT DEFAULT '',
+            context_chars     INTEGER DEFAULT 0,
+            dense_hit         INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now'))
         )""", None),
         ("CREATE INDEX IF NOT EXISTS idx_quality_created ON ai_quality_log(created_at)", None),
         ("CREATE INDEX IF NOT EXISTS idx_quality_surface ON ai_quality_log(surface, model)", None),
+        # ── R5: telemetry migration on existing ai_quality_log tables ────────
+        ("ALTER TABLE ai_quality_log ADD COLUMN retrieval_sources TEXT DEFAULT ''", None),
+        ("ALTER TABLE ai_quality_log ADD COLUMN context_chars INTEGER DEFAULT 0", None),
+        ("ALTER TABLE ai_quality_log ADD COLUMN dense_hit INTEGER DEFAULT 0", None),
         # ── P10 — token/quota meter ─────────────────────────────────────────
         # One row per provider call that returned a usable answer. Providers
         # that send quota headers (Cerebras/Groq) also store the live
@@ -4064,6 +4075,9 @@ async def chat(request: Request):
     # original two calls untouched, so an unconfigured deploy is byte-identical.
     _retrieval_budget = _plan["retrieval"] if _plan else chat_budget.CHAT_RETRIEVAL_BUDGET_S
     _use_context_layer = False
+    _retrieval_sources = ""
+    _context_chars = 0
+    _dense_hit = 0
     try:
         import retrieval_context as _retrieval_context
         _use_context_layer = _retrieval_context.enabled()
@@ -4084,6 +4098,9 @@ async def chat(request: Request):
             _ctx_text, _ctx_meta = "", {}
         logger.info("[Chat] context slice: %s", _retrieval_context.summary(_ctx_meta))
         retrieved_kb = _ctx_text
+        _retrieval_sources = ",".join(_ctx_meta.get("sources", [])) if _ctx_meta else ""
+        _context_chars = int(_ctx_meta.get("chars", len(retrieved_kb or ""))) if _ctx_meta else len(retrieved_kb or "")
+        _dense_hit = 1 if (_ctx_meta and "dense" in _ctx_meta.get("sources", [])) else 0
     else:
         try:
             retrieved_kb = await asyncio.wait_for(
@@ -4104,6 +4121,14 @@ async def chat(request: Request):
             retrieved_examples = ""
         if retrieved_examples:
             retrieved_kb = f"{retrieved_kb}\n\n{retrieved_examples}"
+        _legacy_sources = []
+        if retrieved_kb:
+            _legacy_sources.append("kb")
+        if retrieved_examples:
+            _legacy_sources.append("examples")
+        _retrieval_sources = ",".join(_legacy_sources)
+        _context_chars = len(retrieved_kb or "")
+        _dense_hit = 0
     full_system_prompt = (
         f"{system_prompt}\n\n"
         f"## REFERENCE MATHEMATICAL KNOWLEDGE (DO NOT COPY DIRECTLY):\n"
@@ -4317,7 +4342,9 @@ async def chat(request: Request):
         _answered.update(provider="local", model="local-mathgpt")
         try:
             quality_log(surface="chat", tier="soft_deadline", provider="local",
-                        model="local-mathgpt", latency_ms=int((time.time() - _t0) * 1000))
+                        model="local-mathgpt", latency_ms=int((time.time() - _t0) * 1000),
+                        retrieval_sources=_retrieval_sources, context_chars=_context_chars,
+                        dense_hit=_dense_hit)
         except Exception as _e_qlog_partial:
             logger.debug("[Chat] partial quality log skipped (%s)", _e_qlog_partial)
         print(f"[Chat] answered_by=local:local-mathgpt tier=soft_deadline "
@@ -5333,7 +5360,10 @@ async def chat(request: Request):
                             latency_ms=int((time.time() - _t0) * 1000),
                             verified=math_verification.get("verified"),
                             notes=(("critic=" + _critic_model + "; ") if _critic_model else "")
-                                  + str(math_verification.get("notes") or "")[:200])
+                                  + str(math_verification.get("notes") or "")[:200],
+                            retrieval_sources=_retrieval_sources,
+                            context_chars=_context_chars,
+                            dense_hit=_dense_hit)
             elif perception:
                 quality_log(surface="perception",
                             model=",".join(perception.get("readers") or [])[:80],

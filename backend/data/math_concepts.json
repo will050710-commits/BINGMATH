@@ -212,6 +212,291 @@
       "definition": "Nghiên cứu các hình học trong không gian 3 chiều: hình cầu, hình chóp, hình hộp, lăng trụ...",
       "formulas": "**Hình cầu:** $V = \\frac{4}{3}\\pi R^3$, $S = 4\\pi R^2$\n**Hình chóp:** $V = \\frac{1}{3} S_{\\text{đáy}} \\cdot h$\n**Lăng trụ:** $V = S_{\\text{đáy}} \\cdot h$",
       "examples": "Hình cầu bán kính $R=3$: $V = \\frac{4}{3}\\pi \\cdot 27 = 36\\pi$."
+    },
+    "truc_tam": {
+      "id": "truc_tam",
+      "name": "Trực tâm tam giác",
+      "english_name": "Orthocenter",
+      "keywords": [
+        "trực tâm",
+        "orthocenter",
+        "orthocentre",
+        "ba đường cao"
+      ],
+      "definition": "Trực tâm $H$ của tam giác $ABC$ là giao điểm của ba đường cao. Tam giác nhọn có $H$ nằm trong tam giác, tam giác vuông tại $A$ có $H\\equiv A$, tam giác tù có $H$ nằm ngoài tam giác.",
+      "formulas": "$$\\vec{OH}=\\vec{OA}+\\vec{OB}+\\vec{OC}\\quad(O\\text{ là tâm đường tròn ngoại tiếp})$$\n- $AH=2R\\,|\\cos A|=2\\,OM$ với $M$ là trung điểm $BC$.\n- Điểm đối xứng của $H$ qua mỗi cạnh, và qua trung điểm mỗi cạnh, đều nằm trên đường tròn ngoại tiếp.",
+      "examples": "Với $A(0,3),B(-1,0),C(1,0)$: đường cao từ $A$ là $x=0$, đường cao từ $B$ là $x-3y+1=0$ nên $H(0,\\tfrac13)$. Tâm ngoại tiếp $O(0,\\tfrac43)$ và $\\vec{OA}+\\vec{OB}+\\vec{OC}=(0,-1)=\\vec{OH}$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "triangle",
+        "segment",
+        "points",
+        "label"
+      ]
+    },
+    "phuong_tich": {
+      "id": "phuong_tich",
+      "name": "Phương tích của một điểm đối với đường tròn",
+      "english_name": "Power of a Point",
+      "keywords": [
+        "phương tích",
+        "power of a point",
+        "power of point"
+      ],
+      "definition": "Phương tích của điểm $M$ đối với đường tròn $(O;R)$ là $\\mathcal{P}_{M/(O)}=MO^2-R^2$. Giá trị dương khi $M$ ngoài đường tròn, bằng $0$ khi $M$ thuộc đường tròn, âm khi $M$ ở trong.",
+      "formulas": "$$\\mathcal{P}_{M/(O)}=MO^2-R^2$$\n- Cát tuyến qua $M$ cắt đường tròn tại $A,B$: $\\mathcal{P}_{M/(O)}=\\overline{MA}\\cdot\\overline{MB}$.\n- $MT$ là tiếp tuyến ($T$ là tiếp điểm): $\\mathcal{P}_{M/(O)}=MT^2$.\n- Đảo lại: $\\overline{MA}\\cdot\\overline{MB}=\\overline{MC}\\cdot\\overline{MD}$ với $A,B,C,D$ không thẳng hàng thì $A,B,C,D$ cùng thuộc một đường tròn.",
+      "examples": "$M$ cách tâm $O$ một đoạn $5$, bán kính $R=3$: $\\mathcal{P}=25-9=16$ nên độ dài tiếp tuyến $MT=\\sqrt{16}=4$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "circle",
+        "line",
+        "segment",
+        "points",
+        "label"
+      ]
+    },
+    "truc_dang_phuong": {
+      "id": "truc_dang_phuong",
+      "name": "Trục đẳng phương",
+      "english_name": "Radical Axis",
+      "keywords": [
+        "trục đẳng phương",
+        "radical axis",
+        "tâm đẳng phương",
+        "radical center",
+        "radical centre"
+      ],
+      "definition": "Trục đẳng phương của hai đường tròn không đồng tâm $(O_1),(O_2)$ là tập các điểm có phương tích bằng nhau đối với cả hai đường tròn; đó là một đường thẳng vuông góc với $O_1O_2$.",
+      "formulas": "$$\\mathcal{P}_{M/(O_1)}=\\mathcal{P}_{M/(O_2)}$$\n- Với $(O_i):x^2+y^2+2a_ix+2b_iy+c_i=0$, trục đẳng phương là $2(a_1-a_2)x+2(b_1-b_2)y+(c_1-c_2)=0$.\n- Hai đường tròn cắt nhau tại $A,B$ thì trục đẳng phương là đường thẳng $AB$.\n- Ba đường tròn có tâm không thẳng hàng thì ba trục đẳng phương đồng quy tại tâm đẳng phương.",
+      "examples": "$(C_1):x^2+y^2-4=0$ và $(C_2):x^2+y^2-4x=0$. Trừ vế theo vế được $4x-4=0$, tức trục đẳng phương là đường thẳng $x=1$, vuông góc với $O_1O_2$ (nằm trên trục $Ox$).",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "circle",
+        "line",
+        "points",
+        "label"
+      ]
+    },
+    "duong_thang_euler": {
+      "id": "duong_thang_euler",
+      "name": "Đường thẳng Euler",
+      "english_name": "Euler Line",
+      "keywords": [
+        "đường thẳng euler",
+        "euler line"
+      ],
+      "definition": "Trong mọi tam giác không đều, trực tâm $H$, trọng tâm $G$ và tâm đường tròn ngoại tiếp $O$ cùng nằm trên một đường thẳng, gọi là đường thẳng Euler. Với tam giác đều, ba điểm này trùng nhau.",
+      "formulas": "$$\\vec{OH}=3\\,\\vec{OG}\\iff HG=2\\,GO$$\n- $G$ nằm giữa $O$ và $H$.\n- Tâm $N$ của đường tròn chín điểm là trung điểm $OH$ nên cũng nằm trên đường thẳng này.",
+      "examples": "Với $A(0,3),B(-1,0),C(1,0)$: $G(0,1)$, $O(0,\\tfrac43)$, $H(0,\\tfrac13)$. $\\vec{OH}=(0,-1)$ và $\\vec{OG}=(0,-\\tfrac13)$ nên $\\vec{OH}=3\\vec{OG}$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "triangle",
+        "line",
+        "points",
+        "label"
+      ]
+    },
+    "duong_tron_chin_diem": {
+      "id": "duong_tron_chin_diem",
+      "name": "Đường tròn chín điểm",
+      "english_name": "Nine-Point Circle",
+      "keywords": [
+        "đường tròn chín điểm",
+        "đường tròn euler",
+        "nine-point circle",
+        "nine point circle",
+        "chín điểm"
+      ],
+      "definition": "Trong tam giác $ABC$ với trực tâm $H$, chín điểm sau cùng thuộc một đường tròn: ba trung điểm các cạnh, ba chân đường cao, và ba trung điểm của $HA,HB,HC$.",
+      "formulas": "$$N=\\text{trung điểm của }OH,\\qquad r_N=\\frac{R}{2}$$\n- $O$ là tâm và $R$ là bán kính đường tròn ngoại tiếp.\n- Là ảnh của đường tròn ngoại tiếp qua phép vị tự tâm $H$ tỉ số $\\tfrac12$ (và qua phép vị tự tâm $G$ tỉ số $-\\tfrac12$).",
+      "examples": "Tam giác có bán kính ngoại tiếp $R=10$ thì đường tròn chín điểm có bán kính $5$ và tâm là trung điểm của $OH$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "triangle",
+        "circle",
+        "points",
+        "label"
+      ]
+    },
+    "duong_thang_simson": {
+      "id": "duong_thang_simson",
+      "name": "Đường thẳng Simson",
+      "english_name": "Simson Line",
+      "keywords": [
+        "đường thẳng simson",
+        "đường simson",
+        "simson line",
+        "simson"
+      ],
+      "definition": "Cho tam giác $ABC$ và điểm $P$. Hình chiếu vuông góc của $P$ lên ba đường thẳng $BC,CA,AB$ thẳng hàng khi và chỉ khi $P$ thuộc đường tròn ngoại tiếp tam giác. Đường thẳng đi qua ba hình chiếu đó là đường thẳng Simson của $P$.",
+      "formulas": "$$P\\in(ABC)\\iff D,E,F\\text{ thẳng hàng}$$\n- $D,E,F$ là hình chiếu của $P$ lên $BC,CA,AB$.\n- Đường thẳng Simson của $P$ đi qua trung điểm của $PH$ ($H$ là trực tâm).\n- Hai điểm đối tâm trên đường tròn ngoại tiếp có hai đường thẳng Simson vuông góc với nhau và cắt nhau trên đường tròn chín điểm.",
+      "examples": "Lấy $P\\equiv A$: hình chiếu lên $AB$ và $AC$ đều là $A$, hình chiếu lên $BC$ là chân đường cao $D$, nên đường thẳng Simson của $A$ chính là đường cao $AD$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "triangle",
+        "circle",
+        "line",
+        "points",
+        "label"
+      ]
+    },
+    "tu_giac_dieu_hoa": {
+      "id": "tu_giac_dieu_hoa",
+      "name": "Tứ giác điều hòa",
+      "english_name": "Harmonic Quadrilateral",
+      "keywords": [
+        "tứ giác điều hòa",
+        "tứ giác điều hoà",
+        "harmonic quadrilateral"
+      ],
+      "definition": "Tứ giác nội tiếp $ABCD$ gọi là tứ giác điều hòa nếu $AB\\cdot CD=BC\\cdot DA$.",
+      "formulas": "$$AB\\cdot CD=BC\\cdot DA$$\n- Tương đương: tiếp tuyến tại $A$ và $C$ của đường tròn ngoại tiếp cắt nhau trên đường thẳng $BD$ (hoặc cùng song song với $BD$).\n- Theo Ptolemy: $AC\\cdot BD=2\\,AB\\cdot CD$.\n- Với mọi điểm $X$ khác $A,B,C,D$ trên đường tròn, chùm $X(A,C;B,D)$ là chùm điều hòa.",
+      "examples": "Hình vuông $ABCD$ nội tiếp đường tròn có $AB\\cdot CD=BC\\cdot DA$ nên là tứ giác điều hòa; tiếp tuyến tại $A$ và $C$ song song với $BD$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "polygon",
+        "circle",
+        "line",
+        "points",
+        "label"
+      ]
+    },
+    "hang_diem_dieu_hoa": {
+      "id": "hang_diem_dieu_hoa",
+      "name": "Hàng điểm điều hòa",
+      "english_name": "Harmonic Range",
+      "keywords": [
+        "hàng điểm điều hòa",
+        "hàng điểm điều hoà",
+        "hàng điều hòa",
+        "hàng điều hoà",
+        "tỉ số kép",
+        "harmonic range",
+        "cross-ratio",
+        "cross ratio"
+      ],
+      "definition": "Bốn điểm thẳng hàng $A,B,C,D$ lập thành hàng điểm điều hòa nếu tỉ số kép $(A,B;C,D)=-1$, nghĩa là $C$ và $D$ chia trong và chia ngoài đoạn $AB$ theo cùng một tỉ số.",
+      "formulas": "$$(A,B;C,D)=\\frac{\\overline{CA}}{\\overline{CB}}:\\frac{\\overline{DA}}{\\overline{DB}}=-1$$\n- Với $M$ là trung điểm $AB$: $MA^2=\\overline{MC}\\cdot\\overline{MD}$ (hệ thức Newton).\n- Hệ thức Descartes: $\\dfrac{2}{AB}=\\dfrac{1}{AC}+\\dfrac{1}{AD}$ (độ dài đại số, gốc tại $A$).",
+      "examples": "$A(0),B(6),C(2)$ trên trục số thì điểm liên hợp điều hòa của $C$ là $D(-6)$, vì $\\dfrac26=\\dfrac12+\\dfrac1{-6}$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "line",
+        "points",
+        "label"
+      ]
+    },
+    "phep_nghich_dao": {
+      "id": "phep_nghich_dao",
+      "name": "Phép nghịch đảo",
+      "english_name": "Inversion",
+      "keywords": [
+        "phép nghịch đảo",
+        "nghịch đảo cực",
+        "inversion"
+      ],
+      "definition": "Phép nghịch đảo tâm $O$, phương tích $k^2>0$ biến mỗi điểm $M\\ne O$ thành điểm $M'$ trên tia $OM$ sao cho $OM\\cdot OM'=k^2$.",
+      "formulas": "$$OM\\cdot OM'=k^2,\\qquad M'\\in\\text{tia }OM$$\n- Đường thẳng đi qua $O$ biến thành chính nó; đường thẳng không qua $O$ biến thành đường tròn đi qua $O$ (và ngược lại).\n- Đường tròn không đi qua $O$ biến thành đường tròn không đi qua $O$.\n- Bảo toàn góc giữa hai đường cong nên bảo toàn tính tiếp xúc.\n- $M'N'=\\dfrac{k^2\\cdot MN}{OM\\cdot ON}$.",
+      "examples": "Nghịch đảo tâm $O$ với $k^2=4$: điểm $M$ có $OM=1$ biến thành $M'$ có $OM'=4$; điểm có $OM=2$ nằm trên đường tròn nghịch đảo $(O;2)$ nên bất động.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "circle",
+        "line",
+        "points",
+        "label"
+      ]
+    },
+    "dinh_ly_ceva": {
+      "id": "dinh_ly_ceva",
+      "name": "Định lý Ceva",
+      "english_name": "Ceva's Theorem",
+      "keywords": [
+        "định lý ceva",
+        "định lí ceva",
+        "ceva"
+      ],
+      "definition": "Cho tam giác $ABC$ và các điểm $D,E,F$ lần lượt thuộc các đường thẳng $BC,CA,AB$ (không trùng đỉnh). Ba đường thẳng $AD,BE,CF$ đồng quy (hoặc đôi một song song) khi và chỉ khi tích ba tỉ số đại số bằng $1$.",
+      "formulas": "$$\\frac{\\overline{AF}}{\\overline{FB}}\\cdot\\frac{\\overline{BD}}{\\overline{DC}}\\cdot\\frac{\\overline{CE}}{\\overline{EA}}=1$$\n- Dạng lượng giác: $\\dfrac{\\sin\\angle BAD}{\\sin\\angle DAC}\\cdot\\dfrac{\\sin\\angle CBE}{\\sin\\angle EBA}\\cdot\\dfrac{\\sin\\angle ACF}{\\sin\\angle FCB}=1$.",
+      "examples": "Nếu $D,E,F$ là trung điểm ba cạnh thì mỗi tỉ số bằng $1$, tích bằng $1$ nên ba trung tuyến đồng quy (tại trọng tâm).",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "triangle",
+        "segment",
+        "points",
+        "label"
+      ]
+    },
+    "dinh_ly_menelaus": {
+      "id": "dinh_ly_menelaus",
+      "name": "Định lý Menelaus",
+      "english_name": "Menelaus' Theorem",
+      "keywords": [
+        "định lý menelaus",
+        "định lí menelaus",
+        "menelaus"
+      ],
+      "definition": "Cho tam giác $ABC$ và các điểm $D,E,F$ lần lượt thuộc các đường thẳng $BC,CA,AB$ (không trùng đỉnh). Ba điểm $D,E,F$ thẳng hàng khi và chỉ khi tích ba tỉ số đại số bằng $-1$.",
+      "formulas": "$$\\frac{\\overline{AF}}{\\overline{FB}}\\cdot\\frac{\\overline{BD}}{\\overline{DC}}\\cdot\\frac{\\overline{CE}}{\\overline{EA}}=-1$$\n- Cùng biểu thức với định lý Ceva: Ceva cho $+1$ (đồng quy), Menelaus cho $-1$ (thẳng hàng).\n- Với độ dài thường: $\\dfrac{AF}{FB}\\cdot\\dfrac{BD}{DC}\\cdot\\dfrac{CE}{EA}=1$ khi một đường thẳng cắt ba đường thẳng chứa cạnh.",
+      "examples": "Với $A(0,0),B(4,0),C(0,4)$, đường thẳng $y=x-1$ cắt $AB,BC,CA$ tại $F(1,0)$, $D(\\tfrac52,\\tfrac32)$, $E(0,-1)$: $\\tfrac13\\cdot\\tfrac35\\cdot(-5)=-1$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "triangle",
+        "line",
+        "points",
+        "label"
+      ]
+    },
+    "dinh_ly_ptolemy": {
+      "id": "dinh_ly_ptolemy",
+      "name": "Định lý Ptolemy",
+      "english_name": "Ptolemy's Theorem",
+      "keywords": [
+        "định lý ptolemy",
+        "định lí ptolemy",
+        "ptolemy"
+      ],
+      "definition": "Với tứ giác lồi $ABCD$ ta có $AC\\cdot BD\\le AB\\cdot CD+AD\\cdot BC$, dấu bằng xảy ra khi và chỉ khi $ABCD$ nội tiếp.",
+      "formulas": "$$AC\\cdot BD=AB\\cdot CD+AD\\cdot BC\\quad(ABCD\\text{ nội tiếp})$$\n- Bất đẳng thức Ptolemy: $AC\\cdot BD\\le AB\\cdot CD+AD\\cdot BC$ với bốn điểm bất kỳ.\n- Hình chữ nhật $ABCD$ có $AB=a,BC=b$: $AC^2=a^2+b^2$ (định lý Pythagoras).",
+      "examples": "Hình vuông cạnh $a$ nội tiếp: $AC=BD=a\\sqrt2$ nên $AC\\cdot BD=2a^2=a\\cdot a+a\\cdot a$.",
+      "viz_template": "geometry_2d",
+      "viz_layers": [
+        "polygon",
+        "circle",
+        "segment",
+        "points",
+        "label"
+      ]
+    },
+    "bat_dang_thuc_cosi": {
+      "id": "bat_dang_thuc_cosi",
+      "name": "Bất đẳng thức Cô-si",
+      "english_name": "AM-GM Inequality",
+      "keywords": [
+        "bất đẳng thức cô-si",
+        "bất đẳng thức cô si",
+        "bđt cô-si",
+        "bđt cô si",
+        "am-gm",
+        "trung bình cộng và trung bình nhân"
+      ],
+      "definition": "Với các số thực không âm $a_1,\\dots,a_n$, trung bình cộng không nhỏ hơn trung bình nhân; dấu bằng xảy ra khi và chỉ khi tất cả các số bằng nhau.",
+      "formulas": "$$\\frac{a_1+a_2+\\cdots+a_n}{n}\\ge\\sqrt[n]{a_1a_2\\cdots a_n}$$\n- Hai số: $a+b\\ge2\\sqrt{ab}$, dấu $=$ khi $a=b$.\n- Ba số: $a+b+c\\ge3\\sqrt[3]{abc}$, dấu $=$ khi $a=b=c$.\n- Tích không đổi thì tổng nhỏ nhất khi các số bằng nhau; tổng không đổi thì tích lớn nhất khi các số bằng nhau.",
+      "examples": "Với $x>0$: $x+\\dfrac1x\\ge2$, dấu bằng khi $x=1$, nên giá trị nhỏ nhất của $x+\\dfrac1x$ trên $(0,+\\infty)$ là $2$."
+    },
+    "bat_dang_thuc_bunhiacopxki": {
+      "id": "bat_dang_thuc_bunhiacopxki",
+      "name": "Bất đẳng thức Bunhiacopxki",
+      "english_name": "Cauchy-Schwarz Inequality",
+      "keywords": [
+        "bất đẳng thức bunhiacopxki",
+        "bđt bunhiacopxki",
+        "bunhiacopxki",
+        "bunyakovsky",
+        "cauchy-schwarz",
+        "cauchy schwarz"
+      ],
+      "definition": "Với hai bộ số thực $(a_1,\\dots,a_n)$ và $(b_1,\\dots,b_n)$, bình phương của tổng các tích không vượt quá tích của hai tổng bình phương; dấu bằng xảy ra khi hai bộ số tỉ lệ.",
+      "formulas": "$$(a_1b_1+\\cdots+a_nb_n)^2\\le(a_1^2+\\cdots+a_n^2)(b_1^2+\\cdots+b_n^2)$$\n- Dấu $=$ khi $\\dfrac{a_1}{b_1}=\\cdots=\\dfrac{a_n}{b_n}$ (các $b_i\\ne0$).\n- Dạng Engel: $\\dfrac{x_1^2}{y_1}+\\cdots+\\dfrac{x_n^2}{y_n}\\ge\\dfrac{(x_1+\\cdots+x_n)^2}{y_1+\\cdots+y_n}$ với $y_i>0$.",
+      "examples": "Với $x+y=1$: $(x+y)^2\\le(1^2+1^2)(x^2+y^2)$ nên $x^2+y^2\\ge\\tfrac12$, dấu bằng khi $x=y=\\tfrac12$."
     }
   },
   "edges": [
@@ -264,6 +549,66 @@
       "source": "phuong_trinh_bac_hai",
       "target": "so_phuc",
       "relation": "khi Delta < 0 thì nghiệm là số phức"
+    },
+    {
+      "source": "truc_tam",
+      "target": "duong_thang_euler",
+      "relation": "Trực tâm $H$ là một trong ba điểm $O,G,H$ nằm trên đường thẳng Euler."
+    },
+    {
+      "source": "duong_thang_euler",
+      "target": "duong_tron_chin_diem",
+      "relation": "Tâm đường tròn chín điểm là trung điểm của $OH$, nằm trên đường thẳng Euler."
+    },
+    {
+      "source": "truc_tam",
+      "target": "duong_tron_chin_diem",
+      "relation": "Các chân đường cao và trung điểm của $HA,HB,HC$ cùng thuộc đường tròn chín điểm."
+    },
+    {
+      "source": "duong_thang_simson",
+      "target": "truc_tam",
+      "relation": "Đường thẳng Simson của $P$ đi qua trung điểm của $PH$ với $H$ là trực tâm."
+    },
+    {
+      "source": "duong_thang_simson",
+      "target": "duong_tron_chin_diem",
+      "relation": "Hai đường thẳng Simson của hai điểm đối tâm cắt nhau trên đường tròn chín điểm."
+    },
+    {
+      "source": "phuong_tich",
+      "target": "truc_dang_phuong",
+      "relation": "Trục đẳng phương là tập các điểm có phương tích bằng nhau với hai đường tròn."
+    },
+    {
+      "source": "phuong_tich",
+      "target": "phep_nghich_dao",
+      "relation": "Phép nghịch đảo tâm $O$ phương tích $k^2$ liên hệ với phương tích: $OM\\cdot OM'=k^2$."
+    },
+    {
+      "source": "dinh_ly_ceva",
+      "target": "dinh_ly_menelaus",
+      "relation": "Cùng một tích ba tỉ số: Ceva cho $+1$ (đồng quy), Menelaus cho $-1$ (thẳng hàng)."
+    },
+    {
+      "source": "dinh_ly_ceva",
+      "target": "hang_diem_dieu_hoa",
+      "relation": "Ceva kết hợp Menelaus chứng minh hàng điểm điều hòa trong tam giác."
+    },
+    {
+      "source": "tu_giac_dieu_hoa",
+      "target": "hang_diem_dieu_hoa",
+      "relation": "Mọi điểm $X$ trên đường tròn nhìn tứ giác điều hòa dưới một chùm điều hòa."
+    },
+    {
+      "source": "dinh_ly_ptolemy",
+      "target": "tu_giac_dieu_hoa",
+      "relation": "Với tứ giác điều hòa, Ptolemy cho $AC\\cdot BD=2\\,AB\\cdot CD$."
+    },
+    {
+      "source": "bat_dang_thuc_cosi",
+      "target": "bat_dang_thuc_bunhiacopxki",
+      "relation": "Hai công cụ cơ bản của bất đẳng thức; dấu bằng ứng với các đại lượng bằng nhau hoặc tỉ lệ."
     }
   ]
 }
