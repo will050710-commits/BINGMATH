@@ -66,6 +66,8 @@ SUPPORTED_TYPES = {
     #   arc_midpoint          → "M là trung điểm cung BC";
     #   excenter              → "tâm đường tròn bàng tiếp".
     "circle_circle_tangency", "arc_midpoint", "excenter",
+    # Mẫu mô hình toán 2D/3D additions:
+    "homothety", "rotation", "inversion",
 }
 
 
@@ -188,6 +190,32 @@ def _reflection(p: Point2D, l1: Point2D, l2: Point2D) -> Point2D:
 
 def _ratio_point(p: Point2D, q: Point2D, t: float) -> Point2D:
     return (round(p[0] + t*(q[0]-p[0]), 4), round(p[1] + t*(q[1]-p[1]), 4))
+
+
+def _homothety(p: Point2D, center: Point2D, k: float) -> Point2D:
+    """Dilates point p from center by scale factor k: p' = center + k*(p - center)."""
+    return (round(center[0] + k * (p[0] - center[0]), 4),
+            round(center[1] + k * (p[1] - center[1]), 4))
+
+
+def _rotation(p: Point2D, center: Point2D, angle_deg: float) -> Point2D:
+    """Rotates point p around center by angle_deg degrees counter-clockwise."""
+    rad = math.radians(angle_deg)
+    cos_t, sin_t = math.cos(rad), math.sin(rad)
+    dx, dy = p[0] - center[0], p[1] - center[1]
+    return (round(center[0] + dx * cos_t - dy * sin_t, 4),
+            round(center[1] + dx * sin_t + dy * cos_t, 4))
+
+
+def _inversion(p: Point2D, center: Point2D, r: float) -> Optional[Point2D]:
+    """Inversion of point p across circle (center, r): |CP| * |CP'| = r^2."""
+    dx, dy = p[0] - center[0], p[1] - center[1]
+    d2 = dx * dx + dy * dy
+    if d2 < 1e-12:
+        return None
+    scale = (r * r) / d2
+    return (round(center[0] + scale * dx, 4),
+            round(center[1] + scale * dy, 4))
 
 
 def _circle_line_intersection(center: Point2D, r_pt: Point2D, l1: Point2D, l2: Point2D) -> Optional[Point2D]:
@@ -431,6 +459,15 @@ def _solve_one(ctype: str, of_coords: List[Point2D], extra: Dict[str, Any]) -> O
         if ctype == "excenter" and len(of_coords) >= 3:
             return _excenter(of_coords[0], of_coords[1], of_coords[2],
                              str(extra.get("vertex") or "").strip().upper())
+        if ctype in ("homothety", "dilation") and len(of_coords) >= 2:
+            k_val = float(extra.get("k", extra.get("ratio", 1.0)))
+            return _homothety(of_coords[0], of_coords[1], k_val)
+        if ctype == "rotation" and len(of_coords) >= 2:
+            angle_val = float(extra.get("angle", extra.get("deg", 0.0)))
+            return _rotation(of_coords[0], of_coords[1], angle_val)
+        if ctype == "inversion" and len(of_coords) >= 2:
+            r_val = float(extra.get("r", extra.get("radius", 1.0)))
+            return _inversion(of_coords[0], of_coords[1], r_val)
     except Exception as e:
         logger.debug(f"[ConstructionSolver] {ctype} failed on inputs {of_coords}: {e}")
     return None

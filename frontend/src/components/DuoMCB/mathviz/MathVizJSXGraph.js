@@ -1,8 +1,8 @@
 'use client';
-import { useEffect, useMemo, useRef, useState, useId } from 'react';
+import { useEffect, useMemo, useRef, useState, useId, useCallback } from 'react';
 import JXG from 'jsxgraph';
 import '@/styles/jsxgraph.css';
-import { ZoomIn, ZoomOut, RotateCcw, CheckCircle2, AlertTriangle, Compass } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, CheckCircle2, AlertTriangle, Compass, Sliders, Layers, Info, XCircle } from 'lucide-react';
 import MathVizTitle from './MathVizTitle';
 import GgbExportButton from '../../duomath/GgbExportButton';
 // Đợt 8 / 4I: the shared vocabulary and the generic point walk. This engine
@@ -65,10 +65,137 @@ function reportNotices(report) {
 export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
   const containerRef = useRef(null);
   const boardRef = useRef(null);
+  const jxgPtsRef = useRef({});
+  const groupElementsRef = useRef({});
   const rawId = useId();
   const boardId = `jxgbox_${rawId.replace(/:/g, '_')}`;
   const [isClient, setIsClient] = useState(false);
   const [boardReady, setBoardReady] = useState(false);
+  const [claimsResult, setClaimsResult] = useState([]);
+  const [activeGroups, setActiveGroups] = useState({});
+  const [paramValues, setParamValues] = useState(() => {
+    const init = {};
+    if (data?.params && typeof data.params === 'object') {
+      Object.entries(data.params).forEach(([k, conf]) => {
+        if (conf && typeof conf === 'object') {
+          init[k] = conf.value ?? conf.default ?? (conf.min ?? 0);
+        }
+      });
+    }
+    return init;
+  });
+
+  const availableGroups = useMemo(() => {
+    if (!Array.isArray(data?.layers)) return [];
+    const set = new Set();
+    data.layers.forEach((l) => {
+      if (l && l.group && typeof l.group === 'string') {
+        set.add(l.group.trim());
+      }
+    });
+    return Array.from(set);
+  }, [data]);
+
+  const notesList = useMemo(() => {
+    const list = [];
+    if (Array.isArray(data?.layers)) {
+      data.layers.forEach((l) => {
+        if (l && l.note && typeof l.note === 'string') {
+          list.push({ title: l.id || l.group || l.kind, note: l.note });
+        }
+      });
+    }
+    return list;
+  }, [data]);
+
+  const evaluateClaims = useCallback(() => {
+    if (!Array.isArray(data?.claims) || data.claims.length === 0 || !boardRef.current) return;
+    const currentPts = jxgPtsRef.current || {};
+    const results = data.claims.map((claim) => {
+      const ofPts = claim.of || [];
+      let passed = false;
+      try {
+        if (claim.type === 'collinear' && ofPts.length >= 3) {
+          const pts = ofPts.map((id) => currentPts[id]).filter(Boolean);
+          if (pts.length >= 3) {
+            const x0 = pts[0].X(), y0 = pts[0].Y();
+            passed = true;
+            for (let i = 1; i < pts.length - 1; i++) {
+              const x1 = pts[i].X(), y1 = pts[i].Y();
+              const x2 = pts[i + 1].X(), y2 = pts[i + 1].Y();
+              const area = Math.abs((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0));
+              if (area > 0.08) { passed = false; break; }
+            }
+          }
+        } else if (claim.type === 'perpendicular' && ofPts.length === 4) {
+          const [pA, pB, pC, pD] = ofPts.map((id) => currentPts[id]).filter(Boolean);
+          if (pA && pB && pC && pD) {
+            const ux = pB.X() - pA.X(), uy = pB.Y() - pA.Y();
+            const vx = pD.X() - pC.X(), vy = pD.Y() - pC.Y();
+            const dot = ux * vx + uy * vy;
+            const lenProduct = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+            if (lenProduct > 1e-6 && Math.abs(dot / lenProduct) < 0.05) passed = true;
+          }
+        } else if (claim.type === 'parallel' && ofPts.length === 4) {
+          const [pA, pB, pC, pD] = ofPts.map((id) => currentPts[id]).filter(Boolean);
+          if (pA && pB && pC && pD) {
+            const ux = pB.X() - pA.X(), uy = pB.Y() - pA.Y();
+            const vx = pD.X() - pC.X(), vy = pD.Y() - pC.Y();
+            const cross = ux * vy - uy * vx;
+            const lenProduct = Math.hypot(ux, uy) * Math.hypot(vx, vy);
+            if (lenProduct > 1e-6 && Math.abs(cross / lenProduct) < 0.05) passed = true;
+          }
+        } else if (claim.type === 'equal' && ofPts.length === 4) {
+          const [pA, pB, pC, pD] = ofPts.map((id) => currentPts[id]).filter(Boolean);
+          if (pA && pB && pC && pD) {
+            const d1 = Math.hypot(pB.X() - pA.X(), pB.Y() - pA.Y());
+            const d2 = Math.hypot(pD.X() - pC.X(), pD.Y() - pC.Y());
+            if (Math.abs(d1 - d2) < 0.08) passed = true;
+          }
+        } else if (claim.type === 'concyclic' && ofPts.length >= 4) {
+          const [pA, pB, pC, pD] = ofPts.map((id) => currentPts[id]).filter(Boolean);
+          if (pA && pB && pC && pD) {
+            const xA = pA.X(), yA = pA.Y(), xB = pB.X(), yB = pB.Y(), xC = pC.X(), yC = pC.Y();
+            const D = 2 * (xA * (yB - yC) + xB * (yC - yA) + xC * (yA - yB));
+            if (Math.abs(D) > 1e-5) {
+              const uX = ((xA * xA + yA * yA) * (yB - yC) + (xB * xB + yB * yB) * (yC - yA) + (xC * xC + yC * yC) * (yA - yB)) / D;
+              const uY = ((xA * xA + yA * yA) * (xC - xB) + (xB * xB + yB * yB) * (xA - xC) + (xC * xC + yC * yC) * (xB - xA)) / D;
+              const R = Math.hypot(xA - uX, yA - uY);
+              const rD = Math.hypot(pD.X() - uX, pD.Y() - uY);
+              if (Math.abs(R - rD) < 0.08) passed = true;
+            }
+          }
+        }
+      } catch (e) {
+        console.debug('Error evaluating claim:', e);
+      }
+      return { ...claim, passed };
+    });
+    setClaimsResult(results);
+  }, [data]);
+
+  const toggleGroup = useCallback((grpName) => {
+    setActiveGroups((prev) => {
+      const nextVisible = prev[grpName] === false ? true : false;
+      const elements = groupElementsRef.current[grpName] || [];
+      elements.forEach((el) => {
+        el.setAttribute({ visible: nextVisible });
+      });
+      boardRef.current?.update();
+      return { ...prev, [grpName]: nextVisible };
+    });
+  }, []);
+
+  const handleHighlightClaim = useCallback((claim) => {
+    const ofPts = claim.of || [];
+    ofPts.forEach((id) => {
+      const pt = jxgPtsRef.current[id];
+      if (pt) {
+        pt.highlight();
+        setTimeout(() => pt.noHighlight(), 1500);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -501,6 +628,71 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
               fillColor: c.color || '#38bdf8',
               label: { offset: [8, 8], fontSize: 13, color: c.color || '#f8fafc' },
             });
+          } else if (type === 'homothety' && ofPts.length === 2 && jxgPts[ofPts[0]] && jxgPts[ofPts[1]]) {
+            const pP = jxgPts[ofPts[0]];
+            const pO = jxgPts[ofPts[1]];
+            const k = typeof c.k === 'number' ? c.k : 1;
+            jxgPts[ptName] = board.create('point', [
+              () => pO.X() + k * (pP.X() - pO.X()),
+              () => pO.Y() + k * (pP.Y() - pO.Y()),
+            ], {
+              name: ptName,
+              size: 3.5,
+              strokeColor: c.color || '#8b5cf6',
+              fillColor: c.color || '#8b5cf6',
+              label: { offset: [8, 8], fontSize: 13, color: c.color || '#a78bfa', cssStyle: 'font-weight: 600;' },
+            });
+          } else if (type === 'rotation' && ofPts.length === 2 && jxgPts[ofPts[0]] && jxgPts[ofPts[1]]) {
+            const pP = jxgPts[ofPts[0]];
+            const pO = jxgPts[ofPts[1]];
+            const rad = ((typeof c.angle === 'number' ? c.angle : 0) * Math.PI) / 180;
+            const cosA = Math.cos(rad);
+            const sinA = Math.sin(rad);
+            jxgPts[ptName] = board.create('point', [
+              () => {
+                const dx = pP.X() - pO.X();
+                const dy = pP.Y() - pO.Y();
+                return pO.X() + dx * cosA - dy * sinA;
+              },
+              () => {
+                const dx = pP.X() - pO.X();
+                const dy = pP.Y() - pO.Y();
+                return pO.Y() + dx * sinA + dy * cosA;
+              },
+            ], {
+              name: ptName,
+              size: 3.5,
+              strokeColor: c.color || '#06b6d4',
+              fillColor: c.color || '#06b6d4',
+              label: { offset: [8, 8], fontSize: 13, color: c.color || '#22d3ee', cssStyle: 'font-weight: 600;' },
+            });
+          } else if (type === 'inversion' && ofPts.length === 2 && jxgPts[ofPts[0]] && jxgPts[ofPts[1]]) {
+            const pP = jxgPts[ofPts[0]];
+            const pO = jxgPts[ofPts[1]];
+            const r = typeof c.r === 'number' ? c.r : 1;
+            const r2 = r * r;
+            jxgPts[ptName] = board.create('point', [
+              () => {
+                const dx = pP.X() - pO.X();
+                const dy = pP.Y() - pO.Y();
+                const d2 = dx * dx + dy * dy;
+                if (d2 < 1e-9) return pO.X();
+                return pO.X() + (r2 / d2) * dx;
+              },
+              () => {
+                const dx = pP.X() - pO.X();
+                const dy = pP.Y() - pO.Y();
+                const d2 = dx * dx + dy * dy;
+                if (d2 < 1e-9) return pO.Y();
+                return pO.Y() + (r2 / d2) * dy;
+              },
+            ], {
+              name: ptName,
+              size: 3.5,
+              strokeColor: c.color || '#ec4899',
+              fillColor: c.color || '#ec4899',
+              label: { offset: [8, 8], fontSize: 13, color: c.color || '#f472b6', cssStyle: 'font-weight: 600;' },
+            });
           } else if (pointsMap[ptName]) {
             // Fallback to resolved numerical position if primitive not direct
             const p = pointsMap[ptName];
@@ -549,9 +741,12 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
       for (const layer of data.layers) {
         try {
           if (layer.kind === 'polygon' && Array.isArray(layer.points)) {
-            const polyPts = layer.points.map((p) => jxgPts[p.id || p.name]).filter(Boolean);
+            const polyPts = layer.points.map((p) => {
+              const id = typeof p === 'string' ? p : (p?.id || p?.name);
+              return jxgPts[id];
+            }).filter(Boolean);
             if (polyPts.length >= 3) {
-              board.create('polygon', polyPts, {
+              const el = board.create('polygon', polyPts, {
                 hasPoint: false,
                 vertices: { visible: false, withLabel: false },
                 borders: {
@@ -563,14 +758,19 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
                 fillOpacity: typeof layer.fillOpacity === 'number' ? layer.fillOpacity : 0.08,
                 highlight: true,
               });
+              if (el && layer.group) {
+                const g = String(layer.group).trim();
+                if (!groupElementsRef.current[g]) groupElementsRef.current[g] = [];
+                groupElementsRef.current[g].push(el);
+              }
             }
           } else if (layer.kind === 'line' || layer.kind === 'segment') {
-            const fromId = layer.from?.id || layer.from?.name;
-            const toId = layer.to?.id || layer.to?.name;
+            const fromId = typeof layer.from === 'string' ? layer.from : (layer.from?.id || layer.from?.name);
+            const toId = typeof layer.to === 'string' ? layer.to : (layer.to?.id || layer.to?.name);
             const pFrom = jxgPts[fromId] || (layer.from && Number.isFinite(layer.from.x) ? board.create('point', [layer.from.x, layer.from.y], { visible: false }) : null);
             const pTo = jxgPts[toId] || (layer.to && Number.isFinite(layer.to.x) ? board.create('point', [layer.to.x, layer.to.y], { visible: false }) : null);
             if (pFrom && pTo) {
-              board.create('segment', [pFrom, pTo], {
+              const el = board.create('segment', [pFrom, pTo], {
                 strokeColor: layer.color || '#60a5fa',
                 strokeWidth: layer.strokeWidth || 1.8,
                 dash: layer.style === 'dashed' ? 3 : (layer.style === 'dotted' ? 1 : 0),
@@ -578,27 +778,37 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
                 withLabel: Boolean(layer.label),
                 label: { offset: [6, 6], fontSize: 11, color: layer.color || '#94a3b8' },
               });
+              if (el && layer.group) {
+                const g = String(layer.group).trim();
+                if (!groupElementsRef.current[g]) groupElementsRef.current[g] = [];
+                groupElementsRef.current[g].push(el);
+              }
             }
           } else if (layer.kind === 'ray') {
-            const fromId = layer.from?.id || layer.from?.name;
-            const toId = layer.to?.id || layer.to?.name;
+            const fromId = typeof layer.from === 'string' ? layer.from : (layer.from?.id || layer.from?.name);
+            const toId = typeof layer.to === 'string' ? layer.to : (layer.to?.id || layer.to?.name);
             const pFrom = jxgPts[fromId];
             const pTo = jxgPts[toId];
             if (pFrom && pTo) {
-              board.create('line', [pFrom, pTo], {
+              const el = board.create('line', [pFrom, pTo], {
                 straightFirst: false,
                 straightLast: true,
                 strokeColor: layer.color || '#60a5fa',
                 strokeWidth: layer.strokeWidth || 1.5,
                 dash: layer.style === 'dashed' ? 3 : (layer.style === 'dotted' ? 1 : 0),
               });
+              if (el && layer.group) {
+                const g = String(layer.group).trim();
+                if (!groupElementsRef.current[g]) groupElementsRef.current[g] = [];
+                groupElementsRef.current[g].push(el);
+              }
             }
           } else if (layer.kind === 'circle') {
             const dashStyle = layer.style === 'dashed' ? 2 : (layer.style === 'dotted' ? 1 : 0);
             if (layer.through_3pts && layer.through_3pts.length === 3) {
               const [p1, p2, p3] = layer.through_3pts.map((id) => jxgPts[id]).filter(Boolean);
               if (p1 && p2 && p3) {
-                board.create('circumcircle', [p1, p2, p3], {
+                const el = board.create('circumcircle', [p1, p2, p3], {
                   strokeColor: layer.color || '#3b82f6',
                   strokeWidth: layer.strokeWidth || 1.8,
                   dash: dashStyle,
@@ -608,12 +818,18 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
                   withLabel: Boolean(layer.label),
                   label: { offset: [8, -8], fontSize: 11, color: layer.color || '#3b82f6' },
                 });
+                if (el && layer.group) {
+                  const g = String(layer.group).trim();
+                  if (!groupElementsRef.current[g]) groupElementsRef.current[g] = [];
+                  groupElementsRef.current[g].push(el);
+                }
               }
-            } else if (layer.center && layer.through && jxgPts[layer.through?.id || layer.through?.name]) {
-              const cId = layer.center?.id || layer.center?.name;
+            } else if (layer.center && layer.through && jxgPts[typeof layer.through === 'string' ? layer.through : (layer.through?.id || layer.through?.name)]) {
+              const throughId = typeof layer.through === 'string' ? layer.through : (layer.through?.id || layer.through?.name);
+              const cId = typeof layer.center === 'string' ? layer.center : (layer.center?.id || layer.center?.name);
               const centerPt = jxgPts[cId] || [layer.center?.x || 0, layer.center?.y || 0];
-              const throughPt = jxgPts[layer.through?.id || layer.through?.name];
-              board.create('circle', [centerPt, throughPt], {
+              const throughPt = jxgPts[throughId];
+              const el = board.create('circle', [centerPt, throughPt], {
                 strokeColor: layer.color || '#3b82f6',
                 strokeWidth: layer.strokeWidth || 1.8,
                 dash: dashStyle,
@@ -623,11 +839,16 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
                 withLabel: Boolean(layer.label),
                 label: { offset: [8, -8], fontSize: 11, color: layer.color || '#3b82f6' },
               });
+              if (el && layer.group) {
+                const g = String(layer.group).trim();
+                if (!groupElementsRef.current[g]) groupElementsRef.current[g] = [];
+                groupElementsRef.current[g].push(el);
+              }
             } else {
-              const cId = layer.center?.id || layer.center?.name;
+              const cId = typeof layer.center === 'string' ? layer.center : (layer.center?.id || layer.center?.name);
               const centerPt = jxgPts[cId] || [layer.center?.x || 0, layer.center?.y || 0];
               const r = layer.r || 3;
-              board.create('circle', [centerPt, r], {
+              const el = board.create('circle', [centerPt, r], {
                 strokeColor: layer.color || '#3b82f6',
                 strokeWidth: layer.strokeWidth || 1.8,
                 dash: dashStyle,
@@ -637,6 +858,11 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
                 withLabel: Boolean(layer.label),
                 label: { offset: [8, -8], fontSize: 11, color: layer.color || '#3b82f6' },
               });
+              if (el && layer.group) {
+                const g = String(layer.group).trim();
+                if (!groupElementsRef.current[g]) groupElementsRef.current[g] = [];
+                groupElementsRef.current[g].push(el);
+              }
             }
           } else if (layer.kind === 'arc') {
             const pCenter = refPoint(layer.center);
@@ -746,6 +972,11 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
       }
     }
 
+    jxgPtsRef.current = jxgPts;
+    board.on('update', () => {
+      evaluateClaims();
+    });
+    evaluateClaims();
     board.update();
     setBoardReady(true);
 
@@ -759,7 +990,7 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
         }
       }
     };
-  }, [data, isClient, boardId]);
+  }, [data, isClient, boardId, evaluateClaims]);
 
   const handleZoomIn = () => {
     if (boardRef.current) boardRef.current.zoomIn();
@@ -863,6 +1094,42 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
             </>
           )}
         </div>
+      {/* Groups Filter Bar */}
+      {availableGroups.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>
+          <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 4, marginRight: 2 }}>
+            <Layers size={13} />
+            <span>Lớp đường:</span>
+          </div>
+          {availableGroups.map((grp) => {
+            const isVisible = activeGroups[grp] !== false;
+            return (
+              <button
+                key={grp}
+                onClick={() => toggleGroup(grp)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  background: isVisible ? 'rgba(56, 189, 248, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                  borderColor: isVisible ? '#38bdf8' : 'rgba(255, 255, 255, 0.1)',
+                  color: isVisible ? '#38bdf8' : '#64748b',
+                  transition: 'all 0.15s ease',
+                }}
+                title={isVisible ? `Ẩn nhóm ${grp}` : `Hiện nhóm ${grp}`}
+              >
+                <span>{isVisible ? '👁' : '🚫'}</span>
+                <span>{grp}</span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {/* Board container */}
@@ -961,6 +1228,84 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
           </button>
         </div>
       </div>
+
+      {/* Claims Verification Bar */}
+      {claimsResult.length > 0 && (
+        <div style={{ marginTop: 10, background: '#090d16', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 8, padding: '8px 12px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Compass size={13} color="#38bdf8" />
+            <span>Kiểm chứng tính chất hình học (Claims Verification):</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {claimsResult.map((c, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleHighlightClaim(c)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '4px 10px',
+                  borderRadius: 6,
+                  fontSize: 11,
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  background: c.passed ? 'rgba(16, 185, 129, 0.12)' : 'rgba(244, 63, 94, 0.12)',
+                  borderColor: c.passed ? '#10b981' : '#f43f5e',
+                  color: c.passed ? '#34d399' : '#fb7185',
+                  transition: 'all 0.15s',
+                }}
+                title="Bấm để làm nổi bật các điểm liên quan trên hình"
+              >
+                {c.passed ? <CheckCircle2 size={13} color="#10b981" /> : <XCircle size={13} color="#f43f5e" />}
+                <span>{c.text || `${c.type}: ${c.of?.join(', ')}`}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Params Sliders */}
+      {data?.params && Object.keys(data.params).length > 0 && (
+        <div style={{ marginTop: 10, background: '#090d16', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: 8, padding: '8px 12px' }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <Sliders size={13} color="#ff3cac" />
+            <span>Tham số hình học tương tác (Params):</span>
+          </div>
+          {Object.entries(data.params).map(([pName, pConf]) => (
+            <div key={pName} style={{ marginBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#cbd5e1', marginBottom: 2 }}>
+                <span>{pName}</span>
+                <span>{paramValues[pName] ?? pConf.default ?? pConf.value}</span>
+              </div>
+              <input
+                type="range"
+                min={pConf.min ?? 0}
+                max={pConf.max ?? 10}
+                step={pConf.step ?? 0.1}
+                value={paramValues[pName] ?? pConf.default ?? pConf.value ?? 0}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setParamValues((prev) => ({ ...prev, [pName]: val }));
+                }}
+                style={{ width: '100%', accentColor: '#ff3cac' }}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Notes List */}
+      {notesList.length > 0 && (
+        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {notesList.map((n, i) => (
+            <div key={i} style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Info size={12} color="#60a5fa" />
+              <span><strong>{n.title}:</strong> {n.note}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ marginTop: 8, fontSize: 11, color: '#64748b', textAlign: 'center' }}>
         💡 <em>Mẹo: Đang ở <strong>Adjusting Mode</strong> — Bạn có thể kéo thả các đỉnh tự do để quan sát đường tròn ngoại tiếp, nội tiếp, tiếp tuyến và đường cao tự động cập nhật chuẩn xác!</em>

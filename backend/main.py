@@ -1463,6 +1463,14 @@ _VISUAL_RULES = (
     "(đúng thứ tự: lời giải → bản minh họa).\n"
     "- Điền toàn bộ số liệu (default, points, dims, params...) khớp ĐÚNG với dữ liệu thật trong đề "
     "bài — TUYỆT ĐỐI không bịa số liệu mẫu khác với đề.\n"
+    "- TUYỆT ĐỐI KHÔNG dùng ký tự '$' hay mã LaTeX (như \\triangle, \\perp, \\circ) bên trong chuỗi JSON (trong title, label, note...)! "
+    "Dùng các ký hiệu Unicode chuẩn (ví dụ: Δ, ∠, ⟂, ∥, ², ³, √, °, π).\n"
+    "- Không tự đoán tọa độ cho các điểm dẫn xuất (trung điểm, trọng tâm, tâm ngoại tiếp, trực tâm, chân đường vuông góc, phân giác, giao điểm...) — "
+    "BẮT BUỘC dùng mảng 'constructions' để công cụ giải tích tự tính toán chính xác 100%.\n"
+    "- Với đại lượng biến thiên hoặc bài toán cực trị/quỹ tích: khai báo 'params' (min, max, step, default/value) và dùng tên tham số trong biểu thức.\n"
+    "- Biểu thức toán học chỉ gồm số, biến, pi, e và các hàm sin, cos, tan, sqrt, abs, exp, ln, log. Luôn viết rõ dấu nhân (2*x, không viết 2x).\n"
+    "- Khai báo các tính chất cần chứng minh trong mảng 'claims' (collinear, concyclic, perpendicular, parallel, equal) để hệ thống tự kiểm tra số học và hiển thị trực quan.\n"
+    "- Gom đường phụ vào 'group' (ví dụ: 'Đường cao', 'Đường Euler') để người dùng bật/tắt. Dùng 'note' cho tooltip giải thích thay vì nhãn dài làm rối hình.\n"
     "- Bám sát đúng tên khóa (key) trong schema, không tự ý đổi tên hay thêm khóa lạ.\n"
 )
 
@@ -1499,7 +1507,7 @@ Ví dụ: {"type":"mathviz.v1","widget":"unit_circle_wave","title":"$y=2\\\\sin(
 "geometry_2d": '''
 ## SCHEMA cho widget "geometry_2d":
 1. Cấu hình nhiều lớp chồng nhau (Được KHUYÊN DÙNG cho hình học phẳng Olympiad/hình vẽ phức tạp có đường tròn + tam giác + đường thẳng + điểm):
-{"type":"mathviz.v1","widget":"geometry_2d","title":"$...$",
+{"type":"mathviz.v1","widget":"geometry_2d","title":"Tiêu đề Unicode (không dùng $)",
  "layers":[
    {"kind":"circle","center":{"x":0,"y":0},"r":3.5,"label":"(O)","color":"#3b82f6"},
    {"kind":"polygon","points":[{"id":"A","x":0,"y":3.5},{"id":"B","x":-3.03,"y":-1.75},{"id":"C","x":3.03,"y":-1.75}],"color":"#39FF14"},
@@ -1509,26 +1517,24 @@ Ví dụ: {"type":"mathviz.v1","widget":"unit_circle_wave","title":"$y=2\\\\sin(
  ]}
 QUY TẮC BẮT BUỘC ĐỂ HÌNH VẼ SẠCH VÀ CHUẨN XÁC 100%:
 - ĐƯỜNG TRÒN: Khi vẽ đường tròn ngoại tiếp hoặc qua 3 điểm (vd qua A, E, F hoặc D, E, F), BẮT BUỘC thêm "through_3pts": ["A", "E", "F"]. Hệ thống sẽ tự tính tâm và bán kính chính xác 100%, không bị lệch!
-- ĐƯỜNG THẲNG / ĐOẠN THẲNG: TUYỆT ĐỐI KHÔNG ghi nhãn văn bản dài (như "Đường cao AD", "Đoạn thẳng PE", "Kéo dài...") vào thuộc tính "label" của line/segment. Để label: "" để hình vẽ thoáng sạch, không bị chữ đè lên các điểm.
+- ĐƯỜNG THẲNG / ĐOẠN THẲNG: TUYỆT ĐỐI KHÔNG ghi nhãn văn bản dài (như "Đường cao AD", "Đoạn thẳng PE", "Kéo dài...") vào thuộc tính "label" của line/segment. Để label: "" để hình vẽ thoáng sạch, không bị chữ đè lên các điểm. Dùng "note" để giải thích khi hover chuột.
+- GOM ĐƯỜNG PHỤ: Dùng "group" (vd: "group": "Đường cao", "group": "Đường Euler") để người dùng có thể bật/tắt từng nhóm đường phụ.
 
 2. Cấu hình đơn hình (Tam giác, tứ giác, elip, đa giác đều):
-{"type":"mathviz.v1","widget":"geometry_2d","title":"$...$",
+{"type":"mathviz.v1","widget":"geometry_2d","title":"Tiêu đề Unicode",
  "mode":"triangle"|"quadrilateral"|"circle"|"ellipse"|"polygon",
- "points":[{"id":"A","x":...,"y":...},...], // bắt buộc khi mode là triangle, quadrilateral
+ "points":[{"id":"A","x":...,"y":...},...],
  "measurements":{"show_side_lengths":true,"show_angles":true,"show_centroid_medians":false,"show_orthocenter":false,"show_circumcircle":false,"show_incenter":false,"show_excenters":false}}
-Ví dụ Tam giác & 4 Tâm (Trọng tâm G, Trực tâm H, Tâm ngoại tiếp O, Tâm nội tiếp I):
-{"type":"mathviz.v1","widget":"geometry_2d","title":"$\\\\triangle ABC$ và Các Tâm Hình Học",
- "mode":"triangle","points":[{"id":"A","x":-3,"y":-2},{"id":"B","x":3,"y":-2},{"id":"C","x":0,"y":3}],
- "measurements":{"show_side_lengths":true,"show_angles":true,"show_centroid_medians":true,"show_orthocenter":true,"show_circumcircle":true,"show_incenter":true}}
 
-3. QUAN TRỌNG với hình phức tạp nhiều điểm dựng hình (>=6 điểm, ví dụ trực tâm, chân đường cao, tâm nội/ngoại tiếp, giao điểm, trung điểm, điểm đối xứng...): KHÔNG tự đoán tọa độ chính xác cho các điểm này (rất dễ sai/lệch khiến hình bị chồng chéo, điểm văng ra ngoài). Thay vào đó, LUÔN cho x,y ước lượng bình thường trong "layers" NHƯNG THÊM mảng "constructions" khai báo quan hệ dựng hình — hệ thống sẽ tự tính lại tọa độ CHÍNH XÁC bằng công thức giải tích, đè lên giá trị ước lượng, cho BẤT KỲ tên điểm hay số lượng điểm nào (không giới hạn ở A,B,C,H,O,D,E,F,I,P,K,Q,G):
-{"type":"mathviz.v1","widget":"geometry_2d","title":"$...$",
- "layers":[...điểm/đường/tròn với x,y ước lượng như bình thường...],
+3. QUAN TRỌNG VỚI CÁC ĐIỂM DỰNG HÌNH PHỨC TẠP: KHÔNG tự đoán tọa độ cho các điểm dẫn xuất (trực tâm, trọng tâm, tâm ngoại tiếp, tâm nội tiếp, bàng tiếp, chân đường cao, phân giác, giao điểm, trung điểm, phép quay, phép vị tự, phép nghịch đảo...). Cho tọa độ x,y ước lượng trong "layers" NHƯNG THÊM mảng "constructions" khai báo quan hệ hình học — hệ thống sẽ tự động giải tích tọa độ CHÍNH XÁC 100%:
+{"type":"mathviz.v1","widget":"geometry_2d","title":"Tiêu đề Unicode",
+ "layers":[...],
  "constructions":[
    {"point":"H","type":"orthocenter","of":["A","B","C"]},
    {"point":"D","type":"foot","of":["A","B","C"]},
    {"point":"O","type":"circumcenter","of":["A","B","C"]},
    {"point":"I","type":"incenter","of":["A","B","C"]},
+   {"point":"Ia","type":"excenter","of":["A","B","C"]},
    {"point":"G","type":"centroid","of":["A","B","C"]},
    {"point":"M","type":"midpoint","of":["A","H"]},
    {"point":"K","type":"intersection","of":["E","F","B","C"]},
@@ -1539,39 +1545,42 @@ Ví dụ Tam giác & 4 Tâm (Trọng tâm G, Trực tâm H, Tâm ngoại tiếp 
    {"point":"C","type":"point_on_circle","of":["O","A"],"angle":2.094},
    {"point":"D","type":"point_on_arc","of":["O","B","C"],"arc":"minor","t":0.35},
    {"point":"S","type":"circle_line_intersection","of":["O","A","B","C"]},
-   {"point":"T","type":"circle_circle_intersection","of":["O","A","I","D"]}
+   {"point":"T","type":"circle_circle_intersection","of":["O","A","I","D"]},
+   {"point":"A1","type":"homothety","of":["A","O"],"k":0.5},
+   {"point":"B1","type":"rotation","of":["B","O"],"angle":90},
+   {"point":"C1","type":"inversion","of":["C","O"],"r":3}
  ]}
 Quy tắc "of" theo từng "type":
 - orthocenter/circumcenter/incenter/centroid/nine_point_center → [3 đỉnh tam giác];
-- angle_bisector_foot → [đỉnh góc, đỉnh_cạnh1, đỉnh_cạnh2] (chân phân giác trên cạnh1-cạnh2);
-- foot/reflection → [điểm cần chiếu, điểm1_của_đường, điểm2_của_đường];
-- midpoint/ratio_point → [điểm đầu, điểm cuối] (ratio_point cần thêm khóa "ratio", vd 0.5=trung điểm, >1=kéo dài quá điểm cuối);
-- intersection → [điểm1_đường1, điểm2_đường1, điểm1_đường2, điểm2_đường2] (giao 2 đường thẳng, vd AC cắt BD tại E thì of=["A","C","B","D"]);
-- point_on_circle → [tâm, điểm_xác_định_bán_kính] (cần khóa "angle" radian hoặc "chord_len" khoảng cách dây cung từ điểm tham chiếu);
-- point_on_arc → [tâm, điểm_đầu_cung, điểm_cuối_cung] (cần "arc":"minor"|"major", "t":0.0..1.0 vị trí trên cung, vd 0.35);
+- excenter → [3 đỉnh tam giác, tâm bàng tiếp góc of[0] đối diện];
+- angle_bisector_foot → [đỉnh góc, đỉnh_cạnh1, đỉnh_cạnh2];
+- foot/reflection → [điểm cần chiếu/đối xứng, điểm1_của_đường, điểm2_của_đường];
+- midpoint/ratio_point → [điểm đầu, điểm cuối] (ratio_point cần thêm "ratio");
+- intersection → [điểm1_đường1, điểm2_đường1, điểm1_đường2, điểm2_đường2];
+- rotation → [điểm cần quay, tâm quay] kèm "angle" (độ);
+- homothety → [điểm cần vị tự, tâm vị tự] kèm "k" (tỉ số);
+- inversion → [điểm cần nghịch đảo, cực nghịch đảo] kèm "r" (bán kính);
+- point_on_circle → [tâm, điểm_xác_định_bán_kính] kèm "angle" radian;
+- point_on_arc → [tâm, điểm_đầu_cung, điểm_cuối_cung] kèm "arc":"minor"|"major", "t":0.0..1.0;
 - circle_line_intersection → [tâm, điểm_trên_đường_tròn, điểm1_đường, điểm2_đường];
 - circle_circle_intersection → [tâm1, điểm_trên_đường_tròn1, tâm2, điểm_trên_đường_tròn2].
-"of" có thể tham chiếu một điểm KHÁC cũng đang được dựng trong "constructions" — hệ thống tự giải theo đúng thứ tự phụ thuộc.
 
-Ví dụ Đường tròn (O, R) đường kính AB, điểm C trên (O) với AC = R, điểm D trên cung nhỏ BC, AC cắt BD tại E, EH vuông góc AB tại H:
-{"type":"mathviz.v1","widget":"geometry_2d","title":"Đường tròn $(O, R)$ đường kính $AB$",
- "layers":[
-   {"kind":"circle","center":{"x":0,"y":0},"r":3.5,"label":"(O)","color":"#3b82f6"},
-   {"kind":"polygon","points":[{"id":"A","x":-3.5,"y":0},{"id":"B","x":3.5,"y":0}],"color":"#94a3b8"},
-   {"kind":"line","from":{"id":"A"},"to":{"id":"C"},"label":"AC","color":"#3b82f6"},
-   {"kind":"line","from":{"id":"B"},"to":{"id":"D"},"label":"BD","color":"#3b82f6"},
-   {"kind":"line","from":{"id":"E"},"to":{"id":"H"},"label":"EH","color":"#f43f5e"},
-   {"kind":"points","data":[{"id":"O","x":0,"y":0},{"id":"A","x":-3.5,"y":0},{"id":"B","x":3.5,"y":0}]}
- ],
- "constructions":[
-   {"point":"C","type":"point_on_circle","of":["O","A"],"angle":2.094},
-   {"point":"D","type":"point_on_arc","of":["O","B","C"],"arc":"minor","t":0.35},
-   {"point":"E","type":"intersection","of":["A","C","B","D"]},
-   {"point":"H","type":"foot","of":["E","A","B"]}
- ]}
-4. CUNG TRÒN, HÌNH QUẠT VÀ MIỀN TÔ (dạng "kì dị" mà 4 kind cũ KHÔNG diễn tả được): dùng "arc", "sector", "region".
+4. ĐIỀU CẦN CHỨNG MINH ("claims"): Khai báo mảng "claims" để hệ thống tự động kiểm tra số học, gắn huy hiệu kiểm chứng ✓/✗ và làm nổi bật các điểm liên quan:
+"claims":[
+  {"type":"collinear","of":["O","G","H"],"text":"O, G, H thẳng hàng (Đường thẳng Euler)"},
+  {"type":"perpendicular","of":["A","D","B","C"],"text":"AD ⟂ BC"},
+  {"type":"parallel","of":["A","B","C","D"],"text":"AB ∥ CD"},
+  {"type":"concyclic","of":["A","B","C","D"],"text":"4 điểm A, B, C, D cùng thuộc một đường tròn"},
+  {"type":"equal","of":["A","B","C","D"],"text":"AB = CD"}
+]
+
+5. THAM SỐ BIẾN THIÊN ("params") VÀ QUỸ TÍCH ("locus"):
+"params":{"t":{"min":0,"max":6.28,"step":0.01,"default":1}},
+"layers":[..., {"kind":"locus","point":"M","param":"t"}]
+
+6. CUNG TRÒN, HÌNH QUẠT VÀ MIỀN TÔ (dạng "kì dị" mà 4 kind cũ KHÔNG diễn tả được): dùng "arc", "sector", "region".
 Ví dụ ĐÚNG — ba cung nội tiếp tam giác $ABC$ vuông tại $A$ ($AB=3$, $AC=4$, $BC=5$), các cung tiếp xúc nhau tại $P$, $Q$, $R$:
-{"type":"mathviz.v1","widget":"geometry_2d","title":"Ba cung nội tiếp tam giác $ABC$ vuông tại $A$",
+{"type":"mathviz.v1","widget":"geometry_2d","title":"Ba cung nội tiếp tam giác ABC vuông tại A",
  "layers":[
    {"kind":"polygon","points":[{"id":"A","x":0,"y":0},{"id":"B","x":0,"y":3},{"id":"C","x":4,"y":0}],"color":"#e2e8f0"},
    {"kind":"arc","center":{"id":"A","x":0,"y":0},"from":{"id":"R","x":1,"y":0},"to":{"id":"P","x":0,"y":1},"color":"#38bdf8"},
@@ -1590,16 +1599,26 @@ PHẢI được khai báo trong cùng payload (một layer "points" hoặc "poly
 Nếu hình có chi tiết mà bảng kind không diễn tả được: xấp xỉ bằng "polyline" + "points" và nói rõ trong lời giải.
 ''',
 
-
 "geometry_3d": '''
 ## SCHEMA cho widget "geometry_3d":
-{"type":"mathviz.v1","widget":"geometry_3d","title":"$...$",
+{"type":"mathviz.v1","widget":"geometry_3d","title":"Tiêu đề Unicode (không dùng $)",
  "solid":"cuboid"|"square_pyramid"|"triangular_pyramid"|"triangular_prism"|"cone"|"cylinder"|"cylinder_with_bore"|"regular_polygon"|"sphere"|"ellipsoid"|"frustum"|"mobius_strip"|"klein_bottle"|"torus"|"tesseract_4d"|"boys_surface"|"cross_cap"|"trefoil_knot",
  "dims":{...chỉ các khóa liên quan: a,b,h cho cuboid / a,h cho square_pyramid,triangular_pyramid,triangular_prism / r,h cho cone,cylinder / radius,height,bore_radius cho cylinder_with_bore (khối tròn xoay/trụ khoét rỗng CSG) / r cho sphere / a,b,c cho ellipsoid / r1,r2,h cho frustum / r,h,n cho regular_polygon / w cho mobius_strip / r cho torus,klein_bottle,trefoil_knot / angle_4d cho tesseract_4d},
+ "params":{"d":{"min":0,"max":12,"step":0.1,"default":6}},
+ "plane":{"n":[1,1,1],"d":"d"},
+ "surface":{"x":"...","y":"...","z":"...","u":[0,"2*pi"],"v":[0,"pi"],"n":[48,24]},
  "show_cross_section":false,"cross_section_height":0}
-Ví dụ Khối trụ khoét rỗng (Cylinder with bore - CSG Boole): {"type":"mathviz.v1","widget":"geometry_3d","title":"Khối trụ khoét rỗng ($R=3, r=1.5, h=6$)",
+TÍNH NĂNG MẶT PHẲNG CẮT THIẾT DIỆN ("plane"):
+- Cắt khối đa diện bằng mặt phẳng n · X = d: khai báo "plane": {"n": [nx, ny, nz], "d": "d"}.
+- Kết hợp với "params": {"d": {"min": ..., "max": ..., "step": ..., "default": ...}} để tạo thanh trượt điều khiển mặt phẳng cắt thiết diện tương tác thời gian thực!
+Ví dụ Thiết diện hình lập phương cắt bởi mặt phẳng x+y+z=d:
+{"type":"mathviz.v1","widget":"geometry_3d","title":"Thiết diện của hình lập phương",
+ "solid":"cuboid","dims":{"a":4,"b":4,"h":4},
+ "params":{"d":{"min":0,"max":12,"step":0.1,"default":6}},
+ "plane":{"n":[1,1,1],"d":"d"}}
+Ví dụ Khối trụ khoét rỗng (Cylinder with bore - CSG Boole): {"type":"mathviz.v1","widget":"geometry_3d","title":"Khối trụ khoét rỗng (R=3, r=1.5, h=6)",
  "solid":"cylinder_with_bore","dims":{"radius":3,"height":6,"bore_radius":1.5},"show_cross_section":false}
-Ví dụ: {"type":"mathviz.v1","widget":"geometry_3d","title":"Hình chóp tứ giác đều $S.ABCD$, đáy $a=4$, cao $h=6$",
+Ví dụ: {"type":"mathviz.v1","widget":"geometry_3d","title":"Hình chóp tứ giác đều S.ABCD, đáy a=4, cao h=6",
  "solid":"square_pyramid","dims":{"a":4,"h":6},"show_cross_section":true,"cross_section_height":2}
 Ví dụ Bình Klein 3D: {"type":"mathviz.v1","widget":"geometry_3d","title":"Mặt topology Bình Klein 3D (Klein Bottle)",
  "solid":"klein_bottle","dims":{"r":2}}
@@ -1670,55 +1689,66 @@ Ví dụ: {"type":"mathviz.v1","widget":"distribution","title":"Phân phối nh�
 # ── Dynamic Few-Shot Golden Calibration Demonstrations ────────────────────────
 _WIDGET_FEW_SHOT_DEMOS: dict[str, str] = {
     "geometry_2d": '''
-[HỌC SINH]: Cho tam giác $ABC$ vuông tại $A$, $AB = 3$, $AC = 4$. Dựng đường cao $AH$ và đường tròn ngoại tiếp tam giác.
+[HỌC SINH]: Cho tam giác $ABC$ nhọn. Dựng đường cao $AD$, trọng tâm $G$, trực tâm $H$, tâm ngoại tiếp $O$ và đường thẳng Euler.
 [DUOMCB]:
-Chào bạn! Dưới đây là phân tích hình học và mô hình tương tác trực quan:
+Chào bạn! Dưới đây là phân tích hình học và mô hình trực quan tương tác:
 
-**1. Phân tích cấu hình & Tọa độ giải tích:**
-- Tam giác $ABC$ vuông tại $A(0, 3)$, đặt chân đường vuông góc trên trục tọa độ với $B(-4, 0)$ và $C(0, 0)$ hoặc chuẩn hóa tâm ngoại tiếp $O$ tại trung điểm cạnh huyền $BC$.
-- Độ dài cạnh huyền $BC = \\sqrt{AB^2 + AC^2} = \\sqrt{3^2 + 4^2} = 5$.
-- Đường cao $AH = \\frac{AB \\cdot AC}{BC} = \\frac{3 \\cdot 4}{5} = 2.4$.
-- Tâm đường tròn ngoại tiếp $O$ là trung điểm cạnh huyền $BC$, bán kính $R = 2.5$.
+**1. Phân tích hình học & Định lý Euler:**
+- Trong tam giác $ABC$, trọng tâm $G$, trực tâm $H$ và tâm đường tròn ngoại tiếp $O$ luôn cùng thuộc một đường thẳng, gọi là **đường thẳng Euler**.
+- Điểm $G$ chia đoạn $OH$ theo tỉ số $GH = 2 GO$ hay $\\vec{GH} = -2\\vec{GO}$.
+- Đường cao $AD \\perp BC$ tại chân đường cao $D$.
 
 **2. Mô hình trực quan tương tác (Canvas):**
-Bạn có thể kéo thả các đỉnh trên hình để quan sát đường cao và đường tròn ngoại tiếp:
+Bạn có thể kéo thả các đỉnh $A, B, C$ tự do trên hình. Các điểm $D, G, O, H$ và đường thẳng Euler sẽ tự động cập nhật chuẩn xác theo thời gian thực:
 
 ```mathviz
 {
   "type": "mathviz.v1",
   "widget": "geometry_2d",
-  "title": "$\\\\triangle ABC$ vuông tại $A$ và Đường cao $AH$",
+  "title": "Đường thẳng Euler trong tam giác ABC",
   "layers": [
-    {"kind": "circle", "center": {"x": 0, "y": 0}, "r": 2.5, "label": "(O)", "color": "#3b82f6"},
-    {"kind": "polygon", "points": [{"id": "A", "x": 0.7, "y": 2.4}, {"id": "B", "x": -2.5, "y": 0}, {"id": "C", "x": 2.5, "y": 0}], "color": "#10b981"},
-    {"kind": "line", "from": {"x": 0.7, "y": 2.4}, "to": {"x": 0.7, "y": 0}, "label": "AH", "style": "dashed", "color": "#ef4444"},
-    {"kind": "points", "data": [{"id": "A", "x": 0.7, "y": 2.4}, {"id": "B", "x": -2.5, "y": 0}, {"id": "C", "x": 2.5, "y": 0}, {"id": "H", "x": 0.7, "y": 0}, {"id": "O", "x": 0, "y": 0}]}
+    {"kind": "points", "data": [{"id": "A", "x": 1, "y": 4.5}, {"id": "B", "x": -3, "y": 0}, {"id": "C", "x": 4, "y": 0}]},
+    {"kind": "polygon", "points": ["A", "B", "C"], "color": "#10b981"},
+    {"kind": "circle", "through_3pts": ["A", "B", "C"], "color": "#3b82f6", "group": "Đường tròn ngoại tiếp"},
+    {"kind": "segment", "id": "OH", "from": "O", "to": "H", "group": "Đường Euler", "color": "#f59e0b", "note": "O, G, H cùng nằm trên đường thẳng Euler"},
+    {"kind": "segment", "id": "AD", "from": "A", "to": "D", "group": "Đường cao", "style": "dashed", "color": "#ef4444"}
+  ],
+  "constructions": [
+    {"point": "G", "type": "centroid", "of": ["A", "B", "C"]},
+    {"point": "O", "type": "circumcenter", "of": ["A", "B", "C"]},
+    {"point": "H", "type": "orthocenter", "of": ["A", "B", "C"]},
+    {"point": "D", "type": "foot", "of": ["A", "B", "C"]}
+  ],
+  "claims": [
+    {"type": "collinear", "of": ["O", "G", "H"], "text": "O, G, H thẳng hàng (Đường Euler)"},
+    {"type": "perpendicular", "of": ["A", "D", "B", "C"], "text": "AD ⟂ BC"}
   ]
 }
 ```
 ''',
 
     "geometry_3d": '''
-[HỌC SINH]: Cho hình chóp tam giác đều $S.ABC$ có cạnh đáy bằng $4$, chiều cao $h = 6$. Hãy mô hình hóa không gian.
+[HỌC SINH]: Mô hình hóa thiết diện của hình lập phương cạnh 4 khi cắt bởi mặt phẳng $x + y + z = d$.
 [DUOMCB]:
-Chào bạn! Dưới đây là mô hình không gian 3D tương tác của khối chóp tam giác đều:
+Chào bạn! Dưới đây là phân tích và mô hình 3D tương tác của thiết diện:
 
-**1. Đặc điểm hình học:**
-- Đáy $ABC$ là tam giác đều cạnh $a = 4$.
-- Đỉnh $S$ nằm trên trục đối xứng vuông góc với tâm đáy, chiều cao $h = 6$.
+**1. Phân tích thiết diện:**
+- Hình lập phương có các cạnh $a = b = h = 4$.
+- Mặt phẳng cắt có phương trình $x + y + z = d$ với vector pháp tuyến $\\vec{n} = (1, 1, 1)$.
+- Khi thay đổi $d \\in [0, 12]$, thiết diện thay đổi từ tam giác đều sang lục giác rồi lại về tam giác đều.
 
 **2. Mô hình 3D tương tác:**
-Bạn có thể xoay khối chóp 360° trên canvas Three.js để quan sát mọi góc nhìn:
+Bạn có thể xoay 360° và kéo thanh trượt tham số $d$ để quan sát mặt phẳng cắt thay đổi thiết diện:
 
 ```mathviz
 {
   "type": "mathviz.v1",
   "widget": "geometry_3d",
-  "title": "Hình chóp tam giác đều $S.ABC$ ($a=4, h=6$)",
-  "solid": "triangular_pyramid",
-  "dims": {"a": 4, "h": 6},
-  "show_cross_section": false,
-  "cross_section_height": 0
+  "title": "Thiết diện của hình lập phương",
+  "solid": "cuboid",
+  "dims": {"a": 4, "b": 4, "h": 4},
+  "params": {"d": {"min": 0, "max": 12, "step": 0.1, "default": 6}},
+  "plane": {"n": [1, 1, 1], "d": "d"}
 }
 ```
 ''',

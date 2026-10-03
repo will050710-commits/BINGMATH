@@ -486,7 +486,8 @@ _CONSTRUCTION_FALLBACK = frozenset({
     "incenter", "centroid", "reflection", "ratio_point", "tangent_intersection",
     "circle_line_intersection", "circle_circle_intersection",
     "angle_bisector_foot", "nine_point_center", "point_on_circle",
-    "point_on_arc",
+    "point_on_arc", "circle_circle_tangency", "arc_midpoint", "excenter",
+    "homothety", "rotation", "inversion",
 })
 
 

@@ -549,11 +549,25 @@ export default function MathVizGeometry3D({ data }) {
   const initialSolid = data?.solid || 'cuboid';
   const isInitialExotic = initialSolid in EXOTIC_SOLIDS;
 
+  const planeData = data?.plane;
+  const hasPlane = Boolean(planeData && Array.isArray(planeData.n) && planeData.n.length === 3);
+
   const [category, setCategory] = useState(isInitialExotic ? 'exotic' : 'basic');
   const [currentSolid, setCurrentSolid] = useState(initialSolid);
   const [dims, setDims] = useState(data?.dims || {});
-  const [showSection, setShowSection] = useState(data?.show_cross_section || false);
+  const [showSection, setShowSection] = useState(data?.show_cross_section || hasPlane || false);
   const [sectionH, setSectionH] = useState(data?.cross_section_height || 0);
+  const [params3D, setParams3D] = useState(() => {
+    const init = {};
+    if (data?.params && typeof data.params === 'object') {
+      Object.entries(data.params).forEach(([k, conf]) => {
+        if (conf && typeof conf === 'object') {
+          init[k] = conf.value ?? conf.default ?? (conf.min ?? 0);
+        }
+      });
+    }
+    return init;
+  });
   const [autoRotate, setAutoRotate] = useState(true);
   const [wireframeOnly, setWireframeOnly] = useState(false);
   const [autoRotate4D, setAutoRotate4D] = useState(false);
@@ -847,20 +861,44 @@ export default function MathVizGeometry3D({ data }) {
     }
 
     if (showSection) {
-      const planeGeo = new THREE.PlaneGeometry(8, 8);
+      const planeGeo = new THREE.PlaneGeometry(10, 10);
       const planeMat = new THREE.MeshBasicMaterial({
         color: 0x00e5ff,
         transparent: true,
-        opacity: 0.28,
+        opacity: 0.32,
         side: THREE.DoubleSide,
       });
       const plane = new THREE.Mesh(planeGeo, planeMat);
-      plane.rotation.x = Math.PI / 2;
-      plane.position.y = sectionH;
+
+      if (hasPlane) {
+        const [nx, ny, nz] = planeData.n;
+        const normal = new THREE.Vector3(nx, ny, nz);
+        const normLen = normal.length();
+        if (normLen > 1e-6) normal.normalize();
+
+        const defaultNormal = new THREE.Vector3(0, 0, 1);
+        const q = new THREE.Quaternion().setFromUnitVectors(defaultNormal, normal);
+        plane.quaternion.copy(q);
+
+        let dVal = 0;
+        if (typeof planeData.d === 'string' && params3D[planeData.d] !== undefined) {
+          dVal = Number(params3D[planeData.d]);
+        } else if (typeof planeData.d === 'number') {
+          dVal = planeData.d;
+        } else if (data?.params?.d) {
+          dVal = Number(params3D.d ?? data.params.d.default ?? data.params.d.value ?? 0);
+        }
+        const centerOffset = (dVal - 6) * 0.45;
+        plane.position.copy(normal.clone().multiplyScalar(centerOffset));
+      } else {
+        plane.rotation.x = Math.PI / 2;
+        plane.position.y = sectionH;
+      }
+
       group.add(plane);
       sectionPlaneRef.current = plane;
     }
-  }, [threeReady, showSection, sectionH, currentSolid, dims]);
+  }, [threeReady, showSection, sectionH, currentSolid, dims, params3D, hasPlane, planeData]);
 
   const onPointerDown = useCallback((e) => {
     dragRef.current = { dragging: true, lastX: e.clientX, lastY: e.clientY };
@@ -1163,13 +1201,43 @@ export default function MathVizGeometry3D({ data }) {
           )}
         </div>
 
-        {showSection && category === 'basic' && (
+        {showSection && category === 'basic' && !hasPlane && (
           <div style={{ marginTop: 10, width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#8b949e', marginBottom: 4 }}>
               <span>Độ cao mặt cắt</span>
               <span>{fmt(sectionH)}</span>
             </div>
             <input type="range" min={-maxSection} max={maxSection} step="0.1" value={sectionH} onChange={(e) => setSectionH(+e.target.value)} style={{ width: '100%', accentColor: '#00e5ff' }} />
+          </div>
+        )}
+
+        {/* Interactive Math Parameters (from data.params, e.g. cross-section plane distance d) */}
+        {data?.params && Object.keys(data.params).length > 0 && (
+          <div style={{ marginTop: 12, background: '#161b22', padding: 10, borderRadius: 8, border: '1px solid #30363d' }}>
+            <div style={{ fontSize: 12, fontWeight: 'bold', color: '#00e5ff', marginBottom: 6 }}>
+              📐 Tham số mặt phẳng cắt & không gian (Params)
+              {hasPlane && <span style={{ marginLeft: 8, fontSize: 11, color: '#8b949e', fontWeight: 'normal' }}>({planeData.n[0]}x + {planeData.n[1]}y + {planeData.n[2]}z = {params3D.d ?? 'd'})</span>}
+            </div>
+            {Object.entries(data.params).map(([pName, pConf]) => (
+              <div key={pName} style={{ marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#e2e8f0', marginBottom: 2 }}>
+                  <span>Tham số {pName}</span>
+                  <span style={{ color: '#00e5ff', fontWeight: 'bold' }}>{params3D[pName] ?? pConf.default ?? pConf.value}</span>
+                </div>
+                <input
+                  type="range"
+                  min={pConf.min ?? 0}
+                  max={pConf.max ?? 12}
+                  step={pConf.step ?? 0.1}
+                  value={params3D[pName] ?? pConf.default ?? pConf.value ?? 0}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setParams3D((prev) => ({ ...prev, [pName]: val }));
+                  }}
+                  style={{ width: '100%', accentColor: '#00e5ff' }}
+                />
+              </div>
+            ))}
           </div>
         )}
       </div>
