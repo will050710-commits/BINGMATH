@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 /**
  * CoinShop.js — Cửa hàng viền profile, mua bằng xu kiếm được
  * Tham khảo Facebook Frame, Liên Quân Mobile, osu! profile borders
@@ -8,6 +8,7 @@ import { useAuth } from "@/context/authContext";
 import { useCoinStore } from "@/context/CoinStore";
 import { auth } from "@/lib/firebase";
 import { resolveApiBase } from "@/lib/apiBase";
+import MRMBackdrop from "@/components/mrm/MRMBackdrop";
 
 // Backend base URL — single source of truth: src/lib/apiBase.js
 const BASE = resolveApiBase();
@@ -233,7 +234,9 @@ export default function CoinShop() {
       background: "linear-gradient(135deg, #020617, #0a0a1a)",
       fontFamily: "'Inter', sans-serif", color: "white",
       padding: "0 0 60px",
+      isolation: "isolate",
     }}>
+      <MRMBackdrop variant="shop" />
       {/* Toast */}
       {toast && (
         <div style={{

@@ -7,6 +7,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { auth } from "@/lib/firebase";
 import { resolveApiBase } from "@/lib/apiBase";
+import MRMBackdrop from "@/components/mrm/MRMBackdrop";
 
 // Backend base URL — single source of truth: src/lib/apiBase.js
 const BASE = resolveApiBase();
@@ -41,6 +42,8 @@ const KNOWN_BADGES = {
 
 // ── Rank History Graph (SVG) ────────────────────────────────────────────────
 function RankHistoryGraph({ history }) {
+  // Hooks first: an early return above a hook changes the hook count between renders.
+  const [hovered, setHovered] = useState(null);
   if (!history || history.length < 2) {
     return (
       <div style={{ height: 140, display: "flex", alignItems: "center", justifyContent: "center",
@@ -68,7 +71,6 @@ function RankHistoryGraph({ history }) {
   const areaPath = `${linePath} L ${pts[pts.length - 1].x} ${H - PAD.b} L ${PAD.l} ${H - PAD.b} Z`;
 
   // Gradient: red(low) → green(high)
-  const [hovered, setHovered] = useState(null);
 
   return (
     <div style={{ position: "relative", overflow: "visible" }}>
@@ -205,7 +207,8 @@ export default function UserProfile({ userId }) {
   try { const raw = JSON.parse(active_border?.css_style || "{}"); const { animation: _a, ...s } = raw; safeBorderStyle = s; } catch (_) {}
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #020617, #0a0a1a)", fontFamily: "'Inter', sans-serif", color: "white" }}>
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #020617, #0a0a1a)", fontFamily: "'Inter', sans-serif", color: "white", isolation: "isolate" }}>
+      <MRMBackdrop variant="profile" />
       <div style={{ background: "rgba(2,6,23,0.9)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "14px 28px" }}>
         <Link href="/mrm/leaderboard" style={{ textDecoration: "none" }}><button style={{ padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", cursor: "pointer" }}>← Leaderboard</button></Link>
       </div>

@@ -8,6 +8,7 @@ import { useMathMapStore } from "@/context/MathMapStore";
 import { useAuth } from "@/context/authContext";
 import { authFetch } from "@/lib/authFetch";
 import { API_BASE } from "@/lib/apiBase";
+import MRMBackdrop from "@/components/mrm/MRMBackdrop";
 
 // ── Constants ──────────────────────────────────────────────────────────────
 const GRADES = ["Lớp 10", "Lớp 11", "Lớp 12"];
@@ -856,7 +857,9 @@ export default function MathMapCreator() {
       width: "100%", minHeight: "100vh",
       background: "linear-gradient(135deg, #020617 0%, #0a0a1a 100%)",
       color: "white",
+      isolation: "isolate",
     }}>
+      <MRMBackdrop variant="creator" />
       {/* Header */}
       <header style={{
         display: "flex", alignItems: "center", gap: 16,

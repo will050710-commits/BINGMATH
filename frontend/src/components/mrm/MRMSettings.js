@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { authFetch } from "@/lib/authFetch";
 import { auth } from "@/lib/firebase";
+import MRMBackdrop from "@/components/mrm/MRMBackdrop";
 
 // ── Default keybinds ──────────────────────────────────────────────────────────
 const DEFAULT_KEYBINDS = {
@@ -181,7 +182,9 @@ export default function MRMSettings() {
       color: "white",
       position: "relative",
       overflow: "hidden",
+      isolation: "isolate",
     }}>
+      <MRMBackdrop variant="settings" />
       {/* Ambient glow */}
       <div style={{
         position: "fixed", top: "10%", left: "50%", transform: "translateX(-50%)",

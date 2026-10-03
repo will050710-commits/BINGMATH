@@ -2,6 +2,7 @@
 import { useState } from "react";
 import MultiplayerLobby from "@/components/mrm/MultiplayerLobby";
 import Link from "next/link";
+import MRMBackdrop from "@/components/mrm/MRMBackdrop";
 
 export default function MultiplayerPage() {
   const [selectedLevel, setSelectedLevel] = useState(null); // null | "thcs" | "thpt"
@@ -15,8 +16,9 @@ export default function MultiplayerPage() {
       width: "100%", minHeight: "100vh", background: "#0a0a1a",
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
       color: "white", fontFamily: "system-ui, sans-serif", position: "relative", overflow: "hidden",
-      padding: "24px"
+      padding: "24px", isolation: "isolate"
     }}>
+      <MRMBackdrop variant="arena" />
       {/* Decorative Blur Orbs */}
       <div style={{ position: "absolute", width: 300, height: 300, background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)", left: "10%", top: "10%", borderRadius: "50%", filter: "blur(40px)" }} />
       <div style={{ position: "absolute", width: 300, height: 300, background: "radial-gradient(circle, rgba(13,148,136,0.15) 0%, transparent 70%)", right: "10%", bottom: "10%", borderRadius: "50%", filter: "blur(40px)" }} />

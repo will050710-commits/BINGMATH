@@ -10,6 +10,7 @@ import { auth } from "@/lib/firebase";
 import JackpotBanner from "@/components/mrm/JackpotBanner";
 import { CoinStoreProvider } from "@/context/CoinStore";
 import { resolveApiBase } from "@/lib/apiBase";
+import MRMBackdrop from "@/components/mrm/MRMBackdrop";
 
 // Backend base URL — single source of truth: src/lib/apiBase.js
 const BASE = resolveApiBase();
@@ -230,7 +231,9 @@ export default function MRMLeaderboard() {
         minHeight: "100vh",
         background: "linear-gradient(135deg, #020617, #0a0a1a)",
         fontFamily: "'Inter', sans-serif", color: "white",
+        isolation: "isolate",
       }}>
+        <MRMBackdrop variant="leaderboard" />
         {/* Header */}
         <div style={{
           background: "rgba(2,6,23,0.9)", backdropFilter: "blur(12px)",
