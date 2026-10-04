@@ -56,6 +56,12 @@ jobs:
         run: chmod +x ./gradlew
         working-directory: mobile/android
 
+      - name: Ensure debug keystore exists for signing
+        run: |
+          if [ ! -f mobile/android/app/debug.keystore ]; then
+            keytool -genkey -v -keystore mobile/android/app/debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon --stacktrace
         working-directory: mobile/android

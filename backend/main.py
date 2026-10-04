@@ -5503,112 +5503,187 @@ async def validate_typesafe_text(request: Request):
 #  TRANSLATE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def get_mock_translation(text: str) -> dict:
+def get_mock_translation(text: str, direction: str = "auto") -> dict:
     t = text.lower()
-    if any(k in t for k in ["parabol", "quadratic", "hàm số bậc hai", "đỉnh"]):
+    is_vi_input = any(c in t for c in "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ")
+    if direction == "vi_en":
+        target_en = True
+    elif direction == "en_vi":
+        target_en = False
+    else:
+        target_en = is_vi_input
+
+    if any(k in t for k in ["dãy số", "day so", "sequence", "cấp số", "cap so", "progression"]):
         return {
-            "translation": "Hàm số bậc hai (Parabola)",
+            "translation": "Sequence (Dãy số)" if target_en else "Dãy số (Sequence)",
+            "translation_vi": "Dãy số",
+            "translation_en": "Sequence",
+            "summary": "Dãy số là tập hợp các số được sắp theo thứ tự chỉ số n tự nhiên." if not target_en else "A sequence is an ordered collection of numbers indexed by natural numbers.",
+            "summary_vi": "Dãy số là tập hợp các phần tử được sắp xếp theo thứ tự nhất định gắn với tập số tự nhiên.",
+            "summary_en": "A sequence is an ordered collection of numbers following a specific pattern or indexed rule.",
+            "source_lang": "vi" if is_vi_input else "en",
+            "diagram_type": "default",
+            "theory": {
+                "vi": "Dãy số $(u_n)$ là một hàm số xác định trên tập hợp các số nguyên dương $\\mathbb{N}^*$.\n\n- Cấp số cộng: $u_n = u_1 + (n-1)d$ với công sai $d$.\n- Cấp số nhân: $u_n = u_1 \\cdot q^{n-1}$ với công bội $q$.\n- Tổng $n$ số hạng đầu của CSC: $S_n = \\frac{n(u_1 + u_n)}{2}$.",
+                "en": "A sequence $(u_n)$ is a function defined on the set of positive integers $\\mathbb{N}^*$.\n\n- Arithmetic progression: $u_n = u_1 + (n-1)d$ with common difference $d$.\n- Geometric progression: $u_n = u_1 \\cdot q^{n-1}$ with common ratio $q$.\n- Sum of first $n$ terms of an AP: $S_n = \\frac{n(u_1 + u_n)}{2}$."
+            },
+            "words": [
+                {"word": "sequence", "type": "noun", "pronunciation": "/ˈsiː.kwəns/", "english": "sequence", "vietnamese": "dãy số", "example": "An arithmetic sequence has a constant common difference."},
+                {"word": "progression", "type": "noun", "pronunciation": "/prəˈɡreʃ.ən/", "english": "progression", "vietnamese": "cấp số", "example": "Geometric progression multiplies each term by a common ratio."},
+                {"word": "common difference", "type": "phrase", "pronunciation": "/ˌkɒm.ən ˈdɪf.ər.əns/", "english": "common difference", "vietnamese": "công sai", "example": "The common difference d of the sequence is 3."}
+            ]
+        }
+    elif any(k in t for k in ["parabol", "quadratic", "hàm số bậc hai", "đỉnh"]):
+        return {
+            "translation": "Quadratic function / Parabola" if target_en else "Hàm số bậc hai (Parabola)",
+            "translation_vi": "Hàm số bậc hai (Parabol)",
+            "translation_en": "Quadratic function (Parabola)",
             "summary": "Hàm số bậc hai có dạng y = ax² + bx + c (a ≠ 0), đồ thị là một parabol.",
-            "source_lang": "en" if "quadratic" in t or "parabola" in t else "vi",
+            "summary_vi": "Hàm số bậc hai có dạng y = ax² + bx + c (a ≠ 0), đồ thị là một đường cong parabol đối xứng qua trục.",
+            "summary_en": "A quadratic function has the form y = ax² + bx + c (a ≠ 0), whose graph is a symmetrical parabola.",
+            "source_lang": "vi" if is_vi_input else "en",
             "diagram_type": "parabola",
             "theory": {
                 "vi": "Hàm số bậc hai $y = ax^2 + bx + c$ ($a \\neq 0$) có đỉnh là $I\\left(-\\frac{b}{2a}, -\\frac{\\Delta}{4a}\\right)$.\n\nTrục đối xứng là $x = -\\frac{b}{2a}$. Đồ thị mở lên nếu $a > 0$ và xuống nếu $a < 0$.",
                 "en": "The quadratic function $y = ax^2 + bx + c$ ($a \\neq 0$) has its vertex at $I\\left(-\\frac{b}{2a}, -\\frac{\\Delta}{4a}\\right)$.\n\nThe axis of symmetry is $x = -\\frac{b}{2a}$. It opens upwards if $a > 0$ and downwards if $a < 0$."
             },
             "words": [
-                {"word": "parabola", "type": "noun", "pronunciation": "/pəˈræb.əl.ə/", "vietnamese": "đường parabol", "example": "The graph of a quadratic function is a parabola."},
-                {"word": "vertex", "type": "noun", "pronunciation": "/ˈvɜː.teks/", "vietnamese": "đỉnh", "example": "The vertex of the parabola is at (2, -1)."}
+                {"word": "parabola", "type": "noun", "pronunciation": "/pəˈræb.əl.ə/", "english": "parabola", "vietnamese": "đường parabol", "example": "The graph of a quadratic function is a parabola."},
+                {"word": "vertex", "type": "noun", "pronunciation": "/ˈvɜː.teks/", "english": "vertex", "vietnamese": "đỉnh", "example": "The vertex of the parabola is at (2, -1)."}
             ]
         }
     elif any(k in t for k in ["venn", "set", "tập hợp"]):
         return {
-            "translation": "Biểu đồ Venn / Tập hợp",
+            "translation": "Venn Diagram / Sets" if target_en else "Biểu đồ Venn / Tập hợp",
+            "translation_vi": "Biểu đồ Venn / Tập hợp",
+            "translation_en": "Venn Diagram / Set Theory",
             "summary": "Biểu đồ Venn dùng các vòng tròn để biểu diễn trực quan quan hệ giữa các tập hợp.",
-            "source_lang": "en" if "set" in t or "venn" in t else "vi",
+            "summary_vi": "Biểu đồ Venn dùng các vòng tròn hình học để mô tả quan hệ giao, hợp và hiệu giữa các tập hợp.",
+            "summary_en": "A Venn diagram uses overlapping circles to illustrate logical relationships between sets.",
+            "source_lang": "vi" if is_vi_input else "en",
             "diagram_type": "venn",
             "theory": {
                 "vi": "Biểu đồ Venn biểu diễn các tập hợp dưới dạng hình học.\n\n- Giao của 2 tập hợp $A \\cap B$ chứa các phần tử thuộc cả $A$ và $B$.\n- Hợp của 2 tập hợp $A \\cup B$ chứa các phần tử thuộc $A$, $B$ hoặc cả hai.",
                 "en": "Venn diagrams represent sets geometrically using circles.\n\n- Intersection $A \\cap B$ contains elements in both $A$ and $B$.\n- Union $A \\cup B$ contains elements in $A$, $B$, or both."
             },
             "words": [
-                {"word": "set", "type": "noun", "pronunciation": "/set/", "vietnamese": "tập hợp", "example": "Let A be the set of natural numbers."},
-                {"word": "intersection", "type": "noun", "pronunciation": "/ˌɪn.təˈsek.ʃən/", "vietnamese": "phần giao", "example": "The intersection of sets A and B is denoted by A ∩ B."}
+                {"word": "set", "type": "noun", "pronunciation": "/set/", "english": "set", "vietnamese": "tập hợp", "example": "Let A be the set of natural numbers."},
+                {"word": "intersection", "type": "noun", "pronunciation": "/ˌɪn.təˈsek.ʃən/", "english": "intersection", "vietnamese": "phần giao", "example": "The intersection of sets A and B is denoted by A ∩ B."}
             ]
         }
     elif any(k in t for k in ["inequality", "bất đẳng thức", "bất phương trình"]):
         return {
-            "translation": "Bất đẳng thức (Inequality)",
+            "translation": "Inequality" if target_en else "Bất đẳng thức (Inequality)",
+            "translation_vi": "Bất đẳng thức",
+            "translation_en": "Inequality",
             "summary": "Bất đẳng thức so sánh giá trị của hai biểu thức toán học không bằng nhau.",
-            "source_lang": "en" if "inequality" in t else "vi",
+            "summary_vi": "Bất đẳng thức thiết lập mối quan hệ so sánh thứ tự lớn hơn hoặc nhỏ hơn giữa các biểu thức đại số.",
+            "summary_en": "An inequality is a mathematical relation comparing two expressions using inequality signs.",
+            "source_lang": "vi" if is_vi_input else "en",
             "diagram_type": "inequality",
             "theory": {
                 "vi": "Bất đẳng thức so sánh biểu thức dùng các dấu $<, \\le, >, \\ge$.\n\n- Bất đẳng thức Cauchy (AM-GM): Với các số không âm, trung bình cộng lớn hơn hoặc bằng trung bình nhân: $\\frac{a+b}{2} \\ge \\sqrt{ab}$.",
                 "en": "Inequalities compare expressions using $<, \\le, >, \\ge$.\n\n- AM-GM Inequality: For non-negative numbers, the arithmetic mean is at least the geometric mean: $\\frac{a+b}{2} \\ge \\sqrt{ab}$."
             },
             "words": [
-                {"word": "inequality", "type": "noun", "pronunciation": "/ˌɪn.ɪˈkwɒl.ə.ti/", "vietnamese": "bất đẳng thức", "example": "We need to prove the Cauchy inequality."},
-                {"word": "greater than", "type": "phrase", "pronunciation": "/ɡreɪtə ðæn/", "vietnamese": "lớn hơn", "example": "5 is greater than 3."}
+                {"word": "inequality", "type": "noun", "pronunciation": "/ˌɪn.ɪˈkwɒl.ə.ti/", "english": "inequality", "vietnamese": "bất đẳng thức", "example": "We need to prove the Cauchy inequality."},
+                {"word": "greater than", "type": "phrase", "pronunciation": "/ɡreɪtə ðæn/", "english": "greater than", "vietnamese": "lớn hơn", "example": "5 is greater than 3."}
             ]
         }
     elif any(k in t for k in ["vector", "vectơ", "hướng"]):
         return {
-            "translation": "Vectơ (Vector)",
+            "translation": "Vector" if target_en else "Vectơ (Vector)",
+            "translation_vi": "Vectơ",
+            "translation_en": "Vector",
             "summary": "Một đoạn thẳng có hướng xác định bởi điểm đầu và điểm cuối.",
-            "source_lang": "en" if "vector" in t else "vi",
+            "summary_vi": "Vectơ là đoạn thẳng có hướng, được xác định bởi điểm đặt, phương, chiều và độ dài.",
+            "summary_en": "A vector is a geometric entity with both magnitude and direction.",
+            "source_lang": "vi" if is_vi_input else "en",
             "diagram_type": "vectors",
             "theory": {
                 "vi": "Vectơ $\\vec{u}$ có độ dài và hướng xác định.\n\n- Quy tắc ba điểm: $\\vec{AB} + \\vec{BC} = \\vec{AC}$.\n- Phép cộng vectơ tuân theo quy tắc hình bình hành.",
                 "en": "A vector $\\vec{u}$ is determined by its magnitude and direction.\n\n- Triangle rule: $\\vec{AB} + \\vec{BC} = \\vec{AC}$.\n- Vector addition follows the parallelogram rule."
             },
             "words": [
-                {"word": "vector", "type": "noun", "pronunciation": "/ˈvek.tər/", "vietnamese": "vectơ", "example": "Force is a vector quantity."},
-                {"word": "magnitude", "type": "noun", "pronunciation": "/ˈmæɡ.nɪ.tʃuːd/", "vietnamese": "độ lớn / độ dài", "example": "The magnitude of the vector is 5."}
+                {"word": "vector", "type": "noun", "pronunciation": "/ˈvek.tər/", "english": "vector", "vietnamese": "vectơ", "example": "Force is a vector quantity."},
+                {"word": "magnitude", "type": "noun", "pronunciation": "/ˈmæɡ.nɪ.tʃuːd/", "english": "magnitude", "vietnamese": "độ lớn / độ dài", "example": "The magnitude of the vector is 5."}
             ]
         }
     elif any(k in t for k in ["ellipse", "elip", "tiêu điểm"]):
         return {
-            "translation": "Đường Elip (Ellipse)",
+            "translation": "Ellipse" if target_en else "Đường Elip (Ellipse)",
+            "translation_vi": "Đường Elip",
+            "translation_en": "Ellipse",
             "summary": "Đường elip là tập hợp các điểm có tổng khoảng cách tới hai tiêu điểm F1 và F2 là hằng số 2a.",
-            "source_lang": "en" if "ellipse" in t else "vi",
+            "summary_vi": "Đường elip là quỹ tích các điểm có tổng khoảng cách tới 2 tiêu điểm bằng một hằng số $2a > 2c$.",
+            "summary_en": "An ellipse is the locus of points whose distances to two fixed foci have a constant sum.",
+            "source_lang": "vi" if is_vi_input else "en",
             "diagram_type": "ellipse",
             "theory": {
                 "vi": "Phương trình chính tắc của Elip: $\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1$ ($a > b > 0$).\n\n- Tiêu cự: $2c$ với $c = \\sqrt{a^2 - b^2}$.\n- Tiêu điểm: $F_1(-c, 0)$, $F_2(c, 0)$.",
                 "en": "Standard equation of an ellipse: $\\frac{x^2}{a^2} + \\frac{y^2}{b^2} = 1$ ($a > b > 0$).\n\n- Focal length: $2c$ with $c = \\sqrt{a^2 - b^2}$.\n- Foci: $F_1(-c, 0)$, $F_2(c, 0)$."
             },
             "words": [
-                {"word": "ellipse", "type": "noun", "pronunciation": "/iˈlɪps/", "vietnamese": "elip", "example": "Planets move around the Sun in elliptical orbits."},
-                {"word": "foci", "type": "noun (plural)", "pronunciation": "/ˈfəʊ.saɪ/", "vietnamese": "các tiêu điểm", "example": "An ellipse has two foci."}
+                {"word": "ellipse", "type": "noun", "pronunciation": "/iˈlɪps/", "english": "ellipse", "vietnamese": "elip", "example": "Planets move around the Sun in elliptical orbits."},
+                {"word": "foci", "type": "noun (plural)", "pronunciation": "/ˈfəʊ.saɪ/", "english": "foci", "vietnamese": "các tiêu điểm", "example": "An ellipse has two foci."}
             ]
         }
     elif any(k in t for k in ["trig", "sin", "cos", "tan", "lượng giác"]):
         return {
-            "translation": "Lượng giác (Trigonometry)",
+            "translation": "Trigonometry" if target_en else "Lượng giác (Trigonometry)",
+            "translation_vi": "Lượng giác",
+            "translation_en": "Trigonometry",
             "summary": "Các hàm số lượng giác định nghĩa góc quay trên đường tròn lượng giác đơn vị.",
-            "source_lang": "en" if "trig" in t or "sin" in t or "cos" in t or "tan" in t else "vi",
+            "summary_vi": "Lượng giác nghiên cứu mối quan hệ giữa các góc và độ dài các cạnh trong tam giác cũng như trên đường tròn đơn vị.",
+            "summary_en": "Trigonometry studies relationships between side lengths and angles in triangles and the unit circle.",
+            "source_lang": "vi" if is_vi_input else "en",
             "diagram_type": "trig",
             "theory": {
                 "vi": "Đường tròn lượng giác có bán kính bằng $1$.\n\n- Công thức cơ bản: $\\sin^2 x + \\cos^2 x = 1$.\n- Trục hoành biểu thị giá trị của $\\cos x$, trục tung biểu thị $\\sin x$.",
                 "en": "The unit circle has a radius of $1$.\n\n- Fundamental identity: $\\sin^2 x + \\cos^2 x = 1$.\n- The horizontal axis shows $\\cos x$, the vertical axis shows $\\sin x$."
             },
             "words": [
-                {"word": "sine", "type": "noun", "pronunciation": "/saɪn/", "vietnamese": "sin", "example": "The sine of 90 degrees is 1."},
-                {"word": "unit circle", "type": "noun", "pronunciation": "/ˈjuː.nɪt ˈsɜː.kəl/", "vietnamese": "đường tròn lượng giác", "example": "Trigonometric values are represented on the unit circle."}
+                {"word": "sine", "type": "noun", "pronunciation": "/saɪn/", "english": "sine", "vietnamese": "sin", "example": "The sine of 90 degrees is 1."},
+                {"word": "unit circle", "type": "noun", "pronunciation": "/ˈjuː.nɪt ˈsɜː.kəl/", "english": "unit circle", "vietnamese": "đường tròn lượng giác", "example": "Trigonometric values are represented on the unit circle."}
             ]
         }
     else:
-        return {
-            "translation": f"Bản dịch tương đương của: '{text}'",
-            "summary": f"Thuật ngữ toán học: {text}",
-            "source_lang": "vi" if any(c in t for c in "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ") else "en",
-            "diagram_type": "default",
-            "theory": {
-                "vi": f"Lý thuyết liên quan đến cụm từ **{text}**.\n\nCác công thức toán tương đương có thể biểu diễn qua hệ thống LaTeX: $a^2 + b^2 = c^2$.",
-                "en": f"Theory related to the term **{text}**.\n\nMathematical formulas are represented via LaTeX: $a^2 + b^2 = c^2$."
-            },
-            "words": [
-                {"word": text, "type": "term", "pronunciation": "/.../", "vietnamese": "Dịch nghĩa tương ứng", "example": "Example usage context."}
-            ]
-        }
+        if target_en:
+            return {
+                "translation": f"English translation: '{text}'",
+                "translation_vi": text,
+                "translation_en": f"Translation of: {text}",
+                "summary": f"Thuật ngữ: {text}",
+                "summary_vi": f"Nội dung toán học: {text}",
+                "summary_en": f"Mathematical context for: {text}",
+                "source_lang": "vi",
+                "diagram_type": "default",
+                "theory": {
+                    "vi": f"Lý thuyết liên quan đến **{text}**.\n\nBiểu diễn công thức toán học qua LaTeX: $f(x) = y$.",
+                    "en": f"Theoretical context for **{text}**.\n\nRepresented in standard mathematical notation: $f(x) = y$."
+                },
+                "words": [
+                    {"word": text, "type": "term", "pronunciation": "/.../", "english": text, "vietnamese": text, "example": f"Contextual example for {text}."}
+                ]
+            }
+        else:
+            return {
+                "translation": f"Bản dịch Tiếng Việt: '{text}'",
+                "translation_vi": f"Bản dịch của: {text}",
+                "translation_en": text,
+                "summary": f"Concept: {text}",
+                "summary_vi": f"Khái niệm toán học liên quan đến {text}.",
+                "summary_en": f"Mathematical concept related to {text}.",
+                "source_lang": "en",
+                "diagram_type": "default",
+                "theory": {
+                    "vi": f"Lý thuyết toán học liên quan đến **{text}**.\n\nCông thức biểu diễn bằng LaTeX: $f(x) = y$.",
+                    "en": f"Mathematical theory related to **{text}**.\n\nFormula represented via LaTeX: $f(x) = y$."
+                },
+                "words": [
+                    {"word": text, "type": "term", "pronunciation": "/.../", "english": text, "vietnamese": text, "example": f"Contextual example for {text}."}
+                ]
+            }
 # Phase 0: serialise heavy render jobs (this used to be an unauthenticated,
 # unbounded CPU/DoS surface) and create the lock lazily at import time.
 _VIDEO_JOB_LOCK = asyncio.Lock()
@@ -5702,37 +5777,83 @@ async def generate_video(request: Request):
 def _detect_lang(text: str) -> str:
     """Vietnamese vs English heuristic used when the model omits source_lang."""
     lowered = str(text or "").lower()
-    return "vi" if any(ch in "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ" for ch in lowered) else "en"
+    if any(ch in "áàảãạăắằẳẵặâấầẩẫậéèẻẽẹêếềểễệíìỉĩịóòỏõọôốồổỗộơớờởỡợúùủũụưứừửữựýỳỷỹỵđ" for ch in lowered):
+        return "vi"
+    # Check common Vietnamese math terms even if unaccented
+    vi_keywords = {
+        "bai", "toan", "day", "so", "cap", "hinh", "tam", "giac", "ham", "bac", "hai",
+        "do", "thi", "dao", "tich", "phan", "tap", "hop", "menh", "de", "vecto", "elip",
+        "bat", "dang", "thuc", "phuong", "trinh", "he", "nghiem", "voi", "la", "va",
+        "cac", "cho", "tim", "tinh", "trong", "khi", "duoc", "nghia"
+    }
+    words = lowered.split()
+    match_count = sum(1 for w in words if w in vi_keywords)
+    if match_count >= 2 or (len(words) == 1 and words[0] in {"toan", "tamgiac", "vecto"}):
+        return "vi"
+    return "en"
+
+
+def _clean_ai_text(text: str) -> str:
+    """Safely cleans AI generated text to eliminate thinking, chain of thought,
+    prompt leakage, schema notes, and markdown wrapping."""
+    if not text or not isinstance(text, str):
+        return ""
+    import re as _re
+
+    # Strip <think>...</think> tags completely (including unclosed tags)
+    clean = _re.sub(r"<think>[\s\S]*?(?:</think>|$)", "", text, flags=_re.IGNORECASE).strip()
+    # Strip markdown code fences
+    clean = _re.sub(r"^```(?:json)?\s*", "", clean)
+    clean = _re.sub(r"\s*```$", "", clean).strip()
+
+    # Filter out lines that look like internal prompt or schema checks or reasoning
+    bad_tokens = [
+        "check schema", "now construct json", "make sure all vietnamese",
+        "pronunciation: for", "example sentences: bilingual", "the user wants me to",
+        "output only the raw json", "do not wrap in markdown", '"translation":', '"theory":',
+        "latin-based vietnamese", "chữ quốc ngữ", "no chinese characters",
+        "but i can approximate", "schema check", "constructed json"
+    ]
+    lines = []
+    for line in clean.splitlines():
+        low = line.lower().strip()
+        if any(bad in low for bad in bad_tokens):
+            continue
+        lines.append(line)
+    return "\n".join(lines).strip()
 
 
 def _bilingual_payload(payload: dict, source_text: str, source_lang: str | None = None) -> dict:
-    """Phase 4: guarantee both language slots exist on a translate result.
+    """Phase 4 & Two-Way Upgrade: guarantee clean bilingual slots on translate result.
 
-    The panel renders the snippet bilingually (VI card + EN card) in both
-    directions, so every payload must carry `translation_vi` / `translation_en`
-    (and the summary equivalents). When the model only returned one direction we
-    fill the missing slot with the *input* text — it is already the other
-    language by definition.
+    Ensures both `translation_vi` and `translation_en` exist and are properly
+    assigned without internal thought leakage or reversed language slots.
     """
     payload = payload if isinstance(payload, dict) else {}
     lang = str(source_lang or payload.get("source_lang") or _detect_lang(source_text)).lower()
     lang = "vi" if lang.startswith("vi") else "en"
     payload["source_lang"] = lang
 
-    translation = str(payload.get("translation") or "").strip()
-    summary = str(payload.get("summary") or "").strip()
-    t_vi = str(payload.get("translation_vi") or "").strip()
-    t_en = str(payload.get("translation_en") or "").strip()
+    translation = _clean_ai_text(str(payload.get("translation") or "")).strip()
+    summary = _clean_ai_text(str(payload.get("summary") or "")).strip()
+    t_vi = _clean_ai_text(str(payload.get("translation_vi") or "")).strip()
+    t_en = _clean_ai_text(str(payload.get("translation_en") or "")).strip()
+
     if lang == "vi":
         t_vi = t_vi or str(source_text).strip()
         t_en = t_en or translation
+        if _detect_lang(t_vi) == "en" and _detect_lang(t_en) == "vi":
+            t_vi, t_en = t_en, t_vi
     else:
         t_en = t_en or str(source_text).strip()
         t_vi = t_vi or translation
+        if _detect_lang(t_en) == "vi" and _detect_lang(t_vi) == "en":
+            t_vi, t_en = t_en, t_vi
+
     payload["translation_vi"], payload["translation_en"] = t_vi, t_en
 
-    s_vi = str(payload.get("summary_vi") or "").strip()
-    s_en = str(payload.get("summary_en") or "").strip()
+    s_vi = _clean_ai_text(str(payload.get("summary_vi") or "")).strip()
+    s_en = _clean_ai_text(str(payload.get("summary_en") or "")).strip()
     if lang == "vi":
         s_vi = s_vi or summary
     else:
@@ -5740,16 +5861,31 @@ def _bilingual_payload(payload: dict, source_text: str, source_lang: str | None 
     payload["summary_vi"], payload["summary_en"] = s_vi, s_en
 
     # Legacy keys keep working for any other consumer.
-    payload["translation"] = payload.get("translation") or (t_en if lang == "vi" else t_vi)
-    payload["summary"] = payload.get("summary") or (s_en if lang == "vi" else s_vi)
+    payload["translation"] = translation or (t_en if lang == "vi" else t_vi)
+    payload["summary"] = summary or (s_en if lang == "vi" else s_vi)
+
+    # Clean theory if present
+    if isinstance(payload.get("theory"), dict):
+        theory = payload["theory"]
+        if "vi" in theory:
+            theory["vi"] = _clean_ai_text(str(theory["vi"] or ""))
+        if "en" in theory:
+            theory["en"] = _clean_ai_text(str(theory["en"] or ""))
 
     words = []
     for word in payload.get("words") or []:
         if not isinstance(word, dict):
             continue
-        term = str(word.get("word") or "").strip()
-        word["english"] = str(word.get("english") or "").strip() or (term if lang == "en" else "")
-        word["vietnamese"] = str(word.get("vietnamese") or "").strip() or (term if lang == "vi" else "")
+        term = _clean_ai_text(str(word.get("word") or "")).strip()
+        en_val = _clean_ai_text(str(word.get("english") or "")).strip()
+        vi_val = _clean_ai_text(str(word.get("vietnamese") or "")).strip()
+        word["word"] = term
+        word["english"] = en_val or (term if lang == "en" else "")
+        word["vietnamese"] = vi_val or (term if lang == "vi" else "")
+        if word.get("pronunciation"):
+            word["pronunciation"] = _clean_ai_text(str(word["pronunciation"])).strip()
+        if word.get("example"):
+            word["example"] = _clean_ai_text(str(word["example"])).strip()
         words.append(word)
     payload["words"] = words
     return payload
@@ -5814,11 +5950,13 @@ OPENROUTER_TRANSLATE_MODELS_DEFAULT = (
 # The JSON contract is shared by every translation provider; kept in one place
 # so the Groq, Gemini and OpenRouter tiers cannot drift apart.
 _TRANSLATE_SYSTEM = (
-    "You are a JSON-only translation API. Output only the JSON object. "
-    "CRITICAL: For all Vietnamese fields (like 'translation', 'summary', 'vietnamese', and 'theory.vi'), "
-    "you MUST use only standard Latin-based Vietnamese characters (Chữ Quốc Ngữ). "
-    "Do NOT use any Chinese characters (Hanzi/Kanji like '等式', '不等式', etc.) under any circumstances. "
-    "Always write terms like 'inequality' as 'bất đẳng thức', NOT 'bất等式'."
+    "You are a professional educational and mathematical translation engine. "
+    "Output ONLY a single valid JSON object adhering strictly to the schema. "
+    "ABSOLUTELY NO internal thoughts, NO chain-of-thought, NO reasoning steps, NO pronunciation deliberation, "
+    "NO schema verification notes, and NO markdown code fences (```). "
+    "Start directly with '{' and end with '}'. "
+    "CRITICAL: For all Vietnamese fields, you MUST use only standard Latin-based Vietnamese characters (Chữ Quốc Ngữ). "
+    "Never use Chinese characters under any circumstances."
 )
 
 # Free tiers are small (50 req/day without credits, 1000 req/day after $10 of
@@ -5846,19 +5984,34 @@ def _openrouter_models(env_key: str, default: str) -> list:
 
 
 def _parse_json_lenient(raw: str):
-    """Every free model has a different idea of "JSON only": strip fences, then
-    fall back to json_repair (already imported at module level) before giving up."""
+    """Every free model has a different idea of 'JSON only': strip thinking tags,
+    strip fences, skip preambles to first '{', then repair if needed."""
     import re as _re
 
-    clean = (raw or "").strip()
+    if not raw or not isinstance(raw, str):
+        return None
+
+    clean = raw.strip()
+    # 1. Strip <think>...</think> tags completely
+    clean = _re.sub(r"<think>[\s\S]*?(?:</think>|$)", "", clean, flags=_re.IGNORECASE).strip()
+    # 2. Strip code fences
     clean = _re.sub(r"^```(?:json)?\s*", "", clean)
     clean = _re.sub(r"\s*```$", "", clean).strip()
-    m = _re.search(r"(\{[\s\S]*\})", clean)
-    candidates = [c for c in (clean, m.group(1) if m else "") if c]
-    # Free models love trailing commas and stray markdown. json_repair is the
-    # heavy lifter, but this regex pass keeps the tier alive when it is not
-    # installed (the local venv does not always have it).
+
+    # 3. Locate braces
+    first_brace = clean.find("{")
+    last_brace = clean.rfind("}")
+
+    candidates = []
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        candidates.append(clean[first_brace:last_brace + 1])
+    if first_brace != -1:
+        candidates.append(clean[first_brace:])
+    candidates.append(clean)
+
+    # Clean trailing commas
     candidates += [_re.sub(r",\s*([}\]])", r"\1", c) for c in list(candidates)]
+
     for candidate in candidates:
         try:
             obj = json.loads(candidate)
@@ -6035,7 +6188,7 @@ async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 
     return content, used_model
 
 
-async def _translate_with_groq(prompt: str, text: str):
+async def _translate_with_groq(prompt: str, text: str, source_lang: str | None = None):
     """Groq tier — fastest of the three, kept as its own function so the order
     lives in TRANSLATE_TIER_ORDER instead of being hard-coded."""
     if not GROQ_KEY:
@@ -6049,8 +6202,8 @@ async def _translate_with_groq(prompt: str, text: str):
                 {"role": "system", "content": _TRANSLATE_SYSTEM},
                 {"role": "user", "content": prompt},
             ],
-            "max_tokens": 1200 if len(text) > 300 else 500,
-            "temperature": 0.2,
+            "max_tokens": 2000,
+            "temperature": 0.1,
         },
         surface="translate",
     )
@@ -6060,12 +6213,12 @@ async def _translate_with_groq(prompt: str, text: str):
         data.get("translation") or data.get("translation_vi") or data.get("translation_en")
     ):
         raise ValueError("Groq reply was not a usable translation payload")
-    out = _bilingual_payload(data, text)
+    out = _bilingual_payload(data, text, source_lang=source_lang)
     out["_provider"] = "groq"
     return out
 
 
-async def _translate_with_openrouter(prompt: str, text: str):
+async def _translate_with_openrouter(prompt: str, text: str, source_lang: str | None = None):
     """OpenRouter free-tier tier for /api/translate.
 
     Uses the `models` array so OpenRouter fails over server-side inside a single
@@ -6078,7 +6231,8 @@ async def _translate_with_openrouter(prompt: str, text: str):
             prompt,
             models=_openrouter_models("OPENROUTER_TRANSLATE_MODELS", OPENROUTER_TRANSLATE_MODELS_DEFAULT),
             system=_TRANSLATE_SYSTEM,
-            max_tokens=1200 if len(text) > 300 else 500,
+            max_tokens=2000,
+            temperature=0.1,
         )
     except Exception as exc:
         logger.warning("[translate] OpenRouter tier failed (%s)",
@@ -6089,16 +6243,10 @@ async def _translate_with_openrouter(prompt: str, text: str):
     if not isinstance(data, dict) or not (
         data.get("translation") or data.get("translation_vi") or data.get("translation_en")
     ):
-        # The `openrouter/free` router can pick a model that ignores the JSON
-        # contract and answers in prose. A real translation in the wrong shape
-        # is still far better than the canned mock, so keep it and say so.
-        prose = (content or "").strip()
+        # Sanitize prose of any thinking or internal prompt echoes
+        prose = _clean_ai_text(content or "")
         if len(prose) >= 2 and not prose.startswith("{"):
-            payload = _bilingual_payload({"translation": prose[:2000], "summary": prose[:400]}, text)
-            # Keep the 6-key bilingual contract even in degraded mode: the
-            # summary slot for the other language gets the same prose (the UI
-            # renders it as-is and `_degraded_format` tells callers it is not a
-            # human-quality summary in that language).
+            payload = _bilingual_payload({"translation": prose[:2000], "summary": prose[:400]}, text, source_lang=source_lang)
             for _key in ("summary_vi", "summary_en"):
                 payload[_key] = payload.get(_key) or payload.get("summary", "")
             payload["_provider"] = "openrouter"
@@ -6108,13 +6256,13 @@ async def _translate_with_openrouter(prompt: str, text: str):
             return payload
         logger.warning("[translate] OpenRouter payload unusable (model=%s)", used)
         return None
-    payload = _bilingual_payload(data, text)
+    payload = _bilingual_payload(data, text, source_lang=source_lang)
     payload["_provider"] = "openrouter"
     payload["_model"] = used
     return payload
 
 
-async def _translate_with_gemini(prompt: str, text: str):
+async def _translate_with_gemini(prompt: str, text: str, source_lang: str | None = None):
     """Phase 4 — tier 2 for /api/translate.
 
     The Groq key can be rotated/revoked (ours currently returns 401), and the
@@ -6127,14 +6275,14 @@ async def _translate_with_gemini(prompt: str, text: str):
     last_error = ""
     for attempt in range(2):                      # 503s from Gemini are transient
         try:
-            data = await _gemini_json(prompt, _TRANSLATE_SCHEMA, temperature=0.2)
+            data = await _gemini_json(prompt, _TRANSLATE_SCHEMA, temperature=0.1)
         except Exception as exc:
             last_error = f"{type(exc).__name__}: {str(exc)[:160]}"
             if attempt == 0:
                 await asyncio.sleep(1.5)
             continue
         if isinstance(data, dict) and (data.get("translation") or data.get("translation_vi") or data.get("translation_en")):
-            payload = _bilingual_payload(data, text)
+            payload = _bilingual_payload(data, text, source_lang=source_lang)
             payload["_provider"] = "gemini"
             return payload
         last_error = "empty payload"
@@ -6147,11 +6295,26 @@ async def _translate_with_gemini(prompt: str, text: str):
 @limiter.limit(TRANSLATE_LIMIT)
 async def translate(request: Request):
     d = await request.json()
-    # Phase 4: the selection popup sends short snippets, but the
-    # "translate this page" button can send a whole section.
     text = (d.get("text") or "").strip()[:1500]
     if not text:
         raise HTTPException(400, "text is required.")
+
+    # 2-way direction: "auto" (default), "en_vi" (English -> Vietnamese), "vi_en" (Vietnamese -> English)
+    direction = str(d.get("direction") or "auto").strip().lower()
+    if direction not in ("auto", "en_vi", "vi_en"):
+        direction = "auto"
+
+    detected = _detect_lang(text)
+    if direction == "en_vi":
+        source_lang = "en"
+        target_lang = "vi"
+    elif direction == "vi_en":
+        source_lang = "vi"
+        target_lang = "en"
+    else:
+        source_lang = detected
+        target_lang = "en" if source_lang == "vi" else "vi"
+
     _t0 = time.time()   # Đợt 4C: latency goes into ai_quality_log
 
     # Try resolving user id for daily progress tracking (optional)
@@ -6172,26 +6335,30 @@ async def translate(request: Request):
         finally:
             db.close()
 
-    # Phase 4 / Đợt 3: the mock is served only when NO provider is configured at
-    # all — otherwise the ordered tiers at the end of this handler take over.
+    # Phase 4 / Đợt 3: the mock is served only when NO provider is configured at all
     if not GROQ_KEY and not os.environ.get("GEMINI_API_KEY", "") and not os.environ.get("OPENROUTER_API_KEY", ""):
         logger.warning("[translate] no translation provider is configured — serving the local mock")
-        payload = _bilingual_payload(get_mock_translation(text), text)
+        payload = _bilingual_payload(get_mock_translation(text, direction=direction), text, source_lang=source_lang)
         payload["_fallback"] = "mock_no_key"
         return JSONResponse(payload)
 
-    # Memory cache first: free tiers are quota-bound (50–1000 req/day) and the
-    # "translate this page" button re-sends the same sections over and over.
-    _cached = _translate_cache_get(text)
+    # Memory cache keyed by direction + text
+    cache_key = f"{direction}:{text}"
+    _cached = _translate_cache_get(cache_key)
     if _cached is not None:
         _cached["_cache"] = "hit"
         return JSONResponse(_cached)
 
+    direction_instruction = (
+        f"Translate from {'Vietnamese into English' if target_lang == 'en' else 'English into Vietnamese'}.\n"
+        f"- Source language: {'Vietnamese (vi)' if source_lang == 'vi' else 'English (en)'}.\n"
+        f"- Target language: {'English (en)' if target_lang == 'en' else 'Vietnamese (vi)'}.\n"
+    )
+
     prompt = (
-        "You are a translation API. Analyze the input text. "
-        "If it is in English, translate it to Vietnamese, and provide bilingual (English & Vietnamese) mathematical explanations. "
-        "If it is in Vietnamese, translate it to English, and provide bilingual mathematical explanations.\n\n"
-        "Also, determine if the mathematical concept matches or relates to one of these diagrams:\n"
+        f"{direction_instruction}"
+        "You are an educational and mathematical translation engine. Analyze the input text and provide an accurate bilingual translation.\n\n"
+        "Determine if the mathematical concept matches or relates to one of these diagrams:\n"
         "- 'venn': for sets, logic, intersection, union, Venn diagram, etc.\n"
         "- 'inequality': for inequalities, bounds, regions, systems of inequalities, etc.\n"
         "- 'parabola': for quadratic functions, vertex, axis of symmetry, parabol, quadratic, etc.\n"
@@ -6199,15 +6366,15 @@ async def translate(request: Request):
         "- 'ellipse': for ellipse, foci, major axis, ellipse equation, etc.\n"
         "- 'trig': for trigonometric functions, angle, sin, cos, tan, unit circle, etc.\n"
         "- 'default': if it does not fit any of the above.\n\n"
-        "Reply ONLY with a valid JSON object matching this exact schema (do not wrap in markdown, output only the raw JSON):\n"
+        "Reply ONLY with a valid JSON object matching this exact schema (do not wrap in markdown, no preambles, output only raw JSON starting with { and ending with }):\n"
         "{\n"
-        '  "translation": "...", // The main translation (Vietnamese if input was English, English if input was Vietnamese)\n'
-        '  "translation_vi": "...", // ALWAYS the Vietnamese rendering. If the input is already Vietnamese, repeat the input verbatim.\n'
-        '  "translation_en": "...", // ALWAYS the English rendering. If the input is already English, repeat the input verbatim.\n'
+        f'  "translation": "...", // The translation in {"English" if target_lang == "en" else "Vietnamese"}\n'
+        '  "translation_vi": "...", // ALWAYS the Vietnamese rendering\n'
+        '  "translation_en": "...", // ALWAYS the English rendering\n'
         '  "summary": "...", // A short conceptual summary of the term or phrase\n'
         '  "summary_vi": "...", // The summary in Vietnamese\n'
         '  "summary_en": "...", // The summary in English\n'
-        '  "source_lang": "en" | "vi",\n'
+        f'  "source_lang": "{source_lang}",\n'
         '  "diagram_type": "venn" | "inequality" | "parabola" | "vectors" | "ellipse" | "trig" | "default",\n'
         '  "theory": {\n'
         '    "vi": "...", // Detailed explanation of the mathematical concept in Vietnamese with KaTeX/LaTeX formulas like $formula$\n'
@@ -6217,29 +6384,25 @@ async def translate(request: Request):
         "    {\n"
         '      "word": "...", // Key vocabulary word in the source language\n'
         '      "english": "...", // The same term written in English\n'
-        '      "type": "...", // noun, verb, adj, etc.\n'
-        '      "pronunciation": "...",\n'
-        '      "vietnamese": "...", // The translation in the target language (keep key as "vietnamese" for compatibility)\n'
-        '      "example": "..." // Example sentence using this word in both languages or target language\n'
+        '      "type": "...", // noun, verb, adj, term, phrase, etc.\n'
+        '      "pronunciation": "...", // IPA pronunciation e.g. /.../\n'
+        '      "vietnamese": "...", // The translation in Vietnamese\n'
+        '      "example": "..." // Bilingual example sentence using this word\n'
         "    }\n"
         "  ]\n"
         "}\n\n"
         f"Input text:\n{text}"
     )
     # ── Provider ladder (Phase 4 / Đợt 3) ─────────────────────────────────────
-    # Data-driven order (TRANSLATE_TIER_ORDER, default openrouter,gemini,groq):
-    # the strongest free OpenRouter model answers first, the other providers act
-    # as fallbacks, and the local mock is the floor. A tier that raises or
-    # returns None is skipped; a tier that answers tags its own `_provider`.
     last_tier_error = ""
     for _tier in _translate_tier_order():
         try:
             if _tier == "openrouter":
-                _out = await _translate_with_openrouter(prompt, text)
+                _out = await _translate_with_openrouter(prompt, text, source_lang=source_lang)
             elif _tier == "gemini":
-                _out = await _translate_with_gemini(prompt, text)
+                _out = await _translate_with_gemini(prompt, text, source_lang=source_lang)
             elif _tier == "groq":
-                _out = await _translate_with_groq(prompt, text)
+                _out = await _translate_with_groq(prompt, text, source_lang=source_lang)
             else:
                 logger.warning("[translate] unknown tier %r — skipped (valid: openrouter, gemini, groq)", _tier)
                 continue
@@ -6250,7 +6413,7 @@ async def translate(request: Request):
         if _out:
             _out["_provider"] = _tier
             _out["_tier"] = _tier
-            _translate_cache_put(text, _out)
+            _translate_cache_put(cache_key, _out)
             quality_log(surface="translate", model=str(_out.get("_model") or _tier)[:80],
                         provider=str(_out.get("_provider") or ""), tier=_tier,
                         latency_ms=int((time.time() - _t0) * 1000),
@@ -6261,7 +6424,7 @@ async def translate(request: Request):
 
     logger.warning("[translate] every tier failed (%s) — serving the local mock",
                    _scrub_secrets(last_tier_error))
-    payload = _bilingual_payload(get_mock_translation(text), text)
+    payload = _bilingual_payload(get_mock_translation(text, direction=direction), text, source_lang=source_lang)
     payload["_fallback"] = "mock_error"
     quality_log(surface="translate", tier="mock", fallback="mock_error",
                 latency_ms=int((time.time() - _t0) * 1000),

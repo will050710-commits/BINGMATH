@@ -125,18 +125,21 @@ export async function resetSession(sessionId) {
   }
 }
 
-export async function translate(text) {
+export async function translate(text, options = {}) {
   try {
     const res = await authFetch("/api/translate", {
       base:    API,
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ text }),
+      body:    JSON.stringify({
+        text,
+        direction: options?.direction || "auto",
+      }),
     });
     return await res.json();
   } catch (err) {
     console.error("[duoServer] translate failed:", err);
-    return { error: true };
+    return { error: true, raw: "Không thể kết nối đến máy chủ dịch thuật." };
   }
 }
 
