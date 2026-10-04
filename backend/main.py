@@ -6294,7 +6294,14 @@ async def _translate_with_gemini(prompt: str, text: str, source_lang: str | None
 @app.post("/api/translate")
 @limiter.limit(TRANSLATE_LIMIT)
 async def translate(request: Request):
-    d = await request.json()
+    try:
+        d = await request.json()
+    except (UnicodeDecodeError, Exception):
+        try:
+            body = await request.body()
+            d = json.loads(body.decode("utf-8", errors="replace"))
+        except Exception:
+            d = {}
     text = (d.get("text") or "").strip()[:1500]
     if not text:
         raise HTTPException(400, "text is required.")

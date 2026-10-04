@@ -1,9 +1,9 @@
-# ═══════════════════════════════════════════════════════════════════════════════
-# start-local.ps1 — DuoMath local (localhost) launcher
+# ==============================================================================
+# start-local.ps1 - DuoMath local (localhost) launcher
 #
 # Boots both halves of the stack for local development:
-#   • Backend  : FastAPI  (duosteam/backend/main.py)  -> http://localhost:8000
-#   • Frontend : Next.js  (duosteam/frontend)         -> http://localhost:3000
+#   * Backend  : FastAPI  (duosteam/backend/main.py)  -> http://localhost:8000
+#   * Frontend : Next.js  (duosteam/frontend)         -> http://localhost:3000
 #
 # The frontend reads NEXT_PUBLIC_API_URL / NEXT_PUBLIC_BACKEND_URL from
 # duosteam/frontend/.env.local, which must point at the backend above.
@@ -11,7 +11,7 @@
 # Usage (from anywhere):
 #   powershell -ExecutionPolicy Bypass -File "duosteam\start-local.ps1"
 #   powershell -ExecutionPolicy Bypass -File "duosteam\start-local.ps1" -BackendPort 8001
-# ══════════════════════════════════════════════════════════════════════════════
+# ==============================================================================
 
 [CmdletBinding()]
 param(
@@ -56,18 +56,18 @@ function Start-LoggedProcess {
 }
 
 Write-Host ""
-Write-Host "DuoMath — starting local stack" -ForegroundColor Cyan
-Write-Host "══════════════════════════════════════════════════════════" -ForegroundColor Cyan
+Write-Host "DuoMath - starting local stack" -ForegroundColor Cyan
+Write-Host "==========================================================" -ForegroundColor Cyan
 
-# ── Backend ────────────────────────────────────────────────────────────────────
+# -- Backend -------------------------------------------------------------------
 if (-not $SkipBackend) {
     if (Test-PortInUse $BackendPort) {
-        Write-Host "[backend]  port $BackendPort already in use — skipping start." -ForegroundColor Yellow
+        Write-Host "[backend]  port $BackendPort already in use - skipping start." -ForegroundColor Yellow
     }
-    elseif (-not (Test-Path (Join-Path $BackendDir "main.py"))) {
-        Write-Host "[backend]  main.py not found at $BackendDir — skipping." -ForegroundColor Yellow
+    if (-not (Test-PortInUse $BackendPort) -and -not (Test-Path (Join-Path $BackendDir "main.py"))) {
+        Write-Host "[backend]  main.py not found at $BackendDir - skipping." -ForegroundColor Yellow
     }
-    else {
+    if (-not (Test-PortInUse $BackendPort) -and (Test-Path (Join-Path $BackendDir "main.py"))) {
         $python = if (Test-Path $VenvPython) { $VenvPython } else { "python" }
         Write-Host "[backend]  launching uvicorn ($python) on port $BackendPort ..."
         Start-LoggedProcess -Name "duomath-backend" -FilePath $python `
@@ -76,17 +76,17 @@ if (-not $SkipBackend) {
     }
 }
 
-# ─ Frontend ───────────────────────────────────────────────────────────────────
+# -- Frontend ------------------------------------------------------------------
 if (-not $SkipFrontend) {
     if (Test-PortInUse $FrontendPort) {
-        Write-Host "[frontend] port $FrontendPort already in use — skipping start." -ForegroundColor Yellow
+        Write-Host "[frontend] port $FrontendPort already in use - skipping start." -ForegroundColor Yellow
     }
-    elseif (-not (Test-Path (Join-Path $FrontendDir "package.json"))) {
-        Write-Host "[frontend] package.json not found at $FrontendDir — skipping." -ForegroundColor Yellow
+    if (-not (Test-PortInUse $FrontendPort) -and -not (Test-Path (Join-Path $FrontendDir "package.json"))) {
+        Write-Host "[frontend] package.json not found at $FrontendDir - skipping." -ForegroundColor Yellow
     }
-    else {
+    if (-not (Test-PortInUse $FrontendPort) -and (Test-Path (Join-Path $FrontendDir "package.json"))) {
         if (-not (Test-Path (Join-Path $FrontendDir "node_modules"))) {
-            Write-Host "[frontend] node_modules missing — running 'npm install' first ..." -ForegroundColor Yellow
+            Write-Host "[frontend] node_modules missing - running 'npm install' first ..." -ForegroundColor Yellow
             Push-Location $FrontendDir; npm install; Pop-Location
         }
         Write-Host "[frontend] launching 'npm run dev' on port $FrontendPort ..."
@@ -96,7 +96,7 @@ if (-not $SkipFrontend) {
     }
 }
 
-# ─ Wait for health checks ─────────────────────────────────────────────────────
+# -- Wait for health checks ----------------------------------------------------
 Write-Host ""
 Write-Host "Waiting for services to become reachable ..." -ForegroundColor Cyan
 
@@ -108,8 +108,6 @@ function Wait-ForUrl {
             $r = Invoke-WebRequest -Uri $Url -TimeoutSec $ResponseTimeoutSeconds -UseBasicParsing
             if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 500) { return $true }
         } catch {
-            # The backend returns 404 on "/" by design (no root route), which
-            # .NET surfaces as a terminating error - any HTTP answer means "up".
             if ($_.Exception.Response) { return $true }
         }
         Start-Sleep -Seconds 2
