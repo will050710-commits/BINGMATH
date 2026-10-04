@@ -1094,6 +1094,7 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
             </>
           )}
         </div>
+      )}
       {/* Groups Filter Bar */}
       {availableGroups.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8, alignItems: 'center' }}>
