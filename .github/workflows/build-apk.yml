@@ -57,7 +57,7 @@ jobs:
         working-directory: mobile/android
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease --no-daemon
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
         working-directory: mobile/android
         env:
           JAVA_OPTS: '-Xmx2048m'
