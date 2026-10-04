@@ -188,7 +188,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        {/* ── DuoMCB AI Hint ── */}
+        {/* ── BingMCB AI Hint ── */}
         <View style={styles.section}>
           <TouchableOpacity
             style={styles.aiCard}
@@ -197,7 +197,7 @@ export default function HomeScreen({ navigation }) {
           >
             <Text style={styles.aiEmoji}>🤖</Text>
             <View style={{ flex: 1 }}>
-              <Text style={styles.aiTitle}>DuoMCB AI</Text>
+              <Text style={styles.aiTitle}>BingMCB AI</Text>
               <Text style={styles.aiSub}>{t('Hỏi AI bất kỳ bài toán nào', 'Ask AI any math problem')}</Text>
             </View>
             <Text style={{ color: Colors.cyan, fontSize: 18 }}>→</Text>

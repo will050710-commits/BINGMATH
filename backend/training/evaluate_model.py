@@ -23,7 +23,7 @@ def evaluate(model_name: str = "gemini-3.7-flash"):
     with httpx.Client() as client:
         for item in SEED_PROBLEMS:
             prob = item["problem"]
-            prompt = f"Bạn là DuoMCB. Hãy giải bài toán sau theo từng bước chi tiết và áp dụng LaTeX chuẩn:\n{prob}"
+            prompt = f"Bạn là BingMCB. Hãy giải bài toán sau theo từng bước chi tiết và áp dụng LaTeX chuẩn:\n{prob}"
             t0 = time.time()
             if not GEMINI_API_KEY:
                 reply = f"[Mock Solution] **Bước 1:** Áp dụng bổ đề..."
