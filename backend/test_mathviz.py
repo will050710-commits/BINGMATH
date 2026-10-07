@@ -26,7 +26,12 @@ for q, expected in test_queries:
 prompt_with_viz = cached_system_prompt('solution', 'geometry_3d')
 assert 'geometry_3d' in prompt_with_viz
 assert 'QUY TẮC TRỰC QUAN HÓA' in prompt_with_viz
-print('\n=== SYSTEM PROMPT INJECTION: OK ===')
+assert 'CHỌN DẠNG HÌNH' in prompt_with_viz
+assert '60 đối tượng' in prompt_with_viz
+assert '2*x' in prompt_with_viz
+assert 'claims' in prompt_with_viz
+assert 'Z-up' in prompt_with_viz
+print('\n=== SYSTEM PROMPT INJECTION & 12 RULES STANDARDS: OK ===')
 
 # Đợt 8 / 4I: the model must be taught the SAME vocabulary the validator and the
 # renderers enforce. Until this, geometry_2d's prompt taught four kinds

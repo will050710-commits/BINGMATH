@@ -530,6 +530,15 @@ async def read_consensus(image_b64: str, media_type: str = "image/jpeg", user_hi
             reads.append(await _read_once(chat_fn, secondary, image_b64, media_type, user_hint))
 
     result["readers"] = _summarise(reads)
+    # P16-fix (2026-10-06): when a page reads badly (live QA saw confidence 0.0
+    # and kind "mixed" on an olympiad figure) the summary alone does not say
+    # WHICH reader failed or why, so the vision ladder could not be tuned from
+    # real outcomes. Log each weak reader's model / ok / confidence / error.
+    for _r in result["readers"]:
+        if not _r.get("ok") or float(_r.get("confidence") or 0.0) <= 0.0:
+            logger.warning("[MathReader] weak reader model=%s ok=%s conf=%s error=%s",
+                           _r.get("model"), _r.get("ok"), _r.get("confidence"),
+                           str(_r.get("error"))[:160])
     good = [r for r in reads if r.get("ok")]
     if not good:
         result["error"] = "every reader failed"

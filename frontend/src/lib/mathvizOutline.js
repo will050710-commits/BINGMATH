@@ -19,10 +19,11 @@
 // string / point object — and returns MATH coordinates ([x, y]) or null.
 
 /** Samples of the arc from `from` to `to` on the circle centred at `c`. */
-export function sampleArcPoints(center, from, to, largeArc, steps = 28) {
+export function sampleArcPoints(center, from, to, largeArc, steps = 36) {
   const [cx, cy] = center;
-  const r = Math.hypot(from[0] - cx, from[1] - cy);
-  if (!(r > 0)) return [];
+  const r1 = Math.hypot(from[0] - cx, from[1] - cy);
+  const r2 = Math.hypot(to[0] - cx, to[1] - cy);
+  if (!(r1 > 0) && !(r2 > 0)) return [];
   const a1 = Math.atan2(from[1] - cy, from[0] - cx);
   const a2 = Math.atan2(to[1] - cy, to[0] - cx);
   let sweep = a2 - a1;
@@ -33,7 +34,11 @@ export function sampleArcPoints(center, from, to, largeArc, steps = 28) {
   if (largeArc) sweep -= Math.sign(sweep) * Math.PI * 2;
   const out = [];
   for (let i = 0; i <= steps; i += 1) {
-    const angle = a1 + (sweep * i) / steps;
+    const t = i / steps;
+    // Radius interpolation: guarantees exact start at `from` and exact end at `to`,
+    // eliminating seam gaps and self-intersecting polygon twists even if LLM coords have slight noise.
+    const r = r1 + (r2 - r1) * t;
+    const angle = a1 + sweep * t;
     out.push([cx + r * Math.cos(angle), cy + r * Math.sin(angle)]);
   }
   return out;

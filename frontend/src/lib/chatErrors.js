@@ -34,6 +34,8 @@
  * BOTH bounds.
  */
 export const CHAT_TIMEOUT_MS = 95_000;
+/** Extended timeout for image recognition and geometry diagrams (2.5 minutes) */
+export const CHAT_TIMEOUT_EXTENDED_MS = 150_000;
 
 /** Kinds worth one silent retry: all three are transient by nature. */
 export const RETRYABLE_KINDS = ["timeout", "network", "server"];

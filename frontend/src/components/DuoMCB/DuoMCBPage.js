@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import styles from "./DuoMCBPage.module.css";
 import Image from "next/image";
+import { Copy, Check } from "lucide-react";
 import { createSession, chat, generateVideo } from "./duoServer";
 // Đợt 4H-2: shrink the photo and check the server's cap BEFORE it is posted.
 // src/lib/imageDownscale.js explains why this is the cheapest fix for the
@@ -237,8 +238,12 @@ function renderTextWithMarkdown(text, key, styles) {
         let content = line;
         let isHeader = false;
         let isBullet = false;
+        let isQuote = false;
         
-        if (content.startsWith("### ")) {
+        if (content.trim().startsWith("> ")) {
+          content = content.trim().replace(/^>\s*/, "");
+          isQuote = true;
+        } else if (content.startsWith("### ")) {
           content = content.replace("### ", "");
           isHeader = true;
         } else if (content.startsWith("## ")) {
@@ -276,6 +281,14 @@ function renderTextWithMarkdown(text, key, styles) {
         
         const renderedLine = parts.length > 0 ? parts : renderVerificationBadge(content, lineIdx);
         
+        if (isQuote) {
+          return (
+            <blockquote key={lineIdx} className={styles.msgBlockquote}>
+              {renderedLine}
+            </blockquote>
+          );
+        }
+
         if (isHeader) {
           return (
             <h3 key={lineIdx} className={styles.msgHeader}>
@@ -1894,7 +1907,7 @@ Output ONLY raw JSON. No markdown, no preamble.`;
                       className={`${styles.solutionStep} ${isAnswer ? styles.solutionAnswer : ""} ${isTitle ? styles.solutionTitle : ""}`}
                     >
                       {!isTitle && (
-                        <span className={styles.solutionBullet} style={{ background: isAnswer ? "#4ade80" : "#6366f1" }} />
+                        <span className={styles.solutionBullet} style={{ background: isAnswer ? "#4ade80" : "#10b981" }} />
                       )}
                       <span className={styles.solutionText}>
                         {parseMathAndText(step).map((token, idx) => {
@@ -2020,6 +2033,17 @@ function ToolsDropdown({ onSelect, disabled }) {
 export default function DuoMCBPage() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopyText = (text, id) => {
+    if (!navigator?.clipboard) return;
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }).catch(err => {
+      console.warn("Copy to clipboard failed", err);
+    });
+  };
   // MathLive (Σ): when on, the composer renders the visual formula field and a
   // sent message is wrapped in $...$ so the model reads it as mathematics.
   const [mathMode, setMathMode] = useState(false);
@@ -2521,20 +2545,16 @@ export default function DuoMCBPage() {
                   );
                 }
                 const { text: cleanContent, vizData } = extractMathvizBlock(m.content || "");
-                return (
-                  <div key={m.id} className={`${styles.msgRow} ${m.role === "user" ? styles.userRow : styles.botRow}`} style={{ maxWidth: vizData ? "100%" : undefined }}>
-                    {m.role === "assistant" && (
-                      <div className={styles.avatar}>
-                        <Image src="/images/duosteamicon-removebg-preview.webp" alt="BingMCB" width={32} height={32} />
-                      </div>
-                    )}
-                    <div style={{ display: "flex", flexDirection: "column", maxWidth: "100%", width: vizData ? "100%" : undefined }}>
-                      <div className={`${styles.bubble} ${m.role === "user" ? styles.userBubble : styles.botBubble}`}>
+                if (m.role === "user") {
+                  return (
+                    <div key={m.id} className={`${styles.msgRow} ${styles.userRow}`}>
+                      <div className={styles.userAvatar}>👤</div>
+                      <div className={`${styles.bubble} ${styles.userBubble}`}>
                         {m.image && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={m.image} alt="Uploaded" className={styles.bubbleImage} />
                         )}
-                        {parseMathAndText(cleanContent).map((token, idx) => {
+                        {parseMathAndText(m.content || "").map((token, idx) => {
                           if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
                           try {
                             const html = katex.renderToString(token.content.trim(), { displayMode: token.isBlock, throwOnError: false });
@@ -2545,10 +2565,71 @@ export default function DuoMCBPage() {
                           } catch { return <code key={idx}>{token.content}</code>; }
                         })}
                       </div>
+                    </div>
+                  );
+                }
+
+                const hasText = Boolean(cleanContent && cleanContent.trim().length > 0);
+                return (
+                  <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`}>
+                    <div className={styles.avatar}>
+                      <Image src="/images/duosteamicon-removebg-preview.webp" alt="BingMCB" width={32} height={32} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", maxWidth: "100%", width: "100%" }}>
+                      {(hasText || m.image) && (
+                        <div className={styles.botCard}>
+                          <div className={styles.assistantHeader}>
+                            <div className={styles.assistantTitleGroup}>
+                              <span className={styles.assistantName}>BingMCB</span>
+                              <span className={styles.assistantBadge}>
+                                <span>🦉</span> Cú Xanh Toán học
+                              </span>
+                            </div>
+                            <div className={styles.assistantActions}>
+                              <button
+                                type="button"
+                                className={styles.copyBtn}
+                                onClick={() => handleCopyText(cleanContent, m.id)}
+                                title="Sao chép câu trả lời"
+                              >
+                                {copiedId === m.id ? (
+                                  <>
+                                    <Check size={13} className={styles.copiedTag} />
+                                    <span className={styles.copiedTag}>Đã chép</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={13} />
+                                    <span>Sao chép</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className={styles.botContent}>
+                            {m.image && (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={m.image} alt="Uploaded" className={styles.bubbleImage} />
+                            )}
+                            {parseMathAndText(cleanContent).map((token, idx) => {
+                              if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
+                              try {
+                                const html = katex.renderToString(token.content.trim(), { displayMode: token.isBlock, throwOnError: false });
+                                return (
+                                  <span key={idx} dangerouslySetInnerHTML={{ __html: html }}
+                                    style={token.isBlock ? { display: "block", margin: "0.5em 0" } : {}} />
+                                );
+                              } catch { return <code key={idx}>{token.content}</code>; }
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Đợt 4D — thẻ "xác nhận đề": MathReader trả về 2 cách đọc
                           khác nhau thì học sinh chọn ngay tại đây; bấm vào một cách
                           đọc sẽ gửi lại ĐÚNG LaTeX đó (không cần gửi lại ảnh). */}
-                      {m.role === "assistant" && m.ocr_confirm?.candidates?.length > 0 && (
+                      {m.ocr_confirm?.candidates?.length > 0 && (
                         <div style={{
                           marginTop: 8, padding: "10px 12px", borderRadius: 12, fontSize: 13, lineHeight: 1.6,
                           background: "rgba(250,204,21,0.10)", border: "1px solid rgba(250,204,21,0.35)",
@@ -2580,12 +2661,13 @@ export default function DuoMCBPage() {
                           )}
                         </div>
                       )}
+
                       {/* Đợt 4B/4C + P3/P4 — trạng thái kiểm chứng theo ĐÚNG loại:
                           not_applicable (ẩn hẳn), hết giờ (⏱), đã kiểm số học (ℹ️),
                           thất bại (⚠️). Trước đây mọi trường hợp đều hiện một câu
                           cảnh báo đỏ — đúng thứ học sinh đã phản hồi. */}
-                      {m.role === "assistant" && m.verification && m.verification.status !== "not_applicable" && (
-                        <div style={{ marginTop: 6, fontSize: 12, opacity: 0.8 }}>
+                      {m.verification && m.verification.status !== "not_applicable" && (
+                        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8, paddingLeft: 4 }}>
                           {m.verification.verified
                             ? `✅ đã kiểm chứng${m.verification.repaired ? " (có sửa lại)" : ""}`
                             : m.verification.status === "timeout"
@@ -2600,13 +2682,27 @@ export default function DuoMCBPage() {
                             : ""}
                         </div>
                       )}
-                      {vizData && m.role === "assistant" && (
-                        <div style={{ marginTop: 8, width: "100%" }}>
-                          <MathVizRenderer data={vizData} />
+
+                      {/* Claude-style Artifact Container for MathViz */}
+                      {vizData && (
+                        <div className={styles.artifactContainer}>
+                          <div className={styles.artifactHeader}>
+                            <div className={styles.artifactTitle}>
+                              <span className={styles.artifactIcon}>📐</span>
+                              <span className={styles.artifactLabel}>
+                                {vizData.title || "Mô hình toán học tương tác DuoMath"}
+                              </span>
+                            </div>
+                            <span className={styles.artifactBadge}>
+                              {vizData.kind === "3d" ? "3D Không gian" : "2D Mặt phẳng"}
+                            </span>
+                          </div>
+                          <div className={styles.artifactBody}>
+                            <MathVizRenderer data={vizData} />
+                          </div>
                         </div>
                       )}
                     </div>
-                    {m.role === "user" && <div className={styles.userAvatar}>👤</div>}
                   </div>
                 );
               })}

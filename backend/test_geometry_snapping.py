@@ -101,6 +101,47 @@ def test_geometry_snapping():
     assert snap_geometry_2d(passthrough) == passthrough
     print("[OK] Guard: non-geometry_2d widgets pass through untouched")
 
+    # 7. P16-fix (2026-10-06) — right-angle snap for declared `angle` layers.
+    #    geometry_analytic_checks flags an `angle` with right_angle:true whose
+    #    triple is not 90° (`right_angle_mismatch`). The snap must make the claim
+    #    true AND move EVERY copy of the arm endpoint (the polygon's copy too), so
+    #    the badge and the shape agree.
+    viz7 = {
+        "type": "mathviz.v1", "widget": "geometry_2d", "mode": "composite",
+        "layers": [
+            {"kind": "polygon", "points": [
+                {"id": "A", "x": 0.0, "y": 0.0},
+                {"id": "B", "x": 3.0, "y": 0.0},
+                {"id": "C", "x": 0.0, "y": 2.8},   # ~87° at A, just inside tolerance
+            ]},
+            {"kind": "angle", "points": ["B", "A", "C"], "right_angle": True},
+        ],
+    }
+    out7 = snap_geometry_2d(viz7)
+    poly = {p["id"]: (p["x"], p["y"]) for p in out7["layers"][0]["points"]}
+    ang_at_A = _angle_deg(poly["B"], poly["A"], poly["C"])
+    assert abs(ang_at_A - 90.0) < 1e-3, f"right-angle snap failed: {ang_at_A:.3f}"
+    # The polygon's OWN copy of C must have moved (not just a refs shadow copy).
+    assert poly["C"] != (0.0, 2.8), "the polygon's copy of C must move with the angle snap"
+    print(f"[OK] Right-angle snap: polygon copy of C -> {poly['C']} ({ang_at_A:.3f}\u00b0)")
+
+    # 7b. A right_angle far outside the nudge bound is left alone (no false precision).
+    viz7b = {
+        "type": "mathviz.v1", "widget": "geometry_2d", "mode": "composite",
+        "layers": [
+            {"kind": "polygon", "points": [
+                {"id": "A", "x": 0.0, "y": 0.0},
+                {"id": "B", "x": 3.0, "y": 0.0},
+                {"id": "C", "x": 3.0, "y": 3.0},   # 45° at A: too far to nudge
+            ]},
+            {"kind": "angle", "points": ["B", "A", "C"], "right_angle": True},
+        ],
+    }
+    out7b = snap_geometry_2d(viz7b)
+    polyb = {p["id"]: (p["x"], p["y"]) for p in out7b["layers"][0]["points"]}
+    assert polyb["C"] == (3.0, 3.0), "an angle too far from 90° must not be force-snapped"
+    print("[OK] Right-angle guard: out-of-tolerance angle left untouched")
+
     print("\n>>> ALL GEOMETRIC SNAPPING TESTS PASSED! <<<")
 
 

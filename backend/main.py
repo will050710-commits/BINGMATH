@@ -1454,24 +1454,44 @@ def detect_widget(user_message: str, matched_node_ids: list | None = None) -> st
 
 # ── MathViz Visual Rules & Per-Widget Prompt Snippets ─────────────────────────
 _VISUAL_RULES = (
-    "\n\n## QUY TẮC TRỰC QUAN HÓA:\n"
-    "- Nếu nội dung câu hỏi có hàm số/hình/số liệu CỤ THỂ để vẽ → kết thúc câu trả lời bằng "
-    "ĐÚNG MỘT khối ```mathviz chứa JSON hợp lệ theo schema bên dưới.\n"
-    "- Nếu câu hỏi thuần lý thuyết/định nghĩa, không có gì cụ thể để vẽ → KHÔNG thêm khối này.\n"
-    "- Khối ```mathviz LUÔN là phần cuối cùng, không kèm lời dẫn, không xen giữa các đoạn giải thích.\n"
-    "- Nếu có lời giải: trình bày lời giải TRƯỚC, và bản minh họa ```mathviz đặt SAU CÙNG "
-    "(đúng thứ tự: lời giải → bản minh họa).\n"
-    "- Điền toàn bộ số liệu (default, points, dims, params...) khớp ĐÚNG với dữ liệu thật trong đề "
-    "bài — TUYỆT ĐỐI không bịa số liệu mẫu khác với đề.\n"
-    "- TUYỆT ĐỐI KHÔNG dùng ký tự '$' hay mã LaTeX (như \\triangle, \\perp, \\circ) bên trong chuỗi JSON (trong title, label, note...)! "
-    "Dùng các ký hiệu Unicode chuẩn (ví dụ: Δ, ∠, ⟂, ∥, ², ³, √, °, π).\n"
-    "- Không tự đoán tọa độ cho các điểm dẫn xuất (trung điểm, trọng tâm, tâm ngoại tiếp, trực tâm, chân đường vuông góc, phân giác, giao điểm...) — "
-    "BẮT BUỘC dùng mảng 'constructions' để công cụ giải tích tự tính toán chính xác 100%.\n"
-    "- Với đại lượng biến thiên hoặc bài toán cực trị/quỹ tích: khai báo 'params' (min, max, step, default/value) và dùng tên tham số trong biểu thức.\n"
-    "- Biểu thức toán học chỉ gồm số, biến, pi, e và các hàm sin, cos, tan, sqrt, abs, exp, ln, log. Luôn viết rõ dấu nhân (2*x, không viết 2x).\n"
-    "- Khai báo các tính chất cần chứng minh trong mảng 'claims' (collinear, concyclic, perpendicular, parallel, equal) để hệ thống tự kiểm tra số học và hiển thị trực quan.\n"
-    "- Gom đường phụ vào 'group' (ví dụ: 'Đường cao', 'Đường Euler') để người dùng bật/tắt. Dùng 'note' cho tooltip giải thích thay vì nhãn dài làm rối hình.\n"
-    "- Bám sát đúng tên khóa (key) trong schema, không tự ý đổi tên hay thêm khóa lạ.\n"
+    "\n\n## QUY TẮC TRỰC QUAN HÓA TOÁN HỌC (MathViz Standards & Mandatory Rules):\n"
+    "1. VAI TRÒ & ĐẦU RA: Trả lời bằng văn bản sư phạm và LaTeX như thường lệ. Khi một hình minh họa giúp hiểu bài "
+    "(hình học phẳng, quỹ tích, tiếp tuyến, thiết diện, đồ thị hàm số), hãy kết thúc câu trả lời bằng ĐÚNG MỘT khối ```mathviz "
+    "ở cuối cùng, chứa JSON hợp lệ có \"type\":\"mathviz.v1\". Không viết HTML, JavaScript, Three.js hay Python để vẽ. "
+    "Thứ tự trình bày BẮT BUỘC: hãy trình bày lời giải TRƯỚC, rồi mới để bản minh họa ```mathviz đặt SAU CÙNG. "
+    "Khối ```mathviz LUÔN là phần cuối cùng, không kèm lời dẫn, không xen giữa các đoạn giải thích.\n"
+    "2. CHỌN DẠNG HÌNH (CÂY QUYẾT ĐỊNH):\n"
+    "   - Đại số thuần túy, biến đổi, giải phương trình đại số (ví dụ: 2x+3=7, rút gọn biểu thức) → TUYỆT ĐỐI KHÔNG tạo hình.\n"
+    "   - Hình học phẳng (tam giác, đường tròn, tiếp tuyến, quỹ tích, dựng hình) → Dùng widget \"geometry_2d\" (người dùng có thể kéo điểm gốc để kiểm tra tính tổng quát).\n"
+    "   - Đồ thị hàm số, nghiệm, cực trị, khảo sát với tham số → Dùng \"geometry_2d\" (layer \"function\" + \"params\") hoặc widget \"function_plot\".\n"
+    "   - Khối đa diện, thiết diện không gian, mặt tham số 3D → Dùng widget \"geometry_3d\".\n"
+    "   - Đề thi / Olympic hình học: Khai báo ít điểm tự do nhất có thể, mọi điểm còn lại bắt buộc dựng qua \"constructions\"; "
+    "thêm \"claims\" cho điều cần chứng minh, \"group\" cho đường phụ, \"angle\" cho các góc dùng trong chứng minh.\n"
+    "   - Khám phá mở: Đưa các bất biến hình học nổi bật (đường Euler, các điểm thẳng hàng, tứ giác nội tiếp) vào \"claims\" hoặc \"group\".\n"
+    "3. KÝ HIỆU & UNICODE: TUYỆT ĐỐI KHÔNG dùng ký tự '$' hay mã LaTeX (\\triangle, \\perp, \\circ...) bên trong chuỗi JSON (trong title, label, note...)! "
+    "Dùng các ký hiệu Unicode chuẩn (ví dụ: Δ, ∠, ⟂, ∥, ², ³, √, °, π). Tiêu đề và note viết theo ngôn ngữ của người dùng (tiếng Việt).\n"
+    "4. ĐỊNH DANH (ID) & TỌA ĐỘ ĐIỂM: Mỗi đối tượng có \"id\" duy nhất, ngắn (A, B, O, AB). Chỉ điểm tự do mới có tọa độ số; "
+    "điểm cố định thêm \"fixed\": true. TUYỆT ĐỐI KHÔNG tự đoán tọa độ cho các điểm dẫn xuất (trung điểm, trọng tâm, tâm ngoại tiếp, trực tâm, chân đường vuông góc, phân giác, giao điểm, tiếp điểm...) — "
+    "BẮT BUỘC khai báo chúng bằng mảng \"constructions\" (hoặc \"through_3pts\" cho đường tròn), hệ thống giải tích sẽ tự động tính toán chính xác 100% và tự cập nhật khi người dùng kéo điểm.\n"
+    "5. THAM SỐ BIẾN THIÊN (\"params\"): Đại lượng cần chỉnh được hoặc bài toán quỹ tích/cực trị thì khai báo trong \"params\" "
+    "(tối đa 8 tham số; tên chữ thường, không trùng x, u, v, pi, e hay tên hàm; cấu trúc {\"min\": a, \"max\": b, \"step\": s, \"default\": v hoặc \"value\": v}), rồi dùng tên tham số trong biểu thức chuỗi.\n"
+    "6. BIỂU THỨC TOÁN HỌC AN TOÀN: Biểu thức chỉ gồm số, + - * / ^ ( ), tham số, x (hoặc u, v), pi, e và các hàm sin, cos, tan, asin, acos, atan, sqrt, abs, exp, ln, log. "
+    "LUÔN VIẾT RÕ DẤU NHÂN (2*x, không viết 2x). Không dùng mã lệnh lập trình.\n"
+    "7. ĐIỀU KIỆN HỢP LỆ & GIỚI HẠN: Không đặt 3 điểm thẳng hàng cho tam giác hoặc đường tròn qua 3 điểm; kích thước và bán kính > 0; miền giá trị min < max. "
+    "Giới hạn: ≤ 60 đối tượng, ≤ 8 tham số, lưới mặt tham số 3D ≤ 96×96. Bài toán quá phức tạp hãy tách thành nhiều hình trực quan.\n"
+    "8. GIẢI THÍCH & TOOLTIP (\"note\"): Nhãn trên hình ngắn (dùng id hoặc label ngắn). Toàn bộ giải thích dài, công thức, ý nghĩa sư phạm "
+    "BẮT BUỘC đặt trong trường \"note\" của đối tượng (sẽ hiển thị khi học sinh rê chuột hoặc chạm vào), không đặt nhãn dài lên hình làm rối mắt.\n"
+    "9. ĐIỀU CẦN CHỨNG MINH (\"claims\"): Khai báo các tính chất cần chứng minh (collinear, concyclic, perpendicular, parallel, equal) trong mảng \"claims\". "
+    "Hệ thống sẽ kiểm tra bằng số học (sai số < 1e-6); claim sai nghĩa là cấu hình hình học hoặc lập luận sai — hãy sửa cho đúng chứ đừng giữ claim sai.\n"
+    "10. NHÓM ĐƯỜNG PHỤ (\"group\"): Gom các đường phụ (đường cao, đường trung trực, đường Euler...) vào \"group\" để người dùng có thể bật/tắt từng lớp hiển thị. "
+    "Dùng \"opacity\" thấp và \"highlight_color\" để phân biệt rõ đối tượng chính và đối tượng phụ.\n"
+    "11. KHÔNG BỊA TỪ VỰNG: Bám sát đúng tên khóa (key) và kind trong schema, không tự ý đổi tên hay thêm kind lạ. "
+    "Nếu không có kind hoặc solid phù hợp thì chọn cái gần nhất và nói rõ giới hạn trong phần lời giải. Không viết đồ thị phụ thuộc: hệ thống tự suy ra. Bỏ qua \"view\" để trang tự căn khung (fitView) theo nội dung.\n"
+    "12. TỰ RÀ SOÁT CÁC ĐƯỜNG NÉT TRƯỚC KHI TRẢ VỀ (Self-Verification of Displayed Curves & Elements):\n"
+    "   - Chỉ vẽ đúng các đường/cung thuộc bài toán: Nếu bài toán chỉ yêu cầu các cung tròn (arc) hoặc miền tô (region) bên trong tam giác/đa giác, TUYỆT ĐỐI KHÔNG vẽ cả đường tròn đầy đủ (\"kind\":\"circle\"). Đường tròn đầy đủ sẽ vẽ tràn ra ngoài hình và làm mất tính sư phạm.\n"
+    "   - Chiều cung tròn (\"arc\"): Cung tròn trong JSXGraph vẽ ngược chiều kim đồng hồ (CCW). Hãy chọn đúng điểm 'from' và 'to' để cung quét góc nhọn bên trong miền cần vẽ, không để cung quét lộn vòng 270° ra ngoài.\n"
+    "   - Miền hình học tô màu (\"region\"): Các đường bao của 'path' phải đi theo thứ tự khép kín liên tục (arc từ R đến P tâm A, arc từ P đến Q tâm B, arc từ Q đến R tâm C).\n"
+    "   - Không để 'claims' trống rỗng: Luôn khai báo các quan hệ hình học cơ bản (equal, perpendicular, parallel, concyclic, collinear) trong mảng \"claims\" để hệ thống tự động kiểm chứng và gắn huy hiệu xác thực.\n"
 )
 
 _WIDGET_PROMPT_SNIPPETS: dict[str, str] = {
@@ -1584,30 +1604,50 @@ Ví dụ ĐÚNG — ba cung nội tiếp tam giác $ABC$ vuông tại $A$ ($AB=3
  "layers":[
    {"kind":"polygon","points":[{"id":"A","x":0,"y":0},{"id":"B","x":0,"y":3},{"id":"C","x":4,"y":0}],"color":"#e2e8f0"},
    {"kind":"arc","center":{"id":"A","x":0,"y":0},"from":{"id":"R","x":1,"y":0},"to":{"id":"P","x":0,"y":1},"color":"#38bdf8"},
-   {"kind":"arc","center":{"id":"B","x":0,"y":3},"from":{"id":"Q","x":1.6,"y":1.8},"to":{"id":"P","x":0,"y":1},"color":"#38bdf8"},
+   {"kind":"arc","center":{"id":"B","x":0,"y":3},"from":{"id":"P","x":0,"y":1},"to":{"id":"Q","x":1.6,"y":1.8},"color":"#38bdf8"},
    {"kind":"arc","center":{"id":"C","x":4,"y":0},"from":{"id":"Q","x":1.6,"y":1.8},"to":{"id":"R","x":1,"y":0},"color":"#38bdf8"},
-   {"kind":"region","fill":"rgba(148, 163, 184, 0.3)","path":[
-     {"type":"point","id":"P","x":0,"y":1},
-     {"type":"arc","center":{"id":"A","x":0,"y":0},"from":{"id":"P","x":0,"y":1},"to":{"id":"Q","x":1.6,"y":1.8}},
-     {"type":"point","id":"Q","x":1.6,"y":1.8}]},
+   {"kind":"region","fill":"rgba(148, 163, 184, 0.35)","path":[
+     {"type":"arc","center":"A","from":"R","to":"P"},
+     {"type":"arc","center":"B","from":"P","to":"Q"},
+     {"type":"arc","center":"C","from":"Q","to":"R"}]},
    {"kind":"points","data":[{"id":"A","x":0,"y":0},{"id":"B","x":0,"y":3},{"id":"C","x":4,"y":0},
      {"id":"P","x":0,"y":1},{"id":"Q","x":1.6,"y":1.8},{"id":"R","x":1,"y":0}]},
    {"kind":"angle","points":["B","A","C"],"right_angle":true}
+ ],
+ "constructions":[
+   {"point":"P","type":"circle_circle_tangency","of":["A","B"]},
+   {"point":"Q","type":"circle_circle_tangency","of":["B","C"]},
+   {"point":"R","type":"circle_circle_tangency","of":["A","C"]}
+ ],
+ "claims":[
+   {"type":"equal","of":["A","P","A","R"],"text":"AP = AR = 1"},
+   {"type":"equal","of":["B","P","B","Q"],"text":"BP = BQ = 2"},
+   {"type":"equal","of":["C","Q","C","R"],"text":"CQ = CR = 3"},
+   {"type":"perpendicular","of":["A","B","A","C"],"text":"AB ⟂ AC"}
  ]}
 QUY TẮC BẮT BUỘC: mọi điểm được nhắc tới trong "center"/"from"/"to"/"path"/"points"/"through_3pts"
 PHẢI được khai báo trong cùng payload (một layer "points" hoặc "polygon").
 Nếu hình có chi tiết mà bảng kind không diễn tả được: xấp xỉ bằng "polyline" + "points" và nói rõ trong lời giải.
+QUY TẮC CHỐNG LỆCH SCHEMA (BẮT BUỘC, áp dụng cho MỌI hình geometry_2d): khối JSON LUÔN phải có khóa "layers" (mảng các lớp). TUYỆT ĐỐI KHÔNG gửi hình chỉ với "points" trần, và KHÔNG dùng các khóa/kiểu sau vì chúng KHÔNG thuộc MathViz và sẽ bị hệ thống loại: "radius", "objects", "groups"; construction dùng "id" thay vì "point"; "type" thuộc {radius, circle, intersection, arc, tangent}. "constructions" chỉ có dạng {"point","type","of",...}; "claims" chỉ thuộc {collinear, concyclic, perpendicular, parallel, equal} và phải có mảng "of".
 ''',
 
 "geometry_3d": '''
-## SCHEMA cho widget "geometry_3d":
+## SCHEMA cho widget "geometry_3d" (Hệ tọa độ trục z hướng lên - Z-up):
 {"type":"mathviz.v1","widget":"geometry_3d","title":"Tiêu đề Unicode (không dùng $)",
  "solid":"cuboid"|"square_pyramid"|"triangular_pyramid"|"triangular_prism"|"cone"|"cylinder"|"cylinder_with_bore"|"regular_polygon"|"sphere"|"ellipsoid"|"frustum"|"mobius_strip"|"klein_bottle"|"torus"|"tesseract_4d"|"boys_surface"|"cross_cap"|"trefoil_knot",
  "dims":{...chỉ các khóa liên quan: a,b,h cho cuboid / a,h cho square_pyramid,triangular_pyramid,triangular_prism / r,h cho cone,cylinder / radius,height,bore_radius cho cylinder_with_bore (khối tròn xoay/trụ khoét rỗng CSG) / r cho sphere / a,b,c cho ellipsoid / r1,r2,h cho frustum / r,h,n cho regular_polygon / w cho mobius_strip / r cho torus,klein_bottle,trefoil_knot / angle_4d cho tesseract_4d},
  "params":{"d":{"min":0,"max":12,"step":0.1,"default":6}},
  "plane":{"n":[1,1,1],"d":"d"},
  "surface":{"x":"...","y":"...","z":"...","u":[0,"2*pi"],"v":[0,"pi"],"n":[48,24]},
- "show_cross_section":false,"cross_section_height":0}
+ "show":{"vertices":true,"edges":true,"faces":true,"axes":true,"grid":true}}
+
+HỆ TỌA ĐỘ VÀ QUY ƯỚC ĐỈNH ĐA DIỆN:
+- cuboid {a,b,h}: Chiếm miền [0,a] × [0,b] × [0,h], đáy ABCD tại z=0 (A là gốc O, B trên trục x, D trên trục y), mặt trên EFGH (E nằm trên A).
+- square_pyramid {a,h}: Đáy ABCD ở mặt phẳng z=0, đỉnh S tại (a/2, a/2, h).
+- triangular_pyramid {a,h}: Đáy tam giác đều ABC ở z=0 (A tại gốc, B trên trục x), đỉnh S nằm ngay trên trọng tâm đáy.
+- plane {n, d}: Mặt phẳng n · X = d cắt khối đa diện (n là 3 tọa độ pháp tuyến [nx,ny,nz]). Hệ thống tự tính thiết diện, diện tích, khoảng cách.
+- surface: Vẽ mặt cong tham số x(u,v), y(u,v), z(u,v) theo lưới u, v (ví dụ: u ∈ [0, 2*pi], v ∈ [0, pi]).
+
 TÍNH NĂNG MẶT PHẲNG CẮT THIẾT DIỆN ("plane"):
 - Cắt khối đa diện bằng mặt phẳng n · X = d: khai báo "plane": {"n": [nx, ny, nz], "d": "d"}.
 - Kết hợp với "params": {"d": {"min": ..., "max": ..., "step": ..., "default": ...}} để tạo thanh trượt điều khiển mặt phẳng cắt thiết diện tương tác thời gian thực!
@@ -3040,19 +3080,24 @@ class _ChatDeadlineMiddleware(BaseHTTPMiddleware):
         if request.method != "POST" or request.url.path != "/api/chat":
             return await call_next(request)
         started = time.perf_counter()
+        is_extended = (
+            request.query_params.get("extended") == "1"
+            or request.headers.get("x-duomath-extended") == "1"
+        )
+        req_timeout = chat_budget.CHAT_REQUEST_TIMEOUT_EXTENDED_S if is_extended else chat_budget.CHAT_REQUEST_TIMEOUT_S
         try:
             return await asyncio.wait_for(call_next(request),
-                                          timeout=chat_budget.CHAT_REQUEST_TIMEOUT_S)
+                                          timeout=req_timeout)
         except (asyncio.TimeoutError, TimeoutError):
             elapsed = time.perf_counter() - started
             logger.error(
-                "[Chat] produced no response within %.0fs (budget %.0fs) — answering 504 so the "
+                "[Chat] produced no response within %.0fs (budget %.0fs, extended=%s) — answering 504 so the "
                 "client sees the real cause instead of a proxy kill that looks like CORS.",
-                elapsed, chat_budget.CHAT_REQUEST_TIMEOUT_S)
+                elapsed, req_timeout, is_extended)
             quality_log(surface="chat", tier="timeout", provider="deadline",
                         latency_ms=int(elapsed * 1000))
             return JSONResponse(
-                chat_budget.timeout_payload(elapsed, chat_budget.CHAT_REQUEST_TIMEOUT_S),
+                chat_budget.timeout_payload(elapsed, req_timeout),
                 status_code=504,
                 headers={"X-DuoMath-Timeout": "1"},
             )
@@ -3076,7 +3121,14 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_origin_regex=ALLOWED_ORIGIN_REGEX,
     allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=[
+        "Authorization",
+        "Content-Type",
+        "X-DuoMath-Extended",
+        "x-duomath-extended",
+        "Accept",
+        "Origin",
+    ],
     # Our own metadata headers (object counts and file id of a .ggb export) are
     # not on the CORS safelist, so a browser could not read them without this.
     # They carry no user data — see /api/viz/geogebra.
@@ -3815,6 +3867,12 @@ async def chat(request: Request):
     # sample problem — and a reply that never claimed to be a solution must not
     # carry the red "answer unverified" badge either.
     _honest_floor = False
+    # P16-fix (2026-10-06): set when a geometry_2d payload ends up with nothing the
+    # renderers can draw (no layers AND no top-level points). The block is then
+    # hidden and an honest note replaces it — before this, the code logged "sending
+    # reply without a visual" while line ~5364 re-inserted the broken block anyway,
+    # so the flagship benchmark showed a blank artifact with no explanation.
+    _no_figure_note = False
     session_id   = d.get("session_id") or str(uuid.uuid4())
     user_message = (d.get("message") or "").strip()
     image_data   = d.get("image")
@@ -3858,6 +3916,14 @@ async def chat(request: Request):
     # Detect mathviz widget from graph nodes + keyword fallback
     _matched_node_ids = extract_graph_entities(user_message)
     _widget = detect_widget(user_message, _matched_node_ids)
+
+    # Extended budget for image recognition or geometry-related questions
+    _is_extended = bool(d.get("extended")) or request.query_params.get("extended") == "1" or bool(image_data) or request.headers.get("x-duomath-extended") == "1" or _widget in ("geometry_2d", "geometry_3d") or any(
+        k in user_message.lower() for k in ("hình", "tam giác", "đường tròn", "tọa độ", "geometry", "chóp", "lăng trụ", "diện tích", "thể tích", "mathviz", "cung tròn", "tiếp xúc")
+    )
+    if _is_extended:
+        _budget = chat_budget.StageBudget(chat_budget.CHAT_REQUEST_TIMEOUT_EXTENDED_S)
+        logger.info(f"[Chat] Extended timeout budget activated: {chat_budget.CHAT_REQUEST_TIMEOUT_EXTENDED_S}s (image={bool(image_data)}, widget={_widget})")
 
     # Image pre-processing & Stage 1 Vision Agent (free OpenRouter vision ladder —
     # see vision_agent.DEFAULT_MODEL / OPENROUTER_VISION_MODEL)
@@ -4184,6 +4250,29 @@ async def chat(request: Request):
     if _plan and _plan.get("draw_hint"):
         full_system_prompt += f"\n\n## YÊU CẦU RIÊNG CHO HÌNH NÀY:\n{_plan['draw_hint']}\n"
 
+    # Mẫu mô hình toán 2D/3D (Row 9): Chỉnh sửa tăng dần dựa trên JSON hiện tại
+    _last_viz_for_edit = None
+    if history:
+        for _h in reversed(history[-6:]):
+            if _h.get("role") == "assistant" and "```mathviz" in _h.get("content", ""):
+                _, _extracted_prev = _extract_mathviz_block(_h["content"])
+                if _extracted_prev and isinstance(_extracted_prev, dict):
+                    _last_viz_for_edit = _extracted_prev
+                    break
+
+    _edit_keywords = ("sửa", "đổi", "chỉnh", "thay", "thêm", "bớt", "tăng", "giảm", "kéo", "thay đổi",
+                      "modify", "edit", "adjust", "change", "update", "add", "remove")
+    if _last_viz_for_edit and any(kw in user_message.lower() for kw in _edit_keywords):
+        full_system_prompt += (
+            f"\n\n## YÊU CẦU CHỈNH SỬA HÌNH ĐANG HIỂN THỊ (Incremental Diagram Modification):\n"
+            f"Người dùng muốn chỉnh hình đang hiển thị. Dựa trên JSON hiện tại:\n"
+            f"- CHỈ đổi giá trị, thêm tham số hoặc thêm đối tượng tham chiếu các id đã có.\n"
+            f"- GIỮ NGUYÊN các ID cũ (A, B, C...); KHÔNG viết lại từ đầu, không tự ý đổi tên các điểm cũ.\n"
+            f"- Trả về JSON đầy đủ đã sửa trong ĐÚNG MỘT khối ```mathviz ở cuối câu trả lời, kèm 1–2 câu văn bản ngắn gọn nêu rõ thay đổi.\n"
+            f"Yêu cầu của người dùng: {user_message}\n"
+            f"JSON hiện tại:\n```mathviz\n{json.dumps(_last_viz_for_edit, ensure_ascii=False, indent=2)}\n```\n"
+        )
+
 
     # Map conversation history to Gemini structure (keep last 12 for long proofs)
     gemini_contents = []
@@ -4326,6 +4415,8 @@ async def chat(request: Request):
     # TIMEOUT_S between two stages and be killed with no answer at all, which is
     # exactly the failure this đợt exists to remove.
     _gen_budget = (_plan or {}).get("generate") or chat_budget.CHAT_GENERATE_BUDGET_S
+    if _is_extended and not _plan:
+        _gen_budget = chat_budget.CHAT_GENERATE_EXTENDED_BUDGET_S
     _gen_left = _budget.clamp(_gen_budget)
 
     # ── Đợt 8 / 4I: soft deadline — answer with what we ALREADY have ─────────
@@ -5077,6 +5168,17 @@ async def chat(request: Request):
         # ── MathViz validation, bounded retry + free-tier escalation
         #    (Risk 2), then geometric regularization (Risk 1) ─────────────
         _reply_text, _viz_block = _extract_mathviz_block(reply)
+        # P16-fix (2026-10-06): a geometry_2d payload that arrived WITHOUT a
+        # drawable "layers" array (the model used the single-shape form, or dropped
+        # layers on a hard figure) gets one synthesized from its own top-level
+        # points. Without this, validate_mathviz is skipped for a "layers"-less
+        # payload and the whole regularization block below never runs, so the
+        # figure either renders blank or keeps the model's guessed coordinates.
+        if isinstance(_viz_block, dict) and _viz_block.get("widget") == "geometry_2d":
+            try:
+                _viz_block = mathviz_contract.synthesize_layers(_viz_block)
+            except Exception as e_synth:
+                logger.debug(f"[MathViz] layer synthesis skipped: {e_synth}")
         if _viz_block is not None and not is_viz_request:
             actual_widget = _viz_block.get("widget") or _widget or "geometry_3d"
             _viz_errors = validate_mathviz(actual_widget, _viz_block)
@@ -5088,24 +5190,46 @@ async def chat(request: Request):
             # slot; below that the repair tiers run instead (they are narrow JSON
             # calls, not full replies).
             _retry_worth_it = _budget.remaining() > 15.0
-            if _viz_errors and _retry_worth_it:
-                print(f"[MathViz] Schema errors for widget '{actual_widget}': {_viz_errors} — retrying once with Gemini")
+            if _viz_errors and (_retry_worth_it or _budget.remaining() > 8.0):
+                print(f"[MathViz] Schema errors for widget '{actual_widget}': {_viz_errors} — targeted repair with Gemini")
+                _broken_json_str = json.dumps(_viz_block, ensure_ascii=False, indent=2) if _viz_block else ""
+                _repair_prompt = (
+                    f"Cảnh mathviz bị validator từ chối. Chỉ sửa đúng trường sai, giữ nguyên mọi phần khác, "
+                    f"và trả về DUY NHẤT JSON đã sửa trong một khối ```mathviz (không giải thích, không viết thêm văn bản ngoài khối JSON).\n"
+                    f"Lỗi: {'; '.join(_viz_errors)}\n"
+                    f"{mathviz_contract.repair_vocabulary()}\n"
+                    f"JSON hiện tại:\n```mathviz\n{_broken_json_str}\n```"
+                )
                 retry_contents = gemini_contents + [
                     {"role": "model", "parts": [{"text": reply}]},
-                    {"role": "user", "parts": [{"text": f"Khối mathviz bị lỗi: {'; '.join(_viz_errors)}. {mathviz_contract.repair_vocabulary()} Hãy trả lại TOÀN BỘ câu trả lời, sửa đúng schema."}]}
+                    {"role": "user", "parts": [{"text": _repair_prompt}]}
                 ]
                 retry_payload = {**payload, "contents": retry_contents}
+                # P16-fix (2026-10-06): build the repair URL HERE instead of reusing
+                # `url` from the Tier-1 Gemini loop. That loop only assigns `url`
+                # (line ~4833) when it actually RUNS, and it is skipped entirely once
+                # an earlier tier answered (Groq/Cerebras/NVIDIA). A non-Gemini answer
+                # that needed a MathViz repair therefore died with
+                # "UnboundLocalError: cannot access local variable 'url'" — seen live
+                # on the "ba cung nội tiếp" benchmark — so the primary repair tier
+                # never ran and the broken figure shipped. `gemini_model` is assigned
+                # unconditionally near the top of chat(), so it is always available.
+                _repair_url = (
+                    "https://generativelanguage.googleapis.com/v1beta/models/"
+                    f"{gemini_model}:generateContent?key={gemini_api_key}"
+                )
                 try:
-                    resp2 = await client.post(url, json=retry_payload,
+                    resp2 = await client.post(_repair_url, json=retry_payload,
                                               timeout=_budget.clamp(_gen_budget))
                     resp2.raise_for_status()
                     reply2 = resp2.json()["candidates"][0]["content"]["parts"][0]["text"]
                     _reply2_text, _viz2 = _extract_mathviz_block(reply2)
                     _viz2_errors = validate_mathviz(actual_widget, _viz2) if _viz2 is not None else _viz_errors
                     if _viz2 is not None and not _viz2_errors:
-                        reply = reply2
-                        _reply_text, _viz_block = _reply2_text, _viz2
+                        _viz_block = _viz2
                         _viz_errors = []
+                        # Giữ nguyên phần văn bản giải thích sư phạm ban đầu, thay khối mathviz đã sửa vào cuối
+                        reply = f"{_reply_text.rstrip()}\n\n```mathviz\n{json.dumps(_viz_block, ensure_ascii=False, indent=2)}\n```"
                     else:
                         _viz_errors = _viz2_errors
                 except Exception as ex:
@@ -5172,19 +5296,21 @@ async def chat(request: Request):
                     try:
                         from geometry_verification import verify_geometry_mathviz
                         _verif = verify_geometry_mathviz(_viz_block)
-                        if _verif.get("all_passed"):
-                            _viz_block["_verification"] = {
-                                "status": "verified",
-                                "passed_count": _verif.get("valid_count", 0),
-                                "total_checked": _verif.get("total_claims", 0)
-                            }
-                        else:
-                            _viz_block["_verification"] = {
-                                "status": "warning",
-                                "passed_count": _verif.get("valid_count", 0),
-                                "total_checked": _verif.get("total_claims", 0),
-                                "issues": [d.get("reason") for d in _verif.get("details", []) if not d.get("verified")]
-                            }
+                        _total_claims = _verif.get("total_claims", 0)
+                        if _total_claims > 0:
+                            if _verif.get("all_passed"):
+                                _viz_block["_verification"] = {
+                                    "status": "verified",
+                                    "passed_count": _verif.get("valid_count", 0),
+                                    "total_checked": _total_claims
+                                }
+                            else:
+                                _viz_block["_verification"] = {
+                                    "status": "warning",
+                                    "passed_count": _verif.get("valid_count", 0),
+                                    "total_checked": _total_claims,
+                                    "issues": [d.get("reason") for d in _verif.get("details", []) if not d.get("verified")]
+                                }
                     except Exception as e_verif:
                         logger.debug(f"MathViz QA verification gate skipped: {e_verif}")
 
@@ -5252,10 +5378,41 @@ async def chat(request: Request):
                 except Exception as e_confirm:
                     logger.debug(f"MathViz confirmation skipped: {e_confirm}")
 
+        # P16-fix (2026-10-06): a geometry_2d payload with NO drawable layer and no
+        # top-level points renders as an empty canvas. Hiding it (and saying so) is
+        # honest; shipping it showed the student a blank artifact for a figure the
+        # model could not encode. Only geometry_2d is checked — other widgets carry
+        # their geometry in keys `layers_of` does not read.
+        if _viz_block is not None and _viz_block.get("widget") == "geometry_2d":
+            try:
+                # Plain loop, NOT a comprehension: scripts/audit_bound_names.py only
+                # accepts a name bound on a strictly EARLIER line, and a generator
+                # binds and loads `layer` on one line (the same false UNBOUND the
+                # conflict-loop fix above documents).
+                _has_layer = False
+                for _layer in mathviz_contract.layers_of(_viz_block):
+                    if isinstance(_layer, dict) and mathviz_contract.canonical_kind(_layer.get("kind")):
+                        _has_layer = True
+                        break
+                _pts = _viz_block.get("points")
+                _has_points = isinstance(_pts, list) and len(_pts) > 0
+                if not _has_layer and not _has_points:
+                    _viz_block = None
+                    _no_figure_note = True
+            except Exception as e_drawable:
+                logger.debug(f"[MathViz] drawable-layer test skipped: {e_drawable}")
+
         if _viz_block is not None:
             reply = f"{_reply_text}\n\n```mathviz\n{json.dumps(_viz_block, ensure_ascii=False, indent=2)}\n```"
         elif "```mathviz" in reply:
             reply = reply.split("```mathviz")[0].rstrip()
+
+        if _no_figure_note:
+            reply = (reply.rstrip() + "\n\n"
+                     "> ℹ️ Hình minh họa cho bài này chưa dựng được tự động "
+                     "(cấu hình hình học gửi lên chưa đủ để vẽ). Phần lời giải ở trên "
+                     "vẫn dùng được; em có thể nhờ vẽ lại bằng cách nêu rõ các điểm "
+                     "và đường cần thể hiện.")
 
         # ── TypeSafe AI / JevStyle Hallucination Reduction Guard & Auto-healing ──
         typesafe_info = {}
@@ -5301,6 +5458,14 @@ async def chat(request: Request):
         # more than answering it did). Skipping is recorded, not silent — the
         # student gets the honest "chưa kiểm chứng" badge either way.
         _verify_budget = _plan["verify"] if _plan else chat_budget.CHAT_VERIFY_BUDGET_S
+        # P16-fix (2026-10-06): on an extended (image/geometry) request give the
+        # critic a larger FLOOR — the whole-request bound is 140 s, so a free-tier
+        # critic that needs >25 s can finish instead of always timing out (live QA
+        # showed every numeric answer shipping the "chưa kịp kiểm chứng" label).
+        # The clamp below still caps this by what is left, so the sum invariant
+        # (stage budgets ≤ whole-request bound) is untouched.
+        if _is_extended:
+            _verify_budget = max(_verify_budget, chat_budget.CHAT_VERIFY_EXTENDED_BUDGET_S)
         try:
             _verify_applicable = (
                 _verify_budget > 0
@@ -5321,7 +5486,11 @@ async def chat(request: Request):
                 try:
                     _checks0 = await asyncio.wait_for(
                         asyncio.to_thread(math_solver.deterministic_checks, _ir, reply),
-                        timeout=3.0,
+                        # P16-fix: was 3.0 s, which a dense reply occasionally blew
+                        # through — leaving _checks0 empty, so a critic timeout could
+                        # only report the vague "hết thời gian kiểm chứng". 6 s always
+                        # yields the free arithmetic verdict.
+                        timeout=6.0,
                     ) or []
                 except Exception as _e_det:
                     logger.debug("[Chat] deterministic checks unavailable: %s", _e_det)

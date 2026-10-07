@@ -13,7 +13,7 @@ import { collectLayerPoints, canonicalKind, ENGINE_SUPPORT } from '@/lib/mathviz
 // Đợt 8 / 4I: the outline maths lives in ONE place now (src/lib/mathvizOutline.js),
 // shared with the SVG engine — one definition of where a curve goes.
 import {
-  sampleRegionOutline, sampleEllipse, curveXY,
+  sampleRegionOutline, sampleEllipse, curveXY, sampleArcPoints,
 } from '@/lib/mathvizOutline';
 
 // ── Region/ellipse sampling ──────────────────────────────────────────────────
@@ -319,16 +319,30 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
     const xs = allPts.map((p) => p.x);
     const ys = allPts.map((p) => p.y);
 
+    // Bao gồm các đường tròn/cung vào bounding box (Quy tắc tự căn khung fitView của HTML)
+    (data?.layers || []).forEach((l) => {
+      if (l.kind === 'circle' && l.r) {
+        const c = typeof l.center === 'string' ? pointsMap[l.center] : l.center;
+        if (c && Number.isFinite(c.x) && Number.isFinite(c.y)) {
+          xs.push(c.x - l.r, c.x + l.r);
+          ys.push(c.y - l.r, c.y + l.r);
+        }
+      }
+    });
+
     let bbox = [-6, 6, 6, -6];
-    if (xs.length > 0 && ys.length > 0) {
+    if (data?.view && Array.isArray(data.view.x) && Array.isArray(data.view.y) && data.view.x[1] > data.view.x[0] && data.view.y[1] > data.view.y[0]) {
+      // Khi khai báo view rõ ràng: [x0, y1, x1, y0] trong JSXGraph
+      bbox = [data.view.x[0], data.view.y[1], data.view.x[1], data.view.y[0]];
+    } else if (xs.length > 0 && ys.length > 0) {
       const minX = Math.min(...xs);
       const maxX = Math.max(...xs);
       const minY = Math.min(...ys);
       const maxY = Math.max(...ys);
-      const span = Math.max(maxX - minX, maxY - minY, 6);
+      const span = Math.max(maxX - minX, maxY - minY, 5);
       const midX = (minX + maxX) / 2;
       const midY = (minY + maxY) / 2;
-      const half = span / 2 + 1.8;
+      const half = span / 2 + 1.4;
       bbox = [midX - half, midY + half, midX + half, midY - half];
     }
 
@@ -865,15 +879,25 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
               }
             }
           } else if (layer.kind === 'arc') {
-            const pCenter = refPoint(layer.center);
-            const pFrom = refPoint(layer.from);
-            const pTo = refPoint(layer.to);
-            if (pCenter && pFrom && pTo) {
-              board.create('arc', [pCenter, pFrom, pTo], {
-                strokeColor: layer.color || '#3b82f6',
-                strokeWidth: layer.strokeWidth || 1.8,
-                dash: layer.style === 'dashed' ? 2 : 0,
-              });
+            const cCoord = refMath(layer.center);
+            const fCoord = refMath(layer.from);
+            const tCoord = refMath(layer.to);
+            if (cCoord && fCoord && tCoord) {
+              const arcPts = sampleArcPoints(cCoord, fCoord, tCoord, layer.large_arc === true, 36);
+              if (arcPts.length >= 2) {
+                const el = board.create('curve', curveXY(arcPts), {
+                  strokeColor: layer.color || '#38bdf8',
+                  strokeWidth: layer.strokeWidth || 2,
+                  dash: layer.style === 'dashed' ? 2 : (layer.style === 'dotted' ? 1 : 0),
+                  name: layer.label || '',
+                  withLabel: Boolean(layer.label),
+                });
+                if (el && layer.group) {
+                  const g = String(layer.group).trim();
+                  if (!groupElementsRef.current[g]) groupElementsRef.current[g] = [];
+                  groupElementsRef.current[g].push(el);
+                }
+              }
             }
           } else if (layer.kind === 'sector') {
             // A sector is a filled wedge: JSXGraph's own element does this well,
@@ -1063,7 +1087,7 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
       </div>
 
       {/* Verification status badge */}
-      {verification && (
+      {verification && (verification.total_checked > 0 || verification.status === 'warning') && (
         <div
           style={{
             display: 'flex',

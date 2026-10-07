@@ -211,6 +211,31 @@ PATTERNS = [
             "of": [m.group(1).upper(), m.group(2).upper()]
         }
     },
+    # Three mutually tangent circles/arcs touching at points P, Q, R:
+    {
+        "type": "circle_circle_tangency_triple",
+        "regex": re.compile(
+            r"(?:ba|3|các)?\s*cung(?:\s*tròn)?(?:\s*tâm)?\s*\(?([A-Z])\)?(?:\s*,\s*|\s+và\s+)\(?([A-Z])\)?(?:\s*,\s*|\s+và\s+)\(?([A-Z])\)?\s*tiếp\s*xúc(?:\s*(?:nhau|đôi\s*một))?\s*(?:tại)?(?:\s*(?:các)?\s*điểm)?\s*\(?([A-Z])\)?(?:\s*,\s*|\s+và\s+)\(?([A-Z])\)?(?:\s*,\s*|\s+và\s+)\(?([A-Z])\)?",
+            re.IGNORECASE
+        ),
+        "handler": lambda m: [
+            {"point": m.group(4).upper(), "type": "circle_circle_tangency", "of": [m.group(1).upper(), m.group(2).upper()]},
+            {"point": m.group(5).upper(), "type": "circle_circle_tangency", "of": [m.group(2).upper(), m.group(3).upper()]},
+            {"point": m.group(6).upper(), "type": "circle_circle_tangency", "of": [m.group(3).upper(), m.group(1).upper()]},
+        ]
+    },
+    {
+        "type": "circle_circle_tangency_triple_en",
+        "regex": re.compile(
+            r"arcs(?:\s+[a-z]+)*\s+touch\s+each\s+other(?:\s+in\s+pairs)?\s+at(?:\s+the)?(?:\s+points)?\s+([A-Z])(?:\s*,\s*|\s+and\s+)([A-Z])(?:\s*,\s*|\s+and\s+)([A-Z])",
+            re.IGNORECASE
+        ),
+        "handler": lambda m: [
+            {"point": m.group(1).upper(), "type": "circle_circle_tangency", "of": ["A", "B"]},
+            {"point": m.group(2).upper(), "type": "circle_circle_tangency", "of": ["B", "C"]},
+            {"point": m.group(3).upper(), "type": "circle_circle_tangency", "of": ["C", "A"]},
+        ]
+    },
     # Midpoint of an arc: "M là trung điểm cung nhỏ BC" / "trung điểm của cung BC".
     {
         "type": "arc_midpoint",
@@ -279,15 +304,15 @@ def extract_implicit_constructions(reply_text: str, viz_block: Dict[str, Any]) -
     for pat in PATTERNS:
         for match in pat["regex"].finditer(reply_text):
             try:
-                c = pat["handler"](match)
-                target_point = c["point"]
-                # Only add if not already in constructions and target point is present or referenced in diagram
-                if target_point not in existing_points:
-                    # Verify dependency points exist
-                    of_pts = c.get("of", [])
-                    if all(p in diagram_points or any(nc["point"] == p for nc in new_constructions) for p in of_pts):
-                        new_constructions.append(c)
-                        existing_points.add(target_point)
+                res = pat["handler"](match)
+                items = res if isinstance(res, list) else [res]
+                for c in items:
+                    target_point = c["point"]
+                    if target_point not in existing_points:
+                        of_pts = c.get("of", [])
+                        if all(p in diagram_points or any(nc["point"] == p for nc in new_constructions) for p in of_pts):
+                            new_constructions.append(c)
+                            existing_points.add(target_point)
             except Exception as e:
                 logger.debug(f"[ImplicitExtractor] Failed to parse match {match.group(0)}: {e}")
 

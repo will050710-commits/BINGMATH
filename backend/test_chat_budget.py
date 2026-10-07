@@ -263,6 +263,23 @@ def test_complexity_wiring():
           "math_solver.STATUS_PARTIAL if _det_ok else math_solver.STATUS_TIMEOUT" in MAIN)
     check("the appended note is chosen by the verification state",
           "math_solver.verification_note(" in MAIN)
+    # P16-fix (2026-10-06): the critic used to always time out at 25 s, so every
+    # numeric answer shipped the "chưa kịp kiểm chứng" label. An extended request
+    # (140 s bound) now raises that floor, and the deterministic layer gets 6 s so
+    # its free verdict is never lost to a slow call.
+    check("an extended request raises the verification floor",
+          hasattr(cb, "CHAT_VERIFY_EXTENDED_BUDGET_S")
+          and cb.CHAT_VERIFY_EXTENDED_BUDGET_S >= cb.CHAT_VERIFY_BUDGET_S)
+    check("the extended verification floor is wired for extended requests",
+          "if _is_extended:" in MAIN
+          and "_verify_budget = max(_verify_budget, chat_budget.CHAT_VERIFY_EXTENDED_BUDGET_S)" in MAIN)
+    check("the free deterministic layer gets room for the arithmetic verdict",
+          "timeout=6.0," in MAIN)
+    # P16-fix: a layerless geometry_2d payload is upgraded before validation, so a
+    # figure the model encoded with the single-shape form still renders and still
+    # goes through the construction solver.
+    check("a layerless geometry_2d payload is upgraded before validation",
+          "mathviz_contract.synthesize_layers(_viz_block)" in MAIN)
     check("a figure-only reply never starts verification (P5)",
           '_reply_mode != "figure_only"' in MAIN)
 
@@ -286,6 +303,14 @@ def test_complexity_wiring():
           "_retry_worth_it = _budget.remaining() > 15.0" in MAIN)
     check("the free-tier JSON repair is skipped when the clock is nearly gone",
           "_budget.remaining() > 8.0" in MAIN)
+    # P16-fix (2026-10-06): the Gemini MathViz repair tier used to reference `url`,
+    # which is only assigned inside the Tier-1 Gemini loop — so a non-Gemini answer
+    # that needed a repair died with UnboundLocalError and the broken figure shipped.
+    # The repair URL must be built locally from `gemini_model` (always bound).
+    check("the MathViz repair tier builds its own URL (no unbound `url`)",
+          "_repair_url = (" in MAIN
+          and "client.post(_repair_url, json=retry_payload" in MAIN
+          and "client.post(url, json=retry_payload" not in MAIN)
 
     check("an extreme figure gets the plan's lower token cap",
           'max_tokens = (_plan or {}).get("max_tokens") or 4096' in MAIN)

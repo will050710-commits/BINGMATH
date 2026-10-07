@@ -124,14 +124,22 @@ def _nearest_canonical_angle(angle: float) -> Optional[float]:
     return None
 
 
-def _rotate_about(pivot: Point2D, pt: Point2D, delta_deg: float) -> Point2D:
-    """Rotate pt about pivot by delta_deg degrees."""
+def _rotate_about(pivot: Point2D, pt: Point2D, delta_deg: float,
+                  ndigits: int = 4) -> Point2D:
+    """Rotate pt about pivot by delta_deg degrees.
+
+    ``ndigits`` defaults to 4 (the historical precision, kept for the polygon
+    angle pass). The right-angle pass asks for more: geometry_analytic_checks
+    rejects a declared right angle whose |cos| > 1e-6, and 4-decimal coordinates
+    can only reach ~1e-4/|arm| — i.e. a snap that is visually perfect still trips
+    the check. More decimals let the declared claim actually verify.
+    """
     theta = math.radians(delta_deg)
     dx, dy = pt[0] - pivot[0], pt[1] - pivot[1]
     cos_t, sin_t = math.cos(theta), math.sin(theta)
     return (
-        round(pivot[0] + dx * cos_t - dy * sin_t, 4),
-        round(pivot[1] + dx * sin_t + dy * cos_t, 4),
+        round(pivot[0] + dx * cos_t - dy * sin_t, ndigits),
+        round(pivot[1] + dx * sin_t + dy * cos_t, ndigits),
     )
 
 
@@ -174,6 +182,39 @@ def _project_onto_line(pt: Point2D, a: float, b: float, c: float) -> Point2D:
         return pt
     t = (a * pt[0] + b * pt[1] - c) / denom
     return (round(pt[0] - t * a, 4), round(pt[1] - t * b, 4))
+
+
+def _coord(refs: Dict[str, Dict[str, float]], pid: str) -> Optional[Point2D]:
+    """(x, y) for a declared point id, or None when it is not declared."""
+    node = refs.get(str(pid).strip())
+    if not isinstance(node, dict):
+        return None
+    try:
+        return (float(node["x"]), float(node["y"]))
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _set_point(data: Dict[str, Any], refs: Dict[str, Dict[str, float]],
+               pid: str, xy: Point2D) -> bool:
+    """Move point ``pid`` to ``xy`` in EVERY layer that declares it.
+
+    P16-fix (2026-10-06): the polygon pass below only mutates the polygon's OWN
+    point object, so an id repeated in a ``points`` layer (the visible badge)
+    would keep its old coordinates and the badge would drift off the shape. This
+    writes every copy the way geometry_construction_solver._write_solved_point
+    does, which is the pattern the rest of the pipeline already relies on.
+    """
+    moved = False
+    for lay in data.get("layers", []) or []:
+        for _, point in mathviz_contract.iter_point_dicts(lay):
+            qid = point.get("id") or point.get("name")
+            if isinstance(qid, str) and qid.strip() == str(pid).strip():
+                point["x"], point["y"] = xy
+                moved = True
+    if str(pid).strip() in refs:
+        refs[str(pid).strip()]["x"], refs[str(pid).strip()]["y"] = xy
+    return moved
 
 
 # ── public API ────────────────────────────────────────────────────────────────
@@ -223,6 +264,32 @@ def snap_geometry_2d(
                 new_c = _rotate_about(B, C, delta)
                 if distance_2d(C, new_c) <= max_nudge:
                     c_pt["x"], c_pt["y"] = new_c
+
+    # Pass 1b — right-angle snap for explicitly declared "angle" layers.
+    # An `angle` layer flagged right_angle:true names three ids
+    # [armA, vertex, armC]; geometry_analytic_checks reports right_angle_mismatch
+    # when the vertex is not 90°. Snap the SAME way Pass 1 does (rotate one arm
+    # endpoint about the vertex), bounded by max_nudge, so the declared claim
+    # becomes true instead of shipping a figure that contradicts its own badge.
+    # Runs after Pass 1 because Pass 1 may have moved the polygon's copy of the
+    # arm points; this pass then moves EVERY copy of the arm endpoint together.
+    for lay in data["layers"]:
+        if lay.get("kind") != "angle" or not lay.get("right_angle"):
+            continue
+        triples = lay.get("points")
+        if not isinstance(triples, list) or len(triples) < 3:
+            continue
+        ids = [str(t) for t in triples[:3]]
+        A = _coord(refs, ids[0])
+        B = _coord(refs, ids[1])          # the vertex sits in the middle
+        C = _coord(refs, ids[2])
+        if not (A and B and C):
+            continue
+        signed_ang = _signed_angle_deg(A, B, C)
+        target_signed = math.copysign(90.0, signed_ang if signed_ang != 0 else 1.0)
+        new_c = _rotate_about(B, C, target_signed - signed_ang, ndigits=10)
+        if distance_2d(C, new_c) <= max_nudge:
+            _set_point(data, refs, ids[2], new_c)
 
     # Pass 2 — collinearity snap, explicit "points" layers only (safe: no polygon
     # topology to fight). The first and last point are treated as fixed

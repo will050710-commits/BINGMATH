@@ -655,6 +655,7 @@ def _write_solved_point(data: Dict[str, Any], refs: Dict[str, Dict[str, float]],
     dot sat at the old guess while the arc endpoint had moved: exactly the
     "arc no longer touches the circle" symptom, from a different cause.
     """
+    old_coord = coords.get(pid)
     coords[pid] = solved
     updated = False
     for lay in data.get("layers", []) or []:
@@ -663,6 +664,17 @@ def _write_solved_point(data: Dict[str, Any], refs: Dict[str, Dict[str, float]],
             if isinstance(point_id, str) and point_id.strip() == pid:
                 point["x"], point["y"] = solved
                 updated = True
+            elif point_id is None and old_coord is not None:
+                # An inline coordinate without id (e.g. in region.path or arc from/to)
+                # that was at the old solved point location (< 0.45 units away)
+                try:
+                    px, py = float(point.get("x", 0)), float(point.get("y", 0))
+                    if math.hypot(px - old_coord[0], py - old_coord[1]) < 0.45:
+                        point["x"], point["y"] = solved
+                        point["id"] = pid
+                        updated = True
+                except (TypeError, ValueError):
+                    pass
     if updated:
         # Keep the refs view in step with what was just written.
         if pid in refs:
@@ -699,6 +711,105 @@ def _mutual_tangency_triple(pending_centres: Dict[str, Tuple[str, str]]) -> Opti
     if len(pairs) != 3 or len(centres) != 3:
         return None
     return sorted(centres)
+
+
+def infer_tangent_triple_from_diagram(viz_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Automatically deduce mutually tangent triple constructions if omitted by LLM.
+
+    Two sources of truth in the diagram payload:
+    1. Claims with AP = AR, BP = BQ, CQ = CR (or similar):
+       Identifies centers {A, B, C} and contact points P, Q, R.
+    2. Region or arc layers with 3 cyclic arcs sharing endpoints:
+       arc 1 (center C1, from P1, to P2),
+       arc 2 (center C2, from P2, to P3),
+       arc 3 (center C3, from P3, to P1).
+    """
+    if not isinstance(viz_data, dict):
+        return []
+
+    # 1. Inspect claims
+    claims = viz_data.get("claims") or []
+    center_points: Dict[str, set] = {}
+    for cl in claims:
+        if isinstance(cl, dict) and cl.get("type") == "equal" and len(cl.get("of", [])) == 4:
+            p1, p2, p3, p4 = [str(x).strip() for x in cl["of"]]
+            if p1 == p3 and p2 != p4:
+                center_points.setdefault(p1, set()).update([p2, p4])
+    if len(center_points) == 3:
+        centers = sorted(center_points.keys())
+        c1, c2, c3 = centers
+        p12 = center_points[c1].intersection(center_points[c2])
+        p23 = center_points[c2].intersection(center_points[c3])
+        p31 = center_points[c3].intersection(center_points[c1])
+        if len(p12) == 1 and len(p23) == 1 and len(p31) == 1:
+            return [
+                {"point": list(p12)[0], "type": "circle_circle_tangency", "of": [c1, c2]},
+                {"point": list(p23)[0], "type": "circle_circle_tangency", "of": [c2, c3]},
+                {"point": list(p31)[0], "type": "circle_circle_tangency", "of": [c3, c1]},
+            ]
+
+    # 2. Inspect region path and arc layers
+    arcs = []
+    for lay in viz_data.get("layers", []) or []:
+        if not isinstance(lay, dict):
+            continue
+        if lay.get("kind") == "region":
+            for item in (lay.get("path") or []):
+                if isinstance(item, dict) and item.get("type") in ("arc", "circle_arc", "sector"):
+                    c = item.get("center")
+                    cid = c if isinstance(c, str) else (c.get("id") or c.get("name") if isinstance(c, dict) else None)
+                    f = item.get("from")
+                    fid = f if isinstance(f, str) else (f.get("id") or f.get("name") if isinstance(f, dict) else None)
+                    t = item.get("to")
+                    tid = t if isinstance(t, str) else (t.get("id") or t.get("name") if isinstance(t, dict) else None)
+                    if cid:
+                        arcs.append((cid, fid, tid, f, t))
+        elif lay.get("kind") == "arc":
+            c = lay.get("center")
+            cid = c if isinstance(c, str) else (c.get("id") or c.get("name") if isinstance(c, dict) else None)
+            f = lay.get("from")
+            fid = f if isinstance(f, str) else (f.get("id") or f.get("name") if isinstance(f, dict) else None)
+            t = lay.get("to")
+            tid = t if isinstance(t, str) else (t.get("id") or t.get("name") if isinstance(t, dict) else None)
+            if cid:
+                arcs.append((cid, fid, tid, f, t))
+
+    refs = _collect_point_refs(viz_data)
+    if len(arcs) == 3:
+        centers = [a[0] for a in arcs]
+        if len(set(centers)) == 3:
+            resolved_endpoints = []
+            for cid, fid, tid, f_raw, t_raw in arcs:
+                f_resolved = fid
+                if not f_resolved and isinstance(f_raw, dict) and "x" in f_raw and "y" in f_raw:
+                    f_pt = (float(f_raw["x"]), float(f_raw["y"]))
+                    for pid, pcoord in refs.items():
+                        if pid not in set(centers) and math.dist(f_pt, (pcoord["x"], pcoord["y"])) < 0.45:
+                            f_resolved = pid
+                            break
+                t_resolved = tid
+                if not t_resolved and isinstance(t_raw, dict) and "x" in t_raw and "y" in t_raw:
+                    t_pt = (float(t_raw["x"]), float(t_raw["y"]))
+                    for pid, pcoord in refs.items():
+                        if pid not in set(centers) and math.dist(t_pt, (pcoord["x"], pcoord["y"])) < 0.45:
+                            t_resolved = pid
+                            break
+                resolved_endpoints.append((cid, f_resolved, t_resolved))
+
+            if all(f and t for _, f, t in resolved_endpoints):
+                c1, f1, t1 = resolved_endpoints[0]
+                c2, f2, t2 = resolved_endpoints[1]
+                c3, f3, t3 = resolved_endpoints[2]
+                p12 = {f1, t1}.intersection({f2, t2})
+                p23 = {f2, t2}.intersection({f3, t3})
+                p31 = {f3, t3}.intersection({f1, t1})
+                if len(p12) == 1 and len(p23) == 1 and len(p31) == 1:
+                    return [
+                        {"point": list(p12)[0], "type": "circle_circle_tangency", "of": [c1, c2]},
+                        {"point": list(p23)[0], "type": "circle_circle_tangency", "of": [c2, c3]},
+                        {"point": list(p31)[0], "type": "circle_circle_tangency", "of": [c3, c1]},
+                    ]
+    return []
 
 
 def _radii_from_triangle(coords: Dict[str, Point2D],
@@ -738,11 +849,22 @@ def resolve_constructions(viz_block: Dict[str, Any]) -> Tuple[Dict[str, Any], Li
     """
     if not isinstance(viz_block, dict) or viz_block.get("widget") != "geometry_2d":
         return viz_block, []
-    constructions = viz_block.get("constructions")
-    if not isinstance(constructions, list) or not constructions:
-        return viz_block, []
 
     data = copy.deepcopy(viz_block)
+    constructions = list(data.get("constructions") or [])
+
+    # Auto-infer mutually tangent triple if missing or omitted by LLM
+    if not any(isinstance(c, dict) and c.get("type") in ("circle_circle_tangency", "tangency", "tangent_point") for c in constructions):
+        inferred = infer_tangent_triple_from_diagram(data)
+        if inferred:
+            logger.info("[ConstructionSolver] Auto-inferred mutually tangent triple from diagram: %s",
+                        [c.get("point") for c in inferred])
+            constructions.extend(inferred)
+            data["constructions"] = constructions
+
+    if not constructions:
+        return viz_block, []
+
     refs = _collect_point_refs(data)
     coords: Dict[str, Point2D] = {pid: (float(p["x"]), float(p["y"])) for pid, p in refs.items()}
 

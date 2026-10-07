@@ -228,6 +228,61 @@ def layers_of(viz: Any) -> List[Any]:
     return layers if isinstance(layers, list) else []
 
 
+def _usable_points(points: Any) -> List[Dict[str, Any]]:
+    """The point OBJECTS (with numeric x/y) out of a top-level ``points`` list."""
+    out: List[Dict[str, Any]] = []
+    for p in (points if isinstance(points, list) else []):
+        if isinstance(p, dict) and _num(p.get("x")) and _num(p.get("y")):
+            out.append(p)
+    return out
+
+
+def synthesize_layers(viz: Any) -> Any:
+    """Give a LAYERLESS ``geometry_2d`` payload a drawable ``layers`` array.
+
+    The model sometimes answers with the single-shape form (``mode`` + top-level
+    ``points``), or drops ``layers`` altogether on a hard figure (live QA, the
+    "ba cung nội tiếp" benchmark). ``layers_of()`` is then empty, which means:
+    the render report says there is nothing to draw (a blank canvas), the whole
+    construction/regularization block — guarded by ``"layers" in _viz_block`` —
+    never runs, and the automatic tangent-triple inference never fires. This
+    turns the payload the model DID send into the composite form the pipeline
+    expects, so the figure is drawn and the solver can fix its coordinates.
+
+    Returns a NEW dict with a synthesized ``layers`` ONLY when the payload has
+    no drawable layer already AND declares at least two usable top-level points;
+    otherwise the input is returned unchanged. A payload that already has a
+    drawable layer is never rewritten.
+    """
+    if not isinstance(viz, dict) or viz.get("widget") != "geometry_2d":
+        return viz
+    for layer in layers_of(viz):
+        if isinstance(layer, dict) and canonical_kind(layer.get("kind")):
+            return viz  # already composite — leave it exactly as sent
+    pts = _usable_points(viz.get("points"))
+    if len(pts) < 2:
+        return viz
+
+    data = copy.deepcopy(viz)
+    shape = _usable_points(data.get("points"))
+    mode = data.get("mode") if isinstance(data.get("mode"), str) else ""
+    mode = mode.strip().lower()
+    if mode == "triangle" or (not mode and len(shape) == 3):
+        kind = "triangle" if len(shape) == 3 else "polygon"
+    elif mode in ("quadrilateral", "polygon"):
+        kind = "polygon"
+    elif len(shape) == 2:
+        kind = "segment"
+    else:
+        kind = "polygon"
+    existing = [l for l in layers_of(data)]
+    data["layers"] = [
+        {"kind": kind, "points": shape},
+        {"kind": "points", "data": shape},
+    ] + existing
+    return data
+
+
 def declared_point_ids(viz: Any) -> set:
     """Every point id the payload defines, across layers and constructions."""
     ids: set = set()
@@ -279,12 +334,38 @@ def missing_point_refs(viz: Any) -> List[Dict[str, Any]]:
                             "ids": absent})
     return missing
 
+def _point_ref_count(layer: Any) -> int:
+    """Distinct point definitions a layer carries: referenced ids AND inline coords.
+
+    ``reference_ids`` deliberately yields only ids (it feeds the dangling-ref
+    report, where an anonymous ``{x, y}`` has nothing to check). Counting with it
+    alone made ``_drawable`` treat a layer whose points are inline objects
+    WITHOUT an id — the dashed axis line ``{"from":{"x":-1,"y":0},"to":{"x":9,"y":0}}``
+    the model emits for a tangent-arc figure, a region outline built from raw
+    coordinates — as ZERO references, so it was reported ``incomplete /
+    not_enough_points`` and the UI showed a spurious "N phần chưa vẽ được" chip
+    even though BOTH renderers draw it fine (they fall back to the inline x/y —
+    ``MathVizJSXGraph.js`` builds a hidden point from ``layer.from.x`` when there
+    is no id). Counting the anonymous inline objects too keeps the report honest.
+    """
+    if not isinstance(layer, dict):
+        return 0
+    referenced = set(reference_ids(layer))
+    inline = 0
+    for _, obj in iter_point_dicts(layer):
+        pid = obj.get("id") or obj.get("name")
+        if not (isinstance(pid, str) and pid.strip()):
+            inline += 1
+    return len(referenced) + inline
+
+
 def _drawable(layer: Dict[str, Any], kind: str) -> bool:
     """Structural check: does this layer carry enough geometry to be drawn?
 
-    Counts REFERENCES, not only inline point objects: an ``angle`` names its
-    three vertices as bare ids (["B","A","C"]), which is a complete definition
-    as long as those points are declared elsewhere.
+    Counts REFERENCES and inline coordinates, not only id-bearing references: an
+    ``angle`` names its three vertices as bare ids (["B","A","C"]) and a ``line``
+    may carry anonymous ``{x, y}`` endpoints — both are complete definitions as
+    long as the renderers can place them, which they can.
     """
     needed = MIN_POINTS.get(kind, 0)
     if not needed:
@@ -293,7 +374,7 @@ def _drawable(layer: Dict[str, Any], kind: str) -> bool:
         return True
     if kind in ("circle", "ellipse", "label", "points"):
         return isinstance(layer.get("center"), (dict, str)) or needed <= 1
-    return len(dict.fromkeys(reference_ids(layer))) >= needed
+    return _point_ref_count(layer) >= needed
 
 
 def engine_min(required: Iterable[str]) -> str:
@@ -377,6 +458,44 @@ def normalize_geometry_2d(viz: Any) -> Tuple[Any, Dict[str, Any]]:
             mapped.append({"index": index, "from": raw, "to": kind})
             layer["kind"] = kind
         kept.append(layer)
+
+    # Deduplicate redundant full circles that overlap an arc or sector with the same center
+    arc_centers = set()
+    for lay in kept:
+        if isinstance(lay, dict) and lay.get("kind") in ("arc", "sector"):
+            c = lay.get("center")
+            cid = c if isinstance(c, str) else (c.get("id") or c.get("name") if isinstance(c, dict) else None)
+            if cid:
+                arc_centers.add(cid)
+
+    if arc_centers:
+        cleaned_kept = []
+        for lay in kept:
+            if isinstance(lay, dict) and lay.get("kind") == "circle":
+                c = lay.get("center")
+                cid = c if isinstance(c, str) else (c.get("id") or c.get("name") if isinstance(c, dict) else None)
+                if cid and cid in arc_centers and not lay.get("label"):
+                    skipped.append({"index": len(cleaned_kept), "kind": "circle",
+                                    "reason": "redundant_auxiliary_circle_overlapping_arc"})
+                    continue
+            cleaned_kept.append(lay)
+    # If a region has arc boundary path items but no corresponding arc layers exist,
+    # synthesize arc boundary layers so the curves are clearly visible as crisp outlines.
+    existing_arcs = [lay for lay in kept if isinstance(lay, dict) and lay.get("kind") == "arc"]
+    if not existing_arcs:
+        for lay in list(kept):
+            if isinstance(lay, dict) and lay.get("kind") == "region":
+                path_items = lay.get("path") or []
+                for p_item in path_items:
+                    if isinstance(p_item, dict) and p_item.get("type") in ("arc", "circle_arc"):
+                        kept.append({
+                            "kind": "arc",
+                            "center": copy.deepcopy(p_item.get("center")),
+                            "from": copy.deepcopy(p_item.get("from")),
+                            "to": copy.deepcopy(p_item.get("to")),
+                            "color": "#38bdf8",
+                            "strokeWidth": 2
+                        })
 
     if isinstance(data.get("layers"), list):
         data["layers"] = kept
@@ -473,6 +592,34 @@ def geometry_2d_errors(viz: Any) -> List[str]:
         bad = ", ".join(f"{item['point']}='{item['type']}'" for item in bad_types)
         errors.append(f"'constructions' dùng type chưa hỗ trợ: {bad}. "
                       f"Phải thuộc {sorted(construction_types())}")
+
+    # Kiểm tra tính hợp lệ của claims (Quy tắc 11)
+    claims = viz.get("claims")
+    if isinstance(claims, list):
+        supported_claims = {"collinear", "concyclic", "perpendicular", "parallel", "equal"}
+        for ci, c in enumerate(claims):
+            if not isinstance(c, dict):
+                continue
+            ctype = c.get("type")
+            if ctype not in supported_claims:
+                errors.append(f"claim #{ci} dùng type '{ctype}' chưa hỗ trợ. Phải thuộc {sorted(supported_claims)}")
+            cof = c.get("of")
+            if not isinstance(cof, list):
+                errors.append(f"claim #{ci} thiếu mảng 'of'")
+            elif ctype == "collinear" and len(cof) < 3:
+                errors.append(f"claim #{ci} ('collinear') cần ít nhất 3 điểm trong 'of'")
+            elif ctype in ("concyclic", "perpendicular", "parallel", "equal") and len(cof) != 4:
+                errors.append(f"claim #{ci} ('{ctype}') cần đúng 4 điểm trong 'of'")
+
+    # Giới hạn tài nguyên (Quy tắc 7: ≤ 8 tham số, ≤ 60 đối tượng)
+    params = viz.get("params")
+    if isinstance(params, dict) and len(params) > 8:
+        errors.append(f"quá 8 tham số ({len(params)})")
+
+    total_objects = len(layers or []) + len(viz.get("constructions") or []) + len(declared_point_ids(viz))
+    if total_objects > 60:
+        errors.append(f"quá 60 đối tượng hình học ({total_objects})")
+
     return errors
 
 
@@ -573,5 +720,16 @@ def repair_vocabulary() -> str:
         "Danh sách kind hợp lệ cho \"layers\": " + ", ".join(sorted(LAYER_KINDS)) + ". "
         "Danh sách \"type\" hợp lệ cho \"constructions\": "
         + ", ".join(sorted(construction_types())) + ". "
-        "Mọi điểm được nhắc tới phải được khai báo trong chính payload."
+        "Mọi điểm được nhắc tới phải được khai báo trong chính payload. "
+        # P16-fix (2026-10-06): the model drifted to a foreign schema on the
+        # tangent-arc benchmark — top-level "points" with no "layers", a
+        # construction list keyed by id/type:{radius,circle,intersection,arc},
+        # "claims" of type "tangent" and a "groups" array. Naming the forbidden
+        # keys here is what turns the repair call into a targeted fix instead of
+        # another guess.
+        "BẮT BUỘC: mọi payload \"geometry_2d\" PHẢI có khóa \"layers\" (mảng). "
+        "KHÔNG dùng các khóa/kiểu sau (không thuộc MathViz, sẽ bị loại): "
+        "\"radius\", \"objects\", \"groups\"; construction phải có khóa \"point\" "
+        "(KHÔNG phải \"id\") với \"type\" thuộc danh sách trên; \"claims\" chỉ "
+        "thuộc {collinear, concyclic, perpendicular, parallel, equal} và phải có mảng \"of\"."
     )

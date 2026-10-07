@@ -5,6 +5,7 @@ import { authFetch } from "@/lib/authFetch";
 import { API_BASE as API } from "@/lib/apiBase";
 import {
   CHAT_TIMEOUT_MS,
+  CHAT_TIMEOUT_EXTENDED_MS,
   classifyChatFailure,
   chatFailureMessage,
   isRetryableKind,
@@ -47,24 +48,33 @@ function delay(ms) {
 
 export async function chat(sessionId, message, options = {}) {
   const { image = null, stream = false, mode = "hint", signal = null } = options;
+  const isImageOrGeometry = Boolean(
+    image ||
+    /hình|tam giác|đường tròn|tứ giác|tọa độ|geometry|chóp|lăng trụ|diện tích|thể tích|khảo sát|đồ thị|mathviz|cung tròn|tiếp xúc/i.test(message || "")
+  );
+  const activeTimeout = isImageOrGeometry ? CHAT_TIMEOUT_EXTENDED_MS : CHAT_TIMEOUT_MS;
   const body = {
     session_id: sessionId,
     message,
     stream,
     mode,
+    extended: isImageOrGeometry,
     ...(image ? { image } : {}),
   };
 
   const attempt = async () => {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+    const timer = setTimeout(() => controller.abort(), activeTimeout);
     const forwardAbort = () => controller.abort();
     if (signal) signal.addEventListener("abort", forwardAbort, { once: true });
     try {
-      const res = await authFetch("/api/chat", {
+      const endpoint = isImageOrGeometry ? "/api/chat?extended=1" : "/api/chat";
+      const res = await authFetch(endpoint, {
         base:    API,
         method:  "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body:    JSON.stringify(body),
         signal:  controller.signal,
       });

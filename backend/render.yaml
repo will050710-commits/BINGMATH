@@ -124,6 +124,13 @@ services:
         value: "25"
       - key: CHAT_VERIFY_BUDGET_S
         value: "25"
+      # P16-fix (2026-10-06): the verification stage's FLOOR on an extended
+      # (image / geometry) request. The whole-request bound there is 140 s, so a
+      # free-tier critic that needs >25 s can finish instead of always timing out
+      # (live QA showed every numeric answer shipping "chưa kịp kiểm chứng"). The
+      # per-stage clamp still caps it by what is left, so the sum invariant holds.
+      - key: CHAT_VERIFY_EXTENDED_BUDGET_S
+        value: "45"
       # How long a chat request may WAIT for knowledge-base retrieval. The answer
       # is still useful without the reference block, so retrieval can never be the
       # reason a student gets nothing.

@@ -59,6 +59,11 @@ def env_budget(name: str, default: float, minimum: float = 1.0,
 # own ceiling (Render terminates a request that outlives ~100 s), which is the
 # whole point: we want to answer before the socket is taken away from us.
 CHAT_REQUEST_TIMEOUT_S = env_budget("CHAT_REQUEST_TIMEOUT_S", 75.0, 5.0, 120.0)
+# Extended timeout for heavy image recognition or geometry visualization requests
+CHAT_REQUEST_TIMEOUT_EXTENDED_S = env_budget("CHAT_REQUEST_TIMEOUT_EXTENDED_S", 140.0, 10.0, 300.0)
+CHAT_VISION_EXTENDED_BUDGET_S = env_budget("CHAT_VISION_EXTENDED_BUDGET_S", 60.0, 5.0, 120.0)
+CHAT_GENERATE_EXTENDED_BUDGET_S = env_budget("CHAT_GENERATE_EXTENDED_BUDGET_S", 60.0, 5.0, 120.0)
+CHAT_GEN_MODEL_EXTENDED_TIMEOUT_S = env_budget("CHAT_GEN_MODEL_EXTENDED_TIMEOUT_S", 50.0, 5.0, 120.0)
 # Verified MathReader (1-2 vision models + a SymPy gate + a possible crop
 # re-read). Generous on purpose: on timeout the legacy vision path still runs,
 # so a slow reader costs quality, never the answer.
@@ -67,6 +72,13 @@ CHAT_VISION_BUDGET_S = env_budget("CHAT_VISION_BUDGET_S", 45.0, 5.0, 90.0)
 CHAT_VISION_AGENT_BUDGET_S = env_budget("CHAT_VISION_AGENT_BUDGET_S", 25.0, 5.0, 90.0)
 # Deterministic checks + cross-family critic + at most one repair round.
 CHAT_VERIFY_BUDGET_S = env_budget("CHAT_VERIFY_BUDGET_S", 25.0, 5.0, 90.0)
+# P16-fix (2026-10-06): on an EXTENDED request (image / geometry, whole-request
+# bound 140 s) the critic is given more room. Live QA showed the free-tier critic
+# never finished inside 25 s, so every numeric answer shipped with the "chưa kịp
+# kiểm chứng" label even though the request still had >60 s of headroom. This is
+# only a FLOOR: the per-stage clamp in chat() still caps it by what is left, so
+# the sum invariant (stages ≤ whole-request bound) is preserved.
+CHAT_VERIFY_EXTENDED_BUDGET_S = env_budget("CHAT_VERIFY_EXTENDED_BUDGET_S", 45.0, 5.0, 120.0)
 # Đợt 8 / 4I — the ANSWER itself, network included. This was the one hole left:
 # every stage around it was bounded, but generation used hard-coded client
 # timeouts (90 s for a Gemini stream, 60 s for OpenRouter, 30 s for each retry),

@@ -156,6 +156,29 @@ def test_reports():
     check("an arc missing its third point is reported incomplete",
           any(item["kind"] == "arc" for item in mc.render_report({"layers": [thin]})["incomplete"]))
 
+    # P16-fix (2026-10-06): a layer whose points are inline {x, y} objects WITHOUT
+    # an id is drawn fine by both renderers (JSXGraph builds a hidden point from
+    # layer.from.x), so it must NOT be reported incomplete. The old _drawable counted
+    # only id references and flagged the axes/dashed lines of the tangent-arc figure
+    # as "not_enough_points", which showed a spurious "N phần chưa vẽ được" chip.
+    anon_line = {"kind": "line", "from": {"x": -1, "y": 0}, "to": {"x": 9, "y": 0},
+                 "style": "dashed"}
+    anon_report = mc.render_report({"layers": [anon_line]})
+    check("a line with anonymous inline endpoints is NOT incomplete",
+          anon_report["incomplete"] == [], str(anon_report["incomplete"]))
+    check("an anonymous polyline with two points is NOT incomplete",
+          mc.render_report({"layers": [
+              {"kind": "polyline", "points": [{"x": 0, "y": 0}, {"x": 1, "y": 1}]}]})["incomplete"] == [])
+    thin_anon = {"kind": "line", "from": {"x": 0, "y": 0}}
+    thin_anon_report = mc.render_report({"layers": [thin_anon]})
+    check("a genuinely thin line (one point) is still incomplete",
+          bool(thin_anon_report["incomplete"])
+          and thin_anon_report["incomplete"][0]["reason"] == "not_enough_points",
+          str(thin_anon_report["incomplete"]))
+    check("_point_ref_count counts referenced ids and inline coords together",
+          mc._point_ref_count({"kind": "line", "from": {"id": "A", "x": 0, "y": 0},
+                               "to": {"x": 1, "y": 1}}) == 2)
+
     check("the reported engine really can draw every kind in the figure",
           "region" in mc.ENGINE_SUPPORT["jsxgraph"]
           and mc.render_report({
@@ -271,6 +294,43 @@ def test_fence_recovery():
           mc.recover_fenced_mathviz(None) == (None, None))
 
 
+# ── 5. Layer synthesis (P16-fix, 2026-10-06) ────────────────────────────────
+
+def test_synthesize_layers():
+    print("\n[layer synthesis]")
+    # A layerless single-shape payload (the model's `mode`+`points` form, or a
+    # complex figure whose `layers` was dropped) previously reported nothing to
+    # draw and skipped the whole regularization block.
+    layerless = {"type": "mathviz.v1", "widget": "geometry_2d", "mode": "triangle",
+                 "points": [{"id": "A", "x": 0, "y": 0}, {"id": "B", "x": 3, "y": 0},
+                            {"id": "C", "x": 0, "y": 4}]}
+    out = mc.synthesize_layers(layerless)
+    check("a layerless triangle gets a drawable layers array",
+          len(mc.layers_of(out)) >= 1
+          and mc.canonical_kind(mc.layers_of(out)[0].get("kind")) == "triangle",
+          str(mc.layers_of(out)))
+    check("...and it reports nothing incomplete",
+          mc.render_report(out)["incomplete"] == [], str(mc.render_report(out)["incomplete"]))
+
+    no_mode = {"type": "mathviz.v1", "widget": "geometry_2d",
+               "points": [{"id": "A", "x": 0, "y": 0}, {"id": "B", "x": 1, "y": 1}]}
+    out2 = mc.synthesize_layers(no_mode)
+    check("two points with no mode synthesize a segment",
+          mc.canonical_kind(mc.layers_of(out2)[0].get("kind")) in ("segment", "polyline"))
+
+    good = TANGENT_ARCS
+    check("a payload that already has a drawable layer is returned unchanged",
+          mc.synthesize_layers(good) is good)
+    check("a layerless payload with fewer than two points is returned unchanged",
+          mc.synthesize_layers({"widget": "geometry_2d", "points": [{"id": "A", "x": 0, "y": 0}]})
+          == {"widget": "geometry_2d", "points": [{"id": "A", "x": 0, "y": 0}]})
+    check("a non-geometry_2d widget is untouched",
+          mc.synthesize_layers({"widget": "function_plot", "expr": "x^2"})
+          == {"widget": "function_plot", "expr": "x^2"})
+    check("the input payload is not mutated",
+          layerless.get("layers") is None)
+
+
 if __name__ == "__main__":
     test_vocabulary()
     test_point_discovery()
@@ -278,6 +338,7 @@ if __name__ == "__main__":
     test_normalize()
     test_constructions()
     test_fence_recovery()
+    test_synthesize_layers()
     if FAILED:
         print(f"\n>>> {len(FAILED)} MATHVIZ CONTRACT CHECKS FAILED: {FAILED} <<<")
         sys.exit(1)
