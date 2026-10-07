@@ -45,23 +45,23 @@ function HexagonChart({ data }) {
         <polygon
           key={r}
           points={angles.map((a) => `${cx + (r / 100) * maxR * Math.cos(a)},${cy + (r / 100) * maxR * Math.sin(a)}`).join(" ")}
-          fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={1}
+          fill="none" stroke="var(--border)" strokeWidth={1}
         />
       ))}
       {/* Axis lines */}
       {outerPoints.map((p, i) => (
-        <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="rgba(255,255,255,0.08)" strokeWidth={1} />
+        <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="var(--border)" strokeWidth={1} />
       ))}
       {/* Data polygon */}
       <path
         d={toPath(dataPoints)}
-        fill="rgba(34,211,238,0.15)"
-        stroke="rgba(34,211,238,0.7)"
+        fill="var(--accent-soft)"
+        stroke="var(--accent)"
         strokeWidth={2}
       />
       {/* Data points */}
       {dataPoints.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={5} fill="#22d3ee" stroke="#0d1f3c" strokeWidth={2} />
+        <circle key={i} cx={p.x} cy={p.y} r={5} fill="var(--accent)" stroke="var(--surface)" strokeWidth={2} />
       ))}
       {/* Labels */}
       {data.map((d, i) => {
@@ -71,7 +71,7 @@ function HexagonChart({ data }) {
           <text
             key={i} x={lx} y={ly}
             textAnchor="middle" dominantBaseline="middle"
-            fill="#94a3b8" fontSize={12} fontWeight={600}
+            fill="var(--text-muted)" fontSize={12} fontWeight={600}
           >
             {d.subject} ({d.value})
           </text>
@@ -83,7 +83,7 @@ function HexagonChart({ data }) {
 
 function BarChart({ data }) {
   if (!data || data.length === 0) return (
-    <div style={{ color: "#475569", textAlign: "center", padding: "32px 0", fontSize: 13 }}>
+    <div style={{ color: "var(--text-subtle)", textAlign: "center", padding: "32px 0", fontSize: 13 }}>
       Chưa có dữ liệu trong 30 ngày qua
     </div>
   );
@@ -95,16 +95,16 @@ function BarChart({ data }) {
           <div style={{
             width: 20, height: `${(d.accuracy / maxAcc) * 90}px`,
             background: d.accuracy >= 80
-              ? "linear-gradient(180deg,#4ade80,#22d3ee)"
+              ? "linear-gradient(180deg, var(--stats-ok), var(--stats-ok-2))"
               : d.accuracy >= 60
-              ? "linear-gradient(180deg,#fbbf24,#f59e0b)"
-              : "linear-gradient(180deg,#f87171,#ef4444)",
+              ? "linear-gradient(180deg, var(--stats-warn), var(--stats-warn-2))"
+              : "linear-gradient(180deg, var(--stats-bad), var(--stats-bad-2))",
             borderRadius: "4px 4px 0 0",
             position: "relative",
             minHeight: 4,
             transition: "height 0.5s ease",
           }} title={`${d.date}: ${d.accuracy}%`} />
-          <div style={{ fontSize: 9, color: "#475569", marginTop: 3, transform: "rotate(-45deg)", whiteSpace: "nowrap" }}>
+          <div style={{ fontSize: 9, color: "var(--text-subtle)", marginTop: 3, transform: "rotate(-45deg)", whiteSpace: "nowrap" }}>
             {d.date?.slice(5)}
           </div>
         </div>
@@ -162,14 +162,16 @@ export default function StatsPage() {
   return (
     <div style={{ minHeight: "100vh", padding: "24px 16px", maxWidth: 900, margin: "0 auto" }}>
       <style>{`
-        .stat-card { background: rgba(13,31,60,0.7); border: 1px solid rgba(34,211,238,0.12); border-radius: 16px; padding: 20px; backdrop-filter: blur(6px); }
-        .stat-card:hover { border-color: rgba(34,211,238,0.28); transition: border-color 0.2s; }
-        .tab-btn { padding: 8px 20px; border-radius: 20px; border: 1.5px solid rgba(34,211,238,0.2); background: transparent; color: #94a3b8; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
-        .tab-btn.active { background: rgba(34,211,238,0.12); border-color: rgba(34,211,238,0.5); color: #22d3ee; }
-        .tab-btn:hover:not(.active) { border-color: rgba(34,211,238,0.35); color: #cbd5e1; }
+        :root { --stats-ok: #4ade80; --stats-ok-2: #16a34a; --stats-warn: #fbbf24; --stats-warn-2: #f59e0b; --stats-bad: #f87171; --stats-bad-2: #ef4444; }
+        [data-theme="paper"] { --stats-ok: #16a34a; --stats-ok-2: #15803d; --stats-warn: #d97706; --stats-warn-2: #b45309; --stats-bad: #dc2626; --stats-bad-2: #b91c1c; }
+        .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; box-shadow: var(--shadow-whisper); }
+        .stat-card:hover { border-color: var(--border-strong); transition: border-color 0.2s; }
+        .tab-btn { padding: 8px 20px; border-radius: 20px; border: 1.5px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+        .tab-btn.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+        .tab-btn:hover:not(.active) { border-color: var(--border-strong); color: var(--text); }
         .badge-card { padding: 12px; border-radius: 12px; border: 1.5px solid; display: flex; align-items: center; gap: 10px; }
-        .badge-card.earned { background: rgba(255,215,0,0.06); }
-        .badge-card.locked { background: rgba(255,255,255,0.02); opacity: 0.45; filter: grayscale(0.6); }
+        .badge-card.earned { background: var(--accent-soft); }
+        .badge-card.locked { background: var(--surface-2); opacity: 0.5; filter: grayscale(0.6); }
         @media (max-width: 640px) {
           .hex-grid { grid-template-columns: 1fr !important; }
           .stats-grid { grid-template-columns: 1fr 1fr !important; }
@@ -196,25 +198,25 @@ export default function StatsPage() {
         {/* Info */}
         <div style={{ flex: 1, minWidth: 200 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, color: "#f1f5f9", margin: 0 }}>{user.username}</h1>
+            <h1 style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", margin: 0 }}>{user.username}</h1>
             <span style={{
               background: leagueStyle.bg, borderRadius: 12, padding: "3px 12px",
               fontSize: 12, fontWeight: 700, color: "#fff",
             }}>🏆 {gami.league}</span>
           </div>
-          <div style={{ color: "#64748b", fontSize: 13, marginTop: 4 }}>
+          <div style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>
             Streak 🔥 {gami.current_streak} ngày · Dài nhất: {gami.longest_streak} ngày · ELO: {gami.elo_rating}
           </div>
           {/* XP bar */}
           <div style={{ marginTop: 10 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#64748b", marginBottom: 4 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
               <span>{gami.total_xp?.toLocaleString()} XP</span>
               <span>Level {gami.level + 1}: {nextThreshold?.toLocaleString()} XP</span>
             </div>
-            <div style={{ height: 8, background: "rgba(255,255,255,0.06)", borderRadius: 4, overflow: "hidden" }}>
+            <div style={{ height: 8, background: "var(--surface-2)", borderRadius: 4, overflow: "hidden" }}>
               <div style={{
                 width: `${xpPct}%`, height: "100%",
-                background: "linear-gradient(90deg,#22d3ee,#6366f1)",
+                background: "linear-gradient(90deg, var(--accent), var(--accent-strong))",
                 borderRadius: 4, transition: "width 1s ease",
               }} />
             </div>
@@ -224,8 +226,8 @@ export default function StatsPage() {
         {/* Freeze tokens */}
         <div style={{ textAlign: "center" }}>
           <div style={{ fontSize: 28 }}>🧊</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#7dd3fc" }}>{gami.freeze_count}</div>
-          <div style={{ fontSize: 11, color: "#64748b" }}>Freeze</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: "var(--accent)" }}>{gami.freeze_count}</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Freeze</div>
         </div>
       </div>
 
@@ -239,8 +241,8 @@ export default function StatsPage() {
         ].map(({ label, value, icon }) => (
           <div key={label} className="stat-card" style={{ textAlign: "center", padding: "16px 12px" }}>
             <div style={{ fontSize: 26, display: "inline-flex", alignItems: "center", justifyContent: "center", height: 32 }}>{renderDuoIcon(icon, { size: 30 })}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: "#e2e8f0", marginTop: 4 }}>{value ?? "—"}</div>
-            <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{label}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "var(--text)", marginTop: 4 }}>{value ?? "—"}</div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>{label}</div>
           </div>
         ))}
       </div>
@@ -262,7 +264,7 @@ export default function StatsPage() {
         <div className="hex-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {/* Hexagon */}
           <div className="stat-card" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: "#94a3b8", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-muted)", marginBottom: 12 }}>
               🔷 Hexagon Stats
             </h3>
             <HexagonChart data={hexagon_stats} />
@@ -272,7 +274,7 @@ export default function StatsPage() {
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             {/* Test history */}
             <div className="stat-card">
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: "#94a3b8", marginBottom: 12 }}>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-muted)", marginBottom: 12 }}>
                 📅 Accuracy 30 ngày qua
               </h3>
               <BarChart data={test_history_30d} />
@@ -281,10 +283,10 @@ export default function StatsPage() {
             {/* Daily quests */}
             <div className="stat-card">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: "#94a3b8", margin: 0 }}>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-muted)", margin: 0 }}>
                   📋 Nhiệm vụ hôm nay
                 </h3>
-                <span style={{ fontSize: 12, color: "#22d3ee", fontWeight: 700 }}>
+                <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 700 }}>
                   {daily_quests?.completed}/{daily_quests?.total} hoàn thành
                 </span>
               </div>
@@ -293,19 +295,19 @@ export default function StatsPage() {
                 return (
                   <div key={q.id} style={{ marginBottom: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                      <span style={{ color: q.is_completed ? "#4ade80" : "#cbd5e1" }}>
+                      <span style={{ color: q.is_completed ? "var(--stats-ok)" : "var(--text)" }}>
                         {q.is_completed ? "✅ " : "⬜ "}{q.quest_label_vi}
                       </span>
-                      <span style={{ color: "#fbbf24", fontWeight: 700 }}>+{q.xp_reward} XP</span>
+                      <span style={{ color: "var(--stats-warn)", fontWeight: 700 }}>+{q.xp_reward} XP</span>
                     </div>
-                    <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
                       <div style={{
                         width: `${pct}%`, height: "100%",
-                        background: q.is_completed ? "linear-gradient(90deg,#4ade80,#22d3ee)" : "linear-gradient(90deg,#22d3ee,#6366f1)",
+                        background: q.is_completed ? "linear-gradient(90deg, var(--stats-ok), var(--stats-ok-2))" : "linear-gradient(90deg, var(--accent), var(--accent-strong))",
                         borderRadius: 3,
                       }} />
                     </div>
-                    <div style={{ textAlign: "right", fontSize: 10, color: "#475569", marginTop: 2 }}>
+                    <div style={{ textAlign: "right", fontSize: 10, color: "var(--text-subtle)", marginTop: 2 }}>
                       {q.current_value}/{q.target_value}
                     </div>
                   </div>
@@ -315,18 +317,18 @@ export default function StatsPage() {
 
             {/* Weak topics alert */}
             {weak_topics?.length > 0 && (
-              <div className="stat-card" style={{ borderColor: "rgba(248,113,113,0.3)", background: "rgba(127,29,29,0.2)" }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700, color: "#fca5a5", marginBottom: 10 }}>
+              <div className="stat-card" style={{ borderColor: "var(--stats-bad)", background: "var(--surface)" }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: "var(--stats-bad)", marginBottom: 10 }}>
                   ⚠️ Cần ôn tập
                 </h3>
                 {weak_topics.map((t) => (
                   <div key={t.topic} style={{
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "6px 0", borderBottom: "1px solid rgba(255,255,255,0.05)",
+                    padding: "6px 0", borderBottom: "1px solid var(--border)",
                     fontSize: 13,
                   }}>
-                    <span style={{ color: "#fcd34d" }}>{t.topic}</span>
-                    <span style={{ color: "#f87171", fontWeight: 700 }}>{t.accuracy}%</span>
+                    <span style={{ color: "var(--text)" }}>{t.topic}</span>
+                    <span style={{ color: "var(--stats-bad)", fontWeight: 700 }}>{t.accuracy}%</span>
                   </div>
                 ))}
               </div>
@@ -338,11 +340,11 @@ export default function StatsPage() {
       {/* ── Topics Tab ── */}
       {activeTab === "topics" && (
         <div className="stat-card">
-          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#94a3b8", marginBottom: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-muted)", marginBottom: 16 }}>
             📚 Topic Mastery
           </h3>
           {topic_mastery?.length === 0 && (
-            <div style={{ color: "#475569", textAlign: "center", padding: "32px 0" }}>
+            <div style={{ color: "var(--text-subtle)", textAlign: "center", padding: "32px 0" }}>
               Chưa có dữ liệu — hãy làm bài để mở khóa Adaptive Learning!
             </div>
           )}
@@ -353,30 +355,30 @@ export default function StatsPage() {
                 <div key={t.topic} style={{
                   display: "grid", gridTemplateColumns: "1fr auto 80px auto",
                   alignItems: "center", gap: 12, padding: "12px 16px",
-                  background: "rgba(255,255,255,0.03)", borderRadius: 10,
+                  background: "var(--surface-2)", borderRadius: 10,
                 }}>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0" }}>{t.topic}</div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>{t.attempts} lần thử</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>{t.topic}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{t.attempts} lần thử</div>
                   </div>
                   <span style={{
                     background: lvlStyle.bg, color: lvlStyle.text,
                     borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700,
                   }}>{t.level}</span>
                   <div>
-                    <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, overflow: "hidden" }}>
+                    <div style={{ height: 6, background: "var(--border)", borderRadius: 3, overflow: "hidden" }}>
                       <div style={{
                         width: `${t.accuracy}%`, height: "100%",
-                        background: t.accuracy >= 80 ? "linear-gradient(90deg,#4ade80,#22d3ee)"
-                          : t.accuracy >= 60 ? "linear-gradient(90deg,#fbbf24,#f59e0b)"
-                          : "linear-gradient(90deg,#f87171,#ef4444)",
+                        background: t.accuracy >= 80 ? "linear-gradient(90deg, var(--stats-ok), var(--stats-ok-2))"
+                          : t.accuracy >= 60 ? "linear-gradient(90deg, var(--stats-warn), var(--stats-warn-2))"
+                          : "linear-gradient(90deg, var(--stats-bad), var(--stats-bad-2))",
                         borderRadius: 3,
                       }} />
                     </div>
                   </div>
                   <div style={{
                     fontSize: 14, fontWeight: 800, textAlign: "right",
-                    color: t.accuracy >= 80 ? "#4ade80" : t.accuracy >= 60 ? "#fbbf24" : "#f87171",
+                    color: t.accuracy >= 80 ? "var(--stats-ok)" : t.accuracy >= 60 ? "var(--stats-warn)" : "var(--stats-bad)",
                   }}>{t.accuracy}%</div>
                 </div>
               );
@@ -389,7 +391,7 @@ export default function StatsPage() {
       {activeTab === "badges" && (
         <div className="stat-card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#94a3b8", margin: 0 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-muted)", margin: 0 }}>
               🎖️ Badges ({badges?.length || 0} đã đạt)
             </h3>
           </div>
@@ -402,13 +404,13 @@ export default function StatsPage() {
                   <div style={{ fontSize: 14, fontWeight: 700, color: TIER_COLOR[b.tier] || "#ffd700" }}>
                     {b.name_vi}
                   </div>
-                  <div style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic" }}>{b.math_term}</div>
-                  <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{b.desc_vi}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>{b.math_term}</div>
+                  <div style={{ fontSize: 11, color: "var(--text-subtle)", marginTop: 2 }}>{b.desc_vi}</div>
                 </div>
               </div>
             ))}
             {(!badges || badges.length === 0) && (
-              <div style={{ color: "#475569", textAlign: "center", padding: "32px 0", gridColumn: "1/-1" }}>
+              <div style={{ color: "var(--text-subtle)", textAlign: "center", padding: "32px 0", gridColumn: "1/-1" }}>
                 Chưa có badge — hãy hoàn thành bài test để bắt đầu thu thập! 🏅
               </div>
             )}
@@ -418,7 +420,7 @@ export default function StatsPage() {
 
       {/* ── Back link ── */}
       <div style={{ textAlign: "center", marginTop: 32 }}>
-        <Link href="/Trangchu" style={{ color: "#22d3ee", fontSize: 14, textDecoration: "none" }}>
+        <Link href="/Trangchu" style={{ color: "var(--accent)", fontSize: 14, textDecoration: "none" }}>
           ← Về trang chủ
         </Link>
       </div>
@@ -430,8 +432,8 @@ export default function StatsPage() {
 function LoadingScreen() {
   return (
     <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
-      <div style={{ width: 48, height: 48, border: "3px solid rgba(34,211,238,0.2)", borderTop: "3px solid #22d3ee", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-      <div style={{ color: "#64748b" }}>Đang tải Statistics...</div>
+      <div style={{ width: 48, height: 48, border: "3px solid var(--border)", borderTop: "3px solid var(--accent)", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+      <div style={{ color: "var(--text-muted)" }}>Đang tải Statistics...</div>
       <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
     </div>
   );
@@ -441,9 +443,9 @@ function NotLoggedIn() {
   return (
     <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
       <div style={{ fontSize: 48 }}>🔒</div>
-      <div style={{ color: "#94a3b8", fontSize: 16 }}>Vui lòng đăng nhập để xem thống kê</div>
+      <div style={{ color: "var(--text-muted)", fontSize: 16 }}>Vui lòng đăng nhập để xem thống kê</div>
       <Link href="/login" style={{
-        background: "linear-gradient(135deg,#22d3ee,#6366f1)", color: "#fff",
+        background: "linear-gradient(135deg, var(--accent), var(--accent-strong))", color: "#fff",
         padding: "10px 28px", borderRadius: 12, fontWeight: 700, textDecoration: "none",
       }}>Đăng nhập</Link>
     </div>
@@ -454,7 +456,7 @@ function ErrorScreen({ msg }) {
   return (
     <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
       <div style={{ fontSize: 48 }}>⚠️</div>
-      <div style={{ color: "#f87171" }}>{msg}</div>
+      <div style={{ color: "var(--danger)" }}>{msg}</div>
     </div>
   );
 }

@@ -47,7 +47,7 @@ function RankHistoryGraph({ history }) {
   if (!history || history.length < 2) {
     return (
       <div style={{ height: 140, display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "rgba(255,255,255,0.25)", fontSize: 13 }}>
+                    color: "var(--text-subtle)", fontSize: 13 }}>
         Chưa đủ dữ liệu để vẽ biểu đồ
       </div>
     );
@@ -89,9 +89,9 @@ function RankHistoryGraph({ history }) {
           return (
             <g key={f}>
               <line x1={PAD.l} y1={y} x2={W - PAD.r} y2={y}
-                stroke="rgba(255,255,255,0.04)" strokeWidth={1} />
+                stroke="var(--border)" strokeWidth={1} />
               <text x={PAD.l - 5} y={y + 4} textAnchor="end"
-                fontSize={9} fill="rgba(255,255,255,0.2)">{eloVal}</text>
+                fontSize={9} fill="var(--text-subtle)">{eloVal}</text>
             </g>
           );
         })}
@@ -107,18 +107,18 @@ function RankHistoryGraph({ history }) {
         {pts.map((p, i) => (
           <g key={i}>
             <circle cx={p.x} cy={p.y} r={hovered === i ? 6 : 4}
-              fill="#4ade80" stroke="#0d1b3e" strokeWidth={2}
+              fill="#4ade80" stroke="var(--surface)" strokeWidth={2}
               style={{ cursor: "pointer", transition: "r 0.15s" }}
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)} />
             {hovered === i && (
               <g>
                 <rect x={p.x - 36} y={p.y - 36} width={72} height={28}
-                  rx={5} fill="rgba(13,27,62,0.9)" stroke="#4ade8055" strokeWidth={1} />
+                  rx={5} fill="var(--surface)" stroke="#4ade8055" strokeWidth={1} />
                 <text x={p.x} y={p.y - 24} textAnchor="middle" fontSize={10}
                   fill="#4ade80" fontWeight={700}>{p.elo} ELO</text>
                 <text x={p.x} y={p.y - 14} textAnchor="middle" fontSize={9}
-                  fill="rgba(255,255,255,0.4)">
+                  fill="var(--text-muted)">
                   {new Date(p.date).toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" })}
                 </text>
               </g>
@@ -128,7 +128,7 @@ function RankHistoryGraph({ history }) {
 
         {[pts[0], pts[Math.floor(pts.length / 2)], pts[pts.length - 1]].filter(Boolean).map((p, i) => (
           <text key={i} x={p.x} y={H - 4} textAnchor="middle"
-            fontSize={9} fill="rgba(255,255,255,0.25)">
+            fontSize={9} fill="var(--text-subtle)">
             {new Date(p.date).toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" })}
           </text>
         ))}
@@ -196,27 +196,27 @@ export default function UserProfile({ userId }) {
     setSendingMsg(false);
   };
 
-  if (loading) return <div style={{ minHeight: "100vh", background: "#020617", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.3)" }}>Đang tải hồ sơ...</div>;
-  if (!profile || !profile.user) return <div style={{ minHeight: "100vh", background: "#020617", display: "flex", alignItems: "center", justifyContent: "center", color: "#f87171" }}>Không tìm thấy người dùng</div>;
+  if (loading) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)" }}>Đang tải hồ sơ...</div>;
+  if (!profile || !profile.user) return <div style={{ minHeight: "100vh", background: "var(--bg)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--danger)" }}>Không tìm thấy người dùng</div>;
 
   const { user, gamification, ranks, badges, active_border, test_stats } = profile;
-  const leagueColor = LEAGUE_COLORS[gamification?.league] || "#94a3b8";
+  const leagueColor = LEAGUE_COLORS[gamification?.league] || "#b0aea5";
   const flag = COUNTRY_FLAGS[user.country] || "🌍";
 
   let safeBorderStyle = {};
   try { const raw = JSON.parse(active_border?.css_style || "{}"); const { animation: _a, ...s } = raw; safeBorderStyle = s; } catch (_) {}
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #020617, #0a0a1a)", fontFamily: "'Inter', sans-serif", color: "white", isolation: "isolate" }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg)", fontFamily: "'Inter', sans-serif", color: "var(--text)", isolation: "isolate" }}>
       <MRMBackdrop variant="profile" />
-      <div style={{ background: "rgba(2,6,23,0.9)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.06)", padding: "14px 28px" }}>
-        <Link href="/mrm/leaderboard" style={{ textDecoration: "none" }}><button style={{ padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.5)", cursor: "pointer" }}>← Leaderboard</button></Link>
+      <div style={{ background: "var(--surface)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)", padding: "14px 28px" }}>
+        <Link href="/mrm/leaderboard" style={{ textDecoration: "none" }}><button style={{ padding: "7px 14px", borderRadius: 8, fontSize: 12, fontWeight: 700, background: "var(--surface-2)", border: "1px solid var(--border)", color: "var(--text-muted)", cursor: "pointer" }}>← Leaderboard</button></Link>
       </div>
 
       <div style={{ maxWidth: 860, margin: "0 auto", padding: "28px 20px" }}>
-        <div style={{ background: "rgba(10,10,24,0.8)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 20, padding: "28px", marginBottom: 20 }}>
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 20, padding: "28px", marginBottom: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <div style={{ width: 90, height: 90, borderRadius: "50%", background: "linear-gradient(135deg, #1e293b, #0f172a)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, ...safeBorderStyle }}>
+            <div style={{ width: 90, height: 90, borderRadius: "50%", background: "var(--surface-2)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, ...safeBorderStyle }}>
               {user.avatar_url ? <img src={user.avatar_url} style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover" }} /> : (user.username || "?")[0].toUpperCase()}
             </div>
             <div style={{ flex: 1 }}>
@@ -229,27 +229,27 @@ export default function UserProfile({ userId }) {
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "rgba(255,255,255,0.02)", borderRadius: 12, padding: 4 }}>
+        <div style={{ display: "flex", gap: 4, marginBottom: 20, background: "var(--surface-2)", borderRadius: 12, padding: 4 }}>
           {[{ key: "overview", label: "📊 Tổng quan" }, { key: "badges", label: "🎖️ Badges" }, { key: "clan", label: "🛡️ Clan" }].map(t => (
-            <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: "none", background: activeTab === t.key ? "rgba(34,211,238,0.15)" : "transparent", color: activeTab === t.key ? "#22d3ee" : "rgba(255,255,255,0.45)", fontWeight: 700, cursor: "pointer" }}>{t.label}</button>
+            <button key={t.key} onClick={() => setActiveTab(t.key)} style={{ flex: 1, padding: "9px 8px", borderRadius: 9, border: "none", background: activeTab === t.key ? "var(--accent-soft)" : "transparent", color: activeTab === t.key ? "var(--accent)" : "var(--text-muted)", fontWeight: 700, cursor: "pointer" }}>{t.label}</button>
           ))}
         </div>
 
         {activeTab === "overview" && (
-          <div style={{ background: "rgba(10,10,24,0.8)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 16, padding: "20px" }}>
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: "20px" }}>
             <RankHistoryGraph history={rankHistory} />
           </div>
         )}
 
         {activeTab === "badges" && (
-          <div style={{ background: "rgba(10,10,24,0.8)", borderRadius: 16, padding: "20px" }}>
+          <div style={{ background: "var(--surface)", borderRadius: 16, padding: "20px" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 10 }}>
               {Object.entries(KNOWN_BADGES).map(([id, info]) => {
                 const earned = badges?.some(b => b.badge_id === id);
                 return (
-                  <div key={id} style={{ padding: "14px", borderRadius: 12, background: earned ? "rgba(251,191,36,0.06)" : "rgba(255,255,255,0.02)", border: `1px solid ${earned ? "#fbbf2455" : "#ffffff11"}` }}>
+                  <div key={id} style={{ padding: "14px", borderRadius: 12, background: earned ? "var(--accent-soft)" : "var(--surface-2)", border: `1px solid ${earned ? "var(--accent)" : "var(--border)"}` }}>
                     <div style={{ fontSize: 24 }}>{info.icon}</div>
-                    <div style={{ fontSize: 12, color: earned ? "#fbbf24" : "#ffffff55" }}>{info.name}</div>
+                    <div style={{ fontSize: 12, color: earned ? "var(--accent)" : "var(--text-subtle)" }}>{info.name}</div>
                   </div>
                 );
               })}
@@ -265,7 +265,7 @@ export default function UserProfile({ userId }) {
                 <div style={{
                   position: "relative", borderRadius: 16, overflow: "hidden",
                   background: clanData.clan.banner_url ? `url(${clanData.clan.banner_url}) center/cover` : "linear-gradient(135deg, #1e1b4b 0%, #311042 50%, #0f172a 100%)",
-                  border: "1px solid rgba(255,255,255,0.1)",
+                  border: "1px solid var(--border)",
                   padding: "24px", minHeight: 140,
                   display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 16,
                   boxShadow: "0 8px 32px rgba(0,0,0,0.5), inset 0 0 50px rgba(0,0,0,0.7)",
@@ -287,8 +287,8 @@ export default function UserProfile({ userId }) {
                           {clanData.clan.name}
                         </h2>
                         <span style={{
-                          background: "rgba(34,211,238,0.2)", border: "1px solid rgba(34,211,238,0.4)",
-                          borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 800, color: "#22d3ee",
+                          background: "var(--accent-soft)", border: "1px solid var(--accent)",
+                          borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 800, color: "var(--accent)",
                         }}>
                           {clanData.clan.tag}
                         </span>
@@ -315,18 +315,18 @@ export default function UserProfile({ userId }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 10 }}>
                   {[
                     { label: "Cấp độ Clan", value: `Lv.${clanData.clan.level || 1}`, icon: "⭐", color: "#fbbf24" },
-                    { label: "Tổng XP", value: (clanData.clan.total_xp || 0).toLocaleString(), icon: "⚡", color: "#22d3ee" },
+                    { label: "Tổng XP", value: (clanData.clan.total_xp || 0).toLocaleString(), icon: "⚡", color: "var(--accent)" },
                     { label: "Thắng / Thua", value: `${clanData.clan.wins || 0}W - ${clanData.clan.losses || 0}L`, icon: "⚔️", color: "#4ade80" },
                     { label: "Thành viên", value: `${clanData.clan.member_count || clanData.clan.members?.length || 1} người`, icon: "👥", color: "#a78bfa" },
                     { label: "Vai trò của bạn", value: clanData.user_role === "owner" ? "Trưởng Clan 👑" : (clanData.user_role === "officer" ? "Phó Clan ⚔️" : "Thành viên"), icon: "🎖️", color: "#f472b6" },
                   ].map(s => (
                     <div key={s.label} style={{
-                      background: "rgba(10,10,24,0.8)", border: "1px solid rgba(255,255,255,0.06)",
+                      background: "var(--surface)", border: "1px solid var(--border)",
                       borderRadius: 12, padding: "14px 12px", textAlign: "center",
                     }}>
                       <div style={{ fontSize: 18, marginBottom: 4 }}>{s.icon}</div>
                       <div style={{ fontSize: 15, fontWeight: 900, color: s.color }}>{s.value}</div>
-                      <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 600, marginTop: 2 }}>{s.label}</div>
+                      <div style={{ fontSize: 10, color: "var(--text-subtle)", fontWeight: 600, marginTop: 2 }}>{s.label}</div>
                     </div>
                   ))}
                 </div>
@@ -335,7 +335,7 @@ export default function UserProfile({ userId }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }}>
                   {/* Tournament Achievements */}
                   <div style={{
-                    background: "rgba(10,10,24,0.8)", border: "1px solid rgba(255,255,255,0.06)",
+                    background: "var(--surface)", border: "1px solid var(--border)",
                     borderRadius: 16, padding: "20px",
                   }}>
                     <h3 style={{ fontSize: 14, fontWeight: 800, margin: "0 0 14px", display: "flex", alignItems: "center", gap: 8 }}>
@@ -347,13 +347,13 @@ export default function UserProfile({ userId }) {
                         <div key={idx} style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between",
                           padding: "12px 14px", borderRadius: 10,
-                          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)",
+                          background: "var(--surface-2)", border: "1px solid var(--border)",
                         }}>
                           <div>
-                            <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: "white" }}>
+                            <span style={{ display: "block", fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
                               {ach.title}
                             </span>
-                            <span style={{ fontSize: 11, fontFamily: "monospace", color: "rgba(255,255,255,0.35)" }}>
+                            <span style={{ fontSize: 11, fontFamily: "monospace", color: "var(--text-subtle)" }}>
                               {ach.date}
                             </span>
                           </div>
@@ -370,7 +370,7 @@ export default function UserProfile({ userId }) {
 
                   {/* Internal Clan Member Leaderboard */}
                   <div style={{
-                    background: "rgba(10,10,24,0.8)", border: "1px solid rgba(255,255,255,0.06)",
+                    background: "var(--surface)", border: "1px solid var(--border)",
                     borderRadius: 16, padding: "20px",
                   }}>
                     <h3 style={{ fontSize: 14, fontWeight: 800, margin: "0 0 14px", display: "flex", alignItems: "center", gap: 8 }}>
@@ -382,19 +382,19 @@ export default function UserProfile({ userId }) {
                         <div key={m.id || idx} style={{
                           display: "flex", alignItems: "center", gap: 10,
                           padding: "10px 14px", borderRadius: 10,
-                          background: m.username === user.username ? "rgba(34,211,238,0.08)" : "rgba(255,255,255,0.02)",
-                          border: `1px solid ${m.username === user.username ? "rgba(34,211,238,0.25)" : "rgba(255,255,255,0.05)"}`,
+                          background: m.username === user.username ? "var(--accent-soft)" : "var(--surface-2)",
+                          border: `1px solid ${m.username === user.username ? "var(--accent)" : "var(--border)"}`,
                         }}>
-                          <span style={{ width: 20, fontSize: 12, fontWeight: 800, fontFamily: "monospace", color: idx < 3 ? "#fbbf24" : "rgba(255,255,255,0.3)" }}>
+                          <span style={{ width: 20, fontSize: 12, fontWeight: 800, fontFamily: "monospace", color: idx < 3 ? "#fbbf24" : "var(--text-subtle)" }}>
                             #{idx + 1}
                           </span>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "white" }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
                                 {m.username}
                               </span>
                               {m.role === "owner" && <span style={{ fontSize: 9, fontWeight: 800, color: "#fbbf24", background: "rgba(251,191,36,0.15)", padding: "1px 5px", borderRadius: 4 }}>Trưởng Clan</span>}
-                              {m.role === "officer" && <span style={{ fontSize: 9, fontWeight: 800, color: "#22d3ee", background: "rgba(34,211,238,0.15)", padding: "1px 5px", borderRadius: 4 }}>Phó Clan</span>}
+                              {m.role === "officer" && <span style={{ fontSize: 9, fontWeight: 800, color: "var(--accent)", background: "var(--accent-soft)", padding: "1px 5px", borderRadius: 4 }}>Phó Clan</span>}
                             </div>
                           </div>
                           <span style={{ fontSize: 12, fontWeight: 800, fontFamily: "monospace", color: "#fbbf24" }}>
@@ -408,7 +408,7 @@ export default function UserProfile({ userId }) {
 
                 {/* ── Private Clan Chatbox ── */}
                 <div style={{
-                  background: "rgba(10,10,24,0.85)", border: "1px solid rgba(255,255,255,0.08)",
+                  background: "var(--surface)", border: "1px solid var(--border)",
                   borderRadius: 16, padding: "20px", display: "flex", flexDirection: "column", gap: 14,
                 }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -425,9 +425,9 @@ export default function UserProfile({ userId }) {
                   {/* Messages Feed */}
                   <div style={{
                     height: 220, overflowY: "auto",
-                    background: "rgba(2,6,23,0.6)", borderRadius: 12,
+                    background: "var(--surface-2)", borderRadius: 12,
                     padding: "14px", display: "flex", flexDirection: "column", gap: 10,
-                    border: "1px solid rgba(255,255,255,0.05)",
+                    border: "1px solid var(--border)",
                   }}>
                     {clanMessages.map((msg, i) => {
                       const isMe = msg.username === user.username || msg.user_id === userId;
@@ -437,20 +437,20 @@ export default function UserProfile({ userId }) {
                           alignItems: isMe ? "flex-end" : "flex-start",
                         }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: isMe ? "#22d3ee" : "rgba(255,255,255,0.7)" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: isMe ? "var(--accent)" : "var(--text-muted)" }}>
                               {msg.username}
                             </span>
                             {msg.role === "owner" && <span style={{ fontSize: 9, color: "#fbbf24" }}>👑</span>}
-                            {msg.role === "officer" && <span style={{ fontSize: 9, color: "#22d3ee" }}>⚔️</span>}
-                            <span style={{ fontSize: 9, color: "rgba(255,255,255,0.25)", fontFamily: "monospace" }}>
+                            {msg.role === "officer" && <span style={{ fontSize: 9, color: "var(--accent)" }}>⚔️</span>}
+                            <span style={{ fontSize: 9, color: "var(--text-subtle)", fontFamily: "monospace" }}>
                               {msg.created_at ? new Date(msg.created_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) : ""}
                             </span>
                           </div>
                           <div style={{
                             padding: "8px 14px", borderRadius: 12, maxWidth: "80%",
                             fontSize: 13, lineHeight: 1.5,
-                            background: isMe ? "linear-gradient(135deg, #0ea5e9, #6366f1)" : "rgba(255,255,255,0.06)",
-                            color: "white", border: isMe ? "none" : "1px solid rgba(255,255,255,0.08)",
+                            background: isMe ? "linear-gradient(135deg, var(--accent), var(--accent-strong))" : "var(--surface-2)",
+                            color: "white", border: isMe ? "none" : "1px solid var(--border)",
                           }}>
                             {msg.message}
                           </div>
@@ -468,8 +468,8 @@ export default function UserProfile({ userId }) {
                       onChange={e => setNewChatMsg(e.target.value)}
                       style={{
                         flex: 1, padding: "10px 14px",
-                        background: "rgba(2,6,23,0.7)", border: "1px solid rgba(255,255,255,0.12)",
-                        borderRadius: 10, color: "white", fontSize: 13, outline: "none",
+                        background: "var(--surface-2)", border: "1px solid var(--border)",
+                        borderRadius: 10, color: "var(--text)", fontSize: 13, outline: "none",
                       }}
                     />
                     <button
@@ -489,21 +489,21 @@ export default function UserProfile({ userId }) {
               </>
             ) : (
               <div style={{
-                background: "rgba(10,10,24,0.8)", border: "1px solid rgba(255,255,255,0.07)",
+                background: "var(--surface)", border: "1px solid var(--border)",
                 borderRadius: 20, padding: "40px 24px", textAlign: "center",
               }}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>🛡️</div>
-                <h3 style={{ fontSize: 18, fontWeight: 900, color: "white", margin: 0 }}>
+                <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--text)", margin: 0 }}>
                   Chưa tham gia Math Clan nào
                 </h3>
-                <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", margin: "8px 0 20px" }}>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", margin: "8px 0 20px" }}>
                   Hãy gia nhập hoặc tự thành lập Clan để cùng đồng đội Đấu Nhóm và leo bảng xếp hạng!
                 </p>
                 <div style={{ display: "flex", justifyContent: "center", gap: 12 }}>
                   <Link href="/clans" style={{ textDecoration: "none" }}>
                     <button style={{
                       padding: "10px 20px", borderRadius: 10,
-                      background: "linear-gradient(135deg, #22d3ee, #6366f1)",
+                      background: "linear-gradient(135deg, var(--accent), var(--accent-strong))",
                       border: "none", color: "white", fontWeight: 800, fontSize: 13, cursor: "pointer",
                     }}>
                       🔍 Khám phá Clan

@@ -78,19 +78,19 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
     <div style={{
       position: "fixed", inset: 0, zIndex: 9999,
       display: "flex", alignItems: "center", justifyContent: "center",
-      background: "rgba(2, 12, 27, 0.82)",
+      background: "rgba(0, 0, 0, 0.6)",
       backdropFilter: "blur(8px)",
       opacity: visible ? 1 : 0,
       transition: "opacity 0.35s ease",
     }}>
       <div style={{
-        background: "linear-gradient(145deg, #0d1f3c 0%, #0e3158 60%, #063d56 100%)",
-        border: "1.5px solid rgba(34,211,238,0.25)",
+        background: "var(--surface)",
+        border: "1.5px solid var(--border)",
         borderRadius: 24,
         padding: "32px 36px",
         minWidth: 340,
         maxWidth: 460,
-        boxShadow: "0 24px 80px rgba(0,0,0,0.6), 0 0 40px rgba(34,211,238,0.08)",
+        boxShadow: "0 24px 80px rgba(0,0,0,0.5)",
         animation: "hudSlideUp 0.4s cubic-bezier(0.16,1,0.3,1) both",
       }}>
         {/* Header */}
@@ -100,7 +100,7 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
           </div>
           <h2 style={{
             fontSize: 22, fontWeight: 800,
-            background: "linear-gradient(90deg,#22d3ee,#a78bfa)",
+            background: "linear-gradient(90deg, var(--accent), var(--accent-strong))",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
             margin: 0,
           }}>
@@ -111,7 +111,7 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
               : `Streak ${new_streak} ngày! 🔥`}
           </h2>
           {freeze_used && (
-            <p style={{ color: "#94a3b8", fontSize: 13, marginTop: 4 }}>
+            <p style={{ color: "var(--text-muted)", fontSize: 13, marginTop: 4 }}>
               Còn {freeze_count} Freeze token
             </p>
           )}
@@ -122,16 +122,16 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",
             gap: 10, marginBottom: 20,
-            background: "rgba(34,211,238,0.08)",
+            background: "var(--accent-soft)",
             borderRadius: 12, padding: "12px 20px",
-            border: "1px solid rgba(34,211,238,0.18)",
+            border: "1px solid var(--border)",
           }}>
             <span style={{ fontSize: 28 }}>⚡</span>
             <div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: "#22d3ee", lineHeight: 1 }}>
+              <div style={{ fontSize: 28, fontWeight: 900, color: "var(--accent)", lineHeight: 1 }}>
                 +{xpCount} XP
               </div>
-              <div style={{ color: "#64748b", fontSize: 12 }}>Tổng: {total_xp?.toLocaleString()} XP · Level {level}</div>
+              <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Tổng: {total_xp?.toLocaleString()} XP · Level {level}</div>
             </div>
           </div>
         )}
@@ -150,13 +150,13 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
         {/* New badges */}
         {recent_badges?.length > 0 && (
           <div style={{ marginBottom: 20 }}>
-            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 10, fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10, fontWeight: 600 }}>
               🎖️ Badge mới đạt được
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               {recent_badges.map((b) => (
                 <div key={b.id} style={{
-                  background: "rgba(255,215,0,0.08)",
+                  background: "var(--accent-soft)",
                   border: `1.5px solid ${TIER_COLORS[b.tier] || "#ffd700"}`,
                   borderRadius: 12, padding: "8px 14px",
                   display: "flex", alignItems: "center", gap: 8,
@@ -166,7 +166,7 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
                     <div style={{ fontSize: 13, fontWeight: 700, color: TIER_COLORS[b.tier] || "#ffd700" }}>
                       {b.name_vi}
                     </div>
-                    <div style={{ fontSize: 11, color: "#64748b" }}>{b.math_term}</div>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{b.math_term}</div>
                   </div>
                 </div>
               ))}
@@ -177,7 +177,7 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
         {/* Daily Quests progress */}
         {quests.length > 0 && (
           <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 10, fontWeight: 600 }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10, fontWeight: 600 }}>
               📋 Nhiệm vụ hôm nay
             </div>
             {quests.map((q) => {
@@ -185,22 +185,22 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
               return (
                 <div key={q.id} style={{ marginBottom: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                    <span style={{ color: q.is_completed ? "#4ade80" : "#cbd5e1" }}>
+                    <span style={{ color: q.is_completed ? "var(--stats-ok)" : "var(--text)" }}>
                       {q.is_completed ? "✅ " : ""}{q.quest_label_vi}
                     </span>
-                    <span style={{ color: "#64748b" }}>
+                    <span style={{ color: "var(--text-muted)" }}>
                       {q.current_value}/{q.target_value} · +{q.xp_reward} XP
                     </span>
                   </div>
                   <div style={{
-                    height: 6, background: "rgba(255,255,255,0.06)",
+                    height: 6, background: "var(--surface-2)",
                     borderRadius: 3, overflow: "hidden",
                   }}>
                     <div style={{
                       width: `${pct}%`, height: "100%",
                       background: q.is_completed
-                        ? "linear-gradient(90deg,#4ade80,#22d3ee)"
-                        : "linear-gradient(90deg,#22d3ee,#6366f1)",
+                        ? "linear-gradient(90deg, var(--stats-ok), var(--stats-ok-2))"
+                        : "linear-gradient(90deg, var(--accent), var(--accent-strong))",
                       borderRadius: 3,
                       transition: "width 0.8s ease",
                     }} />
@@ -214,11 +214,11 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
         {/* Close button */}
         <button onClick={handleClose} style={{
           width: "100%", padding: "12px 0",
-          background: "linear-gradient(135deg,#22d3ee,#6366f1)",
+          background: "linear-gradient(135deg, var(--accent), var(--accent-strong))",
           border: "none", borderRadius: 12,
           color: "#fff", fontSize: 15, fontWeight: 700,
           cursor: "pointer",
-          boxShadow: "0 4px 16px rgba(34,211,238,0.25)",
+          boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
           transition: "opacity 0.2s",
         }}
         onMouseEnter={e => e.target.style.opacity = "0.85"}
@@ -229,6 +229,8 @@ export default function GamificationHUD({ onClose, autoCloseMs = 8000 }) {
       </div>
 
       <style>{`
+        :root { --stats-ok: #4ade80; --stats-ok-2: #16a34a; }
+        [data-theme="paper"] { --stats-ok: #16a34a; --stats-ok-2: #15803d; }
         @keyframes hudSlideUp {
           from { opacity: 0; transform: translateY(40px) scale(0.95); }
           to   { opacity: 1; transform: translateY(0) scale(1); }
