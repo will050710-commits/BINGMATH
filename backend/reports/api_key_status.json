@@ -1,0 +1,93 @@
+{
+  "checked_at": "2026-10-16 18:55:58",
+  "results": [
+    {
+      "var": "GROQ_API_KEY",
+      "purpose": "Tier Groq (trả lời nhanh)",
+      "key": "…swj1",
+      "state": "OK",
+      "http": 200,
+      "model": "qwen/qwen3.8-27b",
+      "ms": 715
+    },
+    {
+      "var": "GROQ_API_KEY_SECONDARY",
+      "purpose": "Groq dự phòng",
+      "state": "TRONG",
+      "detail": "biến để trống"
+    },
+    {
+      "var": "GEMINI_API_KEY",
+      "purpose": "Gemini: model chính + vision",
+      "key": "…lzSg",
+      "state": "LOI_KHAC",
+      "http": 503,
+      "model": "gemini-flash-latest",
+      "ms": 8302,
+      "detail": "HTTP 503 | {   \"error\": {     \"code\": 503,     \"message\": \"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",     \"s"
+    },
+    {
+      "var": "OPENROUTER_API_KEY",
+      "purpose": "OpenRouter: free tier, critic, sửa JSON",
+      "key": "…a3ac",
+      "state": "OK",
+      "http": 200,
+      "model": "(auth/key + credits)",
+      "ms": 1915,
+      "info": {
+        "free_tier": true,
+        "usage": 0,
+        "limit": null,
+        "limit_remaining": null,
+        "total_credits": 0,
+        "total_usage": 0.00408178,
+        "balance": -0.0041
+      }
+    },
+    {
+      "var": "CEREBRAS_API_KEY",
+      "purpose": "Cerebras (qwen-3.8-27b, gpt-oss-120b)",
+      "key": "…2yen",
+      "state": "OK",
+      "http": 200,
+      "model": "qwen-3.8-27b",
+      "ms": 760
+    },
+    {
+      "var": "NVIDIA_API_KEY_PRIMARY",
+      "purpose": "NVIDIA (nemotron, math/code)",
+      "key": "…SKPE",
+      "state": "OK",
+      "http": 200,
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "ms": 1056
+    },
+    {
+      "var": "NVIDIA_API_KEY_SECONDARY",
+      "purpose": "NVIDIA dự phòng",
+      "state": "TRONG",
+      "detail": "biến để trống"
+    },
+    {
+      "var": "TYPESAFE_API_KEY_PRIMARY",
+      "purpose": "TypeSafe AI / Jev: duyệt ảo giác",
+      "key": "…df2a",
+      "state": "OK",
+      "http": 200,
+      "model": "openrouter/free (TypeSafe middleware)",
+      "ms": 627
+    },
+    {
+      "var": "TYPESAFE_API_KEY_SECONDARY",
+      "purpose": "TypeSafe AI / Jev dự phòng",
+      "state": "TRONG",
+      "detail": "biến để trống"
+    },
+    {
+      "var": "VISION_HF_SPACE_TOKEN",
+      "purpose": "HF Space vision (không có API kiểm tra)",
+      "state": "TRONG",
+      "detail": "biến để trống"
+    }
+  ]
+}

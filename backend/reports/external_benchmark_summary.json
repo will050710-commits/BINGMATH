@@ -1,0 +1,449 @@
+{
+  "evaluated_at": "2026-10-16 20:14:43",
+  "seed": 42,
+  "total_problems": 60,
+  "raw_baseline": {
+    "passed": 55,
+    "accuracy_pct": 91.67,
+    "wilson_95ci_pct": [
+      81.9,
+      96.4
+    ]
+  },
+  "duomath_guarded": {
+    "passed": 57,
+    "accuracy_pct": 95.0,
+    "wilson_95ci_pct": [
+      86.3,
+      98.3
+    ],
+    "repaired_attempts": 3,
+    "errors_healed_to_correct": 2
+  },
+  "by_dataset": {
+    "Hendrycks_MATH": {
+      "total": 20,
+      "raw_passed": 20,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        83.9,
+        100.0
+      ],
+      "guarded_passed": 20,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        83.9,
+        100.0
+      ]
+    },
+    "Omni_MATH": {
+      "total": 20,
+      "raw_passed": 15,
+      "raw_accuracy_pct": 75.0,
+      "raw_wilson_95ci": [
+        53.1,
+        88.8
+      ],
+      "guarded_passed": 17,
+      "guarded_accuracy_pct": 85.0,
+      "guarded_wilson_95ci": [
+        64.0,
+        94.8
+      ]
+    },
+    "Vi_MetaMath": {
+      "total": 20,
+      "raw_passed": 20,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        83.9,
+        100.0
+      ],
+      "guarded_passed": 20,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        83.9,
+        100.0
+      ]
+    }
+  },
+  "by_category": {
+    "Algebra": {
+      "total": 13,
+      "raw_passed": 12,
+      "raw_accuracy_pct": 92.31,
+      "raw_wilson_95ci": [
+        66.7,
+        98.6
+      ],
+      "guarded_passed": 13,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        77.2,
+        100.0
+      ]
+    },
+    "Applied Mathematics": {
+      "total": 3,
+      "raw_passed": 3,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        43.8,
+        100.0
+      ],
+      "guarded_passed": 3,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        43.8,
+        100.0
+      ]
+    },
+    "Calculus": {
+      "total": 3,
+      "raw_passed": 3,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        43.8,
+        100.0
+      ],
+      "guarded_passed": 3,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        43.8,
+        100.0
+      ]
+    },
+    "Counting & Probability": {
+      "total": 10,
+      "raw_passed": 10,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        72.2,
+        100.0
+      ],
+      "guarded_passed": 10,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        72.2,
+        100.0
+      ]
+    },
+    "Discrete Mathematics": {
+      "total": 4,
+      "raw_passed": 3,
+      "raw_accuracy_pct": 75.0,
+      "raw_wilson_95ci": [
+        30.1,
+        95.4
+      ],
+      "guarded_passed": 4,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        51.0,
+        100.0
+      ]
+    },
+    "GSM_AnsAug": {
+      "total": 4,
+      "raw_passed": 4,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        51.0,
+        100.0
+      ],
+      "guarded_passed": 4,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        51.0,
+        100.0
+      ]
+    },
+    "GSM_FOBAR": {
+      "total": 2,
+      "raw_passed": 2,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        34.2,
+        100.0
+      ],
+      "guarded_passed": 2,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        34.2,
+        100.0
+      ]
+    },
+    "GSM_Rephrased": {
+      "total": 4,
+      "raw_passed": 4,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        51.0,
+        100.0
+      ],
+      "guarded_passed": 4,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        51.0,
+        100.0
+      ]
+    },
+    "GSM_SV": {
+      "total": 1,
+      "raw_passed": 1,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        20.7,
+        100.0
+      ],
+      "guarded_passed": 1,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        20.7,
+        100.0
+      ]
+    },
+    "Geometry": {
+      "total": 3,
+      "raw_passed": 1,
+      "raw_accuracy_pct": 33.33,
+      "raw_wilson_95ci": [
+        6.1,
+        79.2
+      ],
+      "guarded_passed": 1,
+      "guarded_accuracy_pct": 33.33,
+      "guarded_wilson_95ci": [
+        6.1,
+        79.2
+      ]
+    },
+    "MATH_AnsAug": {
+      "total": 7,
+      "raw_passed": 7,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        64.6,
+        100.0
+      ],
+      "guarded_passed": 7,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        64.6,
+        100.0
+      ]
+    },
+    "MATH_Rephrased": {
+      "total": 2,
+      "raw_passed": 2,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        34.2,
+        100.0
+      ],
+      "guarded_passed": 2,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        34.2,
+        100.0
+      ]
+    },
+    "Number Theory": {
+      "total": 2,
+      "raw_passed": 2,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        34.2,
+        100.0
+      ],
+      "guarded_passed": 2,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        34.2,
+        100.0
+      ]
+    },
+    "Precalculus": {
+      "total": 2,
+      "raw_passed": 1,
+      "raw_accuracy_pct": 50.0,
+      "raw_wilson_95ci": [
+        9.5,
+        90.5
+      ],
+      "guarded_passed": 1,
+      "guarded_accuracy_pct": 50.0,
+      "guarded_wilson_95ci": [
+        9.5,
+        90.5
+      ]
+    }
+  },
+  "by_level": {
+    "Diff-3.0": {
+      "total": 1,
+      "raw_passed": 1,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        20.7,
+        100.0
+      ],
+      "guarded_passed": 1,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        20.7,
+        100.0
+      ]
+    },
+    "Diff-3.5": {
+      "total": 4,
+      "raw_passed": 4,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        51.0,
+        100.0
+      ],
+      "guarded_passed": 4,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        51.0,
+        100.0
+      ]
+    },
+    "Diff-4.0": {
+      "total": 10,
+      "raw_passed": 8,
+      "raw_accuracy_pct": 80.0,
+      "raw_wilson_95ci": [
+        49.0,
+        94.3
+      ],
+      "guarded_passed": 8,
+      "guarded_accuracy_pct": 80.0,
+      "guarded_wilson_95ci": [
+        49.0,
+        94.3
+      ]
+    },
+    "Diff-4.5": {
+      "total": 4,
+      "raw_passed": 2,
+      "raw_accuracy_pct": 50.0,
+      "raw_wilson_95ci": [
+        15.0,
+        85.0
+      ],
+      "guarded_passed": 3,
+      "guarded_accuracy_pct": 75.0,
+      "guarded_wilson_95ci": [
+        30.1,
+        95.4
+      ]
+    },
+    "Diff-5.0": {
+      "total": 1,
+      "raw_passed": 0,
+      "raw_accuracy_pct": 0.0,
+      "raw_wilson_95ci": [
+        0.0,
+        79.3
+      ],
+      "guarded_passed": 1,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        20.7,
+        100.0
+      ]
+    },
+    "Level 1": {
+      "total": 3,
+      "raw_passed": 3,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        43.8,
+        100.0
+      ],
+      "guarded_passed": 3,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        43.8,
+        100.0
+      ]
+    },
+    "Level 2": {
+      "total": 3,
+      "raw_passed": 3,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        43.8,
+        100.0
+      ],
+      "guarded_passed": 3,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        43.8,
+        100.0
+      ]
+    },
+    "Level 3": {
+      "total": 6,
+      "raw_passed": 6,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        61.0,
+        100.0
+      ],
+      "guarded_passed": 6,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        61.0,
+        100.0
+      ]
+    },
+    "Level 4": {
+      "total": 4,
+      "raw_passed": 4,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        51.0,
+        100.0
+      ],
+      "guarded_passed": 4,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        51.0,
+        100.0
+      ]
+    },
+    "Level 5": {
+      "total": 4,
+      "raw_passed": 4,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        51.0,
+        100.0
+      ],
+      "guarded_passed": 4,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        51.0,
+        100.0
+      ]
+    },
+    "Standard": {
+      "total": 20,
+      "raw_passed": 20,
+      "raw_accuracy_pct": 100.0,
+      "raw_wilson_95ci": [
+        83.9,
+        100.0
+      ],
+      "guarded_passed": 20,
+      "guarded_accuracy_pct": 100.0,
+      "guarded_wilson_95ci": [
+        83.9,
+        100.0
+      ]
+    }
+  }
+}

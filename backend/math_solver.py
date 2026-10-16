@@ -130,7 +130,8 @@ _BAD_TOKENS = ("__", "import", "lambda", "eval(", "exec(", ";", "`", "open(", "o
 def _clean_expr(expression: str) -> str:
     text = str(expression or "").strip()
     text = (text.replace("^", "**").replace("×", "*").replace("÷", "/")
-                .replace("−", "-").replace("–", "-"))
+                .replace("\\times", "*").replace("\\cdot", "*").replace("\\div", "/")
+                .replace("$", "").replace("−", "-").replace("–", "-"))
     text = text.replace("≤", "<=").replace("≥", ">=").replace("≠", "!=")
     text = re.sub(r"(?<=[0-9)])(?=[a-zA-Z(])", "*", text)   # 5x -> 5*x, 2(x+1) -> 2*(x+1)
     return text.strip()
@@ -286,7 +287,11 @@ def run_tool(name: str, arguments: Any) -> Dict[str, Any]:
 # ── reading the model's final answer out of free-form prose ──────────────────
 _BOXED_RE = re.compile(r"\\boxed\{([^{}]{1,120})\}")
 _VN_ANSWER_RE = re.compile(r"(?:đáp\s*(?:án|số)|kết\s*quả|answer)\s*[:\-–]?\s*(.{1,80})", re.IGNORECASE)
-_ASSIGN_RE = re.compile(r"([A-Za-z][A-Za-z_0-9]{0,3})\s*=\s*(-?\d+(?:\.\d+)?(?:/\d+)?|\\frac\{[^{}]{1,12}\}\{[^{}]{1,12}\}|\\sqrt\{[^{}]{1,20}\})")
+_ASSIGN_RE = re.compile(
+    r"(?<![0-9A-Za-z_\\^])([A-Za-z][A-Za-z_0-9]{0,3})\s*=\s*"
+    r"(-?\d+(?:\.\d+)?(?:/\d+)?|\\frac\{[^{}]{1,12}\}\{[^{}]{1,12}\}|\\sqrt\{[^{}]{1,20}\})"
+    r"(?![\s]*[\+\-\*\/×÷\^])"
+)
 
 
 def extract_candidates(reply: str) -> List[str]:
@@ -298,7 +303,12 @@ def extract_candidates(reply: str) -> List[str]:
     # "Đáp án: 12. Vậy x = 3." must yield "12", not the whole trailing sentence.
     found.extend(re.split(r"\s*[.;]\s+", m.group(1).strip())[0].strip()
                  for m in _VN_ANSWER_RE.finditer(text))
-    found.extend(f"{m.group(1)} = {m.group(2)}".strip() for m in _ASSIGN_RE.finditer(text))
+    for line in text.splitlines():
+        low_line = line.lower()
+        if any(w in low_line for w in ("loại", "không thỏa", "không thoả", "ngoại lai", "đkxđ", "điều kiện")):
+            continue
+        for m in _ASSIGN_RE.finditer(line):
+            found.append(f"{m.group(1)} = {m.group(2)}".strip())
     seen, ordered = set(), []
     for item in found:
         key = item.replace(" ", "")
@@ -583,23 +593,61 @@ def extract_equalities(reply: str) -> List[str]:
     return out[:6]
 
 
+_PROSE_WORDS = {
+    "ta", "co", "có", "la", "là", "thi", "thì", "vay", "vậy", "do", "đó",
+    "suy", "ra", "bước", "áp", "dụng", "công", "thức", "tính", "được",
+    "hoặc", "và", "với", "khi", "tại", "nên", "vì", "theo", "từ", "cho",
+}
+
+
+def _has_non_ascii_or_prose(expr_str: str) -> bool:
+    if any(ord(ch) > 127 for ch in expr_str):
+        return True
+    for tok in re.findall(r"[A-Za-z_]+", expr_str):
+        low = tok.lower()
+        if low in _PROSE_WORDS:
+            return True
+    return False
+
+
 def _verify_identity(claim: str) -> Optional[Dict[str, Any]]:
     """tool_sympy_verify, retrying after dropping leading Vietnamese prose.
 
     Models write 'Ta có x^2-5x+6 = (x-2)(x-4)'; the parser needs the maths part
-    only, so up to four leading words are dropped until it parses.
+    only, so leading prose words are dropped before SymPy parses the expression.
     """
     lhs, op, rhs = _split_relation(str(claim or ""))
     if op != "=":
         return None
+    # Strip trailing prose from rhs if any
+    rhs_words = rhs.split()
+    while len(rhs_words) > 1 and _has_non_ascii_or_prose(rhs_words[-1]):
+        rhs_words.pop()
+    clean_rhs = " ".join(rhs_words).strip(" $.,;:")
+    if not clean_rhs or _has_non_ascii_or_prose(clean_rhs):
+        return None
+
     words = lhs.split()
-    for drop in range(0, max(1, min(4, len(words) - 1) + 1)):
-        candidate = " ".join(words[drop:]).strip(" $.,;:")
-        if not candidate:
-            break
-        result = tool_sympy_verify(f"{candidate} = {rhs}")
-        if result.get("ok"):
-            return result
+    while len(words) > 1 and (
+        _has_non_ascii_or_prose(words[0])
+        or words[0] in ("-", "*", "•", "+")
+        or words[0].endswith(":")
+    ):
+        words.pop(0)
+    candidate = " ".join(words).strip(" $.,;:")
+    if not candidate or _has_non_ascii_or_prose(candidate):
+        return None
+    if _is_value_claim(f"{candidate} = {clean_rhs}"):
+        return None
+    try:
+        pa, pb = _parse(candidate), _parse(clean_rhs)
+        if pa.free_symbols != pb.free_symbols:
+            return None
+    except Exception:
+        return None
+    result = tool_sympy_verify(f"{candidate} = {clean_rhs}")
+    if result.get("ok"):
+        return result
     return None
 
 
@@ -643,6 +691,8 @@ def check_sanity(ir: Dict[str, Any], reply: str) -> Dict[str, Any]:
                                                   "thể tích", "radius", "length", "area")):
             issues.append(f"'{claim}' is negative but the problem asks for a length/area/radius")
         if value > 1 and "%" not in claim and any(k in words for k in ("xác suất", "probability")):
+            if parts and parts[0].lower() not in ("p", "prob", "xs"):
+                continue
             issues.append(f"'{claim}' exceeds 1 but the problem asks for a probability")
     if issues:
         return {"name": "sanity", "status": "failed", "detail": issues}

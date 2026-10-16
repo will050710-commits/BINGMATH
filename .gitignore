@@ -1,4 +1,4 @@
-﻿# Byte-compiled / optimized / DLL files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
@@ -39,6 +39,11 @@ dist/
 backend/*.db
 *.db
 backend/*.log
+frontend/*.log
+*.log
+_*.txt
+backend/_*.txt
+frontend/_*.txt
 duosteam.worktrees/
 
 # Phase 4: MathLive assets are copied from node_modules by postinstall
