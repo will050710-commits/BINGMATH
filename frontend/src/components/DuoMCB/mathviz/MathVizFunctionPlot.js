@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   ComposedChart, Line, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   ReferenceDot, ReferenceLine,
@@ -45,13 +45,13 @@ export default function MathVizFunctionPlot({ data }) {
   const compiled = useMemo(() => safeCompile(expr), [expr]);
   const derivCompiled = useMemo(() => safeDerivative(expr), [expr]);
 
-  const evalF = (x, params) => {
+  const evalF = useCallback((x, params) => {
     if (!compiled) return null;
     try {
       const v = compiled.evaluate({ x, ...params, pi: Math.PI, e: Math.E });
       return typeof v === 'number' && Number.isFinite(v) ? v : null;
     } catch { return null; }
-  };
+  }, [compiled]);
 
   const evalDeriv = (x, params) => {
     if (derivCompiled) {
@@ -74,7 +74,7 @@ export default function MathVizFunctionPlot({ data }) {
       pts.push({ x, y: evalF(x, paramValues) });
     }
     return pts;
-  }, [xMin, xMax, expr, paramValues]); // eslint-disable-line
+  }, [xMin, xMax, evalF, paramValues]);
 
   const yDomain = useMemo(() => {
     const ys = data_pts.map(p => p.y).filter(v => v != null);
@@ -108,7 +108,7 @@ export default function MathVizFunctionPlot({ data }) {
       pts.push({ x, y: evalF(x, paramValues) });
     }
     return pts;
-  }, [localShowArea, clampedFrom, clampedTo, expr, paramValues]); // eslint-disable-line
+  }, [localShowArea, clampedFrom, clampedTo, evalF, paramValues]);
 
   const areaValue = useMemo(() => {
     if (!localShowArea) return null;
@@ -122,7 +122,7 @@ export default function MathVizFunctionPlot({ data }) {
       sum += (y ?? 0) * w;
     }
     return sum * h;
-  }, [localShowArea, clampedFrom, clampedTo, expr, paramValues]); // eslint-disable-line
+  }, [localShowArea, clampedFrom, clampedTo, evalF, paramValues]);
 
   const reset = () => { setParamValues(initParamValues()); setX0(tangentX0); setLocalAreaFrom(areaFrom); setLocalAreaTo(areaTo); };
 
@@ -137,11 +137,12 @@ export default function MathVizFunctionPlot({ data }) {
       <MathVizTitle icon="📈" title={data?.title} fallback="Đồ thị hàm số" />
       <div style={{ fontSize:11, fontFamily:'monospace', background:'#161b22', borderRadius:6, padding:'6px 10px', marginBottom:12, color:'#79c0ff' }}>f(x) = {expr}</div>
 
-      <ResponsiveContainer width="100%" height={240}>
-        <ComposedChart margin={{ top:8, right:12, bottom:0, left:-18 }}>
+      <div style={{ height: 'var(--tutor-plot-height, 240px)', minWidth: 0 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart margin={{ top:8, right:12, bottom:0, left:0 }}>
           <CartesianGrid stroke="#21262d" strokeDasharray="3 3" />
           <XAxis dataKey="x" type="number" domain={xDomain} stroke="#30363d" tick={{ fill:'#8b949e', fontSize:11 }} />
-          <YAxis type="number" domain={yDomain} stroke="#30363d" tick={{ fill:'#8b949e', fontSize:11 }} />
+          <YAxis type="number" width={48} tickFormatter={value => Number.isFinite(value) ? String(Number(value.toFixed(2))) : ""} domain={yDomain} stroke="#30363d" tick={{ fill:'#8b949e', fontSize:11 }} />
           <ReferenceLine y={0} stroke="#30363d" />
           {localShowArea && areaData.length > 0 && (
             <Area data={areaData} dataKey="y" type="monotone" stroke="none" fill={AREA_COLOR} fillOpacity={0.28} isAnimationActive={false} connectNulls={false} />
@@ -155,6 +156,7 @@ export default function MathVizFunctionPlot({ data }) {
           )}
         </ComposedChart>
       </ResponsiveContainer>
+      </div>
 
       <div style={{ display:'flex', flexWrap:'wrap', marginTop:12 }}>
         <div style={chipStyle}><div style={labelStyle}>Point</div><div style={valueStyle}>({fmt(clampedX0)}, {fmt(fAtX0 ?? NaN)})</div></div>

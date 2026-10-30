@@ -63,6 +63,7 @@ export async function chat(sessionId, message, options = {}) {
   };
 
   const attempt = async () => {
+    if (signal?.aborted) return { error: true, kind: "cancelled", status: 0, reply: "" };
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), activeTimeout);
     const forwardAbort = () => controller.abort();
@@ -102,6 +103,8 @@ export async function chat(sessionId, message, options = {}) {
   };
 
   let result = await attempt();
+  // Changing conversations cancels the old UI request, including its retry.
+  if (signal?.aborted) return result;
   if (result.error && isRetryableKind(result.kind)) {
     // Đợt 8 / 4I: an IMAGE request does not get the automatic retry.
     //

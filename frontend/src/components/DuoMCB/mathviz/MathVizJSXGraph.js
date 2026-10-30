@@ -70,7 +70,6 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
   const rawId = useId();
   const boardId = `jxgbox_${rawId.replace(/:/g, '_')}`;
   const [isClient, setIsClient] = useState(false);
-  const [boardReady, setBoardReady] = useState(false);
   const [claimsResult, setClaimsResult] = useState([]);
   const [activeGroups, setActiveGroups] = useState({});
   const [paramValues, setParamValues] = useState(() => {
@@ -198,7 +197,34 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
   }, []);
 
   useEffect(() => {
-    setIsClient(true);
+    const container = containerRef.current;
+    if (!container) return;
+    let frame = 0;
+    // A new scene can arrive while its persistent panel is collapsed. Delay
+    // the first board until it has real dimensions; after that, hiding it
+    // never resets isClient or destroys the existing board.
+    const scheduleActivation = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        if (container.clientWidth > 0 && container.clientHeight > 0) {
+          setIsClient(true);
+          observer?.disconnect();
+          window.removeEventListener('resize', scheduleActivation);
+        }
+      });
+    };
+    const observer = typeof ResizeObserver === 'function'
+      ? new ResizeObserver(scheduleActivation)
+      : null;
+    observer?.observe(container);
+    if (!observer) window.addEventListener('resize', scheduleActivation);
+    scheduleActivation();
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener('resize', scheduleActivation);
+    };
   }, []);
 
   const verification = data?._verification;
@@ -362,6 +388,9 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
       showCopyright: false,
       showNavigation: false,
       keepaspectratio: true,
+      // Workspace owns the rAF-coalesced observer below. Disable the library's
+      // timeout-based observer so each resize has one owner.
+      resize: { enabled: false },
       renderer: 'svg',
     });
 
@@ -1000,11 +1029,42 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
     board.on('update', () => {
       evaluateClaims();
     });
-    evaluateClaims();
+    // The board update event also evaluates the initial claims. Calling it
+    // separately here would duplicate that work and synchronously set React state.
     board.update();
-    setBoardReady(true);
+
+    const container = containerRef.current;
+    let resizeRaf = 0;
+    let disposed = false;
+    let lastWidth = board.canvasWidth;
+    let lastHeight = board.canvasHeight;
+    const scheduleResize = () => {
+      if (disposed || resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        if (width <= 0 || height <= 0 || (width === lastWidth && height === lastHeight)) return;
+        lastWidth = width;
+        lastHeight = height;
+        // dontset=true leaves CSS width/height at 100%. JSXGraph 1.13 keeps
+        // the CURRENT bounding box (including pan/zoom), with keepaspectratio;
+        // zoom100() or rebuilding the board here would lose the learner's view.
+        board.resizeContainer(width, height, true);
+      });
+    };
+    const resizeObserver = typeof ResizeObserver === 'function'
+      ? new ResizeObserver(scheduleResize)
+      : null;
+    resizeObserver?.observe(container);
+    if (!resizeObserver) window.addEventListener('resize', scheduleResize);
+    scheduleResize();
 
     return () => {
+      disposed = true;
+      cancelAnimationFrame(resizeRaf);
+      resizeObserver?.disconnect();
+      window.removeEventListener('resize', scheduleResize);
       if (boardRef.current) {
         try {
           JXG.JSXGraph.freeBoard(boardRef.current);
@@ -1039,7 +1099,7 @@ export default function MathVizJSXGraph({ data, onSwitchToSvg }) {
         border: '1px solid rgba(56, 189, 248, 0.2)',
         boxShadow: '0 12px 32px -4px rgba(0, 0, 0, 0.5)',
         width: '100%',
-        maxWidth: 560,
+        maxWidth: 'var(--tutor-geometry-max-width, 560px)',
         margin: '12px auto',
         position: 'relative',
       }}

@@ -162,13 +162,16 @@ function useServiceWorker() {
 function LayoutInner({ children }) {
   const pathname = usePathname();
   const isLesson = isLessonPath(pathname);
+  // The full tutor owns its composer and in-header language control. Floating
+  // chat/language buttons otherwise cover them on small visual viewports.
+  const isTutorWorkspace = pathname?.replace(/\/+$/, "").toLowerCase() === "/duomcb";
 
   return (
     <>
       <PageTransition>{children}</PageTransition>
-      <GlobalSidebar />
+      {!isTutorWorkspace && <GlobalSidebar />}
       {isLesson && <DuoTranslate />}
-      {!isLesson && <LangToggleButton />}
+      {!isLesson && !isTutorWorkspace && <LangToggleButton />}
     </>
   );
 }

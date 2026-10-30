@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import styles from "./DuoMCBPage.module.css";
 import Image from "next/image";
@@ -13,7 +13,10 @@ import { makeSafeEvaluator } from "@/utils/safeMathEval";
 // P15-fix: the mathviz reply extractor lives in a pure module now, so CI can
 // test every fence variant — a payload under ```json used to leak into the
 // chat as raw JSON (classroom report 2026-10-01).
-import { extractMathvizBlock } from "@/lib/mathvizExtract";
+import TutorWorkspace from "@/components/tutor/TutorWorkspace";
+import { MathCanvasHost } from "@/components/tutor/MathCanvasHost";
+import { useTutorScenes } from "@/components/tutor/useTutorScenes";
+import { useLanguage } from "@/context/LanguageContext";
 
 // Phase 0 security hardening: shared, memoised mathjs evaluator that replaced
 // the bypassable `new Function()` sanitizer in the canvas renderer.
@@ -22,7 +25,6 @@ import Link from "next/link";
 import katex from "katex";
 import "katex/dist/katex.min.css";
 
-const MathVizRenderer = dynamic(() => import("./mathviz/MathVizRenderer"), { ssr: false });
 // MathLive (Phase 4 guide item 2.1) — the visual formula input, now actually
 // wired into the composer (it was built in đợt 1 but never mounted). Loaded
 // lazily: `mathlive` and its virtual-keyboard fonts only reach the browser
@@ -2031,6 +2033,7 @@ function ToolsDropdown({ onSelect, disabled }) {
 }
 
 export default function DuoMCBPage() {
+  const { lang, toggleLang } = useLanguage();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [copiedId, setCopiedId] = useState(null);
@@ -2076,12 +2079,22 @@ export default function DuoMCBPage() {
     }
   }, [messages, sessionId]);
 
-  const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const conversationEpoch = useRef(0);
+  const pendingRequest = useRef(null);
+  const historyLoadEpoch = useRef(null);
+  const sessionInitialization = useRef(null);
 
-  useEffect(() => { initSession(); }, []);
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
+  useEffect(() => {
+    initSession();
+    return () => {
+      conversationEpoch.current += 1;
+      pendingRequest.current?.controller.abort();
+      pendingRequest.current = null;
+      sessionInitialization.current = null;
+    };
+  }, []);
   // Close mobile sidebar when resizing to desktop
   useEffect(() => {
     function handleResize() {
@@ -2091,17 +2104,21 @@ export default function DuoMCBPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  async function initSession() {
-    const sid = await createSession();
-    setSessionId(sid || "offline-" + Date.now());
+  async function initSession(epoch = conversationEpoch.current) {
+    const initialization = sessionInitialization.current || { epoch, promise: createSession() };
+    sessionInitialization.current = initialization;
+    const sid = await initialization.promise;
+    if (sessionInitialization.current === initialization) sessionInitialization.current = null;
+    if (epoch !== conversationEpoch.current) return null;
+    const resolved = sid || "offline-" + Date.now();
+    setSessionId(resolved);
+    return resolved;
   }
 
-  async function ensureSession() {
+  async function ensureSession(epoch) {
     let sid = sessionId;
     if (!sid || sid.startsWith("offline-")) {
-      sid = await createSession();
-      if (!sid) sid = "offline-" + Date.now();
-      setSessionId(sid);
+      sid = await initSession(epoch);
     }
     return sid;
   }
@@ -2116,14 +2133,22 @@ export default function DuoMCBPage() {
   }
 
   async function loadChat(sid) {
+    const epoch = invalidateConversation();
+    historyLoadEpoch.current = epoch;
+    setLoading(true);
     try {
       const saved = await dbGet(`duomcb_session_${sid}`);
-      if (saved) {
+      if (saved && epoch === conversationEpoch.current) {
         setSessionId(sid);
         setMessages(saved);
       }
     } catch (e) {
       console.error("Failed to load session from IndexedDB", e);
+    } finally {
+      if (epoch === conversationEpoch.current) {
+        historyLoadEpoch.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -2312,7 +2337,11 @@ export default function DuoMCBPage() {
     const currentBase64 = imageBase64;
 
     if (!rawMsg && !currentBase64) return;
-    if (loading) return;
+    if (loading || pendingRequest.current || historyLoadEpoch.current !== null) return;
+    const request = { epoch: conversationEpoch.current, controller: new AbortController() };
+    pendingRequest.current = request;
+    const isCurrentRequest = () => pendingRequest.current === request && conversationEpoch.current === request.epoch;
+    setLoading(true);
 
     // Reset input fields immediately
     setInput("");
@@ -2320,7 +2349,8 @@ export default function DuoMCBPage() {
     setImageBase64(null);
     setImageNotice(null);
 
-    const sid = await ensureSession();
+    const sid = await ensureSession(request.epoch);
+    if (!isCurrentRequest() || !sid) return;
     const promptText = rawMsg || (mode === "hint" ? "Gợi ý bài toán từ ảnh" : "Giải bài toán từ ảnh");
 
     if (mode === "video") {
@@ -2333,6 +2363,8 @@ export default function DuoMCBPage() {
         imageBase64: currentBase64,
         sessionId: sid,
       }]);
+      pendingRequest.current = null;
+      setLoading(false);
       return;
     }
 
@@ -2368,7 +2400,9 @@ export default function DuoMCBPage() {
       const data = await chat(sid, chatPrompt, {
         image: currentBase64 || null,
         mode: actualMode,
+        signal: request.controller.signal,
       });
+      if (!isCurrentRequest()) return;
       if (data.error) {
         // Đợt 4H-2: chat() already translated the failure into an honest,
         // specific Vietnamese message (too big / rate-limited / pipeline
@@ -2385,10 +2419,14 @@ export default function DuoMCBPage() {
       }
       setMessages(prev => [...prev, { role: "assistant", content: data.reply || "", id: Date.now() + 1, ocr_confirm: data.ocr_confirm, verification: data.verification, perception: data.perception }]);
     } catch (err) {
+      if (!isCurrentRequest()) return;
       console.error("[DuoMCB] sendMessage failed:", err);
       setMessages(prev => [...prev, { role: "assistant", content: "🔌 Không kết nối được tới máy chủ BingMath. Em kiểm tra mạng rồi thử lại nhé.", id: Date.now() + 1 }]);
     } finally {
-      setLoading(false);
+      if (isCurrentRequest()) {
+        pendingRequest.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -2397,10 +2435,30 @@ export default function DuoMCBPage() {
     sendMessage(msg || null, toolId);
   }
 
-  function newChat() {
-    setMessages([]); initSession(); inputRef.current?.focus();
+  function invalidateConversation() {
+    conversationEpoch.current += 1;
+    pendingRequest.current?.controller.abort();
+    pendingRequest.current = null;
+    sessionInitialization.current = null;
+    historyLoadEpoch.current = null;
+    setLoading(false);
+    setInput("");
+    setImagePreview(null);
+    setImageBase64(null);
+    setImageNotice(null);
+    return conversationEpoch.current;
   }
 
+  function newChat() {
+    const epoch = invalidateConversation();
+    setSessionId(null);
+    setMessages([]); initSession(epoch); inputRef.current?.focus();
+  }
+
+  const { parsedMessages, activeScene, selectScene, revealKey } = useTutorScenes(messages, sessionId);
+  // Stable across composer keystrokes; MathCanvasHost additionally compares the
+  // immutable scene identity when a new transcript turn is appended.
+  const canvasContent = useMemo(() => <MathCanvasHost scene={activeScene} />, [activeScene]);
   const isEmpty = messages.length === 0;
 
   return (
@@ -2501,6 +2559,10 @@ export default function DuoMCBPage() {
           <span className={styles.headerTitle}>BingMCB</span>
           <span className={styles.headerSub}>Bilingual AI Tutor</span>
           <div className={styles.headerActions}>
+            <button type="button" className={styles.languageButton} onClick={toggleLang}
+              aria-label={lang === "vi" ? "Chuyển sang tiếng Anh" : "Switch to Vietnamese"}>
+              {lang === "vi" ? "VI · EN" : "EN · VI"}
+            </button>
             {messages.length > 0 && (
               <button className={styles.saveBtn} onClick={saveConversation} title="Lưu cuộc trò chuyện">
                 💾 Lưu
@@ -2510,7 +2572,103 @@ export default function DuoMCBPage() {
           </div>
         </header>
 
-        <div className={styles.chatArea}>
+        <TutorWorkspace
+          canvas={canvasContent}
+          canvasAvailable={Boolean(activeScene)}
+          canvasTitle={activeScene?.title}
+          canvasBusy={loading}
+          conversationKey={sessionId}
+          activityKey={`${messages.length}:${loading}`}
+          canvasRevealKey={revealKey}
+          composer={
+            <div className={styles.inputBar}>
+          <div className={styles.inputWrapper}>
+            {/* Attachment preview inside prompt box (Claude style) */}
+            {imagePreview && (
+              <div className={styles.attachmentContainer}>
+                <div className={styles.attachmentThumbWrapper}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={imagePreview} alt="Attached preview" className={styles.attachmentThumb} />
+                  <button
+                    className={styles.attachmentRemoveBtn}
+                    onClick={() => { setImagePreview(null); setImageBase64(null); setImageNotice(null); }}
+                    title="Xóa ảnh đính kèm"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
+            {imageNotice && (
+              <p style={{
+                margin: "6px 2px 0",
+                fontSize: 12,
+                fontWeight: 600,
+                lineHeight: 1.4,
+                color: imageNotice.kind === "warn" ? "#fbbf24" : "#38bdf8",
+              }}>
+                {imageNotice.kind === "warn" ? "⚠️ " : "🖼️ "}
+                {imageNotice.text}
+              </p>
+            )}
+            <div className={styles.inputInnerRow}>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.svg,.heic,.avif,.txt,.md,.json,.csv,.pdf"
+                style={{ display: "none" }}
+                onChange={handleImageSelect}
+              />
+              <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Tải ảnh hoặc tài liệu lên" disabled={loading}>+</button>
+              {/* Σ — MathLive formula input (Phase 4 item 2.1, wired into the composer). */}
+              <button
+                className={styles.imageBtn}
+                onClick={() => setMathMode(m => !m)}
+                title={mathMode ? "Tắt nhập công thức (quay lại văn bản)" : "Nhập công thức Toán (MathLive) — bàn phím công thức đầy đủ"}
+                aria-pressed={mathMode}
+                disabled={loading}
+                style={mathMode ? { color: "#38bdf8", opacity: 1 } : undefined}
+              >Σ</button>
+              {mathMode ? (
+                <div
+                  style={{ flex: 1, minWidth: 0 }}
+                  onKeyDown={e => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && !e.nativeEvent.isComposing) { e.preventDefault(); sendMessage(null, "hint"); } }}
+                >
+                  <MathInput
+                    value={input}
+                    onChange={setInput}
+                    placeholder={imagePreview ? "Nhập công thức (LaTeX)…" : "Nhập công thức Toán… Ctrl/⌘+Enter để gửi"}
+                    ariaLabel="Nhập công thức Toán"
+                    style={{ padding: "6px 8px", border: "none", background: "none", fontSize: 16 }}
+                  />
+                </div>
+              ) : (
+              <textarea
+                ref={inputRef}
+                className={styles.input}
+                aria-label="Câu trả lời của em"
+                placeholder={imagePreview ? "Nhập yêu cầu thêm hoặc chọn công cụ bên dưới..." : "Hỏi BingMCB... kéo thả hoặc dán (Ctrl+V) ảnh/tài liệu bất kỳ"}
+                value={input}
+                rows={1}
+                onChange={e => setInput(e.target.value)}
+                onPaste={handlePaste}
+                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); sendMessage(null, "hint"); } }}
+              />
+              )}
+              <ToolsDropdown onSelect={handleToolSelect} disabled={loading} />
+              <button
+                className={`${styles.sendBtn} ${(input.trim() || imageBase64) && !loading ? styles.sendActive : ""}`}
+                onClick={() => sendMessage(null, "hint")}
+                disabled={(!input.trim() && !imageBase64) || loading}
+                title="Gửi"
+                aria-label="Gửi câu trả lời"
+              >➤</button>
+            </div>
+          </div>
+          <p className={styles.disclaimer}>BingMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
+        </div>
+          }
+        >
           {isEmpty ? (
             <div className={styles.welcome}>
               <Image src="/images/duosteamicon-removebg-preview.webp" alt="BingMCB Logo" width={64} height={64} style={{ width: 64, height: "auto" }} />
@@ -2527,7 +2685,7 @@ export default function DuoMCBPage() {
             </div>
           ) : (
             <div className={styles.messages}>
-              {messages.map(m => {
+              {parsedMessages.map(m => {
                 if (m.type === "video") {
                   return (
                     <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`}>
@@ -2544,7 +2702,7 @@ export default function DuoMCBPage() {
                     </div>
                   );
                 }
-                const { text: cleanContent, vizData } = extractMathvizBlock(m.content || "");
+                const { cleanContent, scene } = m;
                 if (m.role === "user") {
                   return (
                     <div key={m.id} className={`${styles.msgRow} ${styles.userRow}`}>
@@ -2683,24 +2841,17 @@ export default function DuoMCBPage() {
                         </div>
                       )}
 
-                      {/* Claude-style Artifact Container for MathViz */}
-                      {vizData && (
-                        <div className={styles.artifactContainer}>
-                          <div className={styles.artifactHeader}>
-                            <div className={styles.artifactTitle}>
-                              <span className={styles.artifactIcon}>📐</span>
-                              <span className={styles.artifactLabel}>
-                                {vizData.title || "Mô hình toán học tương tác DuoMath"}
-                              </span>
-                            </div>
-                            <span className={styles.artifactBadge}>
-                              {vizData.kind === "3d" ? "3D Không gian" : "2D Mặt phẳng"}
-                            </span>
-                          </div>
-                          <div className={styles.artifactBody}>
-                            <MathVizRenderer data={vizData} />
-                          </div>
-                        </div>
+                      {scene && (
+                        <button
+                          type="button"
+                          className={styles.sceneLink}
+                          aria-label={`Xem hình của bước này: ${scene.title}`}
+                          aria-pressed={activeScene?.id === scene.id}
+                          onClick={() => selectScene(scene.id)}
+                        >
+                          <span aria-hidden="true">📐</span>
+                          <span>{scene.title}<small>{activeScene?.id === scene.id ? "Đang xem trên bảng minh họa" : "Xem hình của bước này"}</small></span>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -2716,96 +2867,9 @@ export default function DuoMCBPage() {
                   </div>
                 </div>
               )}
-              <div ref={bottomRef} />
             </div>
           )}
-        </div>
-
-        {/* ── Input bar ── */}
-        <div className={styles.inputBar}>
-          <div className={styles.inputWrapper}>
-            {/* Attachment preview inside prompt box (Claude style) */}
-            {imagePreview && (
-              <div className={styles.attachmentContainer}>
-                <div className={styles.attachmentThumbWrapper}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imagePreview} alt="Attached preview" className={styles.attachmentThumb} />
-                  <button
-                    className={styles.attachmentRemoveBtn}
-                    onClick={() => { setImagePreview(null); setImageBase64(null); setImageNotice(null); }}
-                    title="Xóa ảnh đính kèm"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </div>
-            )}
-            {imageNotice && (
-              <p style={{
-                margin: "6px 2px 0",
-                fontSize: 12,
-                fontWeight: 600,
-                lineHeight: 1.4,
-                color: imageNotice.kind === "warn" ? "#fbbf24" : "#38bdf8",
-              }}>
-                {imageNotice.kind === "warn" ? "⚠️ " : "🖼️ "}
-                {imageNotice.text}
-              </p>
-            )}
-            <div className={styles.inputInnerRow}>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.bmp,.svg,.heic,.avif,.txt,.md,.json,.csv,.pdf"
-                style={{ display: "none" }}
-                onChange={handleImageSelect}
-              />
-              <button className={styles.imageBtn} onClick={() => fileInputRef.current?.click()} title="Tải ảnh hoặc tài liệu lên" disabled={loading}>+</button>
-              {/* Σ — MathLive formula input (Phase 4 item 2.1, wired into the composer). */}
-              <button
-                className={styles.imageBtn}
-                onClick={() => setMathMode(m => !m)}
-                title={mathMode ? "Tắt nhập công thức (quay lại văn bản)" : "Nhập công thức Toán (MathLive) — bàn phím công thức đầy đủ"}
-                aria-pressed={mathMode}
-                disabled={loading}
-                style={mathMode ? { color: "#38bdf8", opacity: 1 } : undefined}
-              >Σ</button>
-              {mathMode ? (
-                <div
-                  style={{ flex: 1, minWidth: 0 }}
-                  onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
-                >
-                  <MathInput
-                    value={input}
-                    onChange={setInput}
-                    placeholder={imagePreview ? "Nhập công thức (LaTeX)…" : "Nhập công thức Toán… Enter để gửi"}
-                    ariaLabel="Nhập công thức Toán"
-                    style={{ padding: "6px 8px", border: "none", background: "none", fontSize: 16 }}
-                  />
-                </div>
-              ) : (
-              <textarea
-                ref={inputRef}
-                className={styles.input}
-                placeholder={imagePreview ? "Nhập yêu cầu thêm hoặc chọn công cụ bên dưới..." : "Hỏi BingMCB... kéo thả hoặc dán (Ctrl+V) ảnh/tài liệu bất kỳ"}
-                value={input}
-                rows={1}
-                onChange={e => setInput(e.target.value)}
-                onPaste={handlePaste}
-                onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(null, "hint"); } }}
-              />
-              )}
-              <ToolsDropdown onSelect={handleToolSelect} disabled={loading} />
-              <button
-                className={`${styles.sendBtn} ${(input.trim() || imageBase64) && !loading ? styles.sendActive : ""}`}
-                onClick={() => sendMessage(null, "hint")}
-                disabled={(!input.trim() && !imageBase64) || loading}
-                title="Gửi"
-              >➤</button>
-            </div>
-          </div>
-          <p className={styles.disclaimer}>BingMCB có thể mắc lỗi. Hãy kiểm tra lại các đáp án quan trọng.</p>
-        </div>
+        </TutorWorkspace>
       </main>
     </div>
   );
