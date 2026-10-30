@@ -660,7 +660,7 @@ export default function MathVizGeometry3D({ data }) {
     if (!threeReady || !mountRef.current) return;
     const THREE = threeRef.current;
     const mount = mountRef.current;
-    const height = 360;
+    const height = mount.clientHeight || 360;
     const width = mount.clientWidth || 400;
 
     const scene = new THREE.Scene();
@@ -670,8 +670,13 @@ export default function MathVizGeometry3D({ data }) {
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(width, height, false);
+    // CSS owns the viewport; the drawing buffer follows its actual size.
+    // Avoid inline pixel widths fighting a split-panel resize.
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
+    renderer.domElement.style.display = 'block';
     mount.appendChild(renderer.domElement);
 
     scene.add(new THREE.AmbientLight(0xffffff, 0.7));
@@ -693,8 +698,19 @@ export default function MathVizGeometry3D({ data }) {
     rendererRef.current = renderer;
     groupRef.current = group;
 
-    let raf;
+    // One scene/camera survives divider moves, expansion and collapsed panels.
+    // ResizeObserver sees container changes even when window.innerWidth is stable.
+    let raf = 0;
+    let resizeRaf = 0;
+    let disposed = false;
+    let hasSize = mount.clientWidth > 0 && mount.clientHeight > 0;
+    let inView = true;
+    let lastWidth = width;
+    let lastHeight = height;
+    const canRender = () => !disposed && hasSize && inView && !document.hidden;
     const animate = () => {
+      raf = 0;
+      if (!canRender()) return;
       if (autoRotateRef.current && !dragRef.current.dragging && group) {
         group.rotation.y += 0.006;
       }
@@ -705,19 +721,59 @@ export default function MathVizGeometry3D({ data }) {
       renderer.render(scene, camera);
       raf = requestAnimationFrame(animate);
     };
-    animate();
-
-    const onResize = () => {
-      const w = mount.clientWidth;
-      camera.aspect = w / height;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, height);
+    const syncAnimation = () => {
+      if (canRender()) {
+        if (!raf) raf = requestAnimationFrame(animate);
+      } else if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
     };
-    window.addEventListener('resize', onResize);
+    const scheduleResize = () => {
+      if (disposed || resizeRaf) return;
+      resizeRaf = requestAnimationFrame(() => {
+        resizeRaf = 0;
+        const w = mount.clientWidth;
+        const h = mount.clientHeight;
+        hasSize = w > 0 && h > 0;
+        // A hidden viewport must not generate a zero-height projection or
+        // discard its drawing buffer. It resumes with the same camera later.
+        if (hasSize && (w !== lastWidth || h !== lastHeight)) {
+          lastWidth = w;
+          lastHeight = h;
+          camera.aspect = w / h;
+          camera.updateProjectionMatrix();
+          renderer.setSize(w, h, false);
+        }
+        syncAnimation();
+      });
+    };
+    const resizeObserver = typeof ResizeObserver === 'function'
+      ? new ResizeObserver(scheduleResize)
+      : null;
+    resizeObserver?.observe(mount);
+    if (!resizeObserver) window.addEventListener('resize', scheduleResize);
+
+    // Stop GPU work and 4D React updates while the persistent viewport is
+    // clipped/collapsed or the tab is backgrounded; do not destroy its state.
+    const visibilityObserver = typeof IntersectionObserver === 'function'
+      ? new IntersectionObserver(([entry]) => {
+          inView = entry.isIntersecting && entry.intersectionRatio > 0;
+          syncAnimation();
+        })
+      : null;
+    visibilityObserver?.observe(mount);
+    document.addEventListener('visibilitychange', syncAnimation);
+    scheduleResize();
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(raf);
-      window.removeEventListener('resize', onResize);
+      cancelAnimationFrame(resizeRaf);
+      resizeObserver?.disconnect();
+      visibilityObserver?.disconnect();
+      window.removeEventListener('resize', scheduleResize);
+      document.removeEventListener('visibilitychange', syncAnimation);
       renderer.dispose();
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
     };
@@ -1117,7 +1173,7 @@ export default function MathVizGeometry3D({ data }) {
           </div>
         )}
 
-        <div style={{ position: 'relative', width: '100%', height: 360, borderRadius: 10, overflow: 'hidden', background: '#0d1117', border: '1px solid #30363d' }}>
+        <div style={{ position: 'relative', width: '100%', height: 'var(--tutor-plot-height, 360px)', borderRadius: 10, overflow: 'hidden', background: '#0d1117', border: '1px solid #30363d' }}>
           <div ref={mountRef} style={{ width: '100%', height: '100%', touchAction: 'none', cursor: 'grab' }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerLeave={onPointerUp} />
           <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(13, 17, 23, 0.85)', padding: '4px 10px', borderRadius: 6, border: '1px solid #30363d', fontSize: 11, color: '#00e5ff', pointerEvents: 'none' }}>{ALL_SOLIDS_MAP[currentSolid] || currentSolid}</div>
         </div>

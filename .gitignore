@@ -49,3 +49,10 @@ duosteam.worktrees/
 # Phase 4: MathLive assets are copied from node_modules by postinstall
 frontend/public/mathlive-fonts/
 frontend/public/mathlive-sounds/
+
+# TutorWorkspace validation and generated Next/TypeScript metadata
+work/
+frontend/next-env.d.ts
+frontend/*.tsbuildinfo
+frontend/test-results/
+frontend/playwright-report/

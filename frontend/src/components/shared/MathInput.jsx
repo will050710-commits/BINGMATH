@@ -9,7 +9,12 @@
 // Fonts/sounds are copied into public/ by scripts/copy-mathlive-assets.mjs
 // (postinstall) — without them the virtual keyboard has no glyphs in production.
 import { useEffect, useRef } from "react";
-import "mathlive";
+import { MathfieldElement } from "mathlive";
+
+if (typeof window !== "undefined") {
+  MathfieldElement.fontsDirectory = "/mathlive-fonts";
+  MathfieldElement.soundsDirectory = "/mathlive-sounds";
+}
 
 export default function MathInput({
   value = "",
@@ -37,6 +42,23 @@ export default function MathInput({
     const field = fieldRef.current;
     if (field && placeholder) field.setAttribute("placeholder", placeholder);
   }, [placeholder]);
+
+  useEffect(() => {
+    // MathLive's keyboard overlays document.body; it does not resize the native
+    // VisualViewport. Notify any workspace without coupling this shared field
+    // to the tutor or importing MathLive into the workspace's initial bundle.
+    const keyboard = window.mathVirtualKeyboard;
+    const field = fieldRef.current;
+    const notifyGeometry = () => window.dispatchEvent(new Event("bingmath:math-keyboard-resize"));
+    keyboard?.addEventListener("geometrychange", notifyGeometry);
+    keyboard?.addEventListener("virtual-keyboard-toggle", notifyGeometry);
+    return () => {
+      keyboard?.removeEventListener("geometrychange", notifyGeometry);
+      keyboard?.removeEventListener("virtual-keyboard-toggle", notifyGeometry);
+      if (document.activeElement === field || document.activeElement?.tagName !== "MATH-FIELD") keyboard?.hide();
+      notifyGeometry();
+    };
+  }, []);
 
   return (
     <math-field

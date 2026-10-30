@@ -127,13 +127,20 @@
 .modelDot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 6px #22c55e; }
 
 /* ── Main ── */
-.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .headerActions { margin-left: auto; display: flex; align-items: flex-end; gap: 12px; }
+.languageButton {
+  min-height: 44px; padding: 0 8px; border: 1px solid #374151;
+  border-radius: 8px; color: #cbd5e1; background: transparent;
+  font-size: 12px; white-space: nowrap; cursor: pointer;
+}
+.languageButton:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 2px; }
 .header {
   display: flex; align-items: center; gap: 10px;
   padding: 16px 24px;
   border-bottom: 1px solid #2a2a32;
   background: #0f0f11;
+  flex-shrink: 0;
 }
 .headerTitle { font-size: 16px; font-weight: 700;
   background: linear-gradient(135deg, #00d8fe, #13b0ff);
@@ -148,7 +155,7 @@
 /* Welcome */
 .welcome {
   display: flex; flex-direction: column; align-items: center;
-  justify-content: center; min-height: 60vh;
+  justify-content: center; min-height: 100%;
   text-align: center; padding: 0 24px;
   animation: fadeUp 0.5s ease both;
 }
@@ -358,50 +365,30 @@
   line-height: 1.6;
 }
 
-/* Claude-style Artifact Panel for MathViz */
-.artifactContainer {
+/* A transcript reference selects the one persistent workspace renderer. */
+.sceneLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-top: 14px;
   width: 100%;
-  border-radius: 14px;
+  min-height: 52px;
+  padding: 12px;
+  border-radius: 12px;
   border: 1px solid rgba(56, 189, 248, 0.25);
-  background: #090e17;
-  overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
-}
-.artifactHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 9px 14px;
-  background: rgba(14, 165, 233, 0.08);
-  border-bottom: 1px solid rgba(56, 189, 248, 0.18);
-}
-.artifactTitle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 600;
+  background: rgba(14, 165, 233, 0.06);
   color: #e2e8f0;
+  text-align: left;
+  cursor: pointer;
+  transition: background 140ms, border-color 140ms;
+  overflow-wrap: anywhere;
 }
-.artifactIcon {
-  font-size: 15px;
+.sceneLink small { display: block; color: #94a3b8; margin-top: 4px; }
+.sceneLink:hover, .sceneLink[aria-pressed="true"] {
+  background: rgba(14, 165, 233, 0.13);
+  border-color: #38bdf8;
 }
-.artifactLabel {
-  letter-spacing: -0.2px;
-}
-.artifactBadge {
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(14, 165, 233, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  border-radius: 10px;
-  padding: 1px 7px;
-}
-.artifactBody {
-  padding: 4px;
-}
+.sceneLink:focus-visible { outline: 2px solid #7dd3fc; outline-offset: 3px; }
 
 /* Image inside bubble */
 .bubbleImage {
@@ -421,7 +408,7 @@
 .dot:nth-child(3) { animation-delay: 0.4s; }
 
 /* ── Input bar ── */
-.inputBar { padding: clamp(10px, 3vw, 16px) clamp(12px, 4vw, 24px) clamp(12px, 3vw, 20px); background: #0b0f14; border-top: 1px solid rgba(56, 189, 248, 0.16); justify-content: center; }
+.inputBar { padding: 10px 12px max(10px, env(safe-area-inset-bottom)); background: #0b0f14; border-top: 1px solid rgba(56, 189, 248, 0.16); justify-content: center; }
 .inputWrapper {
   display: flex;
   flex-direction: column;
@@ -1170,3 +1157,12 @@
 .sidebarBackdrop { display: none; }
 
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Phase A: keep text/formula content within a narrow desktop chat column. */
+.bubble { min-width: 0; overflow-wrap: anywhere; }
+.inputWrapper { min-width: 0; }
+.input { min-width: 0; font-size: 16px; }
+@media (prefers-reduced-motion: reduce) {
+  .sceneLink { transition: none; }
+  .dot { animation: none; }
+}
