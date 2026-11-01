@@ -53,6 +53,7 @@ if os.path.exists(_env_path):
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from contextlib import asynccontextmanager
+from urllib.parse import quote as _url_quote
 
 import sympy
 import httpx # pyright: ignore[reportMissingImports]
@@ -379,6 +380,22 @@ async def verify_admin(request: Request) -> int:
         db.close()
 
 
+async def verify_teacher(request: Request) -> int:
+    """Allow access to users appointed as Teacher by Admin (or Admins)."""
+    uid = await resolve_user_id(request)
+    db = get_db()
+    try:
+        row = db.execute("SELECT * FROM users WHERE id=?", (uid,)).fetchone()
+        if not row:
+            raise HTTPException(404, "User not found.")
+        role_info = normalize_user_role(row)
+        if not (role_info["is_teacher"] or role_info["is_admin"]):
+            raise HTTPException(403, "Forbidden: Teacher or Admin access required.")
+        return uid
+    finally:
+        db.close()
+
+
 def quality_log(surface: str, model: str = "", tier: str = "", provider: str = "",
                 latency_ms: int = 0, verified=None, consensus: str = "",
                 confidence=None, fallback: str = "", notes: str = "",
@@ -612,7 +629,8 @@ def relearn_items(user_id: int) -> list:
     db = get_db()
     try:
         rows = db.execute(
-            "SELECT id, card_key, topic, skill, reason, card_json, due_at, reps, lapses"
+            "SELECT id, card_key, topic, skill, reason, card_json, due_at, reps, lapses, created_at, updated_at,"
+            " CASE WHEN updated_at >= datetime('now', '-7 days') OR created_at >= datetime('now', '-7 days') THEN 1 ELSE 0 END AS is_this_week"
             " FROM relearn_cards WHERE user_id=? ORDER BY due_at IS NULL, due_at",
             (user_id,)).fetchall()
     finally:
@@ -622,8 +640,17 @@ def relearn_items(user_id: int) -> list:
         card = fsrs_scheduler.card_from_storage(row["card_json"])
         info = fsrs_scheduler.summarise({**(card.to_dict() if card is not None else {}),
                                          "reps": row["reps"], "lapses": row["lapses"]})
-        items.append({"id": row["id"], "card_key": row["card_key"], "topic": row["topic"],
-                      "skill": row["skill"], "reason": row["reason"], **info})
+        items.append({
+            "id": row["id"],
+            "card_key": row["card_key"],
+            "topic": row["topic"],
+            "skill": row["skill"],
+            "reason": row["reason"],
+            "created_at": row["created_at"],
+            "updated_at": row["updated_at"],
+            "is_this_week": bool(row["is_this_week"]),
+            **info,
+        })
     return items
 
 
@@ -650,17 +677,115 @@ def relearn_apply_review(user_id: int, card_id: int, rating: str):
             "interval_days": out["interval_days"], "reps": reps, "lapses": lapses}
 
 
-def relearn_payload(user_id: int, limit: int = 10) -> dict:
-    """What the student should review now, plus what is coming up."""
-    items = relearn_items(user_id)
-    due = [c for c in items if c.get("is_due")]
-    upcoming = [c for c in items if not c.get("is_due")]
+def build_competency_heatmap(user_id: int, cards: list) -> tuple:
+    """WP-A3: Build competency heatmap (strong/review/weak) and 3 daily action recommendations."""
+    heatmap = []
+    seen_topics = set()
+    db = get_db()
+    try:
+        rows = db.execute(
+            "SELECT topic, ROUND(avg_accuracy * 100, 1) AS acc_pct, current_level, total_attempts"
+            " FROM topic_mastery WHERE user_id=? ORDER BY avg_accuracy ASC",
+            (user_id,),
+        ).fetchall()
+        for r in rows:
+            t_name = str(r["topic"] or "Toán tổng hợp").strip()
+            seen_topics.add(t_name.lower())
+            acc = float(r["acc_pct"] or 0.0)
+            band = "strong" if acc >= 75.0 else ("review" if acc >= 50.0 else "weak")
+            heatmap.append({
+                "topic": t_name,
+                "accuracy_pct": acc,
+                "level": r["current_level"] or "NB",
+                "attempts": int(r["total_attempts"] or 0),
+                "band": band,
+            })
+    except Exception:
+        pass
+    finally:
+        db.close()
+
+    # Merge topics from relearn cards that don't yet have a topic_mastery entry
+    for c in cards:
+        t_name = str(c.get("topic") or c.get("skill") or "").strip()
+        if not t_name or t_name.lower() in seen_topics:
+            continue
+        seen_topics.add(t_name.lower())
+        reps = int(c.get("reps") or 0)
+        lapses = int(c.get("lapses") or 0)
+        est_acc = 80.0 if (reps >= 2 and lapses == 0) else (60.0 if reps >= 1 else 35.0)
+        band = "strong" if est_acc >= 75.0 else ("review" if est_acc >= 50.0 else "weak")
+        heatmap.append({
+            "topic": t_name,
+            "accuracy_pct": est_acc,
+            "level": "TH" if reps >= 1 else "NB",
+            "attempts": max(1, reps + lapses),
+            "band": band,
+        })
+
+    recommendations = []
+    for c in cards:
+        if c.get("is_due") and len(recommendations) < 2:
+            skill_label = c.get("skill") or c.get("topic") or "Kỹ năng cần ôn"
+            recommendations.append({
+                "id": f"relearn-{c['id']}",
+                "type": "relearn",
+                "title": f"Ôn lại: {skill_label}",
+                "description": f"Thẻ FSRS đến hạn ({c.get('reason') or 'cần củng cố'}).",
+                "href": "/duomcb?q=" + _url_quote(str(skill_label), safe=""),
+            })
+    for h in heatmap:
+        if h["band"] in ("weak", "review") and len(recommendations) < 3:
+            recommendations.append({
+                "id": f"mastery-{h['topic']}",
+                "type": "practice",
+                "title": f"Củng cố chuyên đề: {h['topic']}",
+                "description": f"Độ chính xác hiện tại {h['accuracy_pct']}% ({h['attempts']} câu đã làm).",
+                "href": "/duomcb?q=" + _url_quote("Giải thích và cho bài tập mẫu về " + str(h["topic"]), safe=""),
+            })
+    if not recommendations:
+        recommendations.append({
+            "id": "default-practice",
+            "type": "tutor",
+            "title": "Luyện đề hoặc hỏi Gia sư AI DuoMCB",
+            "description": "Bạn không có thẻ nào quá hạn hôm nay. Hãy thử sức với một bài toán mới!",
+            "href": "/duomcb",
+        })
+    return heatmap, recommendations[:3]
+
+
+def relearn_payload(user_id: int, limit: int = 10, filter_mode: str = "all") -> dict:
+    """What the student should review now, plus what is coming up + WP-A3 heatmap."""
+    all_items = relearn_items(user_id)
+    if filter_mode == "this_week":
+        items = []
+        for it in all_items:
+            if it.get("is_this_week"):
+                items.append(it)
+    else:
+        items = all_items
+    due = []
+    upcoming = []
+    this_week_count = 0
+    for c in all_items:
+        if c.get("is_this_week"):
+            this_week_count += 1
+    for c in items:
+        if c.get("is_due"):
+            due.append(c)
+        else:
+            upcoming.append(c)
+    heatmap, recommendations = build_competency_heatmap(user_id, all_items)
     return {
-        "user_cards": len(items),
+        "user_cards": len(all_items),
+        "this_week_count": this_week_count,
+        "filter": filter_mode,
         "due_count": len(due),
         "due": due[:max(1, limit)],
         "upcoming": upcoming[:max(1, limit)],
         "retention_target": fsrs_scheduler.desired_retention(),
+        "competency_heatmap": heatmap,
+        "daily_recommendations": recommendations,
     }
 
 
@@ -712,7 +837,8 @@ except Exception as _e_ocr:  # noqa: BLE001 — ImportError, or an unusable weig
 
 
 # ── Config ────────────────────────────────────────────────────────────────────
-DB_PATH   = os.path.join(os.path.dirname(__file__), "duomath.db")
+_DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), "duomath.db")
+DB_PATH   = os.environ.get("DUOMATH_DB_PATH") or _DEFAULT_DB_PATH
 GROQ_BASE = "https://api.groq.com/openai/v1"
 GROQ_KEY  = os.environ.get("GROQ_API_KEY", "")
 # P8 (2026-10-01): Cerebras — OpenAI-compatible and the fastest of the free
@@ -799,16 +925,43 @@ def _mr_summary(perception) -> dict:
 
 
 def _solver_summary(verification) -> dict:
-    """Compact verification record for chat responses and logs."""
+    """Q1-compliant verification envelope summary for chat responses and logs."""
+    import verification_contract as _vc
+
     v = verification or {}
+    raw_checks = v.get("checks") or []
+    normalized_checks = [_vc.normalize_check(c, idx) for idx, c in enumerate(raw_checks)]
+    critic_raw = v.get("critic")
+    critic_verdict = critic_raw.get("verdict") if isinstance(critic_raw, dict) else critic_raw
     return {
-        "verified": v.get("verified"),
+        "schemaVersion": v.get("schemaVersion", 1),
+        "requestId": v.get("requestId"),
+        "responseVersion": v.get("responseVersion", "v1"),
+        "verifierVersion": v.get("verifierVersion", _vc.VERIFIER_VERSION),
+        "verified": bool(v.get("verified")),
         "status": v.get("status"),
-        "repaired": v.get("repaired"),
+        "reason": v.get("reason"),
+        "scope": v.get("scope") or "",
+        "repaired": bool(v.get("repaired")),
         "mode": v.get("mode"),
         "notes": v.get("notes"),
-        "checks": [{"name": c.get("name"), "status": c.get("status")} for c in (v.get("checks") or [])],
-        "critic": (v.get("critic") or {}).get("verdict"),
+        "checks": [
+            {
+                "checkId": c.get("checkId"),
+                "claimId": c.get("claimId"),
+                "name": c.get("name"),
+                "engine": c.get("engine"),
+                "outcome": c.get("outcome"),
+                "status": c.get("status"),
+                "scope": c.get("scope"),
+                "assumptions": c.get("assumptions") or [],
+                **({"reasonCode": c["reasonCode"]} if c.get("reasonCode") else {}),
+            }
+            for c in normalized_checks
+        ],
+        "coverage": list(v.get("coverage") or []),
+        "critic": critic_verdict,
+        "criticDetail": critic_raw if isinstance(critic_raw, dict) else None,
         "tool_calls": v.get("tool_calls"),
     }
 from image_preprocessing import preprocess_image_b64  # Risk 3: aspect-preserving resize + pad
@@ -1999,7 +2152,7 @@ _MATHVIZ_EXPR_RE = _re_mathviz.compile(r'^[0-9a-zA-Z\s\.\+\-\*\/\^\(\),πθ]*$')
 # video_enhancer.py — so a not-yet-deployed dependency degrades to the old
 # behavior (drop the block) instead of crashing the whole endpoint.
 try:
-    from json_repair import repair_json as _repair_json
+    from json_repair import repair_json as _repair_json # type: ignore # pyright: ignore[reportMissingImports]
     _JSON_REPAIR_AVAILABLE = True
 except ImportError:
     _JSON_REPAIR_AVAILABLE = False
@@ -2228,15 +2381,24 @@ def extract_text_from_image(image_bytes: bytes) -> str:
         return ""
 
 # ── Database (sync — sqlite3 doesn't need async driver) ──────────────────────
+from db import (
+    make_conn as _db_make_conn,
+    db_session,
+    ensure_role_and_classroom_schema,
+    normalize_user_role,
+)
+
+def _resolve_db_path() -> str:
+    from db import get_db_path as _get_configured_db_path
+    configured = _get_configured_db_path()
+    if configured and configured != _DEFAULT_DB_PATH:
+        return configured
+    if DB_PATH and DB_PATH != _DEFAULT_DB_PATH:
+        return DB_PATH
+    return configured or _DEFAULT_DB_PATH
+
 def _make_conn():
-    conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES,
-                           check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("PRAGMA cache_size=-8000")
-    conn.execute("PRAGMA temp_store=MEMORY")
-    return conn
+    return _db_make_conn(_resolve_db_path())
 
 def init_db():
     conn = _make_conn()
@@ -2744,6 +2906,7 @@ def init_db():
             )
         except Exception:
             pass  # column added by the migrations above on older databases
+    ensure_role_and_classroom_schema(conn)
     conn.commit()
     conn.close()
 
@@ -2754,13 +2917,16 @@ def get_db():
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def user_dict(row):
     keys = row.keys() if hasattr(row, 'keys') else []
+    role_info = normalize_user_role(row)
     return {
         "id": row["id"], "email": row["email"],
         "username": row["username"], "name": row["username"],
         "phone": row["phone"], "school": row["school"],
         "grade": row["grade"], "avatar_url": row["avatar_url"],
         "created_at": row["created_at"],
-        "is_admin": row["is_admin"] if "is_admin" in keys else 0,
+        "role": role_info["role"],
+        "is_admin": role_info["is_admin"],
+        "is_teacher": role_info["is_teacher"],
         "banned": row["banned"] if "banned" in keys else 0,
         "ban_reason": row["ban_reason"] if "ban_reason" in keys else "",
     }
@@ -3574,20 +3740,43 @@ async def grade_test_attempt(request: Request):
         "answered": graded["answered"],
     }
 
+    try:
+        uid_opt = await resolve_user_id(request)
+    except HTTPException:
+        uid_opt = None
+
     if include_questions:
-        try:
-            await resolve_user_id(request)
-            payload["questions"] = [
-                {
+        if uid_opt is not None:
+            q_list = []
+            for q in graded["questions"]:
+                q_list.append({
                     "key": q["key"],
                     "userAnswer": q["userAnswer"],
                     "isCorrect": q["isCorrect"],
                     "isSkipped": not (q["userAnswer"] or "").strip(),
-                }
-                for q in graded["questions"]
-            ]
-        except HTTPException:
+                })
+            payload["questions"] = q_list
+        else:
             payload["questions_requires_login"] = True
+
+    if uid_opt is not None and int(graded.get("score") or 0) < int(graded.get("total") or 0):
+        try:
+            wrong_keys = []
+            for q in graded.get("questions") or []:
+                if not q.get("isCorrect"):
+                    wrong_keys.append(str(q.get("key") or ""))
+            skill_desc = f"{test_key} ({section}) — câu sai: {', '.join(wrong_keys[:5])}"
+            seeds = fsrs_scheduler.entries_to_cards([{
+                "topic": test_key,
+                "skill": skill_desc[:100],
+                "correct": graded["score"],
+                "total": graded["total"],
+                "accuracy": graded["accuracy"],
+                "level": "weak" if float(graded.get("accuracy") or 0) < 60 else "medium",
+            }])
+            payload["relearn_seeded"] = relearn_upsert(uid_opt, seeds)
+        except Exception:
+            pass
 
     return JSONResponse(payload)
 
@@ -5497,6 +5686,8 @@ async def chat(request: Request):
                 # Đợt 4H-2: the critic is a second opinion, not a gate on the
                 # request. On timeout the student still gets the answer — carrying
                 # the honest label — instead of losing everything.
+                import verification_contract as _vc
+                _verify_req_id = f"req-{uuid.uuid4().hex[:10]}"
                 try:
                     # P1d: even when verification starts, it may not eat the local
                     # floor — near the end it gets what is left MINUS the floor,
@@ -5504,8 +5695,10 @@ async def chat(request: Request):
                     _verify_wait = max(1.0, min(_budget.clamp(_verify_budget),
                                                 _budget.remaining() - chat_budget.CHAT_LOCAL_FLOOR_S))
                     math_verification = await asyncio.wait_for(
-                        math_solver.verify_and_repair(_ir, reply, chat_fn=_openrouter_chat,
-                                                      precomputed_checks=_checks0),
+                        math_solver.verify_and_repair(_ir, reply, chat_fn=_verify_chat_fn,
+                                                      precomputed_checks=_checks0,
+                                                      request_id=_verify_req_id,
+                                                      response_version="v1"),
                         timeout=_verify_wait,
                     )
                 except (asyncio.TimeoutError, TimeoutError):
@@ -5513,32 +5706,56 @@ async def chat(request: Request):
                     logger.warning("[Chat] Math verification exceeded %.0fs — answering with the "
                                    "%s label.", _verify_budget,
                                    "partial" if _det_ok else "unverified")
-                    math_verification = {
-                        "verified": False,
-                        "status": math_solver.STATUS_PARTIAL if _det_ok else math_solver.STATUS_TIMEOUT,
-                        "checks": _checks0, "critic": None, "repaired": False, "reply": reply,
-                        "notes": ("đã kiểm tra số học; phần phản biện chưa chạy kịp"
-                                  if _det_ok else "hết thời gian kiểm chứng"),
-                    }
-                reply = math_verification.get("reply") or reply
-                _badge = math_solver.verification_note(math_verification)
-                if _badge:
-                    reply = reply + _badge
-                logger.info("[Chat] Math verification: verified=%s status=%s repaired=%s notes=%s",
-                            math_verification.get("verified"), math_verification.get("status"),
-                            math_verification.get("repaired"), math_verification.get("notes"))
+                    math_verification = _vc.evaluate_verification_envelope(
+                        mode=math_solver.verify_mode(),
+                        reply=reply,
+                        raw_checks=_checks0,
+                        critic=None,
+                        has_answer_claim=True,
+                        timed_out=not _det_ok,
+                        request_id=_verify_req_id,
+                        response_version="v1",
+                    )
+                    math_verification["status"] = math_solver.STATUS_PARTIAL if _det_ok else math_solver.STATUS_TIMEOUT
+                    math_verification["reason"] = "incomplete" if _det_ok else "budget"
+                    math_verification["verified"] = False
+                    math_verification["reply"] = reply
+                    math_verification["notes"] = ("đã kiểm tra số học; phần phản biện chưa chạy kịp"
+                                                  if _det_ok else "hết thời gian kiểm chứng")
+                if not _vc.is_envelope_for_request(math_verification, expected_request_id=_verify_req_id):
+                    logger.warning("[Chat] Discarding stale verification envelope (requestId mismatch)")
+                    math_verification = None
+                else:
+                    reply = math_verification.get("reply") or reply
+                    _badge = math_solver.verification_note(math_verification)
+                    if _badge:
+                        reply = reply + _badge
+                    logger.info("[Chat] Math verification: verified=%s status=%s reason=%s repaired=%s notes=%s",
+                                math_verification.get("verified"), math_verification.get("status"),
+                                math_verification.get("reason"), math_verification.get("repaired"),
+                                math_verification.get("notes"))
             else:
                 # P3: record WHY nothing was verified — without a scary badge.
                 # This is the state of the reply in the report from the class: a
                 # figure the reader could not turn into a problem statement.
-                math_verification = {
-                    "verified": False, "status": math_solver.STATUS_NOT_APPLICABLE,
-                    "checks": [], "critic": None, "repaired": False, "reply": reply,
-                    "notes": ("ngân sách kiểm chứng = 0 cho lượt này" if _verify_budget <= 0
-                              else ("hết thời gian xử lý trước khi kịp kiểm chứng"
-                                    if _budget.remaining() < chat_budget.CHAT_LOCAL_FLOOR_S
-                                    else "chưa đủ căn cứ để kiểm chứng (đọc đề chưa chắc / chưa có đáp án trích được)")),
-                }
+                import verification_contract as _vc
+                _verify_req_id = f"req-{uuid.uuid4().hex[:10]}"
+                _na_mode = math_solver.verify_mode()
+                math_verification = _vc.evaluate_verification_envelope(
+                    mode=_na_mode,
+                    reply="" if _na_mode != "off" else reply,
+                    request_id=_verify_req_id,
+                    response_version="v1",
+                )
+                math_verification["status"] = math_solver.STATUS_NOT_APPLICABLE
+                math_verification["reply"] = reply
+                if _na_mode != "off":
+                    math_verification["notes"] = (
+                        "ngân sách kiểm chứng = 0 cho lượt này" if _verify_budget <= 0
+                        else ("hết thời gian xử lý trước khi kịp kiểm chứng"
+                              if _budget.remaining() < chat_budget.CHAT_LOCAL_FLOOR_S
+                              else "chưa đủ căn cứ để kiểm chứng (đọc đề chưa chắc / chưa có đáp án trích được)")
+                    )
                 logger.info("[Chat] Math verification not applicable: %s", math_verification["notes"])
         except Exception as _e_verify:
             logger.warning("[Chat] Math verification skipped (%s)", _e_verify)
@@ -5592,10 +5809,69 @@ async def chat(request: Request):
             "session_id": session_id,
             "history_length": len(history),
             "typesafe": typesafe_info,
+            "complexity": {
+                "tier": (_plan or {}).get("tier") or ("image" if image_data else "text"),
+                "elapsed_ms": int((time.time() - _t0) * 1000),
+            },
             **({"perception": _mr_summary(perception)} if perception else {}),
             **({"verification": _solver_summary(math_verification)} if math_verification else {}),
         })
 
+
+_FEEDBACK_REASONS = {"wrong_ocr", "wrong_math", "wrong_diagram", "other"}
+
+
+@app.post("/api/chat/feedback")
+@limiter.limit(CHAT_LIMIT)
+async def chat_solution_feedback(request: Request):
+    """WP-A2: 1-Click student report for wrong solution or distorted diagram."""
+    d = await request.json()
+    raw_reason = str(d.get("reason") or "other").strip().lower()
+    reason = raw_reason if raw_reason in _FEEDBACK_REASONS else "other"
+    question_text = str(d.get("question") or "").strip()[:500]
+    answer_snippet = str(d.get("answer") or "").strip()[:500]
+    comment = str(d.get("comment") or "").strip()[:400]
+    session_id = str(d.get("session_id") or "").strip()[:80]
+
+    reporter_uid = None
+    try:
+        reporter_uid = await resolve_user_id(request)
+    except Exception:
+        reporter_uid = None
+
+    if reporter_uid is None:
+        if not session_id:
+            raise HTTPException(401, "Authentication or valid session_id required.")
+        db = get_db()
+        try:
+            sess_row = db.execute(
+                "SELECT session_id FROM sessions WHERE session_id=?",
+                (session_id,),
+            ).fetchone()
+            if not sess_row:
+                raise HTTPException(401, "Invalid chat session_id.")
+        finally:
+            db.close()
+
+    notes_payload = json.dumps({
+        "reason": reason,
+        "user_id": reporter_uid,
+        "session_id": session_id,
+        "question": question_text[:200],
+        "answer": answer_snippet[:200],
+        "comment": comment[:200],
+    }, ensure_ascii=False)
+
+    quality_log(
+        surface="chat_feedback",
+        model=reason,
+        tier="student_report",
+        provider=f"user:{reporter_uid}" if reporter_uid else "session",
+        verified=0,
+        fallback=reason,
+        notes=notes_payload[:450],
+    )
+    return JSONResponse({"ok": True, "logged": True, "reason": reason}, status_code=201)
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  TYPESAFE AI / JEV-STYLE MANAGEMENT & KEY ROTATION ENDPOINTS
@@ -6357,6 +6633,48 @@ async def _openrouter_chat(prompt: str = "", *, models: list, max_tokens: int = 
     return content, used_model
 
 
+async def _verify_chat_fn(prompt: str = "", *, models: list | None = None, max_tokens: int = 900,
+                          temperature: float = 0.0, system: str | None = None,
+                          messages: list | None = None, tools: list | None = None,
+                          tool_choice: str | None = None, raw_message: bool = False,
+                          timeout: float | None = None):
+    """Fast verification/critic chat dispatcher (WP-1.3 / QA 5.1 fix).
+
+    Tries Groq first (~1 s latency) when no tool calls are required and a Groq
+    key is available, preventing the 25-45 s OpenRouter free-tier queue from
+    timing out the verification stage. Falls back to `_openrouter_chat`.
+    """
+    if not tools and not raw_message and GROQ_KEY_POOL.request_order():
+        try:
+            client = await get_http_client()
+            groq_msgs = messages or (([{"role": "system", "content": system}] if system else [])
+                                     + [{"role": "user", "content": prompt}])
+            groq_model = os.environ.get("MATH_CRITIC_GROQ_MODEL", "llama-3.3-70b-versatile")
+            resp = await _groq_post_with_key_rotation(
+                client,
+                f"{GROQ_BASE}/chat/completions",
+                {
+                    "model": groq_model,
+                    "messages": groq_msgs,
+                    "max_tokens": max_tokens,
+                    "temperature": temperature,
+                },
+                timeout=min(float(timeout), 10.0) if timeout else 10.0,
+                surface="verify",
+            )
+            if resp.status_code == 200:
+                content = (resp.json().get("choices") or [{}])[0].get("message", {}).get("content") or ""
+                if content.strip():
+                    return content, f"groq/{groq_model}"
+        except Exception as exc:
+            logger.debug("[Verify] Groq fast critic skipped (%s) — falling back to OpenRouter.", exc)
+    return await _openrouter_chat(
+        prompt, models=models or [], max_tokens=max_tokens, temperature=temperature,
+        system=system, messages=messages, tools=tools, tool_choice=tool_choice,
+        raw_message=raw_message, timeout=timeout, surface="verify",
+    )
+
+
 async def _translate_with_groq(prompt: str, text: str, source_lang: str | None = None):
     """Groq tier — fastest of the three, kept as its own function so the order
     lives in TRANSLATE_TIER_ORDER instead of being hard-coded."""
@@ -6504,7 +6822,7 @@ async def translate(request: Request):
         db = get_db()
         try:
             _check_and_reset_daily_progress(db, uid)
-            db.execute("UPDATE daily_progress SET socratic_count = socratic_count + 1 WHERE user_id=?", (uid,))
+            # Q1-min: /api/translate must NOT increment daily_progress.socratic_count.
             db.commit()
         except Exception as e:
             print("[WARN] Failed to increment socratic progress:", e)
@@ -6881,7 +7199,16 @@ async def admin_get_users(request: Request):
 async def admin_change_role(user_id: int, request: Request):
     admin_id = await verify_admin(request)
     d = await request.json()
-    is_admin = int(d.get("is_admin", 0))
+    raw_role = str(d.get("role") or "").strip().lower()
+    if raw_role in ("student", "teacher", "admin"):
+        role = raw_role
+        is_admin = 1 if role == "admin" else 0
+        is_teacher = 1 if role in ("teacher", "admin") else 0
+    else:
+        is_admin = int(bool(d.get("is_admin", 0)))
+        is_teacher = int(bool(d.get("is_teacher", 0))) or is_admin
+        role = "admin" if is_admin else ("teacher" if is_teacher else "student")
+
     db = get_db()
     try:
         # Prevent demoting the super admin email
@@ -6889,13 +7216,26 @@ async def admin_change_role(user_id: int, request: Request):
         if row and row["email"].lower() == "will050710@gmail.com":
             raise HTTPException(400, "Không thể thu hồi quyền Super Admin.")
         
-        db.execute("UPDATE users SET is_admin=? WHERE id=?", (is_admin, user_id))
+        db.execute(
+            "UPDATE users SET role=?, is_admin=?, is_teacher=? WHERE id=?",
+            (role, is_admin, is_teacher, user_id),
+        )
         db.commit()
     finally:
         db.close()
     # Phase 3: privileged actions are recorded for the audit trail.
-    audit_admin(admin_id, "user.role", str(user_id), f"is_admin={is_admin}")
-    return JSONResponse({"ok": True})
+    audit_admin(
+        admin_id,
+        "user.role",
+        str(user_id),
+        f"role={role} is_admin={is_admin} is_teacher={is_teacher}",
+    )
+    return JSONResponse({
+        "ok": True,
+        "role": role,
+        "is_admin": is_admin,
+        "is_teacher": is_teacher,
+    })
 
 
 @app.patch("/api/admin/users/{user_id}/ban")
@@ -6999,12 +7339,13 @@ async def relearn_seed(request: Request):
 
 @app.get("/api/relearn/due")
 @limiter.limit(SESSION_LIMIT)
-async def relearn_due(request: Request, limit: int = 10):
-    """Cards that are due now (most overdue first) + what is coming up."""
+async def relearn_due(request: Request, limit: int = 10, filter: str = "all"):
+    """Cards that are due now (most overdue first) + what is coming up + competency heatmap."""
     uid = await resolve_user_id(request)
     if uid is None:
         raise HTTPException(401, "Đăng nhập để xem lộ trình ôn tập.")
-    return JSONResponse(relearn_payload(uid, limit=max(1, min(int(limit), 50))))
+    filter_mode = "this_week" if str(filter or "").strip().lower() == "this_week" else "all"
+    return JSONResponse(relearn_payload(uid, limit=max(1, min(int(limit), 50)), filter_mode=filter_mode))
 
 
 @app.post("/api/relearn/review")
@@ -7654,16 +7995,32 @@ async def api_log_attempt(request: Request):
         accuracy_param = float(body.get("session_accuracy", 0))
         if accuracy_param >= 100:
             _award_badge(db, uid, "perfect_score")
-
-        return JSONResponse({
-            "logged":          True,
-            "is_correct":      is_correct,
-            "next_difficulty": next_diff,
-            "xp_gained":       5 if is_correct else 0,
-            "streak":          streak_info,
-        }, status_code=201)
     finally:
         db.close()
+
+    relearn_seeded = None
+    if not is_correct:
+        try:
+            q_label = str(body.get("skill") or body.get("question_text") or f"{topic} ({difficulty}) — {q_id}").strip()
+            seeds = fsrs_scheduler.entries_to_cards([{
+                "topic": topic,
+                "skill": q_label[:100],
+                "correct": 0,
+                "total": 1,
+                "level": "weak",
+            }])
+            relearn_seeded = relearn_upsert(uid, seeds)
+        except Exception:
+            relearn_seeded = None
+
+    return JSONResponse({
+        "logged":          True,
+        "is_correct":      is_correct,
+        "next_difficulty": next_diff,
+        "xp_gained":       5 if is_correct else 0,
+        "streak":          streak_info,
+        "relearn_seeded":  relearn_seeded,
+    }, status_code=201)
 
 
 @app.get("/api/adaptive/next-difficulty")
@@ -9819,998 +10176,26 @@ async def ai_test_review(attempt_id: str, request: Request):
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# ── DUOMATH: MATHMAP COMMENTS, CLANS, EVENTS & CHANGELOG API ─────────────────
+# ── DUOMATH: MATHMAP COMMENTS, CLANS, EVENTS & CHANGELOG API (WP-1.2 Router) ──
 # ═════════════════════════════════════════════════════════════════════════════
-
-@app.get("/api/mathmaps/{map_id}/comments")
-async def get_mathmap_comments(map_id: str, request: Request, page: int = 1, limit: int = 20):
-    db = get_db()
-    try:
-        current_uid = None
-        try:
-            current_uid = await resolve_user_id(request)
-        except Exception:
-            pass
-
-        rows = db.execute(
-            """SELECT * FROM mathmap_comments 
-               WHERE mathmap_id=? AND status='visible' 
-               ORDER BY created_at DESC LIMIT ? OFFSET ?""",
-            (map_id, limit, (page - 1) * limit)
-        ).fetchall()
-
-        upvoted_ids = set()
-        if current_uid:
-            up_rows = db.execute(
-                "SELECT comment_id FROM comment_upvotes WHERE user_id=?", (str(current_uid),)
-            ).fetchall()
-            upvoted_ids = {r["comment_id"] for r in up_rows}
-
-        comments = []
-        top_level = []
-        replies_by_parent = {}
-
-        for r in rows:
-            c = {
-                "id": r["id"],
-                "mathmapId": r["mathmap_id"],
-                "author": r["author"],
-                "rank": r["rank"],
-                "body": r["body"],
-                "createdAt": r["created_at"],
-                "upvotes": r["upvotes"],
-                "hasUpvoted": r["id"] in upvoted_ids,
-                "parentCommentId": r["parent_comment_id"],
-                "replies": []
-            }
-            if r["parent_comment_id"]:
-                replies_by_parent.setdefault(r["parent_comment_id"], []).append(c)
-            else:
-                top_level.append(c)
-
-        for c in top_level:
-            c["replies"] = replies_by_parent.get(c["id"], [])
-
-        return {"comments": top_level, "page": page, "limit": limit}
-    finally:
-        db.close()
-
-
-@app.post("/api/mathmaps/{map_id}/comments")
-async def post_mathmap_comment(map_id: str, request: Request):
-    data = await request.json()
-    body = (data.get("body") or "").strip()
-    if not body:
-        raise HTTPException(400, "Comment body cannot be empty")
-
-    author = data.get("author", "Học Viên")
-    user_rank = data.get("rank", "A")
-    parent_id = data.get("parentCommentId")
-
-    comment_id = "c_" + str(uuid.uuid4())[:8]
-    now_str = datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
-
-    db = get_db()
-    try:
-        db.execute(
-            """INSERT INTO mathmap_comments (id, mathmap_id, user_id, author, rank, parent_comment_id, body, created_at, upvotes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)""",
-            (comment_id, map_id, "u_anon", author, user_rank, parent_id, body, now_str)
-        )
-        db.commit()
-        return {"success": True, "comment_id": comment_id, "created_at": now_str}
-    finally:
-        db.close()
-
-
-@app.post("/api/comments/{comment_id}/upvote")
-async def toggle_comment_upvote(comment_id: str, request: Request):
-    data = await request.json()
-    user_id = data.get("userId", "u_guest")
-    db = get_db()
-    try:
-        existing = db.execute(
-            "SELECT 1 FROM comment_upvotes WHERE user_id=? AND comment_id=?", (user_id, comment_id)
-        ).fetchone()
-
-        if existing:
-            db.execute("DELETE FROM comment_upvotes WHERE user_id=? AND comment_id=?", (user_id, comment_id))
-            db.execute("UPDATE mathmap_comments SET upvotes = MAX(0, upvotes - 1) WHERE id=?", (comment_id,))
-            upvoted = False
-        else:
-            db.execute("INSERT INTO comment_upvotes (user_id, comment_id) VALUES (?, ?)", (user_id, comment_id))
-            db.execute("UPDATE mathmap_comments SET upvotes = upvotes + 1 WHERE id=?", (comment_id,))
-            upvoted = True
-
-        db.commit()
-        updated = db.execute("SELECT upvotes FROM mathmap_comments WHERE id=?", (comment_id,)).fetchone()
-        return {"success": True, "upvoted": upvoted, "upvotes": updated["upvotes"] if updated else 0}
-    finally:
-        db.close()
-
-
-@app.post("/api/comments/{comment_id}/report")
-async def report_comment(comment_id: str, request: Request):
-    data = await request.json()
-    reason = data.get("reason", "spam")
-    detail = data.get("detail", "")
-    reporter_id = data.get("reporterId", "u_guest")
-
-    report_id = "rep_" + str(uuid.uuid4())[:8]
-    now_str = datetime.now(timezone.utc).isoformat()
-
-    db = get_db()
-    try:
-        db.execute(
-            """INSERT INTO comment_reports (id, comment_id, reporter_id, reason, detail, created_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (report_id, comment_id, reporter_id, reason, detail, now_str)
-        )
-        db.execute("UPDATE mathmap_comments SET report_count = report_count + 1 WHERE id=?", (comment_id,))
-        db.commit()
-        return {"success": True, "message": "Báo cáo đã được ghi nhận"}
-    finally:
-        db.close()
-
-
-# ── Clans API ─────────────────────────────────────────────────────────────────
-
-@app.get("/api/clans")
-async def list_clans():
-    db = get_db()
-    try:
-        rows = db.execute("SELECT * FROM clans ORDER BY total_xp DESC LIMIT 50").fetchall()
-        clans = [dict(r) for r in rows]
-        if not clans:
-            clans = [
-                {
-                    "id": "thth",
-                    "name": "Thánh Toán Học",
-                    "tag": "#THTH",
-                    "description": "Clan luyện đề thi chuyên toán và THPT QG, sinh hoạt mỗi tối thứ 3 & thứ 6.",
-                    "crest_gradient": "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)",
-                    "avatar_url": "",
-                    "banner_url": "",
-                    "level": 24, "current_xp": 8200, "xp_to_next": 12000,
-                    "total_xp": 142000, "wins": 23, "losses": 6, "members_count": 86
-                },
-                {
-                    "id": "shb",
-                    "name": "Đội Số Học Bay",
-                    "tag": "#SHB",
-                    "description": "Đội ngũ chuyên toán hình không gian và đại số tổ hợp, giao lưu thi đấu hàng tuần.",
-                    "crest_gradient": "linear-gradient(135deg, #fbbf24 0%, #f97316 50%, #ef4444 100%)",
-                    "avatar_url": "",
-                    "banner_url": "",
-                    "level": 21, "current_xp": 6400, "xp_to_next": 10000,
-                    "total_xp": 128000, "wins": 19, "losses": 8, "members_count": 72
-                },
-                {
-                    "id": "vtsp",
-                    "name": "Vòng Tròn Số Pi",
-                    "tag": "#VTSP",
-                    "description": "Môi trường học tập cởi mở cho học sinh thích giải đố toán học và tư duy logic.",
-                    "crest_gradient": "linear-gradient(135deg, #34d399 0%, #14b8a6 50%, #06b6d4 100%)",
-                    "avatar_url": "",
-                    "banner_url": "",
-                    "level": 19, "current_xp": 4900, "xp_to_next": 9000,
-                    "total_xp": 115000, "wins": 17, "losses": 5, "members_count": 64
-                }
-            ]
-        return {"clans": clans}
-    finally:
-        db.close()
-
-
-@app.post("/api/clans")
-async def create_clan(request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    try:
-        if is_fb:
-            u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-        else:
-            u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-        if not u:
-            raise HTTPException(404, "User not found")
-
-        body = await request.json()
-        cid = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-
-        db.execute("""
-            INSERT INTO clans (id, name, tag, description, crest_gradient, avatar_url, banner_url, privacy, level, current_xp, xp_to_next, total_xp, wins, losses, created_at, owner_user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, 0, 1000, 0, 0, 0, ?, ?)
-        """, (
-            cid,
-            body.get("name", "New Clan"),
-            body.get("tag", "#CLAN"),
-            body.get("description", ""),
-            body.get("crest_gradient", "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)"),
-            body.get("avatar_url", ""),
-            body.get("banner_url", ""),
-            body.get("privacy", "open"),
-            now,
-            str(u["id"])
-        ))
-
-        # Add creator as owner
-        db.execute("""
-            INSERT OR REPLACE INTO clan_members (clan_id, user_id, username, role, rank, xp_contributed, joined_at)
-            VALUES (?, ?, ?, 'owner', 'SS', 0, ?)
-        """, (cid, str(u["id"]), u["username"], now))
-
-        db.commit()
-        return {"ok": True, "clan_id": cid}
-    finally:
-        db.close()
-
-
-@app.get("/api/clans/{clan_id}")
-async def get_clan_detail(clan_id: str):
-    db = get_db()
-    try:
-        row = db.execute("SELECT * FROM clans WHERE id=?", (clan_id,)).fetchone()
-        if not row:
-            if clan_id == "thth":
-                return {
-                    "id": "thth", "name": "Thánh Toán Học", "tag": "#THTH",
-                    "description": "Clan luyện đề thi chuyên toán và THPT QG, sinh hoạt mỗi tối thứ 3 & thứ 6.",
-                    "level": 24, "current_xp": 8200, "xp_to_next": 12000,
-                    "total_xp": 142000, "wins": 23, "losses": 6, "member_count": 86,
-                    "avatar_url": "", "banner_url": "",
-                    "crest_gradient": "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)",
-                    "achievements": [
-                        {"title": "🏆 Quán Quân Giải Đấu Mùa Hè 2026", "date": "10/09/2026", "badge": "Gold", "xp": "+15,000 XP"},
-                        {"title": "🥈 Á Quân Đấu Trường Clan Liên Trường", "date": "05/09/2026", "badge": "Silver", "xp": "+8,000 XP"},
-                        {"title": "⭐ Top 1 Bảng Xếp Hạng Tháng 8", "date": "31/08/2026", "badge": "SeasonTop", "xp": "+5,000 XP"}
-                    ]
-                }
-            raise HTTPException(404, "Clan not found")
-
-        clan = dict(row)
-        members = db.execute("SELECT * FROM clan_members WHERE clan_id=? ORDER BY xp_contributed DESC", (clan_id,)).fetchall()
-        clan["members"] = [dict(m) for m in members]
-        clan["member_count"] = len(members) if members else clan.get("member_count", 1)
-        clan["achievements"] = [
-            {"title": "🏆 Quán Quân Giải Đấu Mùa Hè 2026", "date": "10/09/2026", "badge": "Gold", "xp": "+15,000 XP"},
-            {"title": "🥈 Á Quân Đấu Trường Clan Liên Trường", "date": "05/09/2026", "badge": "Silver", "xp": "+8,000 XP"},
-            {"title": "⭐ Top 1 Bảng Xếp Hạng Tháng 8", "date": "31/08/2026", "badge": "SeasonTop", "xp": "+5,000 XP"}
-        ]
-        return clan
-    finally:
-        db.close()
-
-
-@app.get("/api/clans/{clan_id}/messages")
-async def get_clan_messages(clan_id: str, limit: int = 50):
-    db = get_db()
-    try:
-        rows = db.execute(
-            "SELECT * FROM clan_messages WHERE clan_id=? ORDER BY created_at ASC LIMIT ?",
-            (clan_id, limit)
-        ).fetchall()
-        msgs = [dict(r) for r in rows]
-        if not msgs:
-            # Seed default welcome messages for demo
-            msgs = [
-                {"id": "m1", "clan_id": clan_id, "user_id": "u1", "username": "william_math", "role": "owner", "avatar_url": "", "message": "Chào mừng các thành viên mới gia nhập Clan! Lịch sinh hoạt tối nay lúc 20:00 nhé.", "created_at": "2026-08-23T19:00:00"},
-                {"id": "m2", "clan_id": clan_id, "user_id": "u2", "username": "co_giao_lan", "role": "officer", "avatar_url": "", "message": "Tất cả mọi người nhớ đăng ký Giải Đấu Mùa Hè trên trang Sự Kiện để nhận x1.5 XP nhé! ⚡", "created_at": "2026-08-23T19:15:00"},
-                {"id": "m3", "clan_id": clan_id, "user_id": "u3", "username": "minh_toan_hoc", "role": "officer", "avatar_url": "", "message": "Ai cần luyện chung đề tổ hợp xác suất thì tạo phòng Đấu Nhóm nhé!", "created_at": "2026-08-23T19:40:00"}
-            ]
-        return {"messages": msgs}
-    finally:
-        db.close()
-
-
-@app.post("/api/clans/{clan_id}/messages")
-async def post_clan_message(clan_id: str, request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    try:
-        if is_fb:
-            u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-        else:
-            u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-        if not u:
-            raise HTTPException(404, "User not found")
-
-        body = await request.json()
-        msg_text = body.get("message", "").strip()
-        if not msg_text:
-            raise HTTPException(400, "Message cannot be empty")
-
-        mid = str(uuid.uuid4())
-        now = datetime.now(timezone.utc).isoformat()
-
-        # Check clan role
-        mem = db.execute("SELECT role FROM clan_members WHERE clan_id=? AND user_id=?", (clan_id, str(u["id"]))).fetchone()
-        role = mem["role"] if mem else "member"
-
-        db.execute("""
-            INSERT INTO clan_messages (id, clan_id, user_id, username, avatar_url, role, message, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (mid, clan_id, str(u["id"]), u["username"], u["avatar_url"] or "", role, msg_text, now))
-        db.commit()
-
-        return {
-            "ok": True,
-            "message": {
-                "id": mid,
-                "clan_id": clan_id,
-                "user_id": str(u["id"]),
-                "username": u["username"],
-                "avatar_url": u["avatar_url"] or "",
-                "role": role,
-                "message": msg_text,
-                "created_at": now
-            }
-        }
-    finally:
-        db.close()
-
-
-@app.get("/api/users/{user_id}/clan")
-async def get_user_clan(user_id: str):
-    db = get_db()
-    try:
-        mem = db.execute("SELECT * FROM clan_members WHERE user_id=?", (user_id,)).fetchone()
-        if not mem:
-            # Fallback default clan for demo
-            return {
-                "has_clan": True,
-                "clan": {
-                    "id": "thth",
-                    "name": "Thánh Toán Học",
-                    "tag": "#THTH",
-                    "description": "Clan luyện đề thi chuyên toán và THPT QG, sinh hoạt mỗi tối thứ 3 & thứ 6.",
-                    "level": 24, "current_xp": 8200, "xp_to_next": 12000,
-                    "total_xp": 142000, "wins": 23, "losses": 6, "member_count": 86,
-                    "avatar_url": "", "banner_url": "",
-                    "crest_gradient": "linear-gradient(135deg, #ec4899 0%, #9333ea 50%, #06b6d4 100%)",
-                    "achievements": [
-                        {"title": "🏆 Quán Quân Giải Đấu Mùa Hè 2026", "date": "10/09/2026", "badge": "Gold", "xp": "+15,000 XP"},
-                        {"title": "🥈 Á Quân Đấu Trường Clan Liên Trường", "date": "05/09/2026", "badge": "Silver", "xp": "+8,000 XP"},
-                        {"title": "⭐ Top 1 Bảng Xếp Hạng Tháng 8", "date": "31/08/2026", "badge": "SeasonTop", "xp": "+5,000 XP"}
-                    ],
-                    "members": [
-                        {"id": "u1", "username": "william_math", "role": "owner", "rank": "SS", "xp_contributed": 42800, "matches_played": 28},
-                        {"id": "u2", "username": "co_giao_lan", "role": "officer", "rank": "SS", "xp_contributed": 38400, "matches_played": 24},
-                        {"id": "u3", "username": "minh_toan_hoc", "role": "officer", "rank": "A", "xp_contributed": 26100, "matches_played": 19},
-                        {"id": "u4", "username": "huy_math99", "role": "member", "rank": "B", "xp_contributed": 18500, "matches_played": 15},
-                        {"id": "u5", "username": "thu_trang_2k9", "role": "member", "rank": "S", "xp_contributed": 16200, "matches_played": 14},
-                    ]
-                },
-                "user_role": "owner",
-                "xp_contributed": 42800
-            }
-
-        c_row = db.execute("SELECT * FROM clans WHERE id=?", (mem["clan_id"],)).fetchone()
-        if not c_row:
-            return {"has_clan": False}
-
-        c_dict = dict(c_row)
-        members = db.execute("SELECT * FROM clan_members WHERE clan_id=? ORDER BY xp_contributed DESC", (mem["clan_id"],)).fetchall()
-        c_dict["members"] = [dict(m) for m in members]
-        c_dict["member_count"] = len(members)
-        c_dict["achievements"] = [
-            {"title": "🏆 Quán Quân Giải Đấu Mùa Hè 2026", "date": "10/09/2026", "badge": "Gold", "xp": "+15,000 XP"},
-            {"title": "🥈 Á Quân Đấu Trường Clan Liên Trường", "date": "05/09/2026", "badge": "Silver", "xp": "+8,000 XP"},
-            {"title": "⭐ Top 1 Bảng Xếp Hạng Tháng 8", "date": "31/08/2026", "badge": "SeasonTop", "xp": "+5,000 XP"}
-        ]
-
-        return {
-            "has_clan": True,
-            "clan": c_dict,
-            "user_role": mem["role"],
-            "xp_contributed": mem["xp_contributed"]
-        }
-    finally:
-        db.close()
-
-
-@app.get("/api/clans/leaderboard")
-async def get_clan_leaderboard(period: str = "week"):
-    DATA = {
-        "week": [
-            {"rank": 1, "id": "thth", "name": "Thánh Toán Học", "tag": "TH", "members": 86, "xp": 18420, "delta": 3},
-            {"rank": 2, "id": "shb",  name: "Đội Số Học Bay", tag: "SH", "members": 72, "xp": 17955, "delta": -1},
-            {"rank": 3, "id": "vtsp", name: "Vòng Tròn Số Pi", tag: "PI", "members": 64, "xp": 16110, "delta": 5},
-            {"rank": 4, "id": "hsvc", name: "Hàm Số Vô Cực", tag: "HS", "members": 51, "xp": 14870, "delta": -2},
-            {"rank": 5, "id": "mtvn", name: "Ma Trận Việt Nam", tag: "MT", "members": 43, "xp": 13200, "delta": 1},
-        ],
-        "month": [
-            {"rank": 1, "id": "thth", "name": "Thánh Toán Học", "tag": "TH", "members": 86, "xp": 78500, "delta": 2},
-            {"rank": 2, "id": "vtsp", name: "Vòng Tròn Số Pi", tag: "PI", "members": 64, "xp": 71200, "delta": 3},
-            {"rank": 3, "id": "shb",  name: "Đội Số Học Bay", tag: "SH", "members": 72, "xp": 69800, "delta": -1},
-            {"rank": 4, "id": "hsvc", name: "Hàm Số Vô Cực", tag: "HS", "members": 51, "xp": 62400, "delta": 0},
-        ],
-        "season": [
-            {"rank": 1, "id": "thth", "name": "Thánh Toán Học", "tag": "TH", "members": 86, "xp": 142000, "delta": 1},
-            {"rank": 2, "id": "shb",  name: "Đội Số Học Bay", tag: "SH", "members": 72, "xp": 138500, "delta": 0},
-            {"rank": 3, "id": "vtsp", name: "Vòng Tròn Số Pi", tag: "PI", "members": 64, "xp": 115000, "delta": 2},
-            {"rank": 4, "id": "mtvn", name: "Ma Trận Việt Nam", tag: "MT", "members": 43, "xp": 98000, "delta": -1},
-        ],
-        "alltime": [
-            {"rank": 1, "id": "thth", "name": "Thánh Toán Học", "tag": "TH", "members": 86, "xp": 482000, "delta": 0},
-            {"rank": 2, "id": "shb",  name: "Đội Số Học Bay", tag: "SH", "members": 72, "xp": 415000, "delta": 0},
-            {"rank": 3, "id": "vtsp", name: "Vòng Tròn Số Pi", tag: "PI", "members": 64, "xp": 368000, "delta": 1},
-            {"rank": 4, "id": "mtvn", name: "Ma Trận Việt Nam", tag: "MT", "members": 43, "xp": 294000, "delta": -1},
-            {"rank": 5, "id": "hsvc", name: "Hàm Số Vô Cực", tag: "HS", "members": 51, "xp": 248000, "delta": 0},
-        ]
-    }
-    return {
-        "period": period,
-        "leaderboard": DATA.get(period, DATA["week"])
-    }
-
-
-# ── Tournaments, Events & Changelog API ───────────────────────────────────────
-
-@app.get("/api/tournaments/featured")
-async def get_featured_tournament():
-    db = get_db()
-    row = db.execute(
-        "SELECT * FROM tournaments WHERE is_featured=1 AND status != 'finished' ORDER BY created_at DESC LIMIT 1"
-    ).fetchone()
-    db.close()
-    if row:
-        return {
-            "id": row["id"], "title": row["title"], "tag": row["tag"],
-            "description": row["description"], "rules": row["rules"] or "",
-            "status": row["status"], "size": row["size"],
-            "xp_multiplier": row["xp_multiplier"],
-            "starts_at": row["starts_at"], "ends_at": row["ends_at"],
-            "play_mode": row["play_mode"],
-            "min_clan_members": row["min_clan_members"],
-            "prize_json": json.loads(row["prize_json"] or "[]"),
-            "is_featured": row["is_featured"],
-        }
-    # Fallback stub
-    return {
-        "id": "tourney_summer_2026",
-        "title": "Giải Đấu Toán Học Mùa Hè 2026",
-        "tag": "GIẢI ĐẤU MÙA",
-        "description": "Tranh tài cùng hơn 4,000 học sinh trên toàn quốc trong đấu trường toán học chuẩn hóa. Top 3 nhận huy hiệu độc quyền, điểm thưởng XP và Cúp Vinh Danh toàn quốc.",
-        "status": "upcoming",
-        "size": "large",
-        "xp_multiplier": 1.5,
-        "starts_at": "2026-08-28T00:00:00",
-        "ends_at": "2026-09-10T23:59:59",
-        "play_mode": "individual",
-        "min_clan_members": 2,
-        "prize_json": [
-            {"tier": 1, "name": "Quán Quân (Vô Địch)", "prize": "5,000 XP + Cúp Vô Địch + Huy hiệu Vàng Độc Quyền"},
-            {"tier": 2, "name": "Á Quân (Hạng Nhì)", "prize": "3,000 XP + Huy hiệu Bạc Độc Quyền"},
-            {"tier": 3, "name": "Quý Quân (Hạng Ba)", "prize": "1,500 XP + Huy hiệu Đồng Độc Quyền"},
-            {"tier": 4, "name": "Top 10 Chung Cuộc", "prize": "800 XP + Khung Avatar Danh Dự"},
-        ],
-        "is_featured": 1,
-    }
-
-
-@app.get("/api/tournaments")
-async def list_tournaments(status: str = "", size: str = "", limit: int = 20):
-    db = get_db()
-    q = "SELECT * FROM tournaments WHERE 1=1"
-    params = []
-    if status:
-        q += " AND status=?"; params.append(status)
-    if size:
-        q += " AND size=?"; params.append(size)
-    q += " ORDER BY created_at DESC LIMIT ?"
-    params.append(limit)
-    rows = db.execute(q, params).fetchall()
-    db.close()
-    return {"tournaments": [dict(r) for r in rows]}
-
-
-@app.post("/api/tournaments")
-async def create_tournament(request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-
-    # Look up user
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u:
-        db.close(); raise HTTPException(404, "User not found")
-
-    body = await request.json()
-    size = body.get("size", "small")
-
-    # Permission check:
-    # admin → can create any size
-    # event_organizer_global → can create small, large requires approval
-    # others → forbidden
-    is_admin = bool(u["is_admin"])
-    is_global_organizer = False
-    org_row = db.execute(
-        "SELECT 1 FROM event_organizers WHERE user_id=? AND tournament_id='*'",
-        (str(u["id"]),)
-    ).fetchone()
-    if org_row:
-        is_global_organizer = True
-
-    if not is_admin and not is_global_organizer:
-        db.close(); raise HTTPException(403, "Insufficient permissions to create tournaments")
-
-    pending = 0
-    if not is_admin and size == "large":
-        pending = 1  # Requires admin approval
-
-    tid = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    xp_mult = 1.5 if size == "large" else 1.2
-
-    db.execute("""
-        INSERT INTO tournaments
-        (id, title, tag, description, rules, status, size, xp_multiplier, starts_at, ends_at,
-         play_mode, min_clan_members, max_participants, prize_json, is_featured,
-         created_by, pending_approval, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, (
-        tid,
-        body.get("title", "Giải Đấu Mới"),
-        body.get("tag", "Giải đấu"),
-        body.get("description", ""),
-        body.get("rules", ""),
-        "upcoming" if not pending else "pending_approval",
-        size, xp_mult,
-        body.get("starts_at", now),
-        body.get("ends_at", now),
-        body.get("play_mode", "individual"),
-        int(body.get("min_clan_members", 2)),
-        int(body.get("max_participants", 0)),
-        json.dumps(body.get("prize_json", [])),
-        int(body.get("is_featured", 0)),
-        str(u["id"]),
-        pending, now
-    ))
-    db.commit()
-    db.close()
-    return {"ok": True, "id": tid, "pending_approval": bool(pending)}
-
-
-@app.get("/api/tournaments/{tid}")
-async def get_tournament(tid: str):
-    db = get_db()
-    row = db.execute("SELECT * FROM tournaments WHERE id=?", (tid,)).fetchone()
-    db.close()
-    if not row:
-        raise HTTPException(404, "Tournament not found")
-    d = dict(row)
-    d["prize_json"] = json.loads(d.get("prize_json") or "[]")
-    return d
-
-
-@app.put("/api/tournaments/{tid}")
-async def update_tournament(tid: str, request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u:
-        db.close(); raise HTTPException(404, "User not found")
-
-    row = db.execute("SELECT * FROM tournaments WHERE id=?", (tid,)).fetchone()
-    if not row:
-        db.close(); raise HTTPException(404, "Tournament not found")
-
-    is_admin = bool(u["is_admin"])
-    is_organizer = bool(db.execute(
-        "SELECT 1 FROM event_organizers WHERE tournament_id=? AND user_id=?",
-        (tid, str(u["id"]))
-    ).fetchone())
-
-    if not is_admin and not is_organizer:
-        db.close(); raise HTTPException(403, "Not authorized to edit this tournament")
-
-    body = await request.json()
-    # Phase 1: collect column NAMES in a dict (also dedupes "status") and
-    # validate them against the allowlist right before the SQL is built.
-    updates = {}
-    for key in ["title", "tag", "description", "rules", "status", "starts_at", "ends_at",
-                "play_mode", "min_clan_members", "max_participants", "is_featured"]:
-        if key in body:
-            updates[key] = body[key]
-    if "prize_json" in body:
-        updates["prize_json"] = json.dumps(body["prize_json"])
-
-    # Large tournament approval: if non-admin tries to set size=large, flag pending
-    if "size" in body:
-        new_size = body["size"]
-        updates["size"] = new_size
-        updates["xp_multiplier"] = 1.5 if new_size == "large" else 1.2
-        if not is_admin and new_size == "large":
-            updates["pending_approval"] = 1
-            updates["status"] = "pending_approval"
-
-    if updates:
-        vals = list(updates.values())
-        vals.append(tid)
-        db.execute(
-            f"UPDATE tournaments SET {safe_update_columns(list(updates.keys()), _TOURNAMENT_FIELDS)} WHERE id=?",
-            vals,
-        )
-        db.commit()
-    db.close()
-    return {"ok": True}
-
-
-@app.post("/api/tournaments/{tid}/approve")
-async def approve_tournament(tid: str, request: Request):
-    """Admin approves a large tournament."""
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u or not u["is_admin"]:
-        db.close(); raise HTTPException(403, "Admin only")
-    db.execute(
-        "UPDATE tournaments SET pending_approval=0, status='upcoming', approved_by=? WHERE id=?",
-        (str(u["id"]), tid)
+from routers import build_social_tournaments_router, build_teacher_classes_router
+
+app.include_router(
+    build_social_tournaments_router(
+        get_db=get_db,
+        resolve_user_id=resolve_user_id,
+        get_firebase_uid_or_backend_id=get_firebase_uid_or_backend_id,
     )
-    db.commit(); db.close()
-    return {"ok": True}
+)
 
-
-@app.delete("/api/tournaments/{tid}")
-async def delete_tournament(tid: str, request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u or not u["is_admin"]:
-        db.close(); raise HTTPException(403, "Admin only")
-    db.execute("DELETE FROM tournaments WHERE id=?", (tid,))
-    db.commit(); db.close()
-    return {"ok": True}
-
-
-# ── Tournament Participants ────────────────────────────────────────────────────
-
-@app.post("/api/tournaments/{tid}/register")
-async def register_tournament(tid: str, request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u:
-        db.close(); raise HTTPException(404, "User not found")
-
-    tour = db.execute("SELECT * FROM tournaments WHERE id=?", (tid,)).fetchone()
-    if not tour:
-        db.close(); raise HTTPException(404, "Tournament not found")
-    if tour["status"] not in ("upcoming", "active"):
-        db.close(); raise HTTPException(400, "Tournament is not open for registration")
-
-    body = await request.json()
-    clan_id = body.get("clan_id", "")
-    existing = db.execute(
-        "SELECT 1 FROM tournament_participants WHERE tournament_id=? AND user_id=?",
-        (tid, str(u["id"]))
-    ).fetchone()
-    if existing:
-        db.close()
-        return {"ok": True, "already_registered": True, "play_url": f"/mrm/multiplayer?tournament={tid}&mode=tournament"}
-
-    now = datetime.now(timezone.utc).isoformat()
-    db.execute("""
-        INSERT INTO tournament_participants (tournament_id, user_id, username, clan_id, registered_at)
-        VALUES (?,?,?,?,?)
-    """, (tid, str(u["id"]), u["username"], clan_id, now))
-    db.commit()
-
-    count = db.execute(
-        "SELECT COUNT(*) as c FROM tournament_participants WHERE tournament_id=?", (tid,)
-    ).fetchone()["c"]
-    db.close()
-
-    return {
-        "ok": True,
-        "registered": True,
-        "participant_count": count,
-        "play_url": f"/mrm/multiplayer?tournament={tid}&mode=tournament",
-    }
-
-
-@app.delete("/api/tournaments/{tid}/register")
-async def unregister_tournament(tid: str, request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u:
-        db.close(); raise HTTPException(404, "User not found")
-    db.execute(
-        "DELETE FROM tournament_participants WHERE tournament_id=? AND user_id=?",
-        (tid, str(u["id"]))
+app.include_router(
+    build_teacher_classes_router(
+        get_db=get_db,
+        resolve_user_id=resolve_user_id,
+        verify_teacher=verify_teacher,
+        relearn_upsert=relearn_upsert,
     )
-    db.commit(); db.close()
-    return {"ok": True}
-
-
-@app.get("/api/tournaments/{tid}/participants")
-async def get_tournament_participants(tid: str, limit: int = 50):
-    db = get_db()
-    rows = db.execute(
-        "SELECT * FROM tournament_participants WHERE tournament_id=? ORDER BY score DESC LIMIT ?",
-        (tid, limit)
-    ).fetchall()
-    db.close()
-    return {"participants": [dict(r) for r in rows]}
-
-
-@app.get("/api/tournaments/{tid}/leaderboard")
-async def get_tournament_leaderboard(tid: str, limit: int = 10):
-    db = get_db()
-    rows = db.execute(
-        """SELECT p.*, u.avatar_url FROM tournament_participants p
-           LEFT JOIN users u ON u.id = p.user_id
-           WHERE p.tournament_id=? ORDER BY p.score DESC LIMIT ?""",
-        (tid, limit)
-    ).fetchall()
-    result = []
-    for i, r in enumerate(rows):
-        result.append({
-            "rank": i + 1,
-            "user_id": r["user_id"],
-            "username": r["username"],
-            "score": r["score"],
-            "matches_played": r["matches_played"],
-            "avatar_url": r["avatar_url"] or "",
-            "clan_id": r["clan_id"],
-        })
-    db.close()
-    return {"leaderboard": result}
-
-
-@app.post("/api/tournaments/{tid}/participants/{uid}/score")
-async def add_participant_score(tid: str, uid: str, request: Request):
-    """Called by game engine after a tournament match ends. Applies xp_multiplier to XP."""
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    tour = db.execute("SELECT * FROM tournaments WHERE id=?", (tid,)).fetchone()
-    if not tour:
-        db.close(); raise HTTPException(404, "Tournament not found")
-
-    body = await request.json()
-    points_earned = int(body.get("points", 0))
-    xp_earned = int(body.get("xp", 0))
-    multiplier = float(tour["xp_multiplier"]) if tour["xp_multiplier"] else 1.2
-    bonus_xp = int(xp_earned * multiplier)
-
-    db.execute("""
-        UPDATE tournament_participants
-        SET score = score + ?, matches_played = matches_played + 1
-        WHERE tournament_id=? AND user_id=?
-    """, (points_earned, tid, uid))
-
-    # Apply bonus XP to user account
-    db.execute("UPDATE users SET xp = COALESCE(xp, 0) + ? WHERE id=?", (bonus_xp, uid))
-    db.commit(); db.close()
-    return {"ok": True, "bonus_xp": bonus_xp, "multiplier": multiplier}
-
-
-# ── Event Organizers ──────────────────────────────────────────────────────────
-
-@app.get("/api/tournaments/{tid}/organizers")
-async def get_organizers(tid: str, request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u or not u["is_admin"]:
-        db.close(); raise HTTPException(403, "Admin only")
-    rows = db.execute(
-        "SELECT * FROM event_organizers WHERE tournament_id=?", (tid,)
-    ).fetchall()
-    db.close()
-    return {"organizers": [dict(r) for r in rows]}
-
-
-@app.post("/api/tournaments/{tid}/organizers")
-async def assign_organizer(tid: str, request: Request):
-    """Admin assigns an event organizer to a tournament."""
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u or not u["is_admin"]:
-        db.close(); raise HTTPException(403, "Admin only")
-
-    body = await request.json()
-    target_uid = str(body.get("user_id", ""))
-    role = body.get("role", "organizer")
-
-    target = db.execute("SELECT * FROM users WHERE id=?", (target_uid,)).fetchone()
-    if not target:
-        db.close(); raise HTTPException(404, "Target user not found")
-
-    now = datetime.now(timezone.utc).isoformat()
-    db.execute("""
-        INSERT OR REPLACE INTO event_organizers (tournament_id, user_id, username, role, assigned_at)
-        VALUES (?,?,?,?,?)
-    """, (tid, target_uid, target["username"], role, now))
-    db.commit(); db.close()
-    return {"ok": True}
-
-
-@app.delete("/api/tournaments/{tid}/organizers/{uid}")
-async def remove_organizer(tid: str, uid: str, request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u or not u["is_admin"]:
-        db.close(); raise HTTPException(403, "Admin only")
-    db.execute(
-        "DELETE FROM event_organizers WHERE tournament_id=? AND user_id=?", (tid, uid)
-    )
-    db.commit(); db.close()
-    return {"ok": True}
-
-
-@app.post("/api/organizers/grant-global")
-async def grant_global_organizer(request: Request):
-    """Admin grants user ability to create small tournaments independently."""
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u or not u["is_admin"]:
-        db.close(); raise HTTPException(403, "Admin only")
-
-    body = await request.json()
-    target_uid = str(body.get("user_id", ""))
-    target = db.execute("SELECT * FROM users WHERE id=?", (target_uid,)).fetchone()
-    if not target:
-        db.close(); raise HTTPException(404, "User not found")
-
-    now = datetime.now(timezone.utc).isoformat()
-    db.execute("""
-        INSERT OR REPLACE INTO event_organizers (tournament_id, user_id, username, role, assigned_at)
-        VALUES ('*',?,?,'global_organizer',?)
-    """, (target_uid, target["username"], now))
-    db.commit(); db.close()
-    return {"ok": True, "message": f"{target['username']} can now create small tournaments"}
-
-
-# ── Tournament Rooms (Multiplayer) ────────────────────────────────────────────
-
-@app.get("/api/tournaments/{tid}/rooms")
-async def get_tournament_rooms(tid: str):
-    db = get_db()
-    rows = db.execute(
-        "SELECT * FROM tournament_rooms WHERE tournament_id=? AND status='waiting' ORDER BY created_at DESC",
-        (tid,)
-    ).fetchall()
-    db.close()
-    return {"rooms": [dict(r) for r in rows]}
-
-
-@app.post("/api/tournaments/{tid}/rooms")
-async def create_tournament_room(tid: str, request: Request):
-    identity, is_fb = await get_firebase_uid_or_backend_id(request)
-    db = get_db()
-    if is_fb:
-        u = db.execute("SELECT * FROM users WHERE firebase_uid=?", (identity,)).fetchone()
-    else:
-        u = db.execute("SELECT * FROM users WHERE id=?", (identity,)).fetchone()
-    if not u:
-        db.close(); raise HTTPException(404, "User not found")
-
-    # Must be registered in the tournament
-    reg = db.execute(
-        "SELECT 1 FROM tournament_participants WHERE tournament_id=? AND user_id=? AND status='active'",
-        (tid, str(u["id"]))
-    ).fetchone()
-    if not reg:
-        db.close(); raise HTTPException(403, "You must register for this tournament first")
-
-    body = await request.json()
-    room_mode = body.get("room_mode", "individual")
-    clan_a_id = body.get("clan_a_id", "")
-    clan_b_id = body.get("clan_b_id", "")
-    max_players = int(body.get("max_players", 2))
-    mathmap_id = body.get("mathmap_id", "")
-
-    # Clan mode: verify user is clan leader/sub-leader
-    if room_mode == "clan" and clan_a_id:
-        clan_role = db.execute(
-            "SELECT role FROM clan_members WHERE clan_id=? AND user_id=?",
-            (clan_a_id, str(u["id"]))
-        ).fetchone()
-        if not clan_role or clan_role["role"] not in ("owner", "leader", "sub_leader"):
-            db.close(); raise HTTPException(403, "Only clan leader or sub-leader can create clan tournament rooms")
-
-    rid = str(uuid.uuid4())
-    now = datetime.now(timezone.utc).isoformat()
-    db.execute("""
-        INSERT INTO tournament_rooms
-        (id, tournament_id, host_user_id, host_username, room_mode, clan_a_id, clan_b_id,
-         max_players, mathmap_id, created_at)
-        VALUES (?,?,?,?,?,?,?,?,?,?)
-    """, (rid, tid, str(u["id"]), u["username"], room_mode, clan_a_id, clan_b_id,
-          max_players, mathmap_id, now))
-    db.commit(); db.close()
-
-    return {
-        "ok": True,
-        "room_id": rid,
-        "redirect_url": f"/mrm/multiplayer?tournament={tid}&room={rid}&mode=tournament",
-    }
-
-
-@app.patch("/api/tournaments/{tid}/rooms/{rid}")
-async def update_tournament_room_status(tid: str, rid: str, request: Request):
-    body = await request.json()
-    new_status = body.get("status", "waiting")
-    db = get_db()
-    db.execute(
-        "UPDATE tournament_rooms SET status=? WHERE id=? AND tournament_id=?",
-        (new_status, rid, tid)
-    )
-    db.commit(); db.close()
-    return {"ok": True}
-
-
-@app.get("/api/events")
-async def get_events():
-    db = get_db()
-    rows = db.execute(
-        "SELECT * FROM events ORDER BY created_at DESC LIMIT 20"
-    ).fetchall()
-    db.close()
-    if rows:
-        return {"events": [dict(r) for r in rows]}
-    return {
-        "events": [
-            {"id": "ev1", "status": "Sắp diễn ra", "date": "28/08", "title": "Thử thách Tốc độ Đại số 10 phút", "description": "Giải 20 câu trắc nghiệm tốc độ cao."},
-            {"id": "ev2", "status": "Sắp diễn ra", "date": "05/09", "title": "Đại chiến Clan liên trường Mùa Thu", "description": "Vòng loại khu vực toàn quốc."},
-            {"id": "ev3", "status": "Định kỳ", "date": "Hàng tuần", "title": "MathMap của tuần (Double XP)", "description": "Nhận x2 XP toàn bộ chủ đề."},
-            {"id": "ev4", "status": "Sắp diễn ra", "date": "15/09", "title": "Đấu trường SAT Math 800", "description": "Bài thi chuẩn hóa quốc tế 54 câu hỏi tiếng Anh."},
-        ]
-    }
-
-
-@app.get("/api/changelog")
-async def get_changelog():
-    db = get_db()
-    rows = db.execute(
-        "SELECT * FROM changelog_entries ORDER BY date DESC LIMIT 20"
-    ).fetchall()
-    db.close()
-    if rows:
-        return {"changelog": [dict(r) for r in rows]}
-    return {
-        "changelog": [
-            {"id": "cl1", "date": "23/08/2026", "tag": "new", "tagLabel": "Mới", "title": "Ra mắt tính năng Math Clans & Đấu Nhóm thời gian thực", "description": "So tài trực tiếp theo cặp đấu với thanh điểm đồng bộ."},
-            {"id": "cl2", "date": "18/08/2026", "tag": "improve", "tagLabel": "Nâng cấp", "title": "Tối ưu hóa tốc độ tải trang MathMap Detail & KaTeX Render", "description": "Giảm 40% thời gian tải trang chi tiết MathMap."},
-            {"id": "cl3", "date": "12/08/2026", "tag": "new", "tagLabel": "Mới", "title": "Hệ thống Thảo luận & Báo cáo bình luận cộng đồng", "description": "Hỗ trợ hỏi đáp đa tầng dưới từng MathMap."},
-        ]
-    }
+)
 
 
 # ── AI Addons: Geometry Engine & Video Enhancer ───────────────────────────────

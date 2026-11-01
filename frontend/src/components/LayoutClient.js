@@ -3,8 +3,12 @@ import { useEffect } from "react";
 import GlobalSidebar from "@/components/GlobalSidebar";
 import PageTransition from "@/components/PageTransition/PageTransition";
 import DuoTranslate from "@/components/DuoMCB/DuoTranslate";
+import { MobileAppShell } from "@/mobile";
 import { usePathname } from "next/navigation";
 import { LanguageProvider, useLanguage } from "@/context/LanguageContext";
+import { ThemeProvider } from "@/context/ThemeContext";
+import { useAuth } from "@/context/authContext";
+import { useIsMobileViewport } from "@/mobile/useResponsive";
 
 function isLessonPath(pathname) {
   if (!pathname) return false;
@@ -28,6 +32,16 @@ function isLessonPath(pathname) {
   if (/^\/l(6|7|8|9|10|11|12)-/.test(path)) return true;
 
   return false;
+}
+
+const CLIL_MANAGED_LESSONS = new Set([
+  "/l6-c1-l1",
+]);
+
+function isClilManagedLessonPath(pathname) {
+  if (!pathname) return false;
+  const path = pathname.replace(/\/+$/, "").toLowerCase();
+  return CLIL_MANAGED_LESSONS.has(path);
 }
 
 /** Floating language toggle pill — rendered in bottom-left corner across all non-lesson pages */
@@ -161,7 +175,11 @@ function useServiceWorker() {
 
 function LayoutInner({ children }) {
   const pathname = usePathname();
+  const isMobile = useIsMobileViewport();
+  const { user, ready } = useAuth();
+  const learnerScope = user?.id ? `u_${encodeURIComponent(String(user.id))}` : "guest";
   const isLesson = isLessonPath(pathname);
+  const isClilManaged = isClilManagedLessonPath(pathname);
   // The full tutor owns its composer and in-header language control. Floating
   // chat/language buttons otherwise cover them on small visual viewports.
   const isTutorWorkspace = pathname?.replace(/\/+$/, "").toLowerCase() === "/duomcb";
@@ -169,9 +187,20 @@ function LayoutInner({ children }) {
   return (
     <>
       <PageTransition>{children}</PageTransition>
-      {!isTutorWorkspace && <GlobalSidebar />}
-      {isLesson && <DuoTranslate />}
-      {!isLesson && !isTutorWorkspace && <LangToggleButton />}
+      {!isTutorWorkspace && !isMobile && <GlobalSidebar key={learnerScope} />}
+      {isLesson && !isClilManaged && <DuoTranslate />}
+      {!isLesson && !isTutorWorkspace && (
+        <div className="hidden md:block">
+          <LangToggleButton />
+        </div>
+      )}
+      {isMobile && <MobileAppShell
+        key={learnerScope}
+        learnerScope={learnerScope}
+        authReady={ready}
+        enableTabBar={!isLesson && !isTutorWorkspace}
+        enableBingSideBar={!isTutorWorkspace}
+      />}
     </>
   );
 }
@@ -180,8 +209,10 @@ export default function LayoutClient({ children }) {
   useServiceWorker();
 
   return (
-    <LanguageProvider>
-      <LayoutInner>{children}</LayoutInner>
-    </LanguageProvider>
+    <ThemeProvider>
+      <LanguageProvider>
+        <LayoutInner>{children}</LayoutInner>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }

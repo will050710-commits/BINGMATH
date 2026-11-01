@@ -1,28 +1,28 @@
 // frontend/src/lib/themeRoutes.js
 //
-// Redesign Claude-style — Đợt 1.
+// Redesign Claude-style — Đợt 1 + Mobile Web Theme Unification.
 //
 // Một NGUỒN SỰ THẬT duy nhất cho câu hỏi "route này dùng theme nào":
 //   • ink   — MẶC ĐỊNH cho toàn app (nền than ấm #141413). Mọi khu học/thi/game
 //             giữ nguyên bố cục tối hiện có nên không có rủi ro vỡ tương phản.
 //   • paper — marketing + trang công khai (nền giấy #f5f4ed), xem PAPER_ROUTES.
 //
-// Module này KHÔNG import React và KHÔNG đọc localStorage ở cấp module, vì nó
-// được dùng ở cả hai phía:
-//   • server: src/app/layout.js nhúng buildThemeBootstrapScript() để đặt
-//     data-theme TRƯỚC khi paint (chống nháy sáng↔tối khi vào trang paper);
-//   • client: src/context/ThemeContext.js giữ theme theo route + override.
-//
-// Đợt 4 (codemod màu 108 file bài giảng) chỉ cần đổi LESSON_READER_ENABLED
-// thành true là các route đọc bài tự chuyển sang paper — không phải sửa
-// resolveTheme() ở nơi nào khác.
+// Đồng thời ánh xạ nhất quán với 4 chế độ theme của Mobile App Shell:
+//   • "light"       → data-theme="paper", data-mobile-theme="light"
+//   • "dark"        → data-theme="ink",   data-mobile-theme="dark"
+//   • "liquidGlass" → data-theme="ink",   data-mobile-theme="liquidGlass"
+//   • "system"      → theo prefers-color-scheme ("paper"/"light" hoặc "ink"/"dark")
 
 export const THEME_STORAGE_KEY = "duomath_theme";
+export const MOBILE_THEME_STORAGE_KEY = "duomath_mobile_theme";
+export const LIQUID_GLASS_OPACITY_KEY = "bingmath_liquid_glass_opacity";
 
 export const THEME_PAPER = "paper";
 export const THEME_INK = "ink";
 
 export const DEFAULT_THEME = THEME_INK;
+export const DEFAULT_MOBILE_THEME = "liquidGlass";
+export const DEFAULT_LIQUID_GLASS_OPACITY = 0.85;
 
 /** Trang chủ + các trang công khai/marketing đã migrate token ở Đợt 3. */
 export const PAPER_ROUTES = [
@@ -83,18 +83,65 @@ export function resolveTheme(pathname) {
   return THEME_INK;
 }
 
-/** Chuẩn hoá giá trị đọc từ localStorage; trả null nếu không hợp lệ. */
+/** Chuẩn hoá giá trị đọc từ localStorage["duomath_theme"]; trả null nếu không hợp lệ. */
 export function parseStoredTheme(value) {
   return value === THEME_PAPER || value === THEME_INK ? value : null;
 }
 
 /**
+ * Chuẩn hoá giá trị đọc từ localStorage["duomath_mobile_theme"].
+ * @param {string | null | undefined} value
+ * @returns {"light" | "dark" | "liquidGlass" | "system" | null}
+ */
+export function parseStoredMobileTheme(value) {
+  if (
+    value === "light" ||
+    value === "dark" ||
+    value === "liquidGlass" ||
+    value === "system"
+  ) {
+    return value;
+  }
+  return null;
+}
+
+/**
+ * Chuẩn hoá độ đục Liquid Glass trong khoảng [0.15, 1].
+ * @param {string | number | null | undefined} value
+ * @returns {number}
+ */
+export function clampLiquidGlassOpacity(value) {
+  const parsed = typeof value === "number" ? value : parseFloat(String(value ?? ""));
+  if (Number.isNaN(parsed)) return DEFAULT_LIQUID_GLASS_OPACITY;
+  return Math.max(0.15, Math.min(1, Number(parsed.toFixed(2))));
+}
+
+/**
+ * Chuyển đổi từ chế độ mobile ("light" | "dark" | "liquidGlass" | "system")
+ * sang chế độ mobile thực tế ("light" | "dark" | "liquidGlass") và theme tài liệu ("paper" | "ink").
+ * @param {"light" | "dark" | "liquidGlass" | "system"} mode
+ * @param {boolean} [systemPrefersLight]
+ * @returns {{ resolvedMobileMode: "light" | "dark" | "liquidGlass", documentTheme: "paper" | "ink" }}
+ */
+export function resolveMobileThemeMode(mode, systemPrefersLight = false) {
+  if (mode === "light") {
+    return { resolvedMobileMode: "light", documentTheme: THEME_PAPER };
+  }
+  if (mode === "dark") {
+    return { resolvedMobileMode: "dark", documentTheme: THEME_INK };
+  }
+  if (mode === "system") {
+    return systemPrefersLight
+      ? { resolvedMobileMode: "light", documentTheme: THEME_PAPER }
+      : { resolvedMobileMode: "dark", documentTheme: THEME_INK };
+  }
+  return { resolvedMobileMode: "liquidGlass", documentTheme: THEME_INK };
+}
+
+/**
  * Script cực nhỏ chạy trước paint, chèn ở đầu <body> trong src/app/layout.js.
- * Thứ tự ưu tiên giống hệt ThemeContext: localStorage override → route → ink.
- *
- * Lưu ý CSP: next.config.mjs cho phép script-src 'unsafe-inline' nên script này
- * chạy được; nó chỉ đọc location.pathname + localStorage, không nhận dữ liệu
- * người dùng, không eval, không gọi mạng.
+ * Thứ tự ưu tiên giống hệt ThemeContext:
+ *   duomath_mobile_theme → duomath_theme → route → ink.
  */
 export function buildThemeBootstrapScript() {
   const paperRoutes = JSON.stringify(PAPER_ROUTES);
@@ -107,10 +154,24 @@ export function buildThemeBootstrapScript() {
     `var lessonPaths=${lessonPaths};` +
     `var lessonPrefixes=${lessonPrefixes};` +
     `var lessonReader=${LESSON_READER_ENABLED};` +
-    "var saved=null;try{saved=localStorage.getItem('" + THEME_STORAGE_KEY + "')}catch(e){}" +
-    "var isPaper=false;" +
-    "if(saved==='" + THEME_PAPER + "'||saved==='" + THEME_INK + "'){isPaper=saved==='paper'}" +
-    "else{isPaper=paperRoutes.indexOf(p)>-1;" +
+    "var savedMobile=null,savedWeb=null,savedOpacity=null;" +
+    "try{" +
+    "savedMobile=localStorage.getItem('" + MOBILE_THEME_STORAGE_KEY + "');" +
+    "savedWeb=localStorage.getItem('" + THEME_STORAGE_KEY + "');" +
+    "savedOpacity=localStorage.getItem('" + LIQUID_GLASS_OPACITY_KEY + "');" +
+    "}catch(e){}" +
+    "var isPaper=false;var mobileMode='" + DEFAULT_MOBILE_THEME + "';" +
+    "if(savedMobile==='light'){isPaper=true;mobileMode='light'}" +
+    "else if(savedMobile==='dark'){isPaper=false;mobileMode='dark'}" +
+    "else if(savedMobile==='liquidGlass'){isPaper=false;mobileMode='liquidGlass'}" +
+    "else if(savedMobile==='system'){" +
+    "var sysLight=typeof window.matchMedia==='function'&&window.matchMedia('(prefers-color-scheme: light)').matches;" +
+    "isPaper=sysLight;mobileMode=sysLight?'light':'dark';" +
+    "}else if(savedWeb==='" + THEME_PAPER + "'||savedWeb==='" + THEME_INK + "'){" +
+    "isPaper=savedWeb==='" + THEME_PAPER + "';" +
+    "mobileMode=isPaper?'light':'dark';" +
+    "}else{" +
+    "isPaper=paperRoutes.indexOf(p)>-1;" +
     "if(!isPaper&&lessonReader){var low=p.toLowerCase();" +
     "isPaper=lessonPaths.indexOf(low)>-1;" +
     "if(!isPaper){for(var i=0;i<lessonPrefixes.length;i++){" +
@@ -120,9 +181,11 @@ export function buildThemeBootstrapScript() {
     "':'" +
     THEME_INK +
     "');" +
+    "document.documentElement.setAttribute('data-mobile-theme',mobileMode);" +
+    "var op=parseFloat(savedOpacity||'0.85');" +
+    "if(!isNaN(op)){op=Math.max(0.15,Math.min(1,op));document.documentElement.style.setProperty('--bm-glass-opacity',String(op));}" +
     "}catch(e){document.documentElement.setAttribute('data-theme','" +
     THEME_INK +
-    "');" +
-    "}})();"
+    "');}})();"
   );
 }

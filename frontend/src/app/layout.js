@@ -88,7 +88,7 @@ export const viewport = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning={true}>
       <body
         suppressHydrationWarning={true}
         className={`${beVietnamPro.variable} ${inter.variable} ${sourceSerif.variable} ${jetBrainsMono.variable} antialiased`}

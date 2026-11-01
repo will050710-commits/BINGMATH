@@ -1,17 +1,26 @@
 /**
  * TaiLieuScreen — Tài Liệu & Kênh YouTube
  * Tabs: Tài liệu | YouTube | Công cụ
+ *
+ * Changes:
+ *  - openExternalUrl helper with error feedback.
+ *  - Native-driver animated translateX sliding tab indicator.
+ *  - Video thumbnails fade-in and network error fallback.
+ *  - Search input with clear button and focus state.
+ *  - PressableScale on all cards, tabs, and buttons.
  */
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, Linking, TextInput, Animated, Image,
-  Dimensions,
+  View, Text, ScrollView, StyleSheet,
+  SafeAreaView, TextInput, Animated, Alert,
+  Dimensions, Image,
 } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { FontFamily, FontSize } from '../../theme/typography';
 import { Spacing, Radius } from '../../theme/spacing';
+import { haptic, openExternalUrl } from '../../theme/effects';
 import { useLanguage } from '../../context/LanguageContext';
+import PressableScale from '../../components/ui/PressableScale';
 
 const { width: W } = Dimensions.get('window');
 
@@ -48,7 +57,7 @@ const YOUTUBE_CHANNELS = [
     emoji: '📐',
     url: 'https://www.youtube.com/thaynguyenquocchi',
     videos: [
-      { title: 'Tính đơn điệu hàm số — Toán 12', id: 'W_8aEs16RI0', thumb: `https://i.ytimg.com/vi/W_8aEs16RI0/mqdefault.jpg` },
+      { title: 'Tính đơn điệu hàm số — Toán 12', id: 'W_8aEs16RI0', thumb: 'https://i.ytimg.com/vi/W_8aEs16RI0/mqdefault.jpg' },
       { title: 'Tổ hợp xác suất — Toán 11', id: 'dummyVid3', thumb: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
     ],
   },
@@ -61,8 +70,8 @@ const YOUTUBE_CHANNELS = [
     emoji: '🏆',
     url: 'https://www.youtube.com/@vtedhoctoanonlinechatluongcao',
     videos: [
-      { title: 'Chữa đề tham khảo thi THPT môn Toán', id: 'F3S0l3p-f-k', thumb: `https://i.ytimg.com/vi/F3S0l3p-f-k/mqdefault.jpg` },
-      { title: 'Mệnh đề Toán 10 — Kết nối tri thức', id: 'wX-S1u1F9jA', thumb: `https://i.ytimg.com/vi/wX-S1u1F9jA/mqdefault.jpg` },
+      { title: 'Chữa đề tham khảo thi THPT môn Toán', id: 'F3S0l3p-f-k', thumb: 'https://i.ytimg.com/vi/F3S0l3p-f-k/mqdefault.jpg' },
+      { title: 'Mệnh đề Toán 10 — Kết nối tri thức', id: 'wX-S1u1F9jA', thumb: 'https://i.ytimg.com/vi/wX-S1u1F9jA/mqdefault.jpg' },
     ],
   },
   {
@@ -74,339 +83,347 @@ const YOUTUBE_CHANNELS = [
     emoji: '📘',
     url: 'https://www.youtube.com/@thaynguyendinhkhiemtoan89',
     videos: [
-      { title: 'Hệ phương trình — Toán 9', id: 'lzeHX6gmC6E', thumb: `https://i.ytimg.com/vi/lzeHX6gmC6E/mqdefault.jpg` },
-      { title: 'Căn bậc hai — Toán 9', id: 'fv67XDUOBH8', thumb: `https://i.ytimg.com/vi/fv67XDUOBH8/mqdefault.jpg` },
+      { title: 'Hệ phương trình — Toán 9', id: 'lzeHX6gmC6E', thumb: 'https://i.ytimg.com/vi/lzeHX6gmC6E/mqdefault.jpg' },
+      { title: 'Căn bậc hai — Toán 9', id: 'fv67XDUOBH8', thumb: 'https://i.ytimg.com/vi/fv67XDUOBH8/mqdefault.jpg' },
     ],
   },
   {
     name: 'Toán Thầy Đỉnh',
-    handle: '@toanthayinh1592',
-    desc: 'Bài giảng & đề kiểm tra THCS — dễ hiểu, bám sát chương trình',
+    handle: '@toanthaydinh',
+    desc: 'Toán 6, 7, 8, 9 — phương pháp giải nhanh, dễ hiểu',
     level: 'THCS',
-    color: Colors.pink,
-    emoji: '🌟',
-    url: 'https://www.youtube.com/@toanthayinh1592',
+    color: Colors.purple,
+    emoji: '✏️',
+    url: 'https://www.youtube.com/@toanthaydinh',
     videos: [
-      { title: 'Phân thức đại số — Toán 8', id: 'dummyVid4', thumb: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
-    ],
-  },
-  {
-    name: 'Thầy Nguyễn Tiến Đạt',
-    handle: '@thaynguyentiendat',
-    desc: 'Livestream ôn thi, mệnh đề Toán 10, luyện đề THPT QG',
-    level: 'THPT',
-    color: Colors.teal,
-    emoji: '📡',
-    url: 'https://www.youtube.com/thaynguyentiendat/streams',
-    videos: [
-      { title: 'Mệnh đề toán học — Toán 10 hệ mới', id: 'N4SeBnHNzlA', thumb: `https://i.ytimg.com/vi/N4SeBnHNzlA/mqdefault.jpg` },
+      { title: 'Số nguyên & Phép tính — Toán 6', id: 'dummyVid4', thumb: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
+      { title: 'Hình học trực quan — Toán 7', id: 'dummyVid5', thumb: 'https://i.ytimg.com/vi/dQw4w9WgXcQ/mqdefault.jpg' },
     ],
   },
 ];
 
 const TOOLS = [
-  { title: 'Desmos Graphing', desc: 'Vẽ đồ thị tương tác miễn phí — hỗ trợ hàm số, phương trình, bất phương trình.', url: 'https://www.desmos.com/calculator', tag: 'Đồ thị', color: Colors.accent, emoji: '📈' },
-  { title: 'Wolfram Alpha', desc: 'Tính toán, giải phương trình, vẽ đồ thị, xem bước giải chi tiết.', url: 'https://www.wolframalpha.com', tag: 'Tính toán', color: Colors.accent, emoji: '🔬' },
-  { title: 'GeoGebra', desc: 'Phần mềm hình học động, vẽ hình, tính toán đại số, thống kê.', url: 'https://www.geogebra.org', tag: 'Hình học', color: Colors.teal, emoji: '📐' },
-  { title: 'Mathway', desc: 'Giải toán bước-bước: đại số, giải tích, thống kê, hóa học.', url: 'https://www.mathway.com', tag: 'Giải toán', color: Colors.purple, emoji: '🧮' },
-  { title: 'Khan Academy', desc: 'Hệ thống bài tập phân loại theo kỹ năng của Khan Academy quốc tế.', url: 'https://www.khanacademy.org/math', tag: 'Quốc tế', color: Colors.primary, emoji: '🌍' },
-  { title: 'Math is Fun', desc: 'Trang học toán tiếng Anh trực quan sinh động dành cho học sinh THCS.', url: 'https://www.mathsisfun.com', tag: 'Trực quan', color: Colors.amber, emoji: '✨' },
+  { name: 'Desmos Graphing', desc: 'Vẽ đồ thị hàm số 2D trực quan, mạnh mẽ nhất hiện nay.', url: 'https://www.desmos.com/calculator', tag: 'Đồ thị', emoji: '📈', color: Colors.teal },
+  { name: 'GeoGebra 3D', desc: 'Mô phỏng hình học không gian 3D, tọa độ và vector.', url: 'https://www.geogebra.org/3d', tag: 'Hình học 3D', emoji: '🧊', color: Colors.primary },
+  { name: 'Wolfram Alpha', desc: 'Công cụ giải toán bước từng bước, đại số và giải tích.', url: 'https://www.wolframalpha.com', tag: 'AI Solver', emoji: '🧠', color: Colors.amber },
+  { name: 'Symbolab', desc: 'Giải phương trình, tính tích phân và giới hạn có giải thích.', url: 'https://www.symbolab.com', tag: 'Solver', emoji: '🔬', color: Colors.purple },
 ];
 
-const TABS = ['Tài liệu', 'YouTube', 'Công cụ'];
+function SafeThumbnail({ uri, title }) {
+  const [errored, setErrored] = useState(false);
+  const opacity = useRef(new Animated.Value(0)).current;
 
-// ── RESOURCE CARD ─────────────────────────────────────────────────────────────
-function ResourceCard({ item }) {
+  const handleLoad = () => {
+    Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+  };
+
+  if (errored || !uri) {
+    return (
+      <View style={[styles.videoThumb, styles.videoThumbFallback]}>
+        <Text style={{ fontSize: 24 }}>🎬</Text>
+      </View>
+    );
+  }
+
   return (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => Linking.openURL(item.url)}
-      activeOpacity={0.85}
-    >
-      <View style={[styles.cardLeft, { backgroundColor: item.color + '20' }]}>
-        <Text style={styles.cardEmoji}>{item.emoji}</Text>
-      </View>
-      <View style={styles.cardBody}>
-        <View style={styles.cardTop}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <View style={[styles.tagChip, { borderColor: item.color + '60', backgroundColor: item.color + '18' }]}>
-            <Text style={[styles.tagText, { color: item.color }]}>{item.tag}</Text>
-          </View>
-        </View>
-        <Text style={styles.cardDesc} numberOfLines={2}>{item.desc}</Text>
-        <Text style={styles.cardUrl} numberOfLines={1}>{item.url.replace('https://', '')}</Text>
-      </View>
-    </TouchableOpacity>
-  );
-}
-
-// ── YOUTUBE CHANNEL CARD ──────────────────────────────────────────────────────
-function ChannelCard({ channel }) {
-  return (
-    <View style={[styles.channelCard, { borderColor: channel.color + '40' }]}>
-      {/* Channel header */}
-      <View style={styles.channelHeader}>
-        <View style={[styles.channelAvatar, { backgroundColor: channel.color + '25', borderColor: channel.color }]}>
-          <Text style={styles.channelAvatarEmoji}>{channel.emoji}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.channelName}>{channel.name}</Text>
-          <Text style={styles.channelHandle}>{channel.handle}</Text>
-        </View>
-        <View style={[styles.levelBadge, { backgroundColor: channel.color + '20', borderColor: channel.color + '50' }]}>
-          <Text style={[styles.levelBadgeText, { color: channel.color }]}>{channel.level}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.channelDesc}>{channel.desc}</Text>
-
-      {/* Video thumbnails — horizontal scroll */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.videosScroll}>
-        {channel.videos.map((v, i) => (
-          <TouchableOpacity
-            key={i}
-            style={styles.videoCard}
-            onPress={() => Linking.openURL(`https://www.youtube.com/watch?v=${v.id}`)}
-            activeOpacity={0.85}
-          >
-            <View style={styles.thumbWrapper}>
-              <Image
-                source={{ uri: v.thumb }}
-                style={styles.thumb}
-                resizeMode="cover"
-              />
-              <View style={styles.playOverlay}>
-                <Text style={styles.playIcon}>▶</Text>
-              </View>
-            </View>
-            <Text style={styles.videoTitle} numberOfLines={2}>{v.title}</Text>
-          </TouchableOpacity>
-        ))}
-        {/* "View all" card */}
-        <TouchableOpacity
-          style={[styles.videoCard, styles.viewAllCard]}
-          onPress={() => Linking.openURL(channel.url)}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.viewAllEmoji]}>{channel.emoji}</Text>
-          <Text style={[styles.viewAllText, { color: channel.color }]}>Xem kênh →</Text>
-        </TouchableOpacity>
-      </ScrollView>
+    <View style={styles.videoThumb}>
+      <Animated.Image
+        source={{ uri }}
+        style={[styles.videoThumbImage, { opacity }]}
+        onLoad={handleLoad}
+        onError={() => setErrored(true)}
+      />
     </View>
   );
 }
 
-// ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function TaiLieuScreen() {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState(0);
-  const [query, setQuery] = useState('');
-  const [levelFilter, setLevelFilter] = useState('Tất cả'); // for YouTube tab
+  const [tab, setTab] = useState('docs'); // 'docs' | 'youtube' | 'tools'
+  const [search, setSearch] = useState('');
+  const [levelFilter, setLevelFilter] = useState('all');
 
-  const tabAnim = useRef(new Animated.Value(0)).current;
+  const tabWidth = (W - Spacing.xl * 2) / 3;
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const handleTabChange = (i) => {
-    setActiveTab(i);
-    setQuery('');
-    Animated.timing(tabAnim, { toValue: i, duration: 200, useNativeDriver: false }).start();
-  };
+  const handleTabChange = useCallback((newTab, index) => {
+    haptic.select();
+    setTab(newTab);
+    Animated.spring(slideAnim, {
+      toValue: index * tabWidth,
+      friction: 7,
+      tension: 60,
+      useNativeDriver: true,
+    }).start();
+  }, [tabWidth, slideAnim]);
 
-  const tabIndicatorLeft = tabAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [0, W / 3, (W / 3) * 2],
-  });
+  const handleOpen = useCallback((url) => {
+    haptic.tap();
+    openExternalUrl(url, () => {
+      Alert.alert(t('Lỗi', 'Error'), t('Không thể mở liên kết này.', 'Cannot open this link.'));
+    });
+  }, [t]);
 
-  // Filter data
-  const docData = DOCS.filter(r =>
-    r.title.toLowerCase().includes(query.toLowerCase()) ||
-    r.desc.toLowerCase().includes(query.toLowerCase())
-  );
-  const ytData = YOUTUBE_CHANNELS.filter(c => {
-    const matchQuery = c.name.toLowerCase().includes(query.toLowerCase()) || c.desc.toLowerCase().includes(query.toLowerCase());
-    const matchLevel = levelFilter === 'Tất cả' || c.level === levelFilter;
-    return matchQuery && matchLevel;
-  });
-  const toolData = TOOLS.filter(r =>
-    r.title.toLowerCase().includes(query.toLowerCase()) ||
-    r.desc.toLowerCase().includes(query.toLowerCase())
+  const filteredDocs = DOCS.filter(d =>
+    d.title.toLowerCase().includes(search.toLowerCase()) ||
+    d.desc.toLowerCase().includes(search.toLowerCase())
   );
 
-  const currentData = [docData, ytData, toolData][activeTab];
+  const filteredChannels = YOUTUBE_CHANNELS.filter(ch => {
+    const matchSearch = ch.name.toLowerCase().includes(search.toLowerCase()) ||
+      ch.desc.toLowerCase().includes(search.toLowerCase());
+    const matchLevel = levelFilter === 'all' || ch.level.toLowerCase() === levelFilter.toLowerCase();
+    return matchSearch && matchLevel;
+  });
+
+  const filteredTools = TOOLS.filter(tool =>
+    tool.name.toLowerCase().includes(search.toLowerCase()) ||
+    tool.desc.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>📖 {t('Tài Liệu Học Tập', 'Learning Resources')}</Text>
-        <Text style={styles.headerSub}>{t('Tổng hợp tài liệu & kênh học chất lượng cao', 'Curated resources & learning channels')}</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>📖 {t('Thư Viện & Tài Liệu', 'Library & Resources')}</Text>
+          <Text style={styles.headerSub}>
+            {t('Tài liệu toán chuẩn, kênh học tập và công cụ bổ trợ', 'Math resources, study channels, and tools')}
+          </Text>
+        </View>
 
-        {/* Search */}
-        <TextInput
-          style={styles.searchInput}
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t('Tìm kiếm...', 'Search...')}
-          placeholderTextColor={Colors.textDim}
-        />
-      </View>
-
-      {/* Tab bar */}
-      <View style={styles.tabBar}>
-        {TABS.map((tab, i) => (
-          <TouchableOpacity
-            key={tab}
-            style={styles.tabItem}
-            onPress={() => handleTabChange(i)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.tabText, activeTab === i && styles.tabTextActive]}>{tab}</Text>
-          </TouchableOpacity>
-        ))}
-        <Animated.View style={[styles.tabIndicator, { left: tabIndicatorLeft }]} />
-      </View>
-
-      {/* YouTube level filter */}
-      {activeTab === 1 && (
-        <View style={styles.levelFilterRow}>
-          {['Tất cả', 'THCS', 'THPT'].map(lv => (
-            <TouchableOpacity
-              key={lv}
-              style={[styles.levelChip, levelFilter === lv && styles.levelChipActive]}
-              onPress={() => setLevelFilter(lv)}
+        {/* Tab switcher */}
+        <View style={styles.tabContainer}>
+          <Animated.View
+            style={[
+              styles.tabSlider,
+              { width: tabWidth, transform: [{ translateX: slideAnim }] },
+            ]}
+          />
+          {[
+            { id: 'docs', label: t('📚 Tài liệu', '📚 Docs') },
+            { id: 'youtube', label: t('🎬 YouTube', '🎬 YouTube') },
+            { id: 'tools', label: t('🛠️ Công cụ', '🛠️ Tools') },
+          ].map((item, idx) => (
+            <PressableScale
+              key={item.id}
+              style={[styles.tabBtn, { width: tabWidth }]}
+              onPress={() => handleTabChange(item.id, idx)}
+              haptics={null}
             >
-              <Text style={[styles.levelChipText, levelFilter === lv && styles.levelChipTextActive]}>{lv}</Text>
-            </TouchableOpacity>
+              <Text style={[styles.tabText, tab === item.id && styles.tabTextActive]}>
+                {item.label}
+              </Text>
+            </PressableScale>
           ))}
         </View>
-      )}
 
-      {/* Content */}
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {activeTab === 1
-          ? ytData.map((ch, i) => <ChannelCard key={i} channel={ch} />)
-          : currentData.map((r, i) => <ResourceCard key={i} item={r} />)
-        }
-        {currentData.length === 0 && (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyText}>🔍 {t('Không tìm thấy kết quả', 'No results found')}</Text>
+        {/* Search */}
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('Tìm kiếm tài liệu, kênh...', 'Search resources, channels...')}
+            placeholderTextColor={Colors.textDim}
+          />
+          {search ? (
+            <PressableScale onPress={() => setSearch('')} style={styles.clearBtn} haptics="tap">
+              <Text style={{ color: Colors.textDim, fontSize: 16 }}>✕</Text>
+            </PressableScale>
+          ) : null}
+        </View>
+
+        {/* Level filter for YouTube */}
+        {tab === 'youtube' && (
+          <View style={styles.filterRow}>
+            {['all', 'thcs', 'thpt'].map(lvl => (
+              <PressableScale
+                key={lvl}
+                style={[styles.filterChip, levelFilter === lvl && styles.filterChipActive]}
+                onPress={() => { haptic.select(); setLevelFilter(lvl); }}
+                haptics={null}
+              >
+                <Text style={[styles.filterText, levelFilter === lvl && styles.filterTextActive]}>
+                  {lvl === 'all' ? t('Tất cả', 'All') : lvl.toUpperCase()}
+                </Text>
+              </PressableScale>
+            ))}
           </View>
         )}
+
+        {/* TAB 1: DOCS */}
+        {tab === 'docs' && (
+          <View style={styles.list}>
+            {filteredDocs.map((doc, i) => (
+              <PressableScale
+                key={i}
+                style={[styles.card, { borderColor: doc.color + '40' }]}
+                onPress={() => handleOpen(doc.url)}
+                haptics={null}
+              >
+                <Text style={styles.cardEmoji}>{doc.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <Text style={styles.cardTitle}>{doc.title}</Text>
+                    <View style={[styles.tag, { backgroundColor: doc.color + '20', borderColor: doc.color + '60' }]}>
+                      <Text style={[styles.tagText, { color: doc.color }]}>{doc.tag}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardDesc}>{doc.desc}</Text>
+                </View>
+                <Text style={{ color: Colors.cyan, fontSize: 18 }}>↗</Text>
+              </PressableScale>
+            ))}
+          </View>
+        )}
+
+        {/* TAB 2: YOUTUBE */}
+        {tab === 'youtube' && (
+          <View style={styles.list}>
+            {filteredChannels.map((ch, i) => (
+              <View key={i} style={[styles.channelCard, { borderColor: ch.color + '40' }]}>
+                <View style={styles.channelHeader}>
+                  <Text style={styles.channelEmoji}>{ch.emoji}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.channelName}>{ch.name}</Text>
+                    <Text style={styles.channelHandle}>{ch.handle} • {ch.level}</Text>
+                  </View>
+                  <PressableScale
+                    style={[styles.subscribeBtn, { backgroundColor: ch.color }]}
+                    onPress={() => handleOpen(ch.url)}
+                    haptics={null}
+                  >
+                    <Text style={styles.subscribeText}>{t('Xem kênh', 'Visit')}</Text>
+                  </PressableScale>
+                </View>
+                <Text style={styles.channelDesc}>{ch.desc}</Text>
+
+                {/* Videos */}
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {ch.videos.map((vid, idx) => (
+                      <PressableScale
+                        key={idx}
+                        style={styles.videoCard}
+                        onPress={() => handleOpen(`https://www.youtube.com/watch?v=${vid.id}`)}
+                        haptics={null}
+                      >
+                        <SafeThumbnail uri={vid.thumb} title={vid.title} />
+                        <Text style={styles.videoTitle} numberOfLines={2}>{vid.title}</Text>
+                      </PressableScale>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* TAB 3: TOOLS */}
+        {tab === 'tools' && (
+          <View style={styles.list}>
+            {filteredTools.map((tool, i) => (
+              <PressableScale
+                key={i}
+                style={[styles.card, { borderColor: tool.color + '40' }]}
+                onPress={() => handleOpen(tool.url)}
+                haptics={null}
+              >
+                <Text style={styles.cardEmoji}>{tool.emoji}</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                    <Text style={styles.cardTitle}>{tool.name}</Text>
+                    <View style={[styles.tag, { backgroundColor: tool.color + '20', borderColor: tool.color + '60' }]}>
+                      <Text style={[styles.tagText, { color: tool.color }]}>{tool.tag}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.cardDesc}>{tool.desc}</Text>
+                </View>
+                <Text style={{ color: Colors.cyan, fontSize: 18 }}>↗</Text>
+              </PressableScale>
+            ))}
+          </View>
+        )}
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ── STYLES ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
+  content: { padding: Spacing.xl },
 
-  header: {
-    padding: Spacing.xl, paddingBottom: Spacing.md,
-    backgroundColor: Colors.bgSurface,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-  },
+  header: { marginBottom: Spacing.xl },
   headerTitle: { fontFamily: FontFamily.black, fontSize: FontSize.xl, color: Colors.text, marginBottom: 4 },
-  headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.md },
-  searchInput: {
-    backgroundColor: Colors.bgGlass, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: Radius.full, paddingHorizontal: Spacing.base, paddingVertical: Spacing.sm,
-    color: Colors.text, fontFamily: FontFamily.regular, fontSize: FontSize.sm,
-  },
+  headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted },
 
-  // Tab bar
-  tabBar: {
+  tabContainer: {
     flexDirection: 'row', backgroundColor: Colors.bgSurface,
-    borderBottomWidth: 1, borderBottomColor: Colors.border,
-    position: 'relative',
+    borderRadius: Radius.full, padding: 3,
+    marginBottom: Spacing.base, position: 'relative',
+    borderWidth: 1, borderColor: Colors.border,
   },
-  tabItem: { flex: 1, paddingVertical: Spacing.md, alignItems: 'center' },
+  tabSlider: {
+    position: 'absolute', top: 3, bottom: 3, left: 3,
+    backgroundColor: Colors.accent, borderRadius: Radius.full,
+  },
+  tabBtn: { paddingVertical: 8, alignItems: 'center', justifyContent: 'center' },
   tabText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted },
-  tabTextActive: { color: Colors.cyan },
-  tabIndicator: {
-    position: 'absolute', bottom: 0, width: W / 3, height: 2,
-    backgroundColor: Colors.cyan, borderRadius: 2,
-  },
+  tabTextActive: { color: '#fff', fontFamily: FontFamily.bold },
 
-  // Level filter (YouTube tab)
-  levelFilterRow: {
-    flexDirection: 'row', gap: Spacing.sm,
-    paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm,
-    backgroundColor: Colors.bgSurface, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  searchRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.bgSurface, borderRadius: Radius.lg,
+    paddingHorizontal: Spacing.base, borderWidth: 1, borderColor: Colors.border,
+    marginBottom: Spacing.base,
   },
-  levelChip: {
-    paddingHorizontal: Spacing.base, paddingVertical: 4,
+  searchInput: {
+    flex: 1, paddingVertical: 10,
+    fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.text,
+  },
+  clearBtn: { padding: 4 },
+
+  filterRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.base },
+  filterChip: {
+    paddingHorizontal: 14, paddingVertical: 6,
     borderRadius: Radius.full, backgroundColor: Colors.bgGlass,
     borderWidth: 1, borderColor: Colors.border,
   },
-  levelChipActive: { backgroundColor: Colors.cyan + '25', borderColor: Colors.cyan },
-  levelChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textMuted },
-  levelChipTextActive: { color: Colors.cyan },
+  filterChipActive: { backgroundColor: Colors.cyan + '20', borderColor: Colors.cyan },
+  filterText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textMuted },
+  filterTextActive: { color: Colors.cyan },
 
-  content: { padding: Spacing.xl, gap: Spacing.md },
-
-  // Resource card
+  list: { gap: Spacing.md },
   card: {
-    flexDirection: 'row', backgroundColor: Colors.bgSurface,
-    borderRadius: Radius.xl, borderWidth: 1, borderColor: Colors.border,
-    overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.bgSurface, borderRadius: Radius.xl,
+    padding: Spacing.base, borderWidth: 1.5,
+    gap: Spacing.md,
   },
-  cardLeft: { width: 56, justifyContent: 'center', alignItems: 'center' },
-  cardEmoji: { fontSize: 24 },
-  cardBody: { flex: 1, padding: Spacing.base },
-  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4, gap: Spacing.sm },
-  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.text, flex: 1 },
-  tagChip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: Radius.full, borderWidth: 1 },
-  tagText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
-  cardDesc: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: 4, lineHeight: 18 },
-  cardUrl: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textDim },
+  cardEmoji: { fontSize: 28 },
+  cardTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.text },
+  cardDesc: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 18 },
+  tag: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1 },
+  tagText: { fontFamily: FontFamily.bold, fontSize: 10 },
 
-  // YouTube channel card
   channelCard: {
     backgroundColor: Colors.bgSurface, borderRadius: Radius.xl,
-    borderWidth: 1, padding: Spacing.base, marginBottom: 4,
+    padding: Spacing.base, borderWidth: 1.5,
   },
-  channelHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: Spacing.sm },
-  channelAvatar: {
-    width: 44, height: 44, borderRadius: 22, borderWidth: 2,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  channelAvatarEmoji: { fontSize: 20 },
+  channelHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm, marginBottom: 6 },
+  channelEmoji: { fontSize: 24 },
   channelName: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.text },
-  channelHandle: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textDim },
-  levelBadge: {
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: Radius.full, borderWidth: 1,
-  },
-  levelBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
-  channelDesc: {
-    fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted,
-    marginBottom: Spacing.md, lineHeight: 18,
-  },
-  videosScroll: { marginHorizontal: -Spacing.xs },
-  videoCard: {
-    width: 160, marginRight: Spacing.sm,
-    backgroundColor: Colors.bgGlass, borderRadius: Radius.lg,
-    overflow: 'hidden', borderWidth: 1, borderColor: Colors.border,
-  },
-  thumbWrapper: { width: '100%', height: 90, position: 'relative' },
-  thumb: { width: '100%', height: '100%' },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'center', alignItems: 'center',
-  },
-  playIcon: { color: '#fff', fontSize: 20 },
-  videoTitle: {
-    fontFamily: FontFamily.semiBold, fontSize: FontSize.xs,
-    color: Colors.textMuted, padding: Spacing.xs, lineHeight: 15,
-  },
-  viewAllCard: {
-    width: 100, justifyContent: 'center', alignItems: 'center', gap: 8, minHeight: 120,
-  },
-  viewAllEmoji: { fontSize: 28 },
-  viewAllText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
+  channelHandle: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted },
+  channelDesc: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textDim, marginBottom: 8 },
+  subscribeBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full },
+  subscribeText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: '#fff' },
 
-  emptyBox: { flex: 1, alignItems: 'center', paddingTop: Spacing['2xl'] },
-  emptyText: { fontFamily: FontFamily.regular, fontSize: FontSize.base, color: Colors.textDim },
+  videoCard: { width: 140, backgroundColor: Colors.bgGlass, borderRadius: Radius.md, overflow: 'hidden' },
+  videoThumb: { width: 140, height: 78, backgroundColor: Colors.bgCard, borderRadius: Radius.md, overflow: 'hidden' },
+  videoThumbImage: { width: '100%', height: '100%', resizeMode: 'cover' },
+  videoThumbFallback: { justifyContent: 'center', alignItems: 'center' },
+  videoTitle: { fontFamily: FontFamily.semiBold, fontSize: 11, color: Colors.text, padding: 6, lineHeight: 14 },
 });

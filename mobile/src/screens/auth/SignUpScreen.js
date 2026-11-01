@@ -1,14 +1,26 @@
+/**
+ * SignUpScreen
+ *
+ * Upgrades:
+ *  - Added missing phone field to match registerWithEmail payload and SettingsScreen.
+ *  - Tactile PressableScale on eye-toggle, grade chips, submit, and sign-in link.
+ *  - Haptic feedback on validation errors and account creation success.
+ *  - BingMath owl mascot with gradient glow.
+ */
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, Image,
   StyleSheet, SafeAreaView, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { FontFamily, FontSize } from '../../theme/typography';
 import { Spacing, Radius } from '../../theme/spacing';
+import { haptic } from '../../theme/effects';
 import { registerWithEmail } from '../../api/auth';
 import { useLanguage } from '../../context/LanguageContext';
+import PressableScale from '../../components/ui/PressableScale';
+import GradientGlow from '../../components/ui/GradientGlow';
 
 const GRADES = ['Grade 10', 'Grade 11', 'Grade 12', 'Other'];
 
@@ -20,7 +32,6 @@ export default function SignUpScreen({ navigation }) {
   });
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [gradeOpen, setGradeOpen] = useState(false);
 
   const set = (key) => (val) => setForm((p) => ({ ...p, [key]: val }));
 
@@ -35,7 +46,11 @@ export default function SignUpScreen({ navigation }) {
 
   async function handleSignUp() {
     const err = validate();
-    if (err) { Alert.alert(t('Lỗi', 'Error'), err); return; }
+    if (err) {
+      haptic.warn();
+      Alert.alert(t('Lỗi', 'Error'), err);
+      return;
+    }
     setLoading(true);
     try {
       await registerWithEmail(form.email.trim().toLowerCase(), form.password, {
@@ -44,7 +59,9 @@ export default function SignUpScreen({ navigation }) {
         school: form.school.trim(),
         grade: form.grade,
       });
+      haptic.success();
     } catch (e) {
+      haptic.warn();
       const msg = e?.code === 'auth/email-already-in-use'
         ? t('Email đã được sử dụng.', 'Email already in use.')
         : t('Đăng ký thất bại. Vui lòng thử lại.', 'Registration failed. Please try again.');
@@ -60,77 +77,131 @@ export default function SignUpScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.logo}>🎓</Text>
+            <View style={styles.logoWrap}>
+              <GradientGlow colors={Colors.gradientGlow} style={styles.logoGlow} />
+              <Image
+                source={require('../../assets/images/owl.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.title}>{t('Tạo tài khoản', 'Create Account')}</Text>
-            <Text style={styles.subtitle}>{t('Miễn phí · Lưu điểm & thống kê cá nhân', 'Free · Save scores & personal stats')}</Text>
+            <Text style={styles.subtitle}>{t('Miễn phí · Tham gia BingMath cùng bạn bè', 'Free · Join BingMath with friends')}</Text>
           </View>
 
           <View style={styles.card}>
             {/* Username */}
             <Text style={styles.label}>{t('Tên người dùng *', 'Username *')}</Text>
-            <TextInput style={styles.input} value={form.username} onChangeText={set('username')}
-              placeholder={t('Họ tên của bạn', 'Your full name')} placeholderTextColor={Colors.textDim} />
+            <TextInput
+              style={styles.input}
+              value={form.username}
+              onChangeText={set('username')}
+              placeholder={t('Họ tên của bạn', 'Your full name')}
+              placeholderTextColor={Colors.textDim}
+            />
 
             {/* Email */}
             <Text style={styles.label}>Email *</Text>
-            <TextInput style={styles.input} value={form.email} onChangeText={set('email')}
-              placeholder="you@example.com" placeholderTextColor={Colors.textDim}
-              autoCapitalize="none" keyboardType="email-address" />
+            <TextInput
+              style={styles.input}
+              value={form.email}
+              onChangeText={set('email')}
+              placeholder="you@example.com"
+              placeholderTextColor={Colors.textDim}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            {/* Phone */}
+            <Text style={styles.label}>{t('Số điện thoại', 'Phone')} <Text style={styles.optional}>({t('không bắt buộc', 'optional')})</Text></Text>
+            <TextInput
+              style={styles.input}
+              value={form.phone}
+              onChangeText={set('phone')}
+              placeholder="+84 ..."
+              placeholderTextColor={Colors.textDim}
+              keyboardType="phone-pad"
+            />
 
             {/* School */}
             <Text style={styles.label}>{t('Trường học', 'School')} <Text style={styles.optional}>({t('không bắt buộc', 'optional')})</Text></Text>
-            <TextInput style={styles.input} value={form.school} onChangeText={set('school')}
-              placeholder={t('VD: THPT Nguyễn Chí Thanh', 'E.g: Lincoln High School')} placeholderTextColor={Colors.textDim} />
+            <TextInput
+              style={styles.input}
+              value={form.school}
+              onChangeText={set('school')}
+              placeholder={t('VD: THPT Nguyễn Chí Thanh', 'E.g: Lincoln High School')}
+              placeholderTextColor={Colors.textDim}
+            />
 
             {/* Grade picker */}
             <Text style={styles.label}>{t('Lớp', 'Grade')}</Text>
             <View style={styles.gradeRow}>
               {GRADES.map((g) => (
-                <TouchableOpacity
+                <PressableScale
                   key={g}
                   style={[styles.gradeChip, form.grade === g && styles.gradeChipActive]}
                   onPress={() => set('grade')(g)}
+                  haptics="select"
+                  scaleTo={0.94}
                 >
                   <Text style={[styles.gradeText, form.grade === g && styles.gradeTextActive]}>{g}</Text>
-                </TouchableOpacity>
+                </PressableScale>
               ))}
             </View>
 
             {/* Password */}
-            <Text style={[styles.label, { marginTop: Spacing.sm }]}>{t('Mật khẩu *', 'Password *')} <Text style={styles.optional}>({t('tối thiểu 6 ký tự', 'min 6 chars')})</Text></Text>
+            <Text style={[styles.label, { marginTop: Spacing.sm }]}>
+              {t('Mật khẩu *', 'Password *')} <Text style={styles.optional}>({t('tối thiểu 6 ký tự', 'min 6 chars')})</Text>
+            </Text>
             <View style={styles.pwRow}>
-              <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} value={form.password}
-                onChangeText={set('password')} placeholder={t('Tạo mật khẩu', 'Create a password')}
-                placeholderTextColor={Colors.textDim} secureTextEntry={!showPw} />
-              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPw(v => !v)}>
+              <TextInput
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                value={form.password}
+                onChangeText={set('password')}
+                placeholder={t('Mật khẩu', 'Password')}
+                placeholderTextColor={Colors.textDim}
+                secureTextEntry={!showPw}
+              />
+              <PressableScale style={styles.eyeBtn} onPress={() => setShowPw(v => !v)} haptics="tap">
                 <Text style={{ fontSize: 18 }}>{showPw ? '🙈' : '👁️'}</Text>
-              </TouchableOpacity>
+              </PressableScale>
             </View>
 
-            {/* Confirm */}
-            <Text style={[styles.label, { marginTop: Spacing.md }]}>{t('Xác nhận mật khẩu *', 'Confirm Password *')}</Text>
-            <TextInput style={styles.input} value={form.confirm} onChangeText={set('confirm')}
-              placeholder={t('Nhập lại mật khẩu', 'Re-enter password')} placeholderTextColor={Colors.textDim}
-              secureTextEntry={!showPw} />
+            {/* Confirm password */}
+            <Text style={styles.label}>{t('Xác nhận mật khẩu *', 'Confirm Password *')}</Text>
+            <TextInput
+              style={styles.input}
+              value={form.confirm}
+              onChangeText={set('confirm')}
+              placeholder={t('Nhập lại mật khẩu', 'Re-enter password')}
+              placeholderTextColor={Colors.textDim}
+              secureTextEntry={!showPw}
+            />
 
             {/* Submit */}
-            <TouchableOpacity
+            <PressableScale
               style={[styles.btn, loading && styles.btnDisabled]}
-              onPress={handleSignUp} disabled={loading} activeOpacity={0.85}
+              onPress={handleSignUp}
+              disabled={loading}
+              haptics={null}
+              scaleTo={0.97}
             >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.btnText}>{t('Tạo tài khoản', 'Create Account')}</Text>
-              }
-            </TouchableOpacity>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnText}>{t('Tạo tài khoản', 'Create Account')}</Text>
+              )}
+            </PressableScale>
 
+            {/* Footer links */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t('Đã có tài khoản? ', 'Already have an account? ')}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <PressableScale onPress={() => navigation.navigate('Login')} haptics="tap">
                 <Text style={styles.link}>{t('Đăng nhập', 'Sign In')}</Text>
-              </TouchableOpacity>
+              </PressableScale>
             </View>
           </View>
+          <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -139,30 +210,36 @@ export default function SignUpScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
-  container: { flexGrow: 1, justifyContent: 'center', padding: Spacing.xl },
+  container: { padding: Spacing.xl, paddingTop: Spacing['2xl'] },
   header: { alignItems: 'center', marginBottom: Spacing.xl },
-  logo: { fontSize: 40, marginBottom: Spacing.sm },
-  title: { fontFamily: FontFamily.black, fontSize: FontSize['2xl'], color: Colors.text, marginBottom: 6 },
-  subtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center' },
+  logoWrap: {
+    width: 90, height: 90,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Spacing.md, position: 'relative',
+  },
+  logoGlow: { position: 'absolute', inset: -10, borderRadius: 55 },
+  logoImage: { width: 72, height: 72 },
+  title: { fontFamily: FontFamily.black, fontSize: FontSize['2xl'], color: Colors.text, marginBottom: Spacing.xs },
+  subtitle: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted },
   card: { backgroundColor: Colors.bgSurface, borderRadius: Radius.xl, padding: Spacing.xl, borderWidth: 1, borderColor: Colors.border },
   label: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.xs },
-  optional: { fontFamily: FontFamily.regular, color: Colors.textDim },
+  optional: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textDim },
   input: {
-    backgroundColor: Colors.bgGlass, borderWidth: 1.5, borderColor: Colors.border,
-    borderRadius: Radius.md, paddingHorizontal: Spacing.base, paddingVertical: Spacing.md,
-    color: Colors.text, fontFamily: FontFamily.regular, fontSize: FontSize.base, marginBottom: Spacing.md,
+    backgroundColor: Colors.bgGlass, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border,
+    paddingHorizontal: Spacing.base, paddingVertical: 12, fontFamily: FontFamily.regular, fontSize: FontSize.base,
+    color: Colors.text, marginBottom: Spacing.sm,
   },
-  gradeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginBottom: Spacing.md },
-  gradeChip: { paddingHorizontal: Spacing.base, paddingVertical: Spacing.xs, borderRadius: Radius.full, backgroundColor: Colors.bgGlass, borderWidth: 1, borderColor: Colors.border },
-  gradeChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
-  gradeText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted },
-  gradeTextActive: { color: '#fff' },
-  pwRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.md },
-  eyeBtn: { marginLeft: Spacing.sm, padding: Spacing.sm },
-  btn: { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: Spacing.base, alignItems: 'center', marginBottom: Spacing.base, shadowColor: Colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 6 },
-  btnDisabled: { backgroundColor: Colors.textDim },
+  gradeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.xs, marginBottom: Spacing.sm },
+  gradeChip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.full, backgroundColor: Colors.bgGlass, borderWidth: 1, borderColor: Colors.border },
+  gradeChipActive: { backgroundColor: Colors.cyan + '20', borderColor: Colors.cyan },
+  gradeText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.textMuted },
+  gradeTextActive: { color: Colors.cyan, fontFamily: FontFamily.bold },
+  pwRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing.sm },
+  eyeBtn: { position: 'absolute', right: Spacing.base, padding: 4 },
+  btn: { backgroundColor: Colors.primary, borderRadius: Radius.md, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.sm },
+  btnDisabled: { opacity: 0.6 },
   btnText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: '#fff' },
-  footer: { flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap' },
+  footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: Spacing.xl },
   footerText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted },
-  link: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.primary },
+  link: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.cyan },
 });

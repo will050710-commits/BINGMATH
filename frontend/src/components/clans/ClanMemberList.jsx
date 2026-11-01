@@ -1,13 +1,8 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { resolveApiBase } from "@/lib/apiBase";
 
-const MOCK_MEMBERS = [
-  { id: "u1", username: "william_math", role: "owner", rank: "SS", xpContributed: 42800, joinedAt: "01/03/2026" },
-  { id: "u2", username: "co_giao_lan", role: "officer", rank: "SS", xpContributed: 38400, joinedAt: "05/03/2026" },
-  { id: "u3", username: "minh_toan_hoc", role: "officer", rank: "A", xpContributed: 26100, joinedAt: "10/03/2026" },
-  { id: "u4", username: "huy_math99", role: "member", rank: "B", xpContributed: 18500, joinedAt: "15/03/2026" },
-  { id: "u5", username: "thu_trang_2k9", role: "member", rank: "S", xpContributed: 16200, joinedAt: "20/03/2026" },
-];
+const BASE = resolveApiBase();
 
 const RANK_COLORS = { SS: "#fbbf24", S: "#a78bfa", A: "#22d3ee", B: "#34d399", C: "#94a3b8" };
 const AVATAR_GRADIENTS = [
@@ -18,7 +13,61 @@ const AVATAR_GRADIENTS = [
   "linear-gradient(135deg, #a78bfa, #6366f1)",
 ];
 
-export default function ClanMemberList({ members = MOCK_MEMBERS }) {
+function inferRankFromXp(xp) {
+  const n = Number(xp || 0);
+  if (n >= 35000) return "SS";
+  if (n >= 20000) return "S";
+  if (n >= 10000) return "A";
+  if (n >= 3000) return "B";
+  return "C";
+}
+
+function normalizeMember(m, idx) {
+  const xp = Number(m?.xpContributed ?? m?.xp_contributed ?? m?.xp ?? 0);
+  const username = String(m?.username || m?.display_name || m?.user_id || `hoc_sinh_${idx + 1}`);
+  const rawDate = m?.joinedAt || m?.joined_at || "";
+  let joinedAt = "—";
+  if (rawDate) {
+    const d = new Date(rawDate);
+    joinedAt = Number.isNaN(d.getTime()) ? String(rawDate) : d.toLocaleDateString("vi-VN");
+  }
+  return {
+    id: m?.id || m?.user_id || `m-${idx}`,
+    username,
+    role: m?.role || "member",
+    rank: m?.rank || inferRankFromXp(xp),
+    xpContributed: xp,
+    joinedAt,
+  };
+}
+
+export default function ClanMemberList({ members, clanId }) {
+  const [fetchedMembers, setFetchedMembers] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (Array.isArray(members) || !clanId) return;
+    let cancelled = false;
+    setLoading(true);
+    fetch(`${BASE}/api/clans/${encodeURIComponent(clanId)}`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data && Array.isArray(data.members)) {
+          setFetchedMembers(data.members);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [clanId, members]);
+
+  const rawList = Array.isArray(members) ? members : fetchedMembers;
+  const normalizedList = rawList.map(normalizeMember);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {/* Header */}
@@ -32,13 +81,32 @@ export default function ClanMemberList({ members = MOCK_MEMBERS }) {
             background: "linear-gradient(135deg, #ffffff 40%, #a5b4fc 100%)",
             WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text",
           }}>
-            Danh sách thành viên ({members.length})
+            Danh sách thành viên ({normalizedList.length})
           </span>
         </h3>
       </div>
 
+      {loading && normalizedList.length === 0 && (
+        <div style={{
+          padding: "20px", textAlign: "center", color: "rgba(255,255,255,0.45)",
+          background: "rgba(2,6,23,0.4)", borderRadius: 14, fontSize: 13,
+        }}>
+          Đang tải danh sách thành viên Clan...
+        </div>
+      )}
+
+      {!loading && normalizedList.length === 0 && (
+        <div style={{
+          padding: "24px 18px", textAlign: "center", color: "rgba(255,255,255,0.45)",
+          background: "rgba(2,6,23,0.4)", border: "1px dashed rgba(255,255,255,0.1)",
+          borderRadius: 14, fontSize: 13,
+        }}>
+          Chưa có thành viên nào trong Clan này.
+        </div>
+      )}
+
       {/* Member rows */}
-      {members.map((m, idx) => {
+      {normalizedList.map((m, idx) => {
         const isOwner = m.role === "owner";
         const isOfficer = m.role === "officer";
         const rankColor = RANK_COLORS[m.rank] || "#94a3b8";
@@ -83,7 +151,7 @@ export default function ClanMemberList({ members = MOCK_MEMBERS }) {
               border: isOwner ? "2px solid rgba(251,191,36,0.5)" : "1.5px solid rgba(255,255,255,0.1)",
               boxShadow: isOwner ? "0 0 10px rgba(251,191,36,0.3)" : "none",
             }}>
-              {m.username[0]}
+              {m.username[0] || "U"}
             </div>
 
             {/* Info */}
@@ -149,3 +217,4 @@ export default function ClanMemberList({ members = MOCK_MEMBERS }) {
     </div>
   );
 }
+

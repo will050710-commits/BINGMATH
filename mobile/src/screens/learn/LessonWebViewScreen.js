@@ -1,24 +1,34 @@
+/**
+ * LessonWebViewScreen
+ *
+ * Upgrades:
+ *  - WEB_BASE with Android emulator (10.0.2.2) and iOS simulator (localhost) support.
+ *  - Fixed injectedJavaScript trailing `true;` requirement for WKWebView.
+ *  - Back button uses PressableScale with haptic feedback.
+ */
 import React, { useRef, useState } from 'react';
 import {
-  View, StyleSheet, SafeAreaView, TouchableOpacity,
+  View, StyleSheet, SafeAreaView,
   Text, ActivityIndicator, BackHandler, Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Colors } from '../../theme/colors';
 import { FontFamily, FontSize } from '../../theme/typography';
 import { Spacing } from '../../theme/spacing';
+import { haptic } from '../../theme/effects';
+import PressableScale from '../../components/ui/PressableScale';
 
-// Web frontend URL — same machine as backend
+// Web frontend URL
 const WEB_BASE = __DEV__
-  ? 'http://10.0.2.2:3000'   // Android emulator → Next.js dev server
-  : 'https://your-production-domain.com';
+  ? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000')
+  : 'https://duomath.vercel.app';
 
 // CSS injected into WebView to hide desktop-only elements
 const INJECTED_CSS = `
   (function() {
     var style = document.createElement('style');
     style.innerHTML = \`
-      /* Hide desktop sidebar and DuoMCB button */
+      /* Hide desktop sidebar and AI assistants */
       .duo-mcb-sidebar, .duo-mcb-fab, [class*="DuoMCBSidebar"],
       [class*="GlobalSidebar"], #lang-toggle-btn { display: none !important; }
       /* Remove top padding added for desktop nav */
@@ -28,6 +38,7 @@ const INJECTED_CSS = `
     \`;
     document.head.appendChild(style);
   })();
+  true;
 `;
 
 export default function LessonWebViewScreen({ navigation, route }) {
@@ -37,6 +48,11 @@ export default function LessonWebViewScreen({ navigation, route }) {
   const [canGoBack, setCanGoBack] = useState(false);
 
   const lessonUrl = `${WEB_BASE}/${slug}`;
+
+  const handleBack = () => {
+    haptic.tap();
+    navigation.goBack();
+  };
 
   // Handle Android hardware back
   React.useEffect(() => {
@@ -55,9 +71,9 @@ export default function LessonWebViewScreen({ navigation, route }) {
     <SafeAreaView style={styles.safe}>
       {/* Mini header bar */}
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <PressableScale style={styles.backBtn} onPress={handleBack} haptics={null}>
           <Text style={styles.backText}>← {slug}</Text>
-        </TouchableOpacity>
+        </PressableScale>
         {loading && <ActivityIndicator size="small" color={Colors.cyan} style={{ marginRight: Spacing.base }} />}
       </View>
 
@@ -73,7 +89,6 @@ export default function LessonWebViewScreen({ navigation, route }) {
         domStorageEnabled
         allowsInlineMediaPlayback
         mediaPlaybackRequiresUserAction={false}
-        // Pass localStorage lang preference into WebView
         sharedCookiesEnabled
         startInLoadingState
         renderLoading={() => (

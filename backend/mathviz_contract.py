@@ -497,13 +497,46 @@ def normalize_geometry_2d(viz: Any) -> Tuple[Any, Dict[str, Any]]:
                             "strokeWidth": 2
                         })
 
+    # WP-A4: Normalize or auto-assign progressive construction steps (1..N) across layers
+    explicit_steps = False
+    for lay in kept:
+        if isinstance(lay, dict) and lay.get("step") is not None:
+            try:
+                lay["step"] = max(1, min(int(lay["step"]), 20))
+                explicit_steps = True
+            except (TypeError, ValueError):
+                lay.pop("step", None)
+
+    if not explicit_steps and len(kept) >= 2:
+        cur_step = 1
+        for idx_l, lay in enumerate(kept):
+            if not isinstance(lay, dict):
+                continue
+            l_kind = lay.get("kind")
+            if idx_l == 0:
+                lay["step"] = 1
+            elif l_kind in ("points", "label"):
+                # Attach points/labels to the current construction step so vertices appear with their shape
+                lay["step"] = cur_step
+            else:
+                cur_step = min(cur_step + 1, 12)
+                lay["step"] = cur_step
+
+    max_step = 1
+    for lay in kept:
+        if isinstance(lay, dict) and isinstance(lay.get("step"), int):
+            if lay["step"] > max_step:
+                max_step = lay["step"]
+
     if isinstance(data.get("layers"), list):
         data["layers"] = kept
 
+    data["max_step"] = max_step
     report = render_report(data)
     report["mapped"] = mapped
     # ``skipped`` here is authoritative: it also covers non-object layers.
     report["skipped"] = skipped
+    report["max_step"] = max_step
     # Stamped on the payload too: the UI reads the same numbers the telemetry
     # logs, so "the figure lost a part" is visible in both places at once.
     data["_render"] = report

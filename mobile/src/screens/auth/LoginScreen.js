@@ -1,14 +1,25 @@
+/**
+ * LoginScreen
+ *
+ * Upgrades:
+ *  - Tactile PressableScale on submit, eye-toggle, and register link.
+ *  - Haptic feedback on validation/login errors and success.
+ *  - BingMath owl mascot integrated with gradient glow.
+ */
 import React, { useState } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity,
+  View, Text, TextInput, Image,
   StyleSheet, SafeAreaView, KeyboardAvoidingView,
   Platform, ScrollView, ActivityIndicator, Alert,
 } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { FontFamily, FontSize } from '../../theme/typography';
 import { Spacing, Radius } from '../../theme/spacing';
+import { haptic } from '../../theme/effects';
 import { signInWithEmail } from '../../api/auth';
 import { useLanguage } from '../../context/LanguageContext';
+import PressableScale from '../../components/ui/PressableScale';
+import GradientGlow from '../../components/ui/GradientGlow';
 
 export default function LoginScreen({ navigation }) {
   const { t } = useLanguage();
@@ -19,14 +30,17 @@ export default function LoginScreen({ navigation }) {
 
   async function handleLogin() {
     if (!email.trim() || !password) {
+      haptic.warn();
       Alert.alert(t('Lỗi', 'Error'), t('Vui lòng điền đầy đủ thông tin.', 'Please fill in all fields.'));
       return;
     }
     setLoading(true);
     try {
       await signInWithEmail(email.trim().toLowerCase(), password);
+      haptic.success();
       // Auth state change handled by RootNavigator
     } catch (err) {
+      haptic.warn();
       const msg = err?.code === 'auth/wrong-password' || err?.code === 'auth/user-not-found'
         ? t('Sai email hoặc mật khẩu.', 'Wrong email or password.')
         : t('Đăng nhập thất bại. Vui lòng thử lại.', 'Login failed. Please try again.');
@@ -45,9 +59,16 @@ export default function LoginScreen({ navigation }) {
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.logo}>🎓</Text>
+            <View style={styles.logoWrap}>
+              <GradientGlow colors={Colors.gradientGlow} style={styles.logoGlow} />
+              <Image
+                source={require('../../assets/images/owl.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+            </View>
             <Text style={styles.title}>{t('Đăng nhập', 'Sign In')}</Text>
-            <Text style={styles.subtitle}>{t('Chào mừng quay lại DuoMath!', 'Welcome back to DuoMath!')}</Text>
+            <Text style={styles.subtitle}>{t('Chào mừng quay lại BingMath!', 'Welcome back to BingMath!')}</Text>
           </View>
 
           {/* Card */}
@@ -77,30 +98,32 @@ export default function LoginScreen({ navigation }) {
                 secureTextEntry={!showPw}
                 autoComplete="password"
               />
-              <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPw(v => !v)}>
+              <PressableScale style={styles.eyeBtn} onPress={() => setShowPw(v => !v)} haptics="tap">
                 <Text style={{ fontSize: 18 }}>{showPw ? '🙈' : '👁️'}</Text>
-              </TouchableOpacity>
+              </PressableScale>
             </View>
 
             {/* Submit */}
-            <TouchableOpacity
+            <PressableScale
               style={[styles.btn, loading && styles.btnDisabled]}
               onPress={handleLogin}
               disabled={loading}
-              activeOpacity={0.85}
+              haptics={null}
+              scaleTo={0.97}
             >
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={styles.btnText}>{t('Đăng nhập', 'Sign In')}</Text>
-              }
-            </TouchableOpacity>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.btnText}>{t('Đăng nhập', 'Sign In')}</Text>
+              )}
+            </PressableScale>
 
             {/* Footer links */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>{t('Chưa có tài khoản? ', "Don't have an account? ")}</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-                <Text style={styles.link}>{t('Đăng ký miễn phí', 'Sign up free')}</Text>
-              </TouchableOpacity>
+              <PressableScale onPress={() => navigation.navigate('SignUp')} haptics="tap">
+                <Text style={styles.link}>{t('Đăng ký ngay', 'Sign Up')}</Text>
+              </PressableScale>
             </View>
           </View>
         </ScrollView>
@@ -112,24 +135,30 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
   container: {
-    flexGrow: 1,
-    justifyContent: 'center',
     padding: Spacing.xl,
+    paddingTop: Spacing['3xl'],
+    minHeight: '100%',
+    justifyContent: 'center',
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: Spacing.xl,
+  header: { alignItems: 'center', marginBottom: Spacing['2xl'] },
+  logoWrap: {
+    width: 90, height: 90,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: Spacing.md, position: 'relative',
   },
-  logo: { fontSize: 48, marginBottom: Spacing.sm },
+  logoGlow: {
+    position: 'absolute', inset: -10, borderRadius: 55,
+  },
+  logoImage: { width: 72, height: 72 },
   title: {
     fontFamily: FontFamily.black,
     fontSize: FontSize['2xl'],
     color: Colors.text,
-    marginBottom: 6,
+    marginBottom: Spacing.xs,
   },
   subtitle: {
     fontFamily: FontFamily.regular,
-    fontSize: FontSize.base,
+    fontSize: FontSize.sm,
     color: Colors.textMuted,
   },
   card: {
@@ -147,38 +176,35 @@ const styles = StyleSheet.create({
   },
   input: {
     backgroundColor: Colors.bgGlass,
-    borderWidth: 1.5,
-    borderColor: Colors.border,
     borderRadius: Radius.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
     paddingHorizontal: Spacing.base,
-    paddingVertical: Spacing.md,
-    color: Colors.text,
+    paddingVertical: 12,
     fontFamily: FontFamily.regular,
     fontSize: FontSize.base,
-    marginBottom: Spacing.md,
+    color: Colors.text,
+    marginBottom: Spacing.sm,
   },
   pwRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.xl,
   },
   eyeBtn: {
-    marginLeft: Spacing.sm,
-    padding: Spacing.sm,
+    position: 'absolute',
+    right: Spacing.base,
+    padding: 4,
   },
   btn: {
     backgroundColor: Colors.primary,
     borderRadius: Radius.md,
-    paddingVertical: Spacing.base,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginBottom: Spacing.base,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 6,
+    justifyContent: 'center',
+    marginTop: Spacing.xs,
   },
-  btnDisabled: { backgroundColor: Colors.textDim },
+  btnDisabled: { opacity: 0.6 },
   btnText: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.base,
@@ -187,7 +213,8 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: Spacing.xl,
   },
   footerText: {
     fontFamily: FontFamily.regular,
@@ -197,6 +224,6 @@ const styles = StyleSheet.create({
   link: {
     fontFamily: FontFamily.bold,
     fontSize: FontSize.sm,
-    color: Colors.primary,
+    color: Colors.cyan,
   },
 });

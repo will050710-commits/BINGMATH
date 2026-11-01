@@ -1,11 +1,30 @@
+/**
+ * LessonListScreen — Chọn Bài Học theo chương trình THCS/THPT
+ *
+ * Changes:
+ *  - LayoutAnimation.configureNext for smooth accordion expand/collapse.
+ *  - Chevron rotation component.
+ *  - PressableScale on group chips, grade headers, and lesson rows.
+ *  - Light haptic feedback on navigation.
+ */
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView,
+  View, Text, ScrollView, StyleSheet, SafeAreaView,
+  LayoutAnimation, Platform, UIManager,
 } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { FontFamily, FontSize } from '../../theme/typography';
 import { Spacing, Radius } from '../../theme/spacing';
+import { haptic } from '../../theme/effects';
 import { useLanguage } from '../../context/LanguageContext';
+import PressableScale from '../../components/ui/PressableScale';
+import Chevron from '../../components/ui/Chevron';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const animateNext = () => LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
 
 const CURRICULUM = [
   {
@@ -72,8 +91,9 @@ const CURRICULUM = [
         grade: 'Lớp 12',
         chapters: [
           { title: 'Chương 1: Hàm số', lessons: ['L12-C1-L1', 'L12-C1-L2', 'L12-C1-L3'] },
-          { title: 'Chương 2: Lũy thừa - Logarithm', lessons: ['L12-C2-L1', 'L12-C2-L2'] },
-          { title: 'Chương 3: Nguyên hàm - Tích phân', lessons: ['L12-C3-L1', 'L12-C3-L2'] },
+          { title: 'Chương 2: Mũ - Logarit', lessons: ['L12-C2-L1', 'L12-C2-L2'] },
+          { title: 'Chương 3: Tích phân', lessons: ['L12-C3-L1', 'L12-C3-L2', 'L12-C3-L3'] },
+          { title: 'Chương 4: Số phức', lessons: ['L12-C4-L1', 'L12-C4-L2'] },
         ],
       },
     ],
@@ -82,20 +102,33 @@ const CURRICULUM = [
 
 function ChapterAccordion({ chapter, onSelectLesson }) {
   const [open, setOpen] = useState(false);
+
+  const toggle = () => {
+    animateNext();
+    setOpen(v => !v);
+  };
+
   return (
     <View style={styles.chapterBox}>
-      <TouchableOpacity style={styles.chapterHeader} onPress={() => setOpen(v => !v)} activeOpacity={0.8}>
+      <PressableScale style={styles.chapterHeader} onPress={toggle} haptics="tap">
         <Text style={styles.chapterTitle}>{chapter.title}</Text>
-        <Text style={{ color: Colors.textMuted, fontSize: 14 }}>{open ? '▲' : '▼'}</Text>
-      </TouchableOpacity>
+        <Chevron open={open} color={Colors.textCyan} />
+      </PressableScale>
+
       {open && (
         <View style={styles.lessonList}>
           {chapter.lessons.map((slug, i) => (
-            <TouchableOpacity key={slug} style={styles.lessonRow} onPress={() => onSelectLesson(slug)} activeOpacity={0.8}>
+            <PressableScale
+              key={slug}
+              style={styles.lessonRow}
+              onPress={() => onSelectLesson(slug)}
+              haptics="select"
+            >
               <View style={styles.lessonDot} />
-              <Text style={styles.lessonTitle}>{`Bài ${i + 1}`}</Text>
-              <Text style={styles.lessonSlug}>{slug}</Text>
-            </TouchableOpacity>
+              <Text style={styles.lessonTitle}>Bài {i + 1}</Text>
+              <Text style={styles.lessonSlug} numberOfLines={1}>{slug}</Text>
+              <Text style={{ color: Colors.cyan, fontSize: 16 }}>→</Text>
+            </PressableScale>
           ))}
         </View>
       )}
@@ -106,13 +139,24 @@ function ChapterAccordion({ chapter, onSelectLesson }) {
 export default function LessonListScreen({ navigation }) {
   const { t } = useLanguage();
   const [selectedGroup, setSelectedGroup] = useState('THPT');
-  const [selectedGrade, setSelectedGrade] = useState(null);
+  const [selectedGrade, setSelectedGrade] = useState('Lớp 10');
 
-  const groups = CURRICULUM;
-  const currentGroup = groups.find(g => g.group === selectedGroup);
+  const currentGroup = CURRICULUM.find(c => c.group === selectedGroup);
 
   const handleSelectLesson = (slug) => {
+    haptic.tap();
     navigation.navigate('LessonWebView', { slug });
+  };
+
+  const handleToggleGrade = (grade) => {
+    animateNext();
+    setSelectedGrade(s => (s === grade ? null : grade));
+  };
+
+  const handleToggleGroup = (g) => {
+    animateNext();
+    setSelectedGroup(g);
+    setSelectedGrade(null);
   };
 
   return (
@@ -123,13 +167,15 @@ export default function LessonListScreen({ navigation }) {
         {/* Group toggle */}
         <View style={styles.groupRow}>
           {['THCS', 'THPT'].map(g => (
-            <TouchableOpacity
+            <PressableScale
               key={g}
               style={[styles.groupChip, selectedGroup === g && styles.groupChipActive]}
-              onPress={() => { setSelectedGroup(g); setSelectedGrade(null); }}
+              onPress={() => handleToggleGroup(g)}
+              haptics="select"
+              scaleTo={0.95}
             >
               <Text style={[styles.groupText, selectedGroup === g && styles.groupTextActive]}>{g}</Text>
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </View>
       </View>
@@ -138,17 +184,16 @@ export default function LessonListScreen({ navigation }) {
         {currentGroup?.grades.map((gradeData) => (
           <View key={gradeData.grade} style={styles.gradeSection}>
             {/* Grade header */}
-            <TouchableOpacity
+            <PressableScale
               style={styles.gradeHeader}
-              onPress={() => setSelectedGrade(s => s === gradeData.grade ? null : gradeData.grade)}
-              activeOpacity={0.85}
+              onPress={() => handleToggleGrade(gradeData.grade)}
+              haptics="tap"
+              scaleTo={0.98}
             >
               <Text style={styles.gradeTitle}>{gradeData.grade}</Text>
               <Text style={styles.gradeCount}>{gradeData.chapters.length} {t('chương', 'chapters')}</Text>
-              <Text style={{ color: Colors.cyan, fontSize: 16 }}>
-                {selectedGrade === gradeData.grade ? '▲' : '▼'}
-              </Text>
-            </TouchableOpacity>
+              <Chevron open={selectedGrade === gradeData.grade} color={Colors.cyan} />
+            </PressableScale>
 
             {selectedGrade === gradeData.grade && (
               <View style={styles.chaptersBox}>
@@ -167,24 +212,45 @@ export default function LessonListScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
-  header: { padding: Spacing.xl, paddingBottom: Spacing.md, backgroundColor: Colors.bgSurface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  header: {
+    padding: Spacing.xl, paddingBottom: Spacing.md,
+    backgroundColor: Colors.bgSurface,
+    borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
   headerTitle: { fontFamily: FontFamily.black, fontSize: FontSize.xl, color: Colors.text, marginBottom: Spacing.md },
   groupRow: { flexDirection: 'row', gap: Spacing.sm },
-  groupChip: { paddingHorizontal: Spacing.base, paddingVertical: Spacing.xs, borderRadius: Radius.full, backgroundColor: Colors.bgGlass, borderWidth: 1, borderColor: Colors.border },
+  groupChip: {
+    paddingHorizontal: Spacing.base, paddingVertical: Spacing.xs,
+    borderRadius: Radius.full, backgroundColor: Colors.bgGlass,
+    borderWidth: 1, borderColor: Colors.border,
+  },
   groupChipActive: { backgroundColor: Colors.accent, borderColor: Colors.accent },
   groupText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textMuted },
   groupTextActive: { color: '#fff' },
   content: { padding: Spacing.xl },
   gradeSection: { marginBottom: Spacing.md },
-  gradeHeader: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.bgSurface, borderRadius: Radius.lg, padding: Spacing.base, borderWidth: 1, borderColor: Colors.border, gap: Spacing.sm },
+  gradeHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.bgSurface, borderRadius: Radius.lg,
+    padding: Spacing.base, borderWidth: 1, borderColor: Colors.border,
+    gap: Spacing.sm,
+  },
   gradeTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.text, flex: 1 },
   gradeCount: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted },
   chaptersBox: { marginTop: Spacing.xs, paddingLeft: Spacing.base },
-  chapterBox: { marginBottom: Spacing.xs, backgroundColor: Colors.bgGlass, borderRadius: Radius.md, overflow: 'hidden', borderWidth: 1, borderColor: Colors.border },
+  chapterBox: {
+    marginBottom: Spacing.xs, backgroundColor: Colors.bgGlass,
+    borderRadius: Radius.md, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.border,
+  },
   chapterHeader: { flexDirection: 'row', alignItems: 'center', padding: Spacing.base, gap: Spacing.sm },
   chapterTitle: { flex: 1, fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textBlue },
   lessonList: { paddingBottom: Spacing.sm },
-  lessonRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing.sm, paddingHorizontal: Spacing.base, gap: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border },
+  lessonRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: Spacing.sm, paddingHorizontal: Spacing.base,
+    gap: Spacing.sm, borderTopWidth: 1, borderTopColor: Colors.border,
+  },
   lessonDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.cyan },
   lessonTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.text, width: 50 },
   lessonSlug: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, flex: 1 },

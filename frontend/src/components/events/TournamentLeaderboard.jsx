@@ -17,26 +17,18 @@ function getInitials(name) {
   return (name || "?")[0].toUpperCase();
 }
 
-const STUB_LEADERBOARD = [
-  { rank: 1, username: "minh_toan_hoc", score: 11480, matches_played: 8, clan_id: "thth", avatar_url: "" },
-  { rank: 2, username: "lan_pi_math", score: 9120, matches_played: 7, clan_id: "vtsp", avatar_url: "" },
-  { rank: 3, username: "huy_math99", score: 8340, matches_played: 6, clan_id: "hsvc", avatar_url: "" },
-  { rank: 4, username: "toan_thuy_2k7", score: 7600, matches_played: 5, clan_id: "", avatar_url: "" },
-  { rank: 5, username: "delta_solver", score: 6800, matches_played: 5, clan_id: "shb", avatar_url: "" },
-];
-
 export default function TournamentLeaderboard({
   tournamentId = "tourney_summer_2026",
   xpMultiplier = 1.5,
 }) {
-  const [entries, setEntries] = useState(STUB_LEADERBOARD);
+  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch(`${BASE}/api/tournaments/${tournamentId}/leaderboard?limit=10`)
       .then(r => r.json())
       .then(data => {
-        if (data.leaderboard?.length > 0) setEntries(data.leaderboard);
+        setEntries(Array.isArray(data.leaderboard) ? data.leaderboard : []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -95,7 +87,15 @@ export default function TournamentLeaderboard({
 
         {/* Rows */}
         <div>
-          {(loading ? STUB_LEADERBOARD : entries).map((entry, idx) => {
+          {loading ? (
+            <div style={{ padding: "24px 20px", textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13 }}>
+              Đang tải bảng xếp hạng...
+            </div>
+          ) : entries.length === 0 ? (
+            <div style={{ padding: "24px 20px", textAlign: "center", color: "rgba(255,255,255,0.45)", fontSize: 13 }}>
+              Chưa có thí sinh nào ghi điểm trong giải đấu này.
+            </div>
+          ) : entries.map((entry, idx) => {
             const rank = entry.rank || idx + 1;
             const isTop3 = rank <= 3;
             return (

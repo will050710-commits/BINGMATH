@@ -1227,18 +1227,196 @@ export default function MathVizGeometry2D({ data }) {
   const labelStyle = { fontSize: 10, color: '#8b949e', textTransform: 'uppercase', letterSpacing: '0.05em' };
   const valueStyle = { fontSize: 13, fontFamily: 'monospace', color: '#e2e8f0', marginTop: 4 };
 
+  // WP-A4: Step-by-Step Animated MathViz Construction Playback
+  const normalizedLayersWithStep = useMemo(() => {
+    const raw = Array.isArray(data?.layers) ? data.layers : [];
+    if (raw.length === 0) return [];
+    let cur = 1;
+    return raw.map((lay, idx) => {
+      if (!lay || typeof lay !== 'object') return lay;
+      if (typeof lay.step === 'number' && lay.step >= 1) {
+        cur = lay.step;
+        return lay;
+      }
+      if (idx === 0) {
+        cur = 1;
+      } else if (lay.kind !== 'points' && lay.kind !== 'label') {
+        cur += 1;
+      }
+      return { ...lay, step: cur };
+    });
+  }, [data?.layers]);
+
+  const maxStep = useMemo(() => {
+    let m = 1;
+    normalizedLayersWithStep.forEach((lay) => {
+      if (lay && typeof lay.step === 'number' && lay.step > m) m = lay.step;
+    });
+    return m;
+  }, [normalizedLayersWithStep]);
+
+  const [currentStep, setCurrentStep] = useState(null); // null = show all steps
+  const [isStepPlaying, setIsStepPlaying] = useState(false);
+
+  const effectiveStep = currentStep == null ? maxStep : Math.min(maxStep, Math.max(1, currentStep));
+
+  useEffect(() => {
+    if (!Array.isArray(data?.layers) || data.layers.length === 0) return;
+    if (currentStep == null) {
+      setLayers(data.layers);
+    } else {
+      setLayers(normalizedLayersWithStep.filter((lay) => (lay?.step || 1) <= effectiveStep));
+    }
+  }, [currentStep, effectiveStep, normalizedLayersWithStep, data?.layers]);
+
+  useEffect(() => {
+    if (!isStepPlaying || maxStep <= 1) return;
+    const timer = setInterval(() => {
+      setCurrentStep((prev) => {
+        const cur = prev == null ? 1 : prev;
+        if (cur >= maxStep) {
+          setIsStepPlaying(false);
+          return maxStep;
+        }
+        return cur + 1;
+      });
+    }, 1250);
+    return () => clearInterval(timer);
+  }, [isStepPlaying, maxStep]);
+
+  const steppedData = useMemo(() => {
+    if (!data || currentStep == null || maxStep <= 1) return data;
+    return {
+      ...data,
+      layers: normalizedLayersWithStep.filter((lay) => (lay?.step || 1) <= effectiveStep),
+    };
+  }, [data, currentStep, maxStep, normalizedLayersWithStep, effectiveStep]);
+
+  const stepControlBar = maxStep > 1 ? (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 8,
+        padding: '8px 12px',
+        marginTop: 8,
+        marginBottom: 6,
+        borderRadius: 10,
+        background: '#161b22',
+        border: '1px solid #30363d',
+        fontSize: 12,
+        color: '#e2e8f0',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <span style={{ color: '#38bdf8', fontWeight: 700 }}>
+          📐 Dựng hình từng bước: Bước {effectiveStep}/{maxStep}
+        </span>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <button
+          type="button"
+          onClick={() => {
+            setIsStepPlaying(false);
+            setCurrentStep((prev) => Math.max(1, (prev == null ? maxStep : prev) - 1));
+          }}
+          disabled={effectiveStep <= 1}
+          style={{
+            padding: '4px 9px',
+            borderRadius: 6,
+            border: '1px solid #30363d',
+            background: '#0d1117',
+            color: effectiveStep <= 1 ? '#475569' : '#e2e8f0',
+            cursor: effectiveStep <= 1 ? 'not-allowed' : 'pointer',
+            fontSize: 11.5,
+          }}
+        >
+          ⏮ Bước trước
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (isStepPlaying) {
+              setIsStepPlaying(false);
+            } else {
+              if (currentStep == null || currentStep >= maxStep) setCurrentStep(1);
+              setIsStepPlaying(true);
+            }
+          }}
+          style={{
+            padding: '4px 10px',
+            borderRadius: 6,
+            border: '1px solid #38bdf8',
+            background: isStepPlaying ? 'rgba(245, 158, 11, 0.18)' : 'rgba(56, 189, 248, 0.16)',
+            color: isStepPlaying ? '#fbbf24' : '#38bdf8',
+            fontWeight: 700,
+            cursor: 'pointer',
+            fontSize: 11.5,
+          }}
+        >
+          {isStepPlaying ? '⏸ Tạm dừng' : '▶ Tự chạy'}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsStepPlaying(false);
+            setCurrentStep((prev) => Math.min(maxStep, (prev == null ? 1 : prev) + 1));
+          }}
+          disabled={effectiveStep >= maxStep && currentStep != null}
+          style={{
+            padding: '4px 9px',
+            borderRadius: 6,
+            border: '1px solid #30363d',
+            background: '#0d1117',
+            color: effectiveStep >= maxStep && currentStep != null ? '#475569' : '#e2e8f0',
+            cursor: effectiveStep >= maxStep && currentStep != null ? 'not-allowed' : 'pointer',
+            fontSize: 11.5,
+          }}
+        >
+          Bước tiếp ⏭
+        </button>
+        {currentStep != null && (
+          <button
+            type="button"
+            onClick={() => {
+              setIsStepPlaying(false);
+              setCurrentStep(null);
+            }}
+            style={{
+              padding: '4px 9px',
+              borderRadius: 6,
+              border: '1px solid #30363d',
+              background: 'transparent',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              fontSize: 11.5,
+            }}
+          >
+            Hiện tất cả
+          </button>
+        )}
+      </div>
+    </div>
+  ) : null;
+
   // JSXGraph engine — placed after ALL hooks to satisfy Rules of Hooks
   if (engine === 'jsxgraph') {
     return (
-      <MathVizJSXGraph
-        data={data}
-        onSwitchToSvg={() => setEngine('svg')}
-      />
+      <div>
+        <MathVizJSXGraph
+          data={steppedData}
+          onSwitchToSvg={() => setEngine('svg')}
+        />
+        {stepControlBar}
+      </div>
     );
   }
 
   return (
     <div style={container}>
+      {stepControlBar}
       {/* Render-coverage chip (đợt 8 / 4I). Modelled on GgbExportButton's
           "N phần chưa hỗ trợ": a figure that loses a part must SAY so, because
           the alternative — used until now — was a silently truncated drawing.

@@ -10,6 +10,7 @@
     "postinstall": "node scripts/copy-mathlive-assets.mjs",
     "typecheck:tutor": "next typegen && tsc --noEmit",
     "test:tutor": "playwright test",
+    "test:mobile": "playwright test mobile-shell.spec.ts mobile-progress.spec.ts",
     "report:tutor": "node scripts/build-workspace-report.mjs"
   },
   "dependencies": {

@@ -5,23 +5,35 @@
  *  'lobby'   — chọn map, mode, quick match
  *  'waiting' — phòng chờ, countdown
  *  'ingame'  — WebView /mrm?room=xxx
+ *
+ * Upgrades:
+ *  - FloatingParticles (cancels loop and pauses on blur/background).
+ *  - WEB_BASE with Android emulator (10.0.2.2) and iOS (localhost) support.
+ *  - Countdown urgency cue (pulsing amber on final 3 seconds).
+ *  - GradientGlow CTA with gradientHero tokens.
+ *  - PressableScale on all cards, chips, and buttons.
+ *  - currentMap memoized.
  */
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import {
-  View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
-  Animated, Dimensions, ScrollView, ActivityIndicator,
+  View, Text, StyleSheet, SafeAreaView,
+  Animated, ScrollView, ActivityIndicator,
   BackHandler, Alert, Platform,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Colors } from '../../theme/colors';
 import { FontFamily, FontSize } from '../../theme/typography';
-import { Spacing, Radius, Shadow } from '../../theme/spacing';
+import { Spacing, Radius } from '../../theme/spacing';
+import { haptic, withAlpha } from '../../theme/effects';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import apiClient from '../../api/client';
+import PressableScale from '../../components/ui/PressableScale';
+import GradientGlow from '../../components/ui/GradientGlow';
+import FloatingParticles from '../../components/ui/FloatingParticles';
 
-const { width: W, height: H } = Dimensions.get('window');
-const WEB_BASE = __DEV__ ? 'http://10.0.2.2:3000' : 'https://your-production-domain.com';
+const WEB_BASE = __DEV__
+  ? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000')
+  : 'https://duomath.vercel.app';
 
 // ── MAP DATA ────────────────────────────────────────────────────────────────
 const MAPS = [
@@ -57,353 +69,383 @@ const MAPS = [
   },
 ];
 
-// ── FLOATING TRIANGLE ────────────────────────────────────────────────────────
-function FloatTriangle({ index }) {
-  const y = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(0)).current;
-
-  const size = 10 + (index % 4) * 8;
-  const left = (index * 137.5) % 100;
-  const duration = 4000 + (index * 700) % 3000;
-  const startY = H * 0.7 + (index % 3) * 60;
-
-  useEffect(() => {
-    const anim = () => {
-      y.setValue(0);
-      opacity.setValue(0);
-      Animated.parallel([
-        Animated.timing(y, { toValue: -H * 0.8, duration, useNativeDriver: true }),
-        Animated.sequence([
-          Animated.timing(opacity, { toValue: 0.5, duration: 400, useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 0, duration: duration - 400, useNativeDriver: true }),
-        ]),
-      ]).start(() => anim());
-    };
-    const timeout = setTimeout(anim, index * 300);
-    return () => clearTimeout(timeout);
-  }, []);
-
-  return (
-    <Animated.View
-      style={[styles.triangle, {
-        left: `${left}%`,
-        top: startY,
-        transform: [{ translateY: y }, { rotate: '45deg' }],
-        opacity,
-        width: size,
-        height: size,
-        borderColor: Colors.primary + '80',
-      }]}
-      pointerEvents="none"
-    />
-  );
-}
-
 // ── MAP CARD ─────────────────────────────────────────────────────────────────
 function MapCard({ map, selected, onPress }) {
-  const scale = useRef(new Animated.Value(1)).current;
-
-  const handlePress = () => {
-    Animated.sequence([
-      Animated.timing(scale, { toValue: 0.94, duration: 80, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 1, duration: 120, useNativeDriver: true }),
-    ]).start();
-    onPress(map.id);
-  };
-
   return (
-    <TouchableOpacity onPress={handlePress} activeOpacity={0.9}>
-      <Animated.View style={[
+    <PressableScale
+      onPress={() => onPress(map.id)}
+      haptics="select"
+      scaleTo={0.97}
+      style={[
         styles.mapCard,
-        { borderColor: selected ? map.color : Colors.border, transform: [{ scale }] },
+        { borderColor: selected ? map.color : Colors.border },
         selected && { shadowColor: map.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 14, elevation: 10 },
-      ]}>
-        {selected && <View style={[styles.mapCardGlow, { backgroundColor: map.glow }]} />}
-        <Text style={styles.mapEmoji}>{map.emoji}</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.mapTitle, selected && { color: map.color }]}>{map.title}</Text>
-          <Text style={styles.mapSub}>{map.subtitle}</Text>
-          <Text style={styles.mapDesc} numberOfLines={1}>{map.desc}</Text>
-        </View>
-        <View style={styles.mapDiff}>
-          <Text style={[styles.mapDiffText, { color: map.color }]}>{map.difficulty}</Text>
-        </View>
-      </Animated.View>
-    </TouchableOpacity>
-  );
-}
-
-// ── PLAYER AVATAR ─────────────────────────────────────────────────────────────
-function PlayerAvatar({ player, index, isMe }) {
-  const bounceAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(bounceAnim, { toValue: -4, duration: 800 + index * 200, useNativeDriver: true }),
-        Animated.timing(bounceAnim, { toValue: 0, duration: 800 + index * 200, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
-
-  const initials = (player?.username || '?').slice(0, 2).toUpperCase();
-
-  return (
-    <Animated.View style={[styles.playerSlot, { transform: [{ translateY: bounceAnim }] }]}>
-      <View style={[styles.playerAvatar, isMe && styles.playerAvatarMe]}>
-        <Text style={styles.playerInitials}>{initials}</Text>
+      ]}
+    >
+      {selected && <View style={[styles.mapCardGlow, { backgroundColor: map.glow }]} />}
+      <Text style={styles.mapEmoji}>{map.emoji}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.mapTitle, selected && { color: map.color }]}>{map.title}</Text>
+        <Text style={styles.mapSubtitle}>{map.subtitle}</Text>
+        <Text style={styles.mapDesc} numberOfLines={1}>{map.desc}</Text>
       </View>
-      <Text style={[styles.playerName, isMe && { color: Colors.cyan }]} numberOfLines={1}>
-        {player?.username || '---'}{isMe ? ' (bạn)' : ''}
-      </Text>
-      <View style={[styles.readyDot, player?.ready && styles.readyDotOn]} />
-    </Animated.View>
+      <View style={styles.diffBadge}>
+        <Text style={[styles.diffText, { color: map.color }]}>{map.difficulty}</Text>
+      </View>
+    </PressableScale>
   );
 }
 
-// ── MAIN SCREEN ───────────────────────────────────────────────────────────────
-export default function MRMScreen() {
+// ── MAIN SCREEN ──────────────────────────────────────────────────────────────
+export default function MRMScreen({ navigation }) {
   const { user, profile } = useAuth();
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
 
-  const [phase, setPhase] = useState('lobby'); // 'lobby' | 'waiting' | 'ingame'
+  const [gameState, setGameState] = useState('lobby'); // 'lobby' | 'waiting' | 'ingame'
   const [selectedMap, setSelectedMap] = useState('thpt');
-  const [mode, setMode] = useState('quick'); // 'quick' | 'custom'
-  const [matchmaking, setMatchmaking] = useState(false);
-  const [countdown, setCountdown] = useState(null);
+  const [selectedMode, setSelectedMode] = useState('ranked'); // 'ranked' | 'casual'
   const [roomId, setRoomId] = useState(null);
-  const [players, setPlayers] = useState([]);
-  const [webLoading, setWebLoading] = useState(true);
+  const [countdown, setCountdown] = useState(5);
+  const [findingMatch, setFindingMatch] = useState(false);
+  const [searchingDots, setSearchingDots] = useState('');
 
-  // Animated pulse for the "Find Match" button
+  const countdownAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  useEffect(() => {
-    if (matchmaking) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.06, duration: 700, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 700, useNativeDriver: true }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
-    }
-  }, [matchmaking]);
+  const webRef = useRef(null);
 
-  // Countdown ticker
-  useEffect(() => {
-    if (phase !== 'waiting' || countdown === null) return;
-    if (countdown <= 0) {
-      setPhase('ingame');
-      return;
-    }
-    const id = setTimeout(() => setCountdown(c => c - 1), 1000);
-    return () => clearTimeout(id);
-  }, [phase, countdown]);
+  const currentMap = useMemo(() => MAPS.find(m => m.id === selectedMap) || MAPS[0], [selectedMap]);
 
-  // Android back
+  // Pulse animation for finding match
+  useEffect(() => {
+    if (!findingMatch) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.08, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [findingMatch]);
+
+  // Animated dots for searching text
+  useEffect(() => {
+    if (!findingMatch) return;
+    const interval = setInterval(() => {
+      setSearchingDots(d => (d.length >= 3 ? '' : d + '.'));
+    }, 400);
+    return () => clearInterval(interval);
+  }, [findingMatch]);
+
+  // Countdown timer in waiting room
+  useEffect(() => {
+    if (gameState !== 'waiting') return;
+    setCountdown(5);
+
+    const interval = setInterval(() => {
+      setCountdown(c => {
+        if (c <= 1) {
+          clearInterval(interval);
+          setGameState('ingame');
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [gameState]);
+
+  // Urgency pulse when countdown hits 3..2..1
+  useEffect(() => {
+    if (gameState !== 'waiting' || countdown > 3 || countdown === 0) return;
+    haptic.tap();
+    countdownAnim.setValue(1.4);
+    Animated.spring(countdownAnim, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }).start();
+  }, [countdown, gameState]);
+
+  // Handle hardware back on Android
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (phase === 'ingame') { handleLeaveGame(); return true; }
-      if (phase === 'waiting') { handleLeaveWaiting(); return true; }
+      if (gameState === 'ingame') {
+        Alert.alert(
+          t('Rời trận đấu?', 'Leave Match?'),
+          t('Bạn sẽ bị xử thua nếu rời trận giữa chừng.', 'You will forfeit the match if you leave.'),
+          [
+            { text: t('Ở lại', 'Stay'), style: 'cancel' },
+            {
+              text: t('Rời đi', 'Leave'),
+              style: 'destructive',
+              onPress: () => {
+                haptic.warn();
+                setGameState('lobby');
+              },
+            },
+          ]
+        );
+        return true;
+      }
+      if (gameState === 'waiting') {
+        setGameState('lobby');
+        setFindingMatch(false);
+        return true;
+      }
       return false;
     });
     return () => sub.remove();
-  }, [phase]);
+  }, [gameState]);
 
-  const handleFindMatch = useCallback(async () => {
-    setMatchmaking(true);
-    try {
-      // Simulate matchmaking — replace with real API call
-      await new Promise(r => setTimeout(r, 2000));
-      const fakeRoomId = `room_${Date.now()}`;
-      setRoomId(fakeRoomId);
-      setPlayers([
-        { username: profile?.username || user?.email?.split('@')[0] || 'Bạn', ready: true },
-        { username: 'Đối_thủ', ready: false },
-      ]);
-      setCountdown(5);
-      setPhase('waiting');
-    } catch {
-      Alert.alert('Lỗi', 'Không tìm được trận đấu. Vui lòng thử lại.');
-    } finally {
-      setMatchmaking(false);
-    }
-  }, [profile, user]);
+  const handleStartFind = useCallback(() => {
+    haptic.tap();
+    setFindingMatch(true);
+    const mockRoom = `room_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    setRoomId(mockRoom);
 
-  const handleLeaveWaiting = () => {
-    setPhase('lobby');
-    setCountdown(null);
-    setPlayers([]);
-    setRoomId(null);
+    // Simulate matchmaking search
+    setTimeout(() => {
+      setFindingMatch(false);
+      haptic.success();
+      setGameState('waiting');
+    }, 1800);
+  }, []);
+
+  const handleCancelFind = () => {
+    haptic.tap();
+    setFindingMatch(false);
   };
 
-  const handleLeaveGame = () => {
-    Alert.alert(
-      t('Thoát trận', 'Leave Match'),
-      t('Bạn có chắc muốn rời trận? Bạn sẽ bị thua trận này.', 'Sure? You will forfeit this match.'),
-      [
-        { text: t('Ở lại', 'Stay'), style: 'cancel' },
-        { text: t('Rời trận', 'Leave'), style: 'destructive', onPress: () => setPhase('lobby') },
-      ]
-    );
-  };
+  const username = profile?.username || user?.displayName || user?.email?.split('@')[0] || 'Player';
+  const gameUrl = `${WEB_BASE}/mrm?room=${roomId || 'quick'}&map=${selectedMap}&mode=${selectedMode}&user=${encodeURIComponent(username)}&lang=${lang}`;
 
-  // ── RENDER: IN-GAME WebView ──────────────────────────────────────────────
-  if (phase === 'ingame') {
-    const gameUrl = `${WEB_BASE}/mrm${roomId ? `?room=${roomId}&map=${selectedMap}` : ''}`;
+  // Injected JS for full-screen in-game experience
+  const INJECTED_GAME_JS = `
+    (function() {
+      var style = document.createElement('style');
+      style.innerHTML = \`
+        header, nav, footer, .duo-mcb-sidebar, .global-sidebar { display: none !important; }
+        body { padding: 0 !important; margin: 0 !important; overflow: hidden !important; }
+        #root, #__next { width: 100vw !important; height: 100vh !important; }
+      \`;
+      document.head.appendChild(style);
+    })();
+    true;
+  `;
+
+  // ── INGAME VIEW ──
+  if (gameState === 'ingame') {
     return (
       <SafeAreaView style={styles.safe}>
-        <View style={styles.gameHeader}>
-          <TouchableOpacity style={styles.leaveBtn} onPress={handleLeaveGame}>
-            <Text style={styles.leaveBtnText}>✕ {t('Rời trận', 'Leave')}</Text>
-          </TouchableOpacity>
-          <Text style={styles.gameTitle}>⚔️ {t('Đang thi đấu', 'In Match')}</Text>
-          <View style={styles.mapBadge}>
-            <Text style={styles.mapBadgeText}>{MAPS.find(m => m.id === selectedMap)?.title}</Text>
+        <View style={styles.inGameHeader}>
+          <PressableScale
+            style={styles.exitBtn}
+            onPress={() => {
+              Alert.alert(
+                t('Rời trận đấu?', 'Leave Match?'),
+                t('Bạn sẽ bị xử thua nếu rời trận.', 'You will forfeit if you leave.'),
+                [
+                  { text: t('Ở lại', 'Stay'), style: 'cancel' },
+                  {
+                    text: t('Rời đi', 'Leave'),
+                    style: 'destructive',
+                    onPress: () => {
+                      haptic.warn();
+                      setGameState('lobby');
+                    },
+                  },
+                ]
+              );
+            }}
+            haptics={null}
+          >
+            <Text style={styles.exitText}>✕ {t('Rời trận', 'Exit')}</Text>
+          </PressableScale>
+          <View style={[styles.mapBadge, { borderColor: currentMap.color }]}>
+            <Text style={styles.mapBadgeText}>{currentMap.emoji} {currentMap.title}</Text>
           </View>
+          <Text style={styles.modeBadgeText}>
+            {selectedMode === 'ranked' ? '🏆 Ranked' : '🎮 Casual'}
+          </Text>
         </View>
-        {webLoading && (
-          <View style={styles.webLoadingBox}>
-            <ActivityIndicator size="large" color={Colors.cyan} />
-            <Text style={styles.webLoadingText}>{t('Đang vào trận...', 'Entering match...')}</Text>
-          </View>
-        )}
+
         <WebView
+          ref={webRef}
           source={{ uri: gameUrl }}
-          style={[styles.webview, webLoading && { opacity: 0 }]}
-          onLoadEnd={() => setWebLoading(false)}
+          style={{ flex: 1, backgroundColor: Colors.bg }}
+          injectedJavaScript={INJECTED_GAME_JS}
           javaScriptEnabled
           domStorageEnabled
-          sharedCookiesEnabled
           allowsInlineMediaPlayback
           mediaPlaybackRequiresUserAction={false}
-          injectedJavaScript={`
-            (function(){
-              var s=document.createElement('style');
-              s.innerHTML='body{padding-top:0!important}.duo-mcb-fab,.GlobalSidebar,[class*="DuoMCBSidebar"]{display:none!important}';
-              document.head.appendChild(s);
-            })();
-          `}
+          renderLoading={() => (
+            <View style={styles.webLoading}>
+              <ActivityIndicator size="large" color={Colors.cyan} />
+              <Text style={styles.webLoadingText}>{t('Đang tải phòng đấu...', 'Loading battle room...')}</Text>
+            </View>
+          )}
+          startInLoadingState
         />
       </SafeAreaView>
     );
   }
 
-  // ── RENDER: WAITING ROOM ─────────────────────────────────────────────────
-  if (phase === 'waiting') {
+  // ── WAITING ROOM VIEW ──
+  if (gameState === 'waiting') {
+    const isUrgent = countdown <= 3 && countdown > 0;
     return (
-      <SafeAreaView style={styles.safe}>
-        {/* Floating triangles */}
-        {Array.from({ length: 8 }).map((_, i) => <FloatTriangle key={i} index={i} />)}
+      <SafeAreaView style={[styles.safe, styles.waitingSafe]}>
+        <FloatingParticles count={12} color={currentMap.color} />
 
-        <View style={styles.waitingContainer}>
-          <Text style={styles.waitingTitle}>🎮 {t('Phòng Chờ', 'Waiting Room')}</Text>
-          <Text style={styles.waitingSub}>{t('Trận đấu sẽ bắt đầu sau', 'Match starts in')}</Text>
+        <View style={styles.waitingContent}>
+          {/* Map info */}
+          <View style={[styles.waitingMapCard, { borderColor: currentMap.color + '60' }]}>
+            <Text style={{ fontSize: 44, marginBottom: 8 }}>{currentMap.emoji}</Text>
+            <Text style={[styles.waitingMapTitle, { color: currentMap.color }]}>{currentMap.title}</Text>
+            <Text style={styles.waitingMapSub}>{currentMap.subtitle}</Text>
+            <View style={[styles.waitingModeBadge, { backgroundColor: selectedMode === 'ranked' ? Colors.accent + '30' : Colors.teal + '30' }]}>
+              <Text style={[styles.waitingModeText, { color: selectedMode === 'ranked' ? Colors.purple : Colors.teal }]}>
+                {selectedMode === 'ranked' ? '🏆 Đấu Hạng (Ranked)' : '🎮 Giao Hữu (Casual)'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Versus */}
+          <View style={styles.versusRow}>
+            <View style={styles.playerBox}>
+              <View style={[styles.playerAvatar, { borderColor: Colors.cyan }]}>
+                <Text style={styles.playerInitial}>{(username || 'U')[0].toUpperCase()}</Text>
+              </View>
+              <Text style={styles.playerName} numberOfLines={1}>{username}</Text>
+              <Text style={styles.playerSub}>{t('Bạn', 'You')}</Text>
+            </View>
+
+            <View style={styles.vsCircle}>
+              <Text style={styles.vsText}>VS</Text>
+            </View>
+
+            <View style={styles.playerBox}>
+              <View style={[styles.playerAvatar, { borderColor: Colors.purple }]}>
+                <Text style={styles.playerInitial}>🤖</Text>
+              </View>
+              <Text style={styles.playerName} numberOfLines={1}>{t('Đối thủ', 'Opponent')}</Text>
+              <Text style={styles.playerSub}>{t('Đã tìm thấy', 'Matched')}</Text>
+            </View>
+          </View>
 
           {/* Countdown */}
           <View style={styles.countdownBox}>
-            <Text style={styles.countdownNum}>{countdown ?? '...'}</Text>
+            <Text style={styles.countdownLabel}>{t('Trận đấu bắt đầu sau', 'Match starts in')}</Text>
+            <Animated.Text
+              style={[
+                styles.countdownNum,
+                isUrgent && { color: Colors.amber },
+                { transform: [{ scale: countdownAnim }] },
+              ]}
+            >
+              {countdown}
+            </Animated.Text>
           </View>
 
-          {/* Players */}
-          <View style={styles.playersRow}>
-            {players.map((p, i) => (
-              <PlayerAvatar key={i} player={p} index={i} isMe={i === 0} />
-            ))}
-          </View>
-
-          <Text style={styles.vsText}>VS</Text>
-
-          <Text style={styles.mapInfo}>
-            🗺️ {MAPS.find(m => m.id === selectedMap)?.title} — {MAPS.find(m => m.id === selectedMap)?.subtitle}
-          </Text>
-
-          <TouchableOpacity style={styles.cancelBtn} onPress={handleLeaveWaiting}>
-            <Text style={styles.cancelBtnText}>{t('Hủy tìm trận', 'Cancel')}</Text>
-          </TouchableOpacity>
+          {/* Cancel button */}
+          <PressableScale style={styles.cancelWaitBtn} onPress={() => setGameState('lobby')} haptics="tap">
+            <Text style={styles.cancelWaitText}>{t('Hủy', 'Cancel')}</Text>
+          </PressableScale>
         </View>
       </SafeAreaView>
     );
   }
 
-  // ── RENDER: LOBBY ────────────────────────────────────────────────────────
+  // ── LOBBY VIEW ──
   return (
     <SafeAreaView style={styles.safe}>
-      {/* Floating triangles bg */}
-      {Array.from({ length: 10 }).map((_, i) => <FloatTriangle key={i} index={i} />)}
-
-      <ScrollView
-        contentContainerStyle={styles.lobbyContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.lobbyContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
-        <View style={styles.lobbyHeader}>
-          <Text style={styles.lobbyTitle}>⚔️ {t('Đấu Hạng', 'Ranked Battle')}</Text>
-          <Text style={styles.lobbySub}>{t('Thi đấu toán học theo thời gian thực', 'Real-time math battle')}</Text>
+        <View style={styles.header}>
+          <FloatingParticles count={6} color={Colors.cyan} />
+          <View style={styles.headerBadge}>
+            <Text style={styles.headerBadgeText}>⚡ BINGMATH RANKED</Text>
+          </View>
+          <Text style={styles.headerTitle}>Math Ranked Match</Text>
+          <Text style={styles.headerSub}>
+            {t('Đấu trí thời gian thực — Nâng bậc xếp hạng', 'Real-time math battle — Climb the leaderboard')}
+          </Text>
         </View>
 
-        {/* Mode selector */}
-        <View style={styles.modeRow}>
-          {[
-            { id: 'quick', label: '⚡ Quick Match', labelVI: '⚡ Tìm Nhanh' },
-            { id: 'custom', label: '🏠 Custom', labelVI: '🏠 Tạo Phòng' },
-          ].map(m => (
-            <TouchableOpacity
-              key={m.id}
-              style={[styles.modeChip, mode === m.id && styles.modeChipActive]}
-              onPress={() => setMode(m.id)}
-            >
-              <Text style={[styles.modeChipText, mode === m.id && styles.modeChipTextActive]}>
-                {t(m.labelVI, m.label)}
+        {/* Mode Selector */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('Chế độ chơi', 'Game Mode')}</Text>
+          <View style={styles.modeRow}>
+            {[
+              { id: 'ranked', emoji: '🏆', title: 'Đấu Hạng', sub: 'Tính điểm Elo · Leo Rank', color: Colors.accent },
+              { id: 'casual', emoji: '🎮', title: 'Giao Hữu', sub: 'Luyện tập · Không mất điểm', color: Colors.teal },
+            ].map(m => (
+              <PressableScale
+                key={m.id}
+                onPress={() => setSelectedMode(m.id)}
+                haptics="select"
+                scaleTo={0.97}
+                style={[
+                  styles.modeCard,
+                  selectedMode === m.id && {
+                    borderColor: m.color,
+                    backgroundColor: m.color + '15',
+                    shadowColor: m.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 10, elevation: 6,
+                  },
+                ]}
+              >
+                <Text style={{ fontSize: 28, marginBottom: 4 }}>{m.emoji}</Text>
+                <Text style={[styles.modeTitle, selectedMode === m.id && { color: m.color }]}>{m.title}</Text>
+                <Text style={styles.modeSub}>{m.sub}</Text>
+              </PressableScale>
+            ))}
+          </View>
+        </View>
+
+        {/* Map Selector */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>{t('Chọn bản đồ', 'Select Map')}</Text>
+          <View style={styles.mapsList}>
+            {MAPS.map(m => (
+              <MapCard key={m.id} map={m} selected={selectedMap === m.id} onPress={setSelectedMap} />
+            ))}
+          </View>
+        </View>
+
+        {/* Quick Match CTA Button */}
+        <View style={styles.ctaSection}>
+          {findingMatch ? (
+            <View style={styles.searchingBox}>
+              <ActivityIndicator size="small" color={Colors.cyan} style={{ marginRight: 8 }} />
+              <Text style={styles.searchingText}>
+                {t('Đang tìm đối thủ', 'Finding opponent')}{searchingDots}
               </Text>
-            </TouchableOpacity>
-          ))}
+              <PressableScale style={styles.cancelFindBtn} onPress={handleCancelFind} haptics="tap">
+                <Text style={styles.cancelFindText}>{t('Hủy', 'Cancel')}</Text>
+              </PressableScale>
+            </View>
+          ) : (
+            <PressableScale onPress={handleStartFind} scaleTo={0.97} haptics={null} style={{ width: '100%' }}>
+              <GradientGlow
+                colors={Colors.gradientHero}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.findBtn}
+              >
+                <Text style={styles.findBtnEmoji}>⚡</Text>
+                <Text style={styles.findBtnText}>{t('Tìm Trận Nhanh', 'Quick Match')}</Text>
+              </GradientGlow>
+            </PressableScale>
+          )}
         </View>
 
-        {/* Map selection */}
-        <Text style={styles.sectionLabel}>{t('Chọn Chủ Đề', 'Select Topic')}</Text>
-        <View style={styles.mapsContainer}>
-          {MAPS.map(map => (
-            <MapCard
-              key={map.id}
-              map={map}
-              selected={selectedMap === map.id}
-              onPress={setSelectedMap}
-            />
-          ))}
+        {/* Tips / Rules Footer */}
+        <View style={styles.rulesCard}>
+          <Text style={styles.rulesTitle}>💡 {t('Luật thi đấu MRM', 'MRM Rules')}</Text>
+          <Text style={styles.rulesItem}>• {t('Mỗi trận gồm 5–10 câu hỏi trắc nghiệm', 'Each match has 5–10 multiple choice questions')}</Text>
+          <Text style={styles.rulesItem}>• {t('Trả lời đúng và nhanh hơn để nhận thêm điểm', 'Answer faster and correctly for bonus points')}</Text>
+          <Text style={styles.rulesItem}>• {t('Hệ thống Elo tính điểm sau mỗi trận đấu', 'Elo rating is updated after each match')}</Text>
         </View>
 
-        {/* Rules */}
-        <View style={styles.rulesBox}>
-          <Text style={styles.rulesTitle}>📋 {t('Luật Chơi', 'Rules')}</Text>
-          <Text style={styles.rulesText}>• {t('10 câu hỏi — 30 giây/câu', '10 questions — 30s each')}</Text>
-          <Text style={styles.rulesText}>• {t('Trả lời đúng nhanh hơn → thắng', 'Faster correct answer wins')}</Text>
-          <Text style={styles.rulesText}>• {t('Thắng: +25 XP | Thua: -10 XP', 'Win: +25 XP | Lose: -10 XP')}</Text>
-        </View>
-
-        {/* Find Match Button */}
-        <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-          <TouchableOpacity
-            style={[styles.findBtn, matchmaking && styles.findBtnLoading]}
-            onPress={handleFindMatch}
-            disabled={matchmaking}
-            activeOpacity={0.85}
-          >
-            {matchmaking ? (
-              <View style={styles.findBtnInner}>
-                <ActivityIndicator color="#fff" size="small" style={{ marginRight: 10 }} />
-                <Text style={styles.findBtnText}>{t('Đang tìm đối thủ...', 'Finding opponent...')}</Text>
-              </View>
-            ) : (
-              <Text style={styles.findBtnText}>
-                {mode === 'quick' ? `⚡ ${t('Tìm Trận Nhanh', 'Quick Match')}` : `🏠 ${t('Tạo Phòng', 'Create Room')}`}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </Animated.View>
-
-        <View style={{ height: Spacing['2xl'] }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -412,127 +454,142 @@ export default function MRMScreen() {
 // ── STYLES ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
-
-  // Floating triangles
-  triangle: {
-    position: 'absolute',
-    borderWidth: 1,
-    borderRadius: 2,
-    backgroundColor: 'transparent',
-  },
-
-  // Game header (in-game)
-  gameHeader: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    backgroundColor: Colors.bgSurface,
-    paddingHorizontal: Spacing.base, paddingVertical: Spacing.sm,
-    borderBottomWidth: 1, borderBottomColor: Colors.border, height: 50,
-  },
-  leaveBtn: {
-    backgroundColor: 'rgba(248,113,113,0.15)', borderWidth: 1, borderColor: Colors.error + '40',
-    borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4,
-  },
-  leaveBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.error },
-  gameTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.text },
-  mapBadge: {
-    backgroundColor: Colors.primary + '20', borderWidth: 1, borderColor: Colors.primary + '50',
-    borderRadius: Radius.full, paddingHorizontal: 10, paddingVertical: 4,
-  },
-  mapBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.primary },
-  webview: { flex: 1, backgroundColor: Colors.bg },
-  webLoadingBox: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg, zIndex: 10 },
-  webLoadingText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginTop: 12 },
-
-  // Waiting room
-  waitingContainer: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing.xl,
-  },
-  waitingTitle: { fontFamily: FontFamily.black, fontSize: FontSize['2xl'], color: Colors.text, marginBottom: 4 },
-  waitingSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.xl },
-  countdownBox: {
-    width: 100, height: 100, borderRadius: 50,
-    backgroundColor: Colors.bgSurface,
-    borderWidth: 3, borderColor: Colors.cyan,
-    justifyContent: 'center', alignItems: 'center',
-    marginBottom: Spacing.xl,
-    shadowColor: Colors.cyan, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 20, elevation: 10,
-  },
-  countdownNum: { fontFamily: FontFamily.black, fontSize: 44, color: Colors.cyan },
-  playersRow: { flexDirection: 'row', gap: Spacing.xl, marginBottom: Spacing.md },
-  playerSlot: { alignItems: 'center', width: 70 },
-  playerAvatar: {
-    width: 56, height: 56, borderRadius: 28,
-    backgroundColor: Colors.accent + '40', borderWidth: 2, borderColor: Colors.accent,
-    justifyContent: 'center', alignItems: 'center', marginBottom: 6,
-  },
-  playerAvatarMe: { borderColor: Colors.cyan, backgroundColor: Colors.cyan + '30' },
-  playerInitials: { fontFamily: FontFamily.black, fontSize: 18, color: Colors.text },
-  playerName: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.textMuted, textAlign: 'center' },
-  readyDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.border, marginTop: 4 },
-  readyDotOn: { backgroundColor: Colors.success },
-  vsText: { fontFamily: FontFamily.black, fontSize: 28, color: Colors.textDim, marginVertical: Spacing.sm },
-  mapInfo: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.xl },
-  cancelBtn: {
-    backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: Colors.border,
-    borderRadius: Radius.full, paddingHorizontal: Spacing.xl, paddingVertical: Spacing.sm,
-  },
-  cancelBtnText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textMuted },
-
-  // Lobby
   lobbyContent: { padding: Spacing.xl },
-  lobbyHeader: { marginBottom: Spacing.xl },
-  lobbyTitle: { fontFamily: FontFamily.black, fontSize: FontSize['2xl'], color: Colors.text, marginBottom: 4 },
-  lobbySub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted },
 
-  modeRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.xl },
-  modeChip: {
-    flex: 1, paddingVertical: Spacing.sm, borderRadius: Radius.full,
-    backgroundColor: Colors.bgGlass, borderWidth: 1, borderColor: Colors.border,
+  // Header
+  header: {
+    alignItems: 'center', marginBottom: Spacing.xl,
+    paddingVertical: Spacing.base, position: 'relative', overflow: 'hidden',
+  },
+  headerBadge: {
+    backgroundColor: 'rgba(0,210,255,0.12)',
+    borderWidth: 1, borderColor: 'rgba(0,210,255,0.3)',
+    borderRadius: Radius.full, paddingHorizontal: 12, paddingVertical: 4,
+    marginBottom: Spacing.sm,
+  },
+  headerBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.cyan, letterSpacing: 1 },
+  headerTitle: { fontFamily: FontFamily.black, fontSize: FontSize['2xl'], color: Colors.text, textAlign: 'center', marginBottom: 4 },
+  headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, textAlign: 'center' },
+
+  // Section
+  section: { marginBottom: Spacing.xl },
+  sectionTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.text, marginBottom: Spacing.md },
+
+  // Mode cards
+  modeRow: { flexDirection: 'row', gap: Spacing.md },
+  modeCard: {
+    flex: 1, backgroundColor: Colors.bgSurface,
+    borderRadius: Radius.xl, padding: Spacing.base,
+    borderWidth: 1.5, borderColor: Colors.border,
     alignItems: 'center',
   },
-  modeChipActive: { backgroundColor: Colors.accent + '25', borderColor: Colors.accent },
-  modeChipText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.textMuted },
-  modeChipTextActive: { color: Colors.accent },
+  modeTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.text, marginBottom: 2 },
+  modeSub: { fontFamily: FontFamily.regular, fontSize: 10, color: Colors.textMuted, textAlign: 'center' },
 
-  sectionLabel: {
-    fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.text,
-    marginBottom: Spacing.md,
-  },
-  mapsContainer: { gap: Spacing.sm, marginBottom: Spacing.xl },
-
-  // Map card
+  // Maps
+  mapsList: { gap: Spacing.md },
   mapCard: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
-    backgroundColor: Colors.bgSurface,
-    borderRadius: Radius.xl, borderWidth: 1.5,
-    padding: Spacing.base, overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: Colors.bgSurface, borderRadius: Radius.xl,
+    padding: Spacing.base, borderWidth: 1.5,
+    gap: Spacing.md, position: 'relative', overflow: 'hidden',
   },
   mapCardGlow: {
-    ...StyleSheet.absoluteFillObject, opacity: 0.12,
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    opacity: 0.15,
   },
-  mapEmoji: { fontSize: 28 },
-  mapTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.text },
-  mapSub: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted },
-  mapDesc: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textDim, marginTop: 2 },
-  mapDiff: { marginLeft: 'auto' },
-  mapDiffText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm },
+  mapEmoji: { fontSize: 32 },
+  mapTitle: { fontFamily: FontFamily.black, fontSize: FontSize.base, color: Colors.text, marginBottom: 2 },
+  mapSubtitle: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.textCyan, marginBottom: 2 },
+  mapDesc: { fontFamily: FontFamily.regular, fontSize: 11, color: Colors.textMuted },
+  diffBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: Radius.full, backgroundColor: Colors.bgGlass },
+  diffText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
 
-  // Rules
-  rulesBox: {
-    backgroundColor: Colors.bgSurface, borderRadius: Radius.xl,
-    padding: Spacing.base, borderWidth: 1, borderColor: Colors.border,
-    marginBottom: Spacing.xl, gap: 4,
-  },
-  rulesTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.text, marginBottom: Spacing.xs },
-  rulesText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted },
-
-  // Find match button
+  // CTA
+  ctaSection: { marginBottom: Spacing.xl, alignItems: 'center' },
   findBtn: {
-    backgroundColor: Colors.primary, borderRadius: Radius.xl,
-    paddingVertical: Spacing.base + 4, alignItems: 'center',
-    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.6, shadowRadius: 16, elevation: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 16, borderRadius: Radius.xl,
+    gap: Spacing.sm, width: '100%',
+    shadowColor: Colors.primary, shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5, shadowRadius: 12, elevation: 8,
   },
-  findBtnLoading: { backgroundColor: Colors.accent },
-  findBtnInner: { flexDirection: 'row', alignItems: 'center' },
-  findBtnText: { fontFamily: FontFamily.black, fontSize: FontSize.md, color: '#fff', letterSpacing: 0.5 },
+  findBtnEmoji: { fontSize: 20 },
+  findBtnText: { fontFamily: FontFamily.black, fontSize: FontSize.lg, color: '#fff' },
+
+  searchingBox: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.bgSurface, borderWidth: 1.5, borderColor: Colors.cyan,
+    borderRadius: Radius.xl, padding: Spacing.base, width: '100%',
+    gap: Spacing.sm,
+  },
+  searchingText: { fontFamily: FontFamily.bold, fontSize: FontSize.base, color: Colors.text, flex: 1 },
+  cancelFindBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: Radius.md, backgroundColor: Colors.bgGlass },
+  cancelFindText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.error },
+
+  // Rules card
+  rulesCard: {
+    backgroundColor: Colors.bgSurface, borderRadius: Radius.lg,
+    padding: Spacing.base, borderWidth: 1, borderColor: Colors.border,
+    gap: 4,
+  },
+  rulesTitle: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.text, marginBottom: 4 },
+  rulesItem: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, lineHeight: 18 },
+
+  // In-Game
+  inGameHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: Spacing.base, paddingVertical: Spacing.sm,
+    backgroundColor: Colors.bgSurface, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  exitBtn: { padding: Spacing.xs },
+  exitText: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.error },
+  mapBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: Radius.full, borderWidth: 1 },
+  mapBadgeText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs, color: Colors.text },
+  modeBadgeText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.purple },
+  webLoading: {
+    position: 'absolute', inset: 0,
+    justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg,
+  },
+  webLoadingText: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginTop: Spacing.base },
+
+  // Waiting Room
+  waitingSafe: { justifyContent: 'center', alignItems: 'center' },
+  waitingContent: { padding: Spacing.xl, alignItems: 'center', width: '100%' },
+  waitingMapCard: {
+    backgroundColor: Colors.bgSurface, borderRadius: Radius.xl,
+    padding: Spacing.xl, alignItems: 'center', width: '100%',
+    borderWidth: 1.5, marginBottom: Spacing.xl,
+  },
+  waitingMapTitle: { fontFamily: FontFamily.black, fontSize: FontSize.xl, marginBottom: 2 },
+  waitingMapSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.md },
+  waitingModeBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: Radius.full },
+  waitingModeText: { fontFamily: FontFamily.bold, fontSize: FontSize.xs },
+
+  versusRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around',
+    width: '100%', marginBottom: Spacing['2xl'],
+  },
+  playerBox: { alignItems: 'center', width: 90 },
+  playerAvatar: {
+    width: 64, height: 64, borderRadius: 32,
+    backgroundColor: Colors.bgSurface, borderWidth: 2,
+    justifyContent: 'center', alignItems: 'center', marginBottom: 6,
+  },
+  playerInitial: { fontFamily: FontFamily.black, fontSize: 24, color: Colors.text },
+  playerName: { fontFamily: FontFamily.bold, fontSize: FontSize.sm, color: Colors.text, textAlign: 'center' },
+  playerSub: { fontFamily: FontFamily.regular, fontSize: 10, color: Colors.textMuted },
+  vsCircle: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: Colors.accent + '30', borderWidth: 1, borderColor: Colors.accent,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  vsText: { fontFamily: FontFamily.black, fontSize: FontSize.sm, color: Colors.purple },
+
+  countdownBox: { alignItems: 'center', marginBottom: Spacing.xl },
+  countdownLabel: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: 4 },
+  countdownNum: { fontFamily: FontFamily.black, fontSize: 52, color: Colors.cyan },
+
+  cancelWaitBtn: { padding: Spacing.base },
+  cancelWaitText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textDim },
 });

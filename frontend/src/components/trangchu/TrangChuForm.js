@@ -1566,15 +1566,14 @@ export default function TrangChuForm() {
                       background: "rgba(0,0,0,0.4)", borderRadius: 10, padding: 12, fontSize: 13.5, color: "white",
                       margin: "12px 0", border: "1px solid rgba(255,255,255,0.04)"
                     }}>
-                      <div dangerouslySetInnerHTML={{
-                        __html: (() => {
-                          try {
-                            return katex.renderToString(gachaRewardCard.formula, { throwOnError: false });
-                          } catch {
-                            return gachaRewardCard.formula;
-                          }
-                        })()
-                      }} style={{ fontSize: 14, color: "white", textAlign: "center" }} />
+                      {(() => {
+                        try {
+                          const html = katex.renderToString(gachaRewardCard.formula, { throwOnError: false });
+                          return <div dangerouslySetInnerHTML={{ __html: html }} style={{ fontSize: 14, color: "white", textAlign: "center" }} />;
+                        } catch {
+                          return <div style={{ fontSize: 14, color: "white", textAlign: "center", fontFamily: "monospace" }}>{gachaRewardCard.formula}</div>;
+                        }
+                      })()}
                     </div>
                     <p style={{ margin: 0, fontSize: 12.5, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>
                       {gachaRewardCard.description}

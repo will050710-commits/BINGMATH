@@ -1,70 +1,74 @@
 /**
- * RootNavigator — kiểm tra auth + onboarding trước khi điều hướng
+ * RootNavigator — V1.0 Official with Guest Mode, Theme integration & Global Overlays
  */
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ActivityIndicator, View } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { Colors } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import AppTabs from './AppTabs';
 import AuthStack from './AuthStack';
 import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
-import { ActivityIndicator, View } from 'react-native';
+import BingSideBar from '../components/BingSideBar';
+import QuickSettingsModal from '../components/QuickSettingsModal';
+import InterfaceGuideModal from '../components/InterfaceGuideModal';
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const { user, loading } = useAuth();
-  const [onboardingDone, setOnboardingDone] = useState(null); // null = checking
+  const { user, isGuest, loading } = useAuth();
+  const { colors, isDark } = useTheme();
+  const [onboardingDone, setOnboardingDone] = useState(null);
 
   useEffect(() => {
-    if (!user) {
-      setOnboardingDone(null);
-      return;
-    }
-    AsyncStorage.getItem('onboarding_done').then(val => {
-      setOnboardingDone(val === 'true');
-    });
-  }, [user]);
+    AsyncStorage.getItem('onboarding_done')
+      .then((val) => setOnboardingDone(val === 'true'))
+      .catch(() => setOnboardingDone(false));
+  }, [user, isGuest]);
 
-  // Show spinner while checking auth or onboarding status
-  if (loading || (user && onboardingDone === null)) {
+  if (loading || onboardingDone === null) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: Colors.bg }}>
-        <ActivityIndicator size="large" color={Colors.cyan} />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.bg }}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
+  const isAuthenticatedOrGuest = Boolean(user || isGuest);
+
   return (
     <NavigationContainer
       theme={{
-        dark: true,
+        dark: isDark,
         colors: {
-          primary: Colors.primary,
-          background: Colors.bg,
-          card: Colors.bgSurface,
-          text: Colors.text,
-          border: Colors.border,
-          notification: Colors.accent,
+          primary: colors.primary,
+          background: colors.bg,
+          card: colors.bgSurface,
+          text: colors.text,
+          border: colors.border,
+          notification: colors.accent,
         },
       }}
     >
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {!user ? (
-          // Not logged in → Auth screens
-          <Stack.Screen name="Auth" component={AuthStack} />
-        ) : !onboardingDone ? (
-          // Logged in but hasn't seen onboarding
-          <Stack.Screen name="Onboarding">
-            {() => <OnboardingScreen onDone={() => setOnboardingDone(true)} />}
-          </Stack.Screen>
-        ) : (
-          // Fully onboarded → main app
-          <Stack.Screen name="App" component={AppTabs} />
-        )}
-      </Stack.Navigator>
+      <View style={{ flex: 1 }}>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {!onboardingDone ? (
+            <Stack.Screen name="Onboarding">
+              {() => <OnboardingScreen onDone={() => setOnboardingDone(true)} />}
+            </Stack.Screen>
+          ) : !isAuthenticatedOrGuest ? (
+            <Stack.Screen name="Auth" component={AuthStack} />
+          ) : (
+            <Stack.Screen name="MainTabs" component={AppTabs} />
+          )}
+        </Stack.Navigator>
+
+        {isAuthenticatedOrGuest && <BingSideBar />}
+        <QuickSettingsModal />
+        <InterfaceGuideModal />
+      </View>
     </NavigationContainer>
   );
 }

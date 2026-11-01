@@ -11,13 +11,51 @@ import {
   isRetryableKind,
 } from "@/lib/chatErrors";
 
-export async function createSession() {
+/** @typedef {"hint" | "solution"} ChatMode */
+
+/**
+ * @typedef {Object} CreateSessionOptions
+ * @property {AbortSignal | null} [signal]
+ */
+
+/**
+ * @typedef {Object} ChatOptions
+ * @property {string | null} [image]
+ * @property {boolean} [stream]
+ * @property {ChatMode} [mode]
+ * @property {AbortSignal | null} [signal]
+ */
+
+/**
+ * @typedef {Object} ChatResponse
+ * @property {string} [reply]
+ * @property {boolean} [error]
+ * @property {string} [kind]
+ * @property {number} [status]
+ * @property {Record<string, unknown>} [perception]
+ * @property {Record<string, unknown>} [mathviz]
+ * @property {Record<string, unknown>} [verification]
+ * @property {Record<string, unknown>} [verification_metadata]
+ */
+
+/**
+ * @param {CreateSessionOptions} [options]
+ * @returns {Promise<string | null>}
+ */
+export async function createSession(options = {}) {
+  const { signal = null } = options || {};
+  if (signal?.aborted) return null;
   try {
-    const res = await authFetch("/api/session/new", { base: API, method: "POST" });
+    const res = await authFetch("/api/session/new", {
+      base: API,
+      method: "POST",
+      ...(signal ? { signal } : {}),
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     return data.session_id || null;
   } catch (err) {
+    if (err?.name === "AbortError" || signal?.aborted) return null;
     console.error("[duoServer] createSession failed:", err);
     return null;
   }
@@ -46,6 +84,12 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * @param {string | null} sessionId
+ * @param {string} message
+ * @param {ChatOptions} [options]
+ * @returns {Promise<ChatResponse>}
+ */
 export async function chat(sessionId, message, options = {}) {
   const { image = null, stream = false, mode = "hint", signal = null } = options;
   const isImageOrGeometry = Boolean(
@@ -93,6 +137,9 @@ export async function chat(sessionId, message, options = {}) {
       }
       return await res.json();
     } catch (err) {
+      if (signal?.aborted) {
+        return { error: true, kind: "cancelled", status: 0, reply: "" };
+      }
       const kind = err?.name === "AbortError" ? "timeout" : "network";
       console.error(`[duoServer] chat ${kind}:`, err?.message || err);
       return { error: true, kind, status: 0, reply: chatFailureMessage(kind) };
@@ -125,6 +172,7 @@ export async function chat(sessionId, message, options = {}) {
     // request that died without an app-level response at all.
     console.warn(`[duoServer] retrying chat after ${result.kind}…`);
     await delay(700);
+    if (signal?.aborted) return { error: true, kind: "cancelled", status: 0, reply: "" };
     result = await attempt();
   }
   return result;
@@ -205,4 +253,3 @@ export async function rotateTypeSafeKey(reason = "User requested rotation") {
     return { success: false, error: err.message };
   }
 }
-

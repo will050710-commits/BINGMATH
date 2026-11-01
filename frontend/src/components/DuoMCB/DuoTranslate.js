@@ -30,8 +30,10 @@ export default function DuoTranslate({ children }) {
   const mouseDownRef = useRef({ x: 0, y: 0, target: null });
 
   useEffect(() => {
-    initSession();
-  }, []);
+    if (isOpen && !sessionId) {
+      initSession();
+    }
+  }, [isOpen, sessionId]);
 
   async function initSession() {
     const sid = await createSession();
@@ -125,6 +127,8 @@ export default function DuoTranslate({ children }) {
 
   const handleMouseUp = useCallback((e) => {
     if (panelRef.current?.contains(e.target)) return;
+    if (e.target?.closest?.('[data-clil-managed="true"]')) return;
+    if (mouseDownRef.current.target?.closest?.('[data-clil-managed="true"]')) return;
     if (isInteractive(mouseDownRef.current.target)) return;
 
     const dx = Math.abs(e.clientX - mouseDownRef.current.x);

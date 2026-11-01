@@ -226,6 +226,21 @@ def tool_sympy_verify(claim: str) -> Dict[str, Any]:
         if op is None:
             return {"ok": False, "error": "claim has no relation operator (=, <, >, …)"}
         a, b = _parse(lhs), _parse(rhs)
+        # Fast-path for constant expressions (e.g. nested radicals in geometry):
+        # numerical evaluation via evalf() takes <1ms whereas sympy.simplify()
+        # can stall for seconds.
+        if not (a.free_symbols or b.free_symbols):
+            try:
+                val = complex((a - b).evalf())
+                if op == "=":
+                    is_true = abs(val) < TOL
+                    return {"ok": True, "true": bool(is_true), "difference": "0" if is_true else str(val.real)}
+                num_val = float(val.real)
+                verdict = {"<": num_val < 0, ">": num_val > 0, "<=": num_val <= TOL,
+                           ">=": num_val >= -TOL, "!=": abs(num_val) > TOL}.get(op, False)
+                return {"ok": True, "true": bool(verdict), "difference": str(num_val), "numeric": num_val}
+            except Exception:
+                pass
         diff = sympy.simplify(a - b)
         if op == "=":
             is_true = diff == 0
@@ -679,24 +694,38 @@ def check_identities(reply: str) -> Dict[str, Any]:
 def check_sanity(ir: Dict[str, Any], reply: str) -> Dict[str, Any]:
     """Cheap domain rules: a radius/length/area cannot be negative, a probability
     cannot exceed 1."""
-    words = " ".join([*(ir.get("text_blocks") or []), ir.get("transcription") or "",
-                      ir.get("student_words") or ""]).lower()
+    ir = ir or {}
+    words = " ".join([
+        *(ir.get("text_blocks") or []),
+        ir.get("transcription") or "",
+        ir.get("problem_statement") or "",
+        ir.get("student_words") or "",
+    ]).lower()
+    has_len_domain = any(k in words for k in ("bán kính", "độ dài", "diện tích",
+                                              "thể tích", "radius", "length", "area"))
+    has_prob_domain = any(k in words for k in ("xác suất", "probability"))
     issues: List[str] = []
+    checked = 0
     for claim in extract_candidates(reply):
         parts = _claim_parts(claim)
         value = _numeric(parts[1]) if parts else _numeric(claim)
         if value is None:
             continue
-        if value < 0 and any(k in words for k in ("bán kính", "độ dài", "diện tích",
-                                                  "thể tích", "radius", "length", "area")):
-            issues.append(f"'{claim}' is negative but the problem asks for a length/area/radius")
-        if value > 1 and "%" not in claim and any(k in words for k in ("xác suất", "probability")):
+        if has_len_domain:
+            checked += 1
+            if value < 0:
+                issues.append(f"'{claim}' is negative but the problem asks for a length/area/radius")
+        if has_prob_domain and "%" not in claim:
             if parts and parts[0].lower() not in ("p", "prob", "xs"):
                 continue
-            issues.append(f"'{claim}' exceeds 1 but the problem asks for a probability")
+            checked += 1
+            if value > 1:
+                issues.append(f"'{claim}' exceeds 1 but the problem asks for a probability")
     if issues:
-        return {"name": "sanity", "status": "failed", "detail": issues}
-    return {"name": "sanity", "status": "passed"}
+        return {"name": "sanity", "status": "failed", "detail": issues, "checked": checked}
+    if checked == 0:
+        return {"name": "sanity", "status": "skipped", "reason": "no domain constraint to check", "checked": 0}
+    return {"name": "sanity", "status": "passed", "checked": checked}
 
 
 def check_geometry(reply: str) -> Dict[str, Any]:
@@ -708,8 +737,8 @@ def check_geometry(reply: str) -> Dict[str, Any]:
     the critic check still covers geometry word problems.
     """
     text = str(reply or "")
-    candidates: List[str] = re.findall(r"```(?:json)?\s*(\{[\s\S]{20,6000}?\})\s*```", text)
-    inline = re.search(r'(\{"layers"[\s\S]{20,6000}\})', text)
+    candidates: List[str] = re.findall(r"```(?:mathviz|json)?\s*(\{[\s\S]{20,12000}?\})\s*```", text)
+    inline = re.search(r'(\{"(?:layers|widget)"[\s\S]{20,12000}\})', text)
     if inline:
         candidates.append(inline.group(1))
     candidates.append(text)
@@ -947,43 +976,85 @@ def unverified_note(verification: Optional[Dict[str, Any]]) -> str:
     return BADGE_TEMPLATE.format(reasons="; ".join(reasons[:3]))
 
 
-async def verify_and_repair(ir: Dict[str, Any], reply: str, *, chat_fn: Optional[Callable] = None,
+async def verify_and_repair(ir: Optional[Dict[str, Any]] = None, reply: str = "", *,
+                            perception: Optional[Dict[str, Any]] = None,
+                            chat_fn: Optional[Callable] = None,
                             mode: Optional[str] = None,
-                            precomputed_checks: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+                            precomputed_checks: Optional[List[Dict[str, Any]]] = None,
+                            request_id: Optional[str] = None,
+                            response_version: str = "v1") -> Dict[str, Any]:
     """Check a finished answer; repair it ONCE when a check fails, then re-check.
 
-    Returns {reply, verified, status, checks, critic, repaired, notes, mode}.
+    Returns a Q1-compliant verification envelope ({reply, verified, status, reason,
+    checks, coverage, critic, repaired, notes, mode, schemaVersion, requestId,
+    responseVersion, verifierVersion}).
     The caller appends `verification_note()` to the reply when that is not empty.
 
     ``precomputed_checks`` lets the caller run the deterministic layer on its
     own clock (P3): when the critic times out, those free results are still
     reported instead of being thrown away with the whole call.
     """
+    from verification_contract import evaluate_verification_envelope
+
+    if ir is None:
+        ir = perception or {}
+    elif perception and not ir:
+        ir = perception
+
     mode = (mode or verify_mode()).lower()
-    result: Dict[str, Any] = {"verified": False, "status": STATUS_NOT_APPLICABLE,
-                              "checks": [], "critic": None,
-                              "repaired": False, "notes": "", "reply": reply, "mode": mode}
     if mode == "off" or not str(reply or "").strip():
-        result["notes"] = "verification disabled" if mode == "off" else "empty reply"
-        result["verified"] = mode == "off"
-        result["status"] = STATUS_VERIFIED if mode == "off" else STATUS_NOT_APPLICABLE
-        return result
+        env = evaluate_verification_envelope(
+            mode=mode,
+            reply=reply,
+            request_id=request_id,
+            response_version=response_version,
+        )
+        env["reply"] = reply
+        return env
 
     checks = list(precomputed_checks) if precomputed_checks is not None else deterministic_checks(ir, reply)
     critic = await critic_review(ir, reply, chat_fn=chat_fn)
     bad = failed_checks(checks)
     verdict = (critic or {}).get("verdict")
-    result.update(checks=checks, critic=critic)
+    has_ans = bool(extract_candidates(reply)) or bool((ir or {}).get("latex"))
+    has_scn = "layers" in str(reply or "") or any(
+        c.get("name") == "geometry" and c.get("status") in ("passed", "failed", "pass", "fail")
+        for c in checks
+    )
+
     if not bad and verdict != "wrong":
-        result["verified"] = True
-        result["status"] = STATUS_VERIFIED
-        result["notes"] = "deterministic checks passed" + (", critic agrees" if verdict == "correct" else "")
-        return result
+        env = evaluate_verification_envelope(
+            mode=mode,
+            reply=reply,
+            raw_checks=checks,
+            critic=critic,
+            has_answer_claim=has_ans,
+            has_scene_claim=has_scn,
+            repaired=False,
+            request_id=request_id,
+            response_version=response_version,
+        )
+        env["reply"] = reply
+        return env
 
     if chat_fn is None:
-        result["status"] = STATUS_FAILED
-        result["notes"] = "checks failed and no model was available to repair"
-        return result
+        env = evaluate_verification_envelope(
+            mode=mode,
+            reply=reply,
+            raw_checks=checks,
+            critic=critic,
+            has_answer_claim=has_ans,
+            has_scene_claim=has_scn,
+            repaired=False,
+            request_id=request_id,
+            response_version=response_version,
+        )
+        env["status"] = STATUS_FAILED
+        env["verified"] = False
+        env["reason"] = "conflict"
+        env["notes"] = "checks failed and no model was available to repair"
+        env["reply"] = reply
+        return env
 
     evidence = {
         "failed_checks": bad,
@@ -993,17 +1064,52 @@ async def verify_and_repair(ir: Dict[str, Any], reply: str, *, chat_fn: Optional
     if repaired_reply:
         checks_after = deterministic_checks(ir, repaired_reply)
         critic_after = await critic_review(ir, repaired_reply, chat_fn=chat_fn)
-        if not failed_checks(checks_after) and (critic_after or {}).get("verdict") != "wrong":
-            result.update(reply=repaired_reply, checks=checks_after, critic=critic_after,
-                          verified=True, repaired=True, status=STATUS_VERIFIED,
-                          notes="đã sửa và kiểm lại đạt")
+        has_ans_after = bool(extract_candidates(repaired_reply)) or bool((ir or {}).get("latex"))
+        has_scn_after = "layers" in str(repaired_reply or "") or any(
+            c.get("name") == "geometry" and c.get("status") in ("passed", "failed", "pass", "fail")
+            for c in checks_after
+        )
+        env_after = evaluate_verification_envelope(
+            mode=mode,
+            reply=repaired_reply,
+            raw_checks=checks_after,
+            critic=critic_after,
+            has_answer_claim=has_ans_after,
+            has_scene_claim=has_scn_after,
+            repaired=True,
+            request_id=request_id,
+            response_version=f"{response_version}-r1",
+        )
+        if env_after["verified"]:
+            env_after["reply"] = repaired_reply
             logger.info("[MathSolver] repaired a failing answer (checks now pass)")
-            return result
-        result.update(checks=checks_after, critic=critic_after, repaired=True)
+            return env_after
+        env_after["status"] = STATUS_FAILED
+        env_after["verified"] = False
+        env_after["reason"] = "conflict"
+        env_after["notes"] = "kiểm tra không đạt: " + ", ".join(
+            str(c.get("name", "?")) for c in (failed_checks(checks_after) or bad)
+        )
+        env_after["reply"] = reply
+        return env_after
 
-    result["verified"] = False
-    result["status"] = STATUS_FAILED
-    result["notes"] = "kiểm tra không đạt: " + ", ".join(
-        str(c.get("name", "?")) for c in (failed_checks(result["checks"]) or bad))
-    return result
+    env_fail = evaluate_verification_envelope(
+        mode=mode,
+        reply=reply,
+        raw_checks=checks,
+        critic=critic,
+        has_answer_claim=has_ans,
+        has_scene_claim=has_scn,
+        repaired=False,
+        request_id=request_id,
+        response_version=response_version,
+    )
+    env_fail["status"] = STATUS_FAILED
+    env_fail["verified"] = False
+    env_fail["reason"] = "conflict"
+    env_fail["notes"] = "kiểm tra không đạt: " + ", ".join(
+        str(c.get("name", "?")) for c in (failed_checks(checks) or bad)
+    )
+    env_fail["reply"] = reply
+    return env_fail
 

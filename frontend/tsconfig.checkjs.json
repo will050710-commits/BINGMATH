@@ -11,7 +11,6 @@
     "skipLibCheck": true,
     "types": [],
     "lib": ["esnext", "dom", "dom.iterable"],
-    "baseUrl": ".",
     "paths": { "@/*": ["./src/*"] },
     "strict": false,
     "noImplicitAny": false

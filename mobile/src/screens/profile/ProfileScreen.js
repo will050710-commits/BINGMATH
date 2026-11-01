@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, RefreshControl, Alert,
+  View, Text, ScrollView, StyleSheet, Image,
+  SafeAreaView, RefreshControl, Alert, Animated,
 } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { FontFamily, FontSize } from '../../theme/typography';
@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { signOut } from '../../api/auth';
 import apiClient from '../../api/client';
+import PressableScale from '../../components/ui/PressableScale';
 
 function StatCard({ value, label, color = Colors.cyan, emoji }) {
   return (
@@ -22,10 +23,29 @@ function StatCard({ value, label, color = Colors.cyan, emoji }) {
 }
 
 function AvatarCircle({ name, avatarUrl }) {
-  const initials = (name || 'U').slice(0, 2).toUpperCase();
+  const [errored, setErrored] = useState(false);
+  const opacity = useRef(new Animated.Value(0)).current;
+  const showImage = !!avatarUrl && !errored;
+
+  const handleLoad = () => {
+    Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }).start();
+  };
+
   return (
     <View style={styles.avatar}>
-      <Text style={styles.avatarText}>{initials}</Text>
+      {showImage ? (
+        <Animated.Image
+          source={{ uri: avatarUrl }}
+          style={[styles.avatarImage, { opacity }]}
+          onLoad={handleLoad}
+          onError={() => setErrored(true)}
+        />
+      ) : (
+        <Image
+          source={require('../../assets/images/owl.png')}
+          style={{ width: 56, height: 56, resizeMode: 'contain' }}
+        />
+      )}
     </View>
   );
 }
@@ -62,7 +82,11 @@ export default function ProfileScreen({ navigation }) {
           text: t('Đăng xuất', 'Sign Out'),
           style: 'destructive',
           onPress: async () => {
-            try { await signOut(); } catch {}
+            try {
+              await signOut();
+            } catch {
+              Alert.alert(t('Lỗi', 'Error'), t('Không thể đăng xuất. Vui lòng thử lại.', 'Could not sign out. Please try again.'));
+            }
           },
         },
       ]
@@ -84,24 +108,25 @@ export default function ProfileScreen({ navigation }) {
         {/* Profile Header */}
         <View style={styles.profileHeader}>
           <AvatarCircle name={displayName} avatarUrl={profile?.avatar_url} />
-          <Text style={styles.profileName}>{displayName}</Text>
-          <Text style={styles.profileEmail}>{email}</Text>
-          {(school || grade) && (
-            <View style={styles.infoRow}>
-              {school ? <Text style={styles.infoChip}>🏫 {school}</Text> : null}
-              {grade ? <Text style={styles.infoChip}>📚 {grade}</Text> : null}
+          <Text style={styles.displayName}>{displayName}</Text>
+          <Text style={styles.email}>{email}</Text>
+
+          {(school || grade) ? (
+            <View style={styles.metaRow}>
+              {school ? <Text style={styles.metaChip}>🏫 {school}</Text> : null}
+              {grade ? <Text style={styles.metaChip}>🎓 {grade}</Text> : null}
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Stats Grid */}
         {stats && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('Thống Kê', 'Statistics')}</Text>
+            <Text style={styles.sectionTitle}>{t('Thống Kê Đấu Hạng', 'Competitive Stats')}</Text>
             <View style={styles.statsGrid}>
-              <StatCard emoji="⚡" value={stats.xp} label="XP" color={Colors.cyan} />
-              <StatCard emoji="🔥" value={stats.current_streak} label={t('Streak', 'Streak')} color={Colors.amber} />
-              <StatCard emoji="🏆" value={stats.longest_streak} label={t('Kỷ lục', 'Best Streak')} color={Colors.purple} />
+              <StatCard emoji="⭐" value={stats.xp} label={t('Tổng XP', 'Total XP')} color={Colors.cyan} />
+              <StatCard emoji="🔥" value={stats.current_streak} label={t('Chuỗi ngày', 'Day Streak')} color={Colors.amber} />
+              <StatCard emoji="🏆" value={stats.elo_rating ?? 1000} label="Elo Rating" color={Colors.accent} />
               <StatCard emoji="🌍" value={stats.global_rank ? `#${stats.global_rank}` : '--'} label={t('Xếp hạng', 'Global Rank')} color={Colors.teal} />
             </View>
           </View>
@@ -112,35 +137,35 @@ export default function ProfileScreen({ navigation }) {
           <Text style={styles.sectionTitle}>{t('Cài Đặt', 'Settings')}</Text>
 
           {/* Language toggle */}
-          <TouchableOpacity style={styles.settingRow} onPress={toggleLang} activeOpacity={0.8}>
+          <PressableScale style={styles.settingRow} onPress={toggleLang} haptics="select">
             <Text style={styles.settingEmoji}>🌐</Text>
             <View style={{ flex: 1 }}>
               <Text style={styles.settingLabel}>{t('Ngôn ngữ', 'Language')}</Text>
               <Text style={styles.settingValue}>{lang === 'vi' ? '🇻🇳 Tiếng Việt' : '🇬🇧 English'}</Text>
             </View>
             <Text style={styles.settingArrow}>›</Text>
-          </TouchableOpacity>
+          </PressableScale>
 
           {/* Edit profile */}
-          <TouchableOpacity style={styles.settingRow} onPress={() => navigation.navigate('Settings')} activeOpacity={0.8}>
+          <PressableScale style={styles.settingRow} onPress={() => navigation.navigate('Settings')} haptics="tap">
             <Text style={styles.settingEmoji}>✏️</Text>
             <View style={{ flex: 1 }}>
               <Text style={styles.settingLabel}>{t('Chỉnh sửa hồ sơ', 'Edit Profile')}</Text>
             </View>
             <Text style={styles.settingArrow}>›</Text>
-          </TouchableOpacity>
+          </PressableScale>
 
           {/* Logout */}
-          <TouchableOpacity style={[styles.settingRow, styles.settingRowDanger]} onPress={handleLogout} activeOpacity={0.8}>
+          <PressableScale style={[styles.settingRow, styles.settingRowDanger]} onPress={handleLogout} haptics="warn">
             <Text style={styles.settingEmoji}>🚪</Text>
             <View style={{ flex: 1 }}>
               <Text style={[styles.settingLabel, { color: Colors.error }]}>{t('Đăng xuất', 'Sign Out')}</Text>
             </View>
-          </TouchableOpacity>
+          </PressableScale>
         </View>
 
         {/* App info */}
-        <Text style={styles.appVersion}>DuoMath Mobile v1.0.0</Text>
+        <Text style={styles.appVersion}>BingMath Mobile v1.0.0</Text>
         <View style={{ height: 40 }} />
       </ScrollView>
     </SafeAreaView>
@@ -157,35 +182,37 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: 84, height: 84, borderRadius: 42,
-    backgroundColor: Colors.accent,
+    backgroundColor: Colors.accent + '25',
+    borderWidth: 2, borderColor: Colors.accent,
     justifyContent: 'center', alignItems: 'center',
-    marginBottom: Spacing.base,
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
     ...Shadow.glowPurple,
   },
-  avatarText: { fontFamily: FontFamily.black, fontSize: 28, color: '#fff' },
-  profileName: { fontFamily: FontFamily.black, fontSize: FontSize.xl, color: Colors.text, marginBottom: 4 },
-  profileEmail: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.sm },
-  infoRow: { flexDirection: 'row', gap: Spacing.sm, flexWrap: 'wrap', justifyContent: 'center' },
-  infoChip: {
-    fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.textMuted,
+  avatarImage: { width: '100%', height: '100%', borderRadius: 42 },
+  displayName: { fontFamily: FontFamily.black, fontSize: FontSize.xl, color: Colors.text, marginBottom: 2 },
+  email: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted, marginBottom: Spacing.sm },
+
+  metaRow: { flexDirection: 'row', gap: Spacing.xs, flexWrap: 'wrap', justifyContent: 'center' },
+  metaChip: {
     backgroundColor: Colors.bgGlass, borderRadius: Radius.full,
-    paddingHorizontal: 10, paddingVertical: 3,
+    paddingHorizontal: 12, paddingVertical: 4,
     borderWidth: 1, borderColor: Colors.border,
+    fontFamily: FontFamily.semiBold, fontSize: FontSize.xs, color: Colors.textMuted,
   },
 
-  section: { marginBottom: Spacing.xl },
-  sectionTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.lg, color: Colors.text, marginBottom: Spacing.md },
+  section: { marginBottom: Spacing['2xl'] },
+  sectionTitle: { fontFamily: FontFamily.extraBold, fontSize: FontSize.md, color: Colors.text, marginBottom: Spacing.md },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   statCard: {
-    flex: 1, minWidth: '45%',
-    backgroundColor: Colors.bgSurface,
-    borderRadius: Radius.xl, borderWidth: 1,
-    padding: Spacing.base, alignItems: 'center',
+    width: '48%', backgroundColor: Colors.bgSurface,
+    borderRadius: Radius.xl, padding: Spacing.base,
+    borderWidth: 1, alignItems: 'center',
     ...Shadow.card,
   },
-  statValue: { fontFamily: FontFamily.black, fontSize: FontSize.xl },
-  statLabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 2 },
+  statValue: { fontFamily: FontFamily.black, fontSize: FontSize.xl, marginBottom: 2 },
+  statLabel: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted },
 
   settingRow: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing.md,
@@ -193,14 +220,14 @@ const styles = StyleSheet.create({
     padding: Spacing.base, marginBottom: Spacing.sm,
     borderWidth: 1, borderColor: Colors.border,
   },
-  settingRowDanger: { borderColor: Colors.error + '30' },
-  settingEmoji: { fontSize: 22, width: 30, textAlign: 'center' },
+  settingRowDanger: { borderColor: Colors.error + '40', backgroundColor: Colors.error + '08' },
+  settingEmoji: { fontSize: 20 },
   settingLabel: { fontFamily: FontFamily.semiBold, fontSize: FontSize.base, color: Colors.text },
-  settingValue: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted },
-  settingArrow: { fontFamily: FontFamily.bold, fontSize: 20, color: Colors.textDim },
+  settingValue: { fontFamily: FontFamily.regular, fontSize: FontSize.xs, color: Colors.textMuted, marginTop: 1 },
+  settingArrow: { fontFamily: FontFamily.bold, fontSize: FontSize.lg, color: Colors.textDim },
 
   appVersion: {
     fontFamily: FontFamily.regular, fontSize: FontSize.xs,
-    color: Colors.textDim, textAlign: 'center', marginTop: Spacing.base,
+    color: Colors.textDim, textAlign: 'center', marginTop: Spacing.sm,
   },
 });

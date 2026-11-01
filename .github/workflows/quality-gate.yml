@@ -42,7 +42,15 @@ jobs:
       # main.py, so pulling sentence-transformers/torch would only burn CI
       # minutes. Add packages here as new suites need them.
       - name: Install test dependencies
-        run: pip install "sympy>=1.12" "numpy>=1.26" "Pillow>=10.0.0" "httpx>=0.27.0" "pydantic>=2" "json-repair>=0.30.0" "gradio_client>=2.0.0" "fsrs>=6.0.0" "shapely>=2.0.0" "trimesh>=4.0.0"
+        run: pip install "sympy>=1.12" "numpy>=1.26" "Pillow>=10.0.0" "httpx>=0.27.0" "pydantic>=2" "json-repair>=0.30.0" "gradio_client>=2.0.0" "fsrs>=6.0.0" "shapely>=2.0.0" "trimesh>=4.0.0" "fastapi>=0.110.0" "slowapi>=0.1.9" "orjson>=3.9.0" "PyJWT[crypto]>=2.8.0" "werkzeug>=3.0.0"
+
+      - name: Security Phase 0 — safe_expr, config_guard & no-eval scan
+        working-directory: backend
+        run: python test_phase0_security.py
+
+      - name: Security Phase 1 — server-side grading & SQL allowlist
+        working-directory: backend
+        run: python test_phase1_grading.py
 
       - name: Perception — MathReader (dual-read consensus + SymPy gate)
         working-directory: backend
@@ -238,6 +246,28 @@ jobs:
         working-directory: backend
         run: python test_math_problem_retrieval.py
 
+      - name: Geometry pipeline — constructions, tangencies, viewbox & implicit extractor
+        working-directory: backend
+        run: |
+          python test_geometry_pipeline.py
+          python test_geometry_snapping.py
+          python test_geometry_verification.py
+          python test_geometry_verification_gate.py
+          python test_geometry_construction_solver.py
+          python test_geometry_canvas_solver_regression.py
+
+      - name: Vision agent & 2-tier cache (offline suite)
+        working-directory: backend
+        run: python test_duomath_space_agent.py
+
+      - name: MathViz routing, translation & FSRS relearn E2E flow
+        working-directory: backend
+        run: |
+          python test_phase1_refactor.py
+          python test_mathviz.py
+          python test_translate_bidirectional.py
+          python test_relearn_flow.py
+
       - name: Math regression benchmark (ground truth vs answers)
         working-directory: backend
         run: python tests/eval_math_regression.py
@@ -331,6 +361,10 @@ jobs:
         working-directory: frontend
         run: node scripts/check-three-api.mjs
 
+      - name: XSS sanitization & dead-file guard (WP-0.3)
+        working-directory: frontend
+        run: node scripts/check-xss-sanitize.mjs
+
   frontend-build:
     name: Frontend build (real bundler + Penrose trios)
     runs-on: ubuntu-latest
@@ -366,4 +400,28 @@ jobs:
 
       - name: next build (Turbopack)
         working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://duomath.onrender.com
         run: pnpm build
+
+      - name: Mobile integration lint
+        working-directory: frontend
+        run: pnpm exec eslint src/mobile src/context/ThemeContext.js src/context/LanguageContext.js src/lib/themeRoutes.js src/components/LayoutClient.js src/components/DuoMCB/duoServer.js src/components/DuoMCB/DuoMCBSidebar.js --max-warnings 0
+
+      - name: Install Chromium for mobile regression tests
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Mobile browser and progress regression tests
+        working-directory: frontend
+        env:
+          PLAYWRIGHT_USE_PRODUCTION: "1"
+        run: pnpm test:mobile
+
+      - name: Upload mobile test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-playwright-results
+          path: work/playwright-results
+          retention-days: 7

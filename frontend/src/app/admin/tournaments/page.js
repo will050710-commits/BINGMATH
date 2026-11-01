@@ -31,14 +31,10 @@ const STATUS_LABELS = {
   pending_approval: "Chờ duyệt",
 };
 
-const STUB_TOURNAMENTS = [
-  { id: "tourney_summer_2026", title: "Giải Đấu Toán Học Mùa Hè 2026", tag: "GIẢI ĐẤU MÙA", status: "upcoming", size: "large", xp_multiplier: 1.5, starts_at: "2026-08-28T00:00:00", ends_at: "2026-09-10T23:59:59", play_mode: "individual", pending_approval: 0, created_by: "admin" },
-];
-
 export default function AdminTournamentsPage() {
   const { user, token } = useAuth?.() || {};
   const router = useRouter();
-  const [tournaments, setTournaments] = useState(STUB_TOURNAMENTS);
+  const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
@@ -55,7 +51,7 @@ export default function AdminTournamentsPage() {
     fetch(`${BASE}/api/tournaments${filterStatus ? `?status=${filterStatus}` : ""}`, { headers: authHeaders })
       .then(r => r.json())
       .then(d => {
-        if (d.tournaments?.length > 0) setTournaments(d.tournaments);
+        setTournaments(Array.isArray(d.tournaments) ? d.tournaments : []);
       })
       .catch(() => {})
       .finally(() => setLoading(false));

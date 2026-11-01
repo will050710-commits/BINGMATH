@@ -11,6 +11,13 @@ import { logQuizAttempt, getNextDifficulty } from "@/lib/api";
 import { useGamification } from "@/hooks/useGamification";
 import GamificationHUD from "@/components/GamificationHUD";
 import { renderDuoIcon } from "@/components/DuoIcons";
+import { LearningExperienceProvider } from "@/context/LearningExperienceContext";
+import LearningModeSwitch, { ConnectedLearningModeSwitch } from "@/components/clil/LearningModeSwitch";
+import BilingualBlock from "@/components/clil/BilingualBlock";
+import ClilPopoverPortalHost from "@/components/clil/ClilPopoverPortalHost";
+import MathTermTrigger from "@/components/clil/MathTermTrigger";
+import { extractSegmentTerms } from "@/components/clil/ClilInlineRenderer";
+import { MATH_TERMS_CATALOG } from "@/content/clil/mathTerms";
 
 // ─── PARTICLE BURST ──────────────────────────────────────────────────────────
 function ParticleBurst({ active }) {
@@ -193,6 +200,8 @@ export default function PremiumLessonEngine({
   renderTheory,
   lang: propLang,
   setLang: propSetLang,
+  clilManifest = null,
+  clilTermsCatalog = MATH_TERMS_CATALOG,
 }) {
   const { user, saveGameResult } = useAuth();
   const [localLang, localSetLang] = useState("vi");
@@ -249,6 +258,8 @@ export default function PremiumLessonEngine({
       answer: rawAns,
       explain: rawExplain,
       key,
+      rawIndex: idx,
+      clilPrefix: q.clilPrefix || `mc${idx}`,
       difficulty: q.difficulty || q.level || "NB"
     };
   };
@@ -271,6 +282,8 @@ export default function PremiumLessonEngine({
       answer,
       explain,
       key,
+      rawIndex: idx,
+      clilPrefix: q.clilPrefix || `tf${idx}`,
       difficulty: q.difficulty || q.level || "NB"
     };
   };
@@ -288,6 +301,8 @@ export default function PremiumLessonEngine({
       answer,
       altAnswers,
       hint,
+      rawIndex: idx,
+      clilPrefix: q.clilPrefix || `fill${idx}`,
       difficulty: q.difficulty || q.level || "NB"
     };
   };
@@ -577,8 +592,27 @@ export default function PremiumLessonEngine({
     questionStartTimeRef.current = Date.now();
   }, [gameMode, difficulty]);
 
-  return (
-    <div style={{ width: "100%", minHeight: "100vh", background: "linear-gradient(160deg, #020c1b 0%, #0a1628 20%, #0c2340 50%, #0a1628 100%)", color: "white", overflowX: "hidden" }}>
+  const clilSeg = (...segIds) => {
+    if (!clilManifest || !clilManifest.segments) return null;
+    for (const segId of segIds) {
+      if (segId && clilManifest.segments[segId]) {
+        return clilManifest.segments[segId];
+      }
+    }
+    return null;
+  };
+  const activeMcItem = activeMcQuestions[mcIndex] || null;
+  const activeMcRawIdx = activeMcItem ? (activeMcItem.rawIndex ?? mcIndex) : mcIndex;
+  const activeMcPrefix = activeMcItem ? (activeMcItem.clilPrefix || `mc${activeMcRawIdx}`) : "";
+  const activeTfItem = activeTfCards[tfIndex] || null;
+  const activeTfRawIdx = activeTfItem ? (activeTfItem.rawIndex ?? tfIndex) : tfIndex;
+  const activeTfPrefix = activeTfItem ? (activeTfItem.clilPrefix || `tf${activeTfRawIdx}`) : "";
+
+  const engineBody = (
+    <div
+      data-clil-managed={clilManifest ? "true" : undefined}
+      style={{ width: "100%", minHeight: "100vh", background: "linear-gradient(160deg, #020c1b 0%, #0a1628 20%, #0c2340 50%, #0a1628 100%)", color: "white", overflowX: "hidden" }}
+    >
       
       {/* ── Top Navigation Bar ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 400, background: "rgba(2,12,27,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "10px 0" }}>
@@ -594,27 +628,44 @@ export default function PremiumLessonEngine({
 
           <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", flexShrink: 0 }} />
 
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1 }}>
-            {navItems.map(([id, icon, labelVi, labelEn]) => (
-              <button key={id} onClick={() => scrollTo(id)}
-                style={{
-                  background: activeSection === id ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.04)",
-                  color: activeSection === id ? "#a5b4fc" : "rgba(255,255,255,0.6)",
-                  border: activeSection === id ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(255,255,255,0.07)",
-                  borderRadius: 7, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
-                }}
-                onMouseEnter={e => { if (activeSection !== id) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; } }}
-                onMouseLeave={e => { if (activeSection !== id) { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; } }}
-              >
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  {renderDuoIcon(icon, { size: 15 })}
-                  {t(labelVi, labelEn)}
-                </span>
-              </button>
-            ))}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", flex: 1, minWidth: 0 }}>
+            {navItems.map(([id, icon, labelVi, labelEn]) => {
+              const navSeg = clilSeg(`nav.${id}`, `nav_${id}`);
+              return (
+                <button key={id} onClick={() => scrollTo(id)}
+                  style={{
+                    background: activeSection === id ? "rgba(99,102,241,0.2)" : "rgba(255,255,255,0.04)",
+                    color: activeSection === id ? "#a5b4fc" : "rgba(255,255,255,0.6)",
+                    border: activeSection === id ? "1px solid rgba(99,102,241,0.4)" : "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 7, padding: "6px 12px", fontSize: 12.5, fontWeight: 600, cursor: "pointer", transition: "all 0.2s",
+                  }}
+                  onMouseEnter={e => { if (activeSection !== id) { e.currentTarget.style.background = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "white"; } }}
+                  onMouseLeave={e => { if (activeSection !== id) { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "rgba(255,255,255,0.6)"; } }}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    {renderDuoIcon(icon, { size: 15 })}
+                    {navSeg ? (
+                      <BilingualBlock
+                        segment={navSeg}
+                        catalog={clilTermsCatalog}
+                        variant="inline"
+                        interactiveParent={true}
+                      />
+                    ) : (
+                      t(labelVi, labelEn)
+                    )}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-
+          {clilManifest && (
+            <ConnectedLearningModeSwitch
+              labelsLocale={lang === "en" ? "en" : "vi"}
+              manifest={clilManifest}
+            />
+          )}
 
           {/* Bilingual toggle */}
           <div style={{ position: "relative", display: "flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", padding: 3, borderRadius: 24, flexShrink: 0 }}>
@@ -636,35 +687,58 @@ export default function PremiumLessonEngine({
       </div>
 
       {/* ── Main Split-Screen Layout ── */}
-      <div style={{ width: "1400px", maxWidth: "97%", margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 420px", gap: 32, paddingTop: 36, paddingBottom: 80, alignItems: "start" }}>
+      <div
+        className="clil-lesson-grid grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]"
+        style={{ width: "1400px", maxWidth: "97%", margin: "0 auto", paddingTop: 36, paddingBottom: 80, alignItems: "start" }}
+      >
         
         {/* ════ LEFT COLUMN: Theory ════ */}
-        <div>
+        <div style={{ minWidth: 0 }}>
           {/* Page Title */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ marginBottom: 40 }}>
             <div style={{ fontSize: 12, fontWeight: 800, color: "#818cf8", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 8 }}>
-              {t(chapterTitle?.vi, chapterTitle?.en)}
+              {clilSeg(clilManifest?.chapterSegmentId, "meta.chapter", "chapterTitle") ? (
+                <BilingualBlock segment={clilSeg(clilManifest?.chapterSegmentId, "meta.chapter", "chapterTitle")} catalog={clilTermsCatalog} variant="inline" />
+              ) : (
+                t(chapterTitle?.vi, chapterTitle?.en)
+              )}
             </div>
-            <h1 style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 900, background: "linear-gradient(135deg, #fff 60%, #a5b4fc 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", marginBottom: 10, lineHeight: 1.15 }}>
-              {t(lessonTitle?.vi, lessonTitle?.en)}
+            <h1 style={{ fontSize: "clamp(26px, 4vw, 38px)", fontWeight: 900, color: "#f8fafc", marginBottom: 10, lineHeight: 1.15 }}>
+              {clilSeg(clilManifest?.titleSegmentId, "meta.title", "lessonTitle") ? (
+                <BilingualBlock segment={clilSeg(clilManifest?.titleSegmentId, "meta.title", "lessonTitle")} catalog={clilTermsCatalog} variant="heading" />
+              ) : (
+                t(lessonTitle?.vi, lessonTitle?.en)
+              )}
             </h1>
             {/* Learning Objectives */}
             {learningObjectives.length > 0 && (
               <div data-reveal style={{ padding: "16px 20px", borderRadius: 12, background: "rgba(99,102,241,0.07)", border: "1px solid rgba(99,102,241,0.15)", marginTop: 16 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, color: "#a5b4fc", marginBottom: 10 }}>🎯 {t("Yêu cầu cần đạt", "Learning Objectives")}</div>
-                {learningObjectives.map((o, i) => (
-                  <div key={i} style={{ fontSize: 13.5, color: "rgba(255,255,255,0.65)", marginBottom: 5 }}>• {t(o.vi, o.en)}</div>
-                ))}
+                {learningObjectives.map((o, i) => {
+                  const objSeg = clilSeg(clilManifest?.objectiveSegmentIds?.[i], `obj.${i + 1}`, `objective${i + 1}`);
+                  return (
+                    <div key={i} style={{ fontSize: 13.5, color: "rgba(255,255,255,0.75)", marginBottom: 8, display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <span style={{ color: "#818cf8", marginTop: 2 }}>•</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {objSeg ? (
+                          <BilingualBlock segment={objSeg} catalog={clilTermsCatalog} variant="compact" />
+                        ) : (
+                          t(o.vi, o.en)
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </motion.div>
 
           {/* Render Lesson Custom Theory Markup */}
-          {renderTheory?.({ t, lang, LessonVideoPlayer, videoId, videoSubtitles })}
+          {renderTheory?.({ t, lang, LessonVideoPlayer, videoId, videoSubtitles, clilManifest, clilTermsCatalog })}
         </div>
 
         {/* ════ RIGHT COLUMN: Interactive Mini Game workspace ════ */}
-        <div style={{ position: "sticky", top: 72, maxHeight: "calc(100vh - 100px)", overflowY: "auto" }}>
+        <div className="clil-lesson-sidebar" style={{ position: "sticky", top: 72, maxHeight: "calc(100vh - 100px)", overflowY: "auto", minWidth: 0 }}>
           <section id="miniGame" style={{ scrollMarginTop: 80 }}>
             <div style={{
               background: "rgba(15, 23, 42, 0.7)",
@@ -826,7 +900,13 @@ export default function PremiumLessonEngine({
                             <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>{t("Câu", "Q")} {mcIndex + 1}/{activeMcQuestions.length}</span>
                             <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1" }}>{t("Điểm:", "Score:")} {mcScore}</span>
                           </div>
-                          <div style={{ fontSize: 15.5, fontWeight: 600, color: "white", lineHeight: 1.6, marginBottom: 18 }}>{activeMcQuestions[mcIndex].q}</div>
+                          <div style={{ fontSize: 15.5, fontWeight: 600, color: "white", lineHeight: 1.6, marginBottom: 18 }}>
+                            {clilSeg(`q.mc${activeMcRawIdx + 1}.prompt`, `${activeMcPrefix}_q`) ? (
+                              <BilingualBlock segment={clilSeg(`q.mc${activeMcRawIdx + 1}.prompt`, `${activeMcPrefix}_q`)} catalog={clilTermsCatalog} variant="compact" />
+                            ) : (
+                              activeMcQuestions[mcIndex].q
+                            )}
+                          </div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
                             {activeMcQuestions[mcIndex].options.map((opt, i) => {
                               let bg = "rgba(255,255,255,0.05)";
@@ -843,20 +923,63 @@ export default function PremiumLessonEngine({
                                   color = "#fca5a5";
                                 }
                               }
+                              const optSeg = clilSeg(`q.mc${activeMcRawIdx + 1}.opt${i}`, `${activeMcPrefix}_opt${i}`);
+                              const optTerms = optSeg ? extractSegmentTerms(optSeg, "en") : [];
                               return (
-                                <button key={i} onClick={() => handleMcSelect(i)} style={{
-                                  textAlign: "left", padding: "11px 14px", borderRadius: 9, border: `1px solid ${border}`,
-                                  background: bg, color, fontSize: 14, fontWeight: 500, cursor: mcSelected !== null ? "default" : "pointer", transition: "all 0.2s",
-                                }}>
-                                  {String.fromCharCode(65 + i)}. {opt}
-                                </button>
+                                <div key={i} style={{ display: "flex", alignItems: "stretch", gap: 6 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMcSelect(i)}
+                                    data-testid={`mc-option-${i}`}
+                                    style={{
+                                      flex: 1,
+                                      textAlign: "left", padding: "11px 14px", borderRadius: 9, border: `1px solid ${border}`,
+                                      background: bg, color, fontSize: 14, fontWeight: 500, cursor: mcSelected !== null ? "default" : "pointer", transition: "all 0.2s",
+                                    }}
+                                  >
+                                    <span style={{ fontWeight: 700, marginRight: 6 }}>{String.fromCharCode(65 + i)}.</span>
+                                    {optSeg ? (
+                                      <BilingualBlock
+                                        segment={optSeg}
+                                        catalog={clilTermsCatalog}
+                                        variant="inline"
+                                        interactiveParent={true}
+                                      />
+                                    ) : (
+                                      opt
+                                    )}
+                                  </button>
+                                  {optTerms.length > 0 && (
+                                    <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                                      {optTerms.map((termObj) => {
+                                        const entry = clilTermsCatalog?.[termObj.termId];
+                                        if (!entry) return null;
+                                        return (
+                                          <MathTermTrigger
+                                            key={termObj.termId}
+                                            termId={entry.id}
+                                            surface={`📖 ${entry.en}`}
+                                            segmentId={optSeg.id}
+                                            assessmentAllowsLookup={true}
+                                            interactiveParent={false}
+                                          />
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
                               );
                             })}
                           </div>
                           {mcSelected !== null && (
                             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} style={{ marginTop: 14 }}>
                               <div style={{ padding: "11px 14px", background: "rgba(255,255,255,0.04)", borderRadius: 9, fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 12 }}>
-                                💬 {activeMcQuestions[mcIndex].explain}
+                                💬{" "}
+                                {clilSeg(`q.mc${activeMcRawIdx + 1}.ex`, `${activeMcPrefix}_explain`) ? (
+                                  <BilingualBlock segment={clilSeg(`q.mc${activeMcRawIdx + 1}.ex`, `${activeMcPrefix}_explain`)} catalog={clilTermsCatalog} variant="inline" />
+                                ) : (
+                                  activeMcQuestions[mcIndex].explain
+                                )}
                               </div>
                               <MorphButton onClick={handleMcNext} label={mcIndex + 1 < activeMcQuestions.length ? t("Câu tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")} />
                             </motion.div>
@@ -880,7 +1003,11 @@ export default function PremiumLessonEngine({
                             <span style={{ fontSize: 12, fontWeight: 700, color: "#6366f1" }}>{t("Điểm:", "Score:")} {tfScore}</span>
                           </div>
                           <div style={{ padding: "18px 16px", borderRadius: 12, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.07)", marginBottom: 16, textAlign: "center", fontSize: 15, lineHeight: 1.7, color: "rgba(255,255,255,0.85)" }}>
-                            {activeTfCards[tfIndex].stmt}
+                            {clilSeg(`q.tf${activeTfRawIdx + 1}.prompt`, `${activeTfPrefix}_stmt`) ? (
+                              <BilingualBlock segment={clilSeg(`q.tf${activeTfRawIdx + 1}.prompt`, `${activeTfPrefix}_stmt`)} catalog={clilTermsCatalog} variant="compact" />
+                            ) : (
+                              activeTfCards[tfIndex].stmt
+                            )}
                           </div>
                           {!tfFlipped ? (
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
@@ -890,7 +1017,12 @@ export default function PremiumLessonEngine({
                           ) : (
                             <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                               <div style={{ padding: "11px 14px", background: "rgba(255,255,255,0.04)", borderRadius: 9, fontSize: 13, color: "rgba(255,255,255,0.6)", marginBottom: 12 }}>
-                                💬 {activeTfCards[tfIndex].explain}
+                                💬{" "}
+                                {clilSeg(`q.tf${activeTfRawIdx + 1}.ex`, `${activeTfPrefix}_explain`) ? (
+                                  <BilingualBlock segment={clilSeg(`q.tf${activeTfRawIdx + 1}.ex`, `${activeTfPrefix}_explain`)} catalog={clilTermsCatalog} variant="inline" />
+                                ) : (
+                                  activeTfCards[tfIndex].explain
+                                )}
                               </div>
                               <MorphButton onClick={handleTfNext} label={tfIndex + 1 < activeTfCards.length ? t("Thẻ tiếp ▶", "Next ▶") : t("Xem kết quả", "See Results")} />
                             </motion.div>
@@ -910,28 +1042,45 @@ export default function PremiumLessonEngine({
                       ) : !fillChecked ? (
                         <>
                           <div style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 18 }}>{t("Điền câu trả lời vào chỗ trống", "Fill in each blank")}</div>
-                          {activeFillQuestions.map((q, qi) => (
-                            <div key={q.id} style={{ marginBottom: 20 }}>
-                              <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("Câu", "Q")} {qi + 1}</div>
-                              <div style={{ fontSize: 14.5, lineHeight: 1.7, color: "rgba(255,255,255,0.8)", marginBottom: 9 }}>{q.template}</div>
-                              <input
-                                value={fillAnswers[q.id] || ""}
-                                onChange={(e) => setFillAnswers((p) => ({ ...p, [q.id]: e.target.value }))}
-                                placeholder={t("Nhập đáp án...", "Enter answer...")}
-                                style={{
-                                  width: "100%", padding: "11px 14px", borderRadius: 9,
-                                  fontSize: 14, outline: "none",
-                                  background: "rgba(255,255,255,0.06)", color: "white",
-                                  border: "1px solid rgba(255,255,255,0.12)",
-                                  boxSizing: "border-box",
-                                  transition: "border-color 0.2s",
-                                }}
-                                onFocus={e => e.target.style.borderColor = "rgba(99,102,241,0.5)"}
-                                onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.12)"}
-                              />
-                              <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.3)", marginTop: 5 }}>💡 {q.hint}</div>
-                            </div>
-                          ))}
+                          {activeFillQuestions.map((q, qi) => {
+                            const fillRawIdx = q.rawIndex ?? qi;
+                            const fillPrefix = q.clilPrefix || `fill${fillRawIdx}`;
+                            return (
+                              <div key={q.id} style={{ marginBottom: 20 }}>
+                                <div style={{ fontSize: 12, color: "#6366f1", fontWeight: 700, marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5 }}>{t("Câu", "Q")} {qi + 1}</div>
+                                <div style={{ fontSize: 14.5, lineHeight: 1.7, color: "rgba(255,255,255,0.8)", marginBottom: 9 }}>
+                                  {clilSeg(`q.${q.id}.prompt`, `q.f${fillRawIdx + 1}.prompt`, `${fillPrefix}_tpl`) ? (
+                                    <BilingualBlock segment={clilSeg(`q.${q.id}.prompt`, `q.f${fillRawIdx + 1}.prompt`, `${fillPrefix}_tpl`)} catalog={clilTermsCatalog} variant="compact" />
+                                  ) : (
+                                    q.template
+                                  )}
+                                </div>
+                                <input
+                                  value={fillAnswers[q.id] || ""}
+                                  onChange={(e) => setFillAnswers((p) => ({ ...p, [q.id]: e.target.value }))}
+                                  placeholder={t("Nhập đáp án...", "Enter answer...")}
+                                  style={{
+                                    width: "100%", padding: "11px 14px", borderRadius: 9,
+                                    fontSize: 14, outline: "none",
+                                    background: "rgba(255,255,255,0.06)", color: "white",
+                                    border: "1px solid rgba(255,255,255,0.12)",
+                                    boxSizing: "border-box",
+                                    transition: "border-color 0.2s",
+                                  }}
+                                  onFocus={e => e.target.style.borderColor = "rgba(99,102,241,0.5)"}
+                                  onBlur={e => e.target.style.borderColor = "rgba(255,255,255,0.12)"}
+                                />
+                                <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.45)", marginTop: 5 }}>
+                                  💡{" "}
+                                  {clilSeg(`q.${q.id}.hint`, `q.f${fillRawIdx + 1}.hint`, `${fillPrefix}_hint`) ? (
+                                    <BilingualBlock segment={clilSeg(`q.${q.id}.hint`, `q.f${fillRawIdx + 1}.hint`, `${fillPrefix}_hint`)} catalog={clilTermsCatalog} variant="inline" />
+                                  ) : (
+                                    q.hint
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                           <MorphButton onClick={handleFillCheck} label={t("Kiểm tra đáp án", "Check Answers")} />
                         </>
                       ) : (
@@ -954,8 +1103,24 @@ export default function PremiumLessonEngine({
         [data-reveal]{opacity:0;transform:translateY(24px);transition:opacity 0.6s cubic-bezier(.16,1,.3,1),transform 0.5s cubic-bezier(.16,1,.3,1);}
         [data-reveal].visible{opacity:1;transform:translateY(0);}
         ::-webkit-scrollbar{width:5px;} ::-webkit-scrollbar-track{background:transparent;} ::-webkit-scrollbar-thumb{background:rgba(99,102,241,0.35);border-radius:3px;}
-        @media(max-width:900px){div[style*="gridTemplateColumns: 1fr 420px"]{grid-template-columns:1fr!important;}div[style*="position: sticky; top: 72px"]{position:static!important;}}
+        .clil-lesson-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(20rem,26rem);gap:32px;}
+        @media(max-width:1279px){.clil-lesson-grid{grid-template-columns:minmax(0,1fr)!important;gap:24px;}.clil-lesson-sidebar{position:static!important;max-height:none!important;}}
       `}</style>
     </div>
   );
+
+  if (clilManifest) {
+    return (
+      <LearningExperienceProvider
+        lessonId={clilManifest.lessonId}
+        contentVersion={clilManifest.contentVersion}
+        initialMode="assisted"
+      >
+        {engineBody}
+        <ClilPopoverPortalHost labelsLocale={lang === "en" ? "en" : "vi"} />
+      </LearningExperienceProvider>
+    );
+  }
+
+  return engineBody;
 }

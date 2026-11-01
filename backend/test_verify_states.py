@@ -1,4 +1,4 @@
-"""test_verify_states.py — offline suite for P3 (honest verification states).
+"""test_verify_states.py — offline suite for P3 + Q1-min (honest verification states).
 
 Needs sympy (already in CI's light install). No network, no main.py import.
 """
@@ -74,7 +74,7 @@ legacy = ms.verification_note({"verified": False})   # no status (old payload)
 check("a payload without a status keeps the old badge",
       "chưa kết luận được" in legacy)
 
-print("\n=== verify_and_repair: the status is set on every exit ===")
+print("\n=== verify_and_repair: Q1 honest verification states on every exit ===")
 
 
 def fake_critic(verdict):
@@ -83,20 +83,40 @@ def fake_critic(verdict):
     return _chat
 
 
-ir = {"transcription": "Xin chào", "latex": ""}
-out = asyncio.run(ms.verify_and_repair(ir, "Xin chào em!", chat_fn=fake_critic("unclear")))
-check("a plain reply with an unclear critic is verified",
-      out["verified"] is True and out["status"] == ms.STATUS_VERIFIED, str(out.get("status")))
-check("...with the historical notes text kept", out["notes"].startswith("deterministic checks passed"))
+ir_plain = {"transcription": "Xin chào", "latex": ""}
+out_plain = asyncio.run(ms.verify_and_repair(ir_plain, "Xin chào em!", chat_fn=fake_critic("unclear")))
+check("a plain reply with no applicable mathematical check is not_applicable (no false verified)",
+      out_plain["verified"] is False
+      and out_plain["status"] == ms.STATUS_NOT_APPLICABLE
+      and out_plain["reason"] == "no_evidence",
+      str(out_plain))
+check("...and produces no scary badge for backward-compatible clients",
+      ms.verification_note(out_plain) == "")
 
-out_empty = asyncio.run(ms.verify_and_repair(ir, "   ", chat_fn=fake_critic("unclear")))
+ir_math = {"transcription": "Giải phương trình x + 1 = 2", "latex": ["x+1=2"]}
+out_math = asyncio.run(ms.verify_and_repair(ir_math, "Đáp án: x = 1", chat_fn=fake_critic("unclear")))
+check("a math reply with positive deterministic checks and unclear critic is verified",
+      out_math["verified"] is True
+      and out_math["status"] == ms.STATUS_VERIFIED
+      and out_math["reason"] == "complete",
+      str(out_math))
+check("...with the historical notes text kept", out_math["notes"].startswith("deterministic checks passed"))
+
+out_empty = asyncio.run(ms.verify_and_repair(ir_plain, "   ", chat_fn=fake_critic("unclear")))
 check("an empty reply is not_applicable, not failed",
-      out_empty["status"] == ms.STATUS_NOT_APPLICABLE and out_empty["verified"] is False)
+      out_empty["status"] == ms.STATUS_NOT_APPLICABLE
+      and out_empty["verified"] is False
+      and out_empty["reason"] == "no_evidence")
 
-out_off = asyncio.run(ms.verify_and_repair(ir, "Xin chào", chat_fn=fake_critic("unclear"), mode="off"))
-check("mode=off reports verified (nothing to fear) with its own note",
-      out_off["verified"] is True and out_off["status"] == ms.STATUS_VERIFIED
-      and out_off["notes"] == "verification disabled")
+out_off = asyncio.run(ms.verify_and_repair(ir_math, "Đáp án: x = 1", chat_fn=fake_critic("unclear"), mode="off"))
+check("mode=off reports verified=False, status=not_applicable, reason=disabled",
+      out_off["verified"] is False
+      and out_off["status"] == ms.STATUS_NOT_APPLICABLE
+      and out_off["reason"] == "disabled"
+      and out_off["notes"] == "verification disabled",
+      str(out_off))
+check("...and mode=off produces no scary badge",
+      ms.verification_note(out_off) == "")
 
 # precomputed_checks must be REUSED, not recomputed — that is what lets main()
 # run the free layer outside the critic's clock (P3).
@@ -110,10 +130,19 @@ def boom(*_a, **_k):
 ms.deterministic_checks = boom
 try:
     out_pre = asyncio.run(ms.verify_and_repair(
-        ir, "Xin chào em!", chat_fn=fake_critic("unclear"),
-        precomputed_checks=[{"name": "sanity", "status": "passed"}]))
+        ir_math, "Đáp án: x = 1", chat_fn=fake_critic("unclear"),
+        precomputed_checks=[{"name": "presolve", "status": "passed", "checked": 1}]))
     check("precomputed checks are honoured (the free layer does not re-run)",
-          out_pre["verified"] is True and out_pre["checks"][0]["name"] == "sanity")
+          out_pre["verified"] is True and out_pre["checks"][0]["name"] == "presolve")
+    out_sanity_only = asyncio.run(ms.verify_and_repair(
+        {"problem_statement": "Tính diện tích hình chữ nhật có chiều dài 3 và chiều rộng 2."},
+        "Hình chữ nhật có diện tích S = 999.",
+        chat_fn=fake_critic("correct"),
+        precomputed_checks=[{"name": "sanity", "status": "passed", "checked": 1}]))
+    check("sanity positivity alone NEVER promotes an unchecked answer to verified=True (R2)",
+          out_sanity_only["verified"] is False
+          and out_sanity_only["status"] == ms.STATUS_NOT_APPLICABLE
+          and out_sanity_only["reason"] == "unsupported")
 finally:
     ms.deterministic_checks = original
 

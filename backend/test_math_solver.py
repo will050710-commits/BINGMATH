@@ -1,7 +1,7 @@
 """
 test_math_solver.py
 ===================
-Đợt 4B unit tests — chạy được bằng `python test_math_solver.py` (kiểu các
+Đợt 4B + Q1-min unit tests — chạy được bằng `python test_math_solver.py` (kiểu các
 test_phase*.py sẵn có) hoặc pytest. KHÔNG cần mạng/khóa: mọi lượt gọi model
 đều dùng chat_fn giả, đúng lý do math_solver nhận chat_fn qua tham số.
 """
@@ -125,10 +125,15 @@ async def test_verify_pass_and_repair():
     check("badge text mentions the failing check",
           "Chưa kiểm chứng" in ms.unverified_note(v3), ms.unverified_note(v3))
 
-    # 4) off mode does not call anything
+    # 4) off mode skips verification and never reports false verified (Q1-min)
     chat_off, calls_off = fake_chat(["irrelevant"])
     v4 = await ms.verify_and_repair(ir, "Đáp án: x = 3", chat_fn=chat_off, mode="off")
-    check("off mode skips verification", v4["verified"] is True and calls_off["n"] == 0, v4)
+    check("off mode skips verification without false verified",
+          v4["verified"] is False
+          and v4["status"] == ms.STATUS_NOT_APPLICABLE
+          and v4["reason"] == "disabled"
+          and calls_off["n"] == 0,
+          v4)
 
 
 def main():

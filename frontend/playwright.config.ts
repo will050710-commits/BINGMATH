@@ -1,9 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
-/** Browser checks exercise the actual chat route with a deterministic API fixture. */
+/** Browser checks exercise the actual chat route and CLIL pilot route. */
 export default defineConfig({
   testDir: "./tests",
-  testMatch: "tutor-workspace.spec.ts",
+  testMatch: ["tutor-workspace.spec.ts", "clil-pilot.spec.ts", "mobile-*.spec.ts"],
   fullyParallel: false,
   workers: 1,
   timeout: 60_000,
@@ -22,11 +22,18 @@ export default defineConfig({
     serviceWorkers: "block",
   },
   projects: [
-    { name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1600, height: 1000 } } },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        channel: process.env.CI ? undefined : "chrome",
+        viewport: { width: 1600, height: 1000 },
+      },
+    },
   ],
   webServer: {
-    command: "pnpm exec next dev --hostname 127.0.0.1 --port 3000",
-    url: "http://127.0.0.1:3000/DuoMCB",
+    command: `node node_modules/next/dist/bin/next ${process.env.PLAYWRIGHT_USE_PRODUCTION === "1" ? "start" : "dev"} --hostname 127.0.0.1 --port 3000`,
+    url: "http://127.0.0.1:3000/offline",
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },

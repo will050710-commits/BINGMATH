@@ -17,6 +17,10 @@ import TutorWorkspace from "@/components/tutor/TutorWorkspace";
 import { MathCanvasHost } from "@/components/tutor/MathCanvasHost";
 import { useTutorScenes } from "@/components/tutor/useTutorScenes";
 import { useLanguage } from "@/context/LanguageContext";
+import SolveProgressBanner from "./SolveProgressBanner";
+import SocraticHintCard from "./SocraticHintCard";
+import SolutionFeedbackButton from "./SolutionFeedbackButton";
+import VerificationStatusBadge from "./VerificationStatusBadge";
 
 // Phase 0 security hardening: shared, memoised mathjs evaluator that replaced
 // the bypassable `new Function()` sanitizer in the canvas renderer.
@@ -2050,7 +2054,9 @@ export default function DuoMCBPage() {
   // MathLive (Σ): when on, the composer renders the visual formula field and a
   // sent message is wrapped in $...$ so the model reads it as mathematics.
   const [mathMode, setMathMode] = useState(false);
+  const [socraticMode, setSocraticMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [pendingHasImage, setPendingHasImage] = useState(false);
   const [sessionId, setSessionId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -2341,6 +2347,7 @@ export default function DuoMCBPage() {
     const request = { epoch: conversationEpoch.current, controller: new AbortController() };
     pendingRequest.current = request;
     const isCurrentRequest = () => pendingRequest.current === request && conversationEpoch.current === request.epoch;
+    setPendingHasImage(Boolean(currentBase64));
     setLoading(true);
 
     // Reset input fields immediately
@@ -2629,6 +2636,15 @@ export default function DuoMCBPage() {
                 disabled={loading}
                 style={mathMode ? { color: "#38bdf8", opacity: 1 } : undefined}
               >Σ</button>
+              {/* 💡 — WP-A2 Socratic Step-by-Step Hint Mode toggle */}
+              <button
+                className={styles.imageBtn}
+                onClick={() => setSocraticMode(s => !s)}
+                title={socraticMode ? "Đang bật Gợi ý từng bậc (Socratic Mode)" : "Bật chế độ Tự suy nghĩ — mở khóa gợi ý từng bước"}
+                aria-pressed={socraticMode}
+                disabled={loading}
+                style={socraticMode ? { color: "#facc15", opacity: 1 } : undefined}
+              >💡</button>
               {mathMode ? (
                 <div
                   style={{ flex: 1, minWidth: 0 }}
@@ -2685,7 +2701,7 @@ export default function DuoMCBPage() {
             </div>
           ) : (
             <div className={styles.messages}>
-              {parsedMessages.map(m => {
+              {parsedMessages.map((m, msgIdx) => {
                 if (m.type === "video") {
                   return (
                     <div key={m.id} className={`${styles.msgRow} ${styles.botRow}`}>
@@ -2770,16 +2786,18 @@ export default function DuoMCBPage() {
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={m.image} alt="Uploaded" className={styles.bubbleImage} />
                             )}
-                            {parseMathAndText(cleanContent).map((token, idx) => {
-                              if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
-                              try {
-                                const html = katex.renderToString(token.content.trim(), { displayMode: token.isBlock, throwOnError: false });
-                                return (
-                                  <span key={idx} dangerouslySetInnerHTML={{ __html: html }}
-                                    style={token.isBlock ? { display: "block", margin: "0.5em 0" } : {}} />
-                                );
-                              } catch { return <code key={idx}>{token.content}</code>; }
-                            })}
+                            <SocraticHintCard content={cleanContent} enabled={socraticMode}>
+                              {parseMathAndText(cleanContent).map((token, idx) => {
+                                if (token.type === "text") return renderTextWithMarkdown(token.content, idx, styles);
+                                try {
+                                  const html = katex.renderToString(token.content.trim(), { displayMode: token.isBlock, throwOnError: false });
+                                  return (
+                                    <span key={idx} dangerouslySetInnerHTML={{ __html: html }}
+                                      style={token.isBlock ? { display: "block", margin: "0.5em 0" } : {}} />
+                                  );
+                                } catch { return <code key={idx}>{token.content}</code>; }
+                              })}
+                            </SocraticHintCard>
                           </div>
                         </div>
                       )}
@@ -2825,19 +2843,39 @@ export default function DuoMCBPage() {
                           thất bại (⚠️). Trước đây mọi trường hợp đều hiện một câu
                           cảnh báo đỏ — đúng thứ học sinh đã phản hồi. */}
                       {m.verification && m.verification.status !== "not_applicable" && (
-                        <div style={{ marginTop: 8, fontSize: 12, opacity: 0.8, paddingLeft: 4 }}>
-                          {m.verification.verified
-                            ? `✅ đã kiểm chứng${m.verification.repaired ? " (có sửa lại)" : ""}`
-                            : m.verification.status === "timeout"
-                              ? "⏱ chưa kịp kiểm chứng (hết thời gian xử lý)"
+                        <div
+                          style={{ marginTop: 8, fontSize: 12, opacity: 0.8, paddingLeft: 4 }}
+                          data-verify-kind={
+                            m.verification.status === "timeout"
+                              ? "timeout"
                               : m.verification.status === "partial"
-                                ? "ℹ️ đã kiểm tra số học, chưa có phản biện độc lập"
-                                : "⚠️ chưa kiểm chứng được đáp án"}
-                          {m.perception?.confidence != null
-                            ? (m.perception.confidence >= 0.5
-                                ? ` · đọc tin cậy ${Math.round(m.perception.confidence * 100)}%`
-                                : ` · đọc chưa chắc (${Math.round(m.perception.confidence * 100)}%)`)
-                            : ""}
+                              ? "partial"
+                              : m.verification.verified
+                              ? "verified"
+                              : "unverified"
+                          }
+                          data-perception-note={
+                            m.perception && typeof m.perception.confidence === "number" && m.perception.confidence < 0.5
+                              ? "đọc chưa chắc — nên gõ lại đề"
+                              : undefined
+                          }
+                        >
+                          <VerificationStatusBadge
+                            verification={m.verification}
+                            perception={m.perception}
+                            lang={lang}
+                          />
+                        </div>
+                      )}
+
+                      {/* WP-A2: 1-Click Report Wrong Solution / Diagram */}
+                      {hasText && (
+                        <div style={{ paddingLeft: 4 }}>
+                          <SolutionFeedbackButton
+                            question={msgIdx > 0 && parsedMessages[msgIdx - 1]?.role === "user" ? String(parsedMessages[msgIdx - 1]?.content || "") : ""}
+                            answer={cleanContent}
+                            sessionId={sessionId || ""}
+                          />
                         </div>
                       )}
 
@@ -2862,8 +2900,11 @@ export default function DuoMCBPage() {
                   <div className={styles.avatar}>
                     <Image src="/images/duosteamicon-removebg-preview.webp" alt="BingMCB" width={32} height={32} />
                   </div>
-                  <div className={`${styles.bubble} ${styles.botBubble} ${styles.typingBubble}`}>
-                    <span className={styles.dot} /><span className={styles.dot} /><span className={styles.dot} />
+                  <div style={{ flex: 1, maxWidth: 520 }}>
+                    <div className={`${styles.bubble} ${styles.botBubble} ${styles.typingBubble}`}>
+                      <span className={styles.dot} /><span className={styles.dot} /><span className={styles.dot} />
+                    </div>
+                    <SolveProgressBanner active={loading} hasImage={pendingHasImage} lang={lang} />
                   </div>
                 </div>
               )}

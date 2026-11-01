@@ -6,21 +6,28 @@
  *  - Filter: Tất cả / THCS / THPT / Tuần này
  *  - Highlight hàng của chính mình (sticky-style)
  *  - Pull-to-refresh
+ *
+ * Changes:
+ *  - Fixed: `rest = filtered.slice(3)` for podium separation without duplicating top 3 rows in list.
+ *  - Switched row list to FlatList for proper windowing up to 50 entries.
+ *  - `top3`/`rest` memoized.
+ *  - Podium gold gradient glow via GradientGlow.
+ *  - Filter chips and back button use PressableScale.
  */
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  SafeAreaView, RefreshControl, Animated, ActivityIndicator,
-  Dimensions,
+  View, Text, FlatList, StyleSheet,
+  SafeAreaView, RefreshControl, Animated, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { Colors } from '../../theme/colors';
 import { FontFamily, FontSize } from '../../theme/typography';
-import { Spacing, Radius, Shadow } from '../../theme/spacing';
+import { Spacing, Radius } from '../../theme/spacing';
+import { withAlpha } from '../../theme/effects';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { getLeaderboard } from '../../api/leaderboard';
-
-const { width: W } = Dimensions.get('window');
+import PressableScale from '../../components/ui/PressableScale';
+import GradientGlow from '../../components/ui/GradientGlow';
 
 const FILTERS = [
   { id: 'all',   label: '🌍 Tất cả' },
@@ -36,7 +43,7 @@ const MEDAL_COLORS = {
 };
 
 // ── ANIMATED ROW ───────────────────────────────────────────────────────────────
-function LeaderboardRow({ item, rank, isMe, delay }) {
+const LeaderboardRow = React.memo(function LeaderboardRow({ item, rank, isMe, delay }) {
   const slideAnim = useRef(new Animated.Value(40)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -60,7 +67,7 @@ function LeaderboardRow({ item, rank, isMe, delay }) {
       {/* Rank */}
       <View style={styles.rankCell}>
         {rank <= 3 ? (
-          <Text style={[styles.medalEmoji]}>
+          <Text style={styles.medalEmoji}>
             {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
           </Text>
         ) : (
@@ -92,16 +99,16 @@ function LeaderboardRow({ item, rank, isMe, delay }) {
       </View>
     </Animated.View>
   );
-}
+});
 
 // ── TOP 3 PODIUM ─────────────────────────────────────────────────────────────
-function Podium({ top3 }) {
-  if (!top3 || top3.length < 3) return null;
-
+const Podium = React.memo(function Podium({ top3 }) {
   const podiumAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.spring(podiumAnim, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }).start();
   }, []);
+
+  if (!top3 || top3.length < 3) return null;
 
   const heights = [80, 110, 60]; // 2nd, 1st, 3rd
   const order = [1, 0, 2]; // display order: 2nd, 1st, 3rd
@@ -112,6 +119,7 @@ function Podium({ top3 }) {
         const player = top3[dataIdx];
         const rank = dataIdx + 1;
         const height = heights[displayIdx];
+        const baseColor = rank === 1 ? Colors.amber : rank === 2 ? '#94a3b8' : '#cd7f32';
         return (
           <View key={rank} style={[styles.podiumSlot, displayIdx === 1 && { marginBottom: 10 }]}>
             <Text style={styles.podiumEmoji}>{rank === 1 ? '👑' : rank === 2 ? '🥈' : '🥉'}</Text>
@@ -120,15 +128,25 @@ function Podium({ top3 }) {
             </View>
             <Text style={styles.podiumName} numberOfLines={1}>{player?.username}</Text>
             <Text style={styles.podiumXP}>{(player?.xp ?? 0).toLocaleString()} XP</Text>
-            <View style={[styles.podiumBase, { height, backgroundColor: rank === 1 ? Colors.amber + '40' : rank === 2 ? '#94a3b840' : '#cd7f3240', borderColor: rank === 1 ? Colors.amber : rank === 2 ? '#94a3b8' : '#cd7f32' }]}>
-              <Text style={[styles.podiumRankNum, { color: rank === 1 ? Colors.amber : rank === 2 ? '#94a3b8' : '#cd7f32' }]}>#{rank}</Text>
-            </View>
+
+            {rank === 1 ? (
+              <GradientGlow
+                colors={[withAlpha(Colors.amber, 55), withAlpha(Colors.amber, 15)]}
+                style={[styles.podiumBase, { height, borderColor: baseColor }]}
+              >
+                <Text style={[styles.podiumRankNum, { color: baseColor }]}>#{rank}</Text>
+              </GradientGlow>
+            ) : (
+              <View style={[styles.podiumBase, { height, backgroundColor: baseColor + '40', borderColor: baseColor }]}>
+                <Text style={[styles.podiumRankNum, { color: baseColor }]}>#{rank}</Text>
+              </View>
+            )}
           </View>
         );
       })}
     </Animated.View>
   );
-}
+});
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function LeaderboardScreen({ navigation }) {
@@ -160,10 +178,11 @@ export default function LeaderboardScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  // Filter logic (in real app, pass filter to API)
-  const filtered = data; // placeholder — same data regardless of filter tab
-  const top3 = filtered.slice(0, 3);
-  const rest = filtered.slice(3);
+  const filtered = data;
+  const top3 = useMemo(() => filtered.slice(0, 3), [filtered]);
+  const rest = useMemo(() => filtered.slice(3), [filtered]);
+  const hasPodium = top3.length >= 3;
+  const listItems = hasPodium ? rest : filtered;
 
   const myRank = filtered.findIndex(p => p.username === myUsername) + 1;
   const myData = filtered.find(p => p.username === myUsername);
@@ -173,25 +192,27 @@ export default function LeaderboardScreen({ navigation }) {
       {/* Header */}
       <View style={styles.header}>
         {navigation && (
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <PressableScale style={styles.backBtn} onPress={() => navigation.goBack()} haptics={null}>
             <Text style={styles.backText}>← {t('Quay lại', 'Back')}</Text>
-          </TouchableOpacity>
+          </PressableScale>
         )}
         <Text style={styles.headerTitle}>🏆 {t('Bảng Xếp Hạng', 'Leaderboard')}</Text>
-        <Text style={styles.headerSub}>{t('Top người chơi toàn cầu', 'Global top players')}</Text>
+        <Text style={styles.headerSub}>{t('Top người chơi toàn cầu — BingMath', 'Global top players — BingMath')}</Text>
       </View>
 
       {/* Filter chips */}
       <View style={styles.filterRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {FILTERS.map(f => (
-            <TouchableOpacity
+            <PressableScale
               key={f.id}
               style={[styles.filterChip, filter === f.id && styles.filterChipActive]}
               onPress={() => setFilter(f.id)}
+              haptics="select"
+              scaleTo={0.94}
             >
               <Text style={[styles.filterText, filter === f.id && styles.filterTextActive]}>{f.label}</Text>
-            </TouchableOpacity>
+            </PressableScale>
           ))}
         </ScrollView>
       </View>
@@ -201,40 +222,44 @@ export default function LeaderboardScreen({ navigation }) {
           <ActivityIndicator size="large" color={Colors.cyan} />
         </View>
       ) : (
-        <ScrollView
+        <FlatList
+          data={listItems}
+          keyExtractor={(item, i) => (item.user_id ? String(item.user_id) : String(i))}
+          renderItem={({ item, index }) => (
+            <LeaderboardRow
+              item={item}
+              rank={hasPodium ? index + 4 : index + 1}
+              isMe={item.username === myUsername}
+              delay={Math.min(index * 30, 600)}
+            />
+          )}
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.cyan} />}
-        >
-          {/* My rank sticky card */}
-          {myData && myRank > 3 && (
-            <View style={styles.myRankCard}>
-              <Text style={styles.myRankLabel}>{t('Thứ hạng của bạn', 'Your rank')}</Text>
-              <Text style={styles.myRankNum}>#{myRank}</Text>
-              <Text style={styles.myRankXP}>{(myData.xp ?? 0).toLocaleString()} XP</Text>
-            </View>
-          )}
+          ListHeaderComponent={
+            <>
+              {/* My rank sticky card */}
+              {myData && myRank > 3 && (
+                <View style={styles.myRankCard}>
+                  <Text style={styles.myRankLabel}>{t('Thứ hạng của bạn', 'Your rank')}</Text>
+                  <Text style={styles.myRankNum}>#{myRank}</Text>
+                  <Text style={styles.myRankXP}>{(myData.xp ?? 0).toLocaleString()} XP</Text>
+                </View>
+              )}
 
-          {/* Podium */}
-          <Podium top3={top3} />
+              {/* Podium */}
+              <Podium top3={top3} />
 
-          {/* Rest of list */}
-          <Text style={styles.listTitle}>{t('Xếp hạng chi tiết', 'Full Rankings')}</Text>
-          {filtered.map((item, i) => (
-            <LeaderboardRow
-              key={item.user_id || i}
-              item={item}
-              rank={i + 1}
-              isMe={item.username === myUsername}
-              delay={Math.min(i * 30, 600)}
-            />
-          ))}
-
-          {filtered.length === 0 && (
-            <Text style={styles.emptyText}>{t('Không có dữ liệu', 'No data available')}</Text>
-          )}
-          <View style={{ height: 40 }} />
-        </ScrollView>
+              <Text style={styles.listTitle}>{t('Xếp hạng chi tiết', 'Full Rankings')}</Text>
+            </>
+          }
+          ListEmptyComponent={
+            filtered.length === 0
+              ? <Text style={styles.emptyText}>{t('Không có dữ liệu', 'No data available')}</Text>
+              : null
+          }
+          ListFooterComponent={<View style={{ height: 40 }} />}
+        />
       )}
     </SafeAreaView>
   );
@@ -249,7 +274,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.bgSurface,
     borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  backBtn: { marginBottom: Spacing.xs },
+  backBtn: { marginBottom: Spacing.xs, alignSelf: 'flex-start' },
   backText: { fontFamily: FontFamily.semiBold, fontSize: FontSize.sm, color: Colors.textCyan },
   headerTitle: { fontFamily: FontFamily.black, fontSize: FontSize.xl, color: Colors.text, marginBottom: 4 },
   headerSub: { fontFamily: FontFamily.regular, fontSize: FontSize.sm, color: Colors.textMuted },
