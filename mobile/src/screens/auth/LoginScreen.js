@@ -62,7 +62,7 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.logoWrap}>
               <GradientGlow colors={Colors.gradientGlow} style={styles.logoGlow} />
               <Image
-                source={require('../../assets/images/owl.png')}
+                source={require('../../assets/images/owl.jpg')}
                 style={styles.logoImage}
                 resizeMode="contain"
               />

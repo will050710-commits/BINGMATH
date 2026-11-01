@@ -18,7 +18,7 @@ import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, SafeAreaView,
   Animated, ScrollView, ActivityIndicator,
-  BackHandler, Alert, Platform,
+  BackHandler, Alert,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Colors } from '../../theme/colors';
@@ -31,9 +31,7 @@ import PressableScale from '../../components/ui/PressableScale';
 import GradientGlow from '../../components/ui/GradientGlow';
 import FloatingParticles from '../../components/ui/FloatingParticles';
 
-const WEB_BASE = __DEV__
-  ? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000')
-  : 'https://duomath.vercel.app';
+import { WEB_BASE_URL as WEB_BASE } from '../../config/endpoints';
 
 // ── MAP DATA ────────────────────────────────────────────────────────────────
 const MAPS = [

@@ -9,7 +9,7 @@
 import React, { useRef, useState } from 'react';
 import {
   View, StyleSheet, SafeAreaView,
-  Text, ActivityIndicator, BackHandler, Platform,
+  Text, ActivityIndicator, BackHandler,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Colors } from '../../theme/colors';
@@ -19,9 +19,7 @@ import { haptic } from '../../theme/effects';
 import PressableScale from '../../components/ui/PressableScale';
 
 // Web frontend URL
-const WEB_BASE = __DEV__
-  ? (Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000')
-  : 'https://duomath.vercel.app';
+import { WEB_BASE_URL as WEB_BASE } from '../../config/endpoints';
 
 // CSS injected into WebView to hide desktop-only elements
 const INJECTED_CSS = `

@@ -2,7 +2,7 @@
  * RootNavigator — V1.0 Official with Guest Mode, Theme integration & Global Overlays
  */
 import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme as NavigationDarkTheme, DefaultTheme as NavigationLightTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator, View } from 'react-native';
@@ -41,6 +41,7 @@ export default function RootNavigator() {
   return (
     <NavigationContainer
       theme={{
+        ...(isDark ? NavigationDarkTheme : NavigationLightTheme),
         dark: isDark,
         colors: {
           primary: colors.primary,

@@ -185,7 +185,7 @@ export default function OnboardingScreen({ onDone }) {
         >
           {slide.key === 'welcome' ? (
             <Image
-              source={require('../../assets/images/owl.png')}
+              source={require('../../assets/images/owl.jpg')}
               style={{ width: 64, height: 64, resizeMode: 'contain' }}
             />
           ) : (

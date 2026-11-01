@@ -42,7 +42,7 @@ function AvatarCircle({ name, avatarUrl }) {
         />
       ) : (
         <Image
-          source={require('../../assets/images/owl.png')}
+          source={require('../../assets/images/owl.jpg')}
           style={{ width: 56, height: 56, resizeMode: 'contain' }}
         />
       )}

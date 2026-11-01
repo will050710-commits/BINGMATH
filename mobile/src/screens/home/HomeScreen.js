@@ -159,7 +159,7 @@ export default function HomeScreen({ navigation }) {
           {/* Greeting + Mascot + Lang toggle */}
           <View style={styles.heroTop}>
             <Image
-              source={require('../../assets/images/owl.png')}
+              source={require('../../assets/images/owl.jpg')}
               style={styles.heroMascot}
             />
             <View style={{ flex: 1 }}>
