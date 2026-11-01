@@ -3,6 +3,8 @@
 ## Supported project configuration
 
 - Node.js 22 LTS (at least 22.11.0); `.nvmrc` selects the CI major version.
+- npm 11.6.1 (`npm install --global npm@11.6.1`), matching `packageManager` and CI.
+  npm 10 resolves Firebase's optional AsyncStorage peer differently and rejects this lockfile.
 - React Native 0.86.0, React 19.2.3, npm lockfile committed. Use `npm ci` on a clean checkout.
 - JDK 17 for CI; set `JAVA_HOME` to a JDK installation.
 - Android SDK Platform 36, Build Tools 36.0.0, NDK 27.1.12297006.

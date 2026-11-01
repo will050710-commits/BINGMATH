@@ -56,7 +56,9 @@ jobs:
           packages: ''
 
       - name: Install npm dependencies
-        run: npm ci --no-audit --no-fund
+        run: |
+          npm install --global npm@11.6.1
+          npm ci --no-audit --no-fund
         working-directory: mobile
 
       - name: Check assets, TypeScript and tests
