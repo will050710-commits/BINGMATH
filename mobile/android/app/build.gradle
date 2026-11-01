@@ -78,9 +78,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.duomathmobile"
+    namespace "com.bingmathmobile"
     defaultConfig {
-        applicationId "com.duomathmobile"
+        applicationId "com.bingmathmobile"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

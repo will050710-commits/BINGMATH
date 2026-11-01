@@ -71,7 +71,7 @@ jobs:
       - name: Upload APK to GitHub Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: duomath-apk
+          name: bingmath-apk
           path: mobile/android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
 
@@ -79,7 +79,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest-apk
-          name: "DuoMath Android APK (Latest Build)"
+          name: "BingMath Android APK (Latest Build)"
           files: mobile/android/app/build/outputs/apk/release/app-release.apk
           prerelease: false
         env:

@@ -1,4 +1,4 @@
-# DuoMath Mobile — Hướng dẫn Setup & Chạy
+# BingMath Mobile — Hướng dẫn Setup & Chạy
 
 ## Bước 1: Cài Java JDK (bắt buộc)
 
@@ -44,9 +44,9 @@ $env:PATH += ";$env:ANDROID_HOME\platform-tools;$env:ANDROID_HOME\emulator"
 Truy cập **Firebase Console** (https://console.firebase.google.com/) → Project `duosteam-be693`:
 
 1. Project Settings → **Add app** → chọn **Android**
-2. Package name: `com.duomathmobile`
+2. Package name: `com.bingmathmobile`
 3. Tải file `google-services.json`
-4. Đặt file vào: `DuoMathMobile/android/app/google-services.json`
+4. Đặt file vào: `mobile/android/app/google-services.json` (hoặc `DuoMathMobile/android/app/google-services.json`)
 
 ---
 
